@@ -1,0 +1,138 @@
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//	SCRIPT:	AS_Optimizer V1.0
+//	AUTHOR:	Asi Sudai Character TD, Animator
+//			http://www.reel.asimation.com
+//			asi@asimation.com
+//
+//
+//	DATE:		23/12/2004 17:02
+//
+//	DESCRIPTION:	This script use the command "dgtimer" that not so famous among users.
+//					dgtimer is built-in pluging to measures dependency graph node performance.
+//					after optimizing you can print all the data to a text file, and lock for 
+//					Black holes in the scene.
+//
+//	Update	1.0: We start here.
+//
+//	Known Bugs: pressing "ESC" isn't really stoping...
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//	Run Proc: AS_Optimizer
+//-------------------------------------------------------------------------------------------------------------------------------------//
+
+
+
+//-----------
+// Optimiz Action Proc
+//-----------
+global proc AS_OptimizerStart()
+{    
+    // Quary Usetr playBack options.
+    // We need to change them before dgTime, and return them after.
+    float $minTime=`playbackOptions -q -min`;
+    float $maxTime=`playbackOptions -q -max`;
+    string $playOption=`playbackOptions -q -l`;
+    
+	// If no File selected, use the Temp file
+	if (`textFieldButtonGrp -q -fi Optimizer_file`=="             -  no file to save data  -        ")	
+		textFieldButtonGrp -e -fi (`internalVar -utd`+"OptimizTemp.mel") Optimizer_file;
+	
+    // Quary Optimizer UI settings
+    string $fileName=`textFieldButtonGrp -q -fi Optimizer_file`;
+    float $threshold=`floatFieldGrp -q -v1 Optimizer_threshold`;
+    int $repeatTime=`intSliderGrp -q -v Optimizer_repeat`;
+    
+	// If no File selected, use the Temp file
+	if (`textFieldButtonGrp -q -fi Optimizer_file`=="             -  no file to save data  -        ")	
+		textFieldButtonGrp -e -fi (`internalVar -utd`+"Optimiz.mel");
+	
+	// Change Button Text
+	button -e -l "press ESC to stop" Optimizer_Gobutton;
+	
+    // Start dgTime Loop
+	global string $gMainProgressBar;
+    progressBar -edit -bp -isInterruptable true -status "Optimization Check" -maxValue $repeatTime $gMainProgressBar;
+    dgtimer -on -reset;     
+    int $i=0;
+    playbackOptions -l "once";
+    currentTime $minTime;
+    do {
+		//if(`progressBar -query -isCancelled $gMainProgressBar`)
+    	progressBar -edit -step 1 $gMainProgressBar;
+		play -forward true -wait;		
+    	currentTime $minTime;
+    	$i++;
+    } while ($i<$repeatTime);    
+    dgtimer -threshold $threshold -outputFile $fileName -query;
+    dgtimer -off -reset;
+    
+    // Return playBack options.
+	button -e -l "Optimize" Optimizer_Gobutton;
+    playbackOptions -e -l $playOption;
+    progressBar -edit -endProgress $gMainProgressBar;
+    
+}//End AS_OptimizerStart
+
+
+
+//--------------------
+//	Optimizer Browser
+//--------------------
+global proc AS_OptimizerBrowser(string $fileName, string $fileType)
+{
+    textFieldButtonGrp -e -fi $fileName Optimizer_file;	
+}// End AS_OptimizerBrowser
+
+
+
+//--------
+// Optimizer UI Proc
+//--------
+global proc AS_Optimizer()
+{
+	if(`window -exists OptimizerWin`)
+			deleteUI OptimizerWin;
+	if( `windowPref -exists OptimizerWin` )
+			windowPref -r OptimizerWin;
+	
+	window -w 290 -h 170 -t "Optimizer    -         asisudai@gmail.com" 
+			-titleBar 1 -mnb 1 -mxb 1 -mb 1 
+			-tlb 1 -sizeable 1 OptimizerWin;
+	
+	columnLayout;
+		frameLayout -lv 0 -l "Optimizer" 
+			-li 5 -mh 3 -mw 5 -la "bottom" -bs "etchedIn" 
+			;
+	    columnLayout -rs 2 -adj 1 ;
+	    
+	        intSliderGrp 
+	        		-l "Repeat Times" -field 1 -fmn 1 -fmx 10 -min 1 -max 5 
+	        		-v 1 -cw3 80 25 20 Optimizer_repeat;
+	        
+	        button -l "Optimize" -h 22 -align "center"
+	        	 -bgc 0.75 0.8 0.9 -c "AS_OptimizerStart" Optimizer_Gobutton;
+	                
+	        separator -bgc 0.75 0.75 0.8 -h 2 -hr 1 -st "none";
+	        
+	        floatFieldGrp         		
+	        		-l "Min Threshold" -nf 1 -v1 0.001 -pre 3 -cw2 80 50 Optimizer_threshold;
+	        
+	        textFieldButtonGrp
+	        		-cw2 220 40        		
+	        		-tx "  - no file -  "
+	        		-fi  "             -  no file to save data  -        "    		    
+	    		    -bl "Browse"
+	    		    -bc "fileBrowserDialog \
+	            		-m 1 \
+	            		-fc \"AS_OptimizerBrowser\" \
+	            		-fileType \"mel\" \
+	            		-an \"Save\""
+	    		    Optimizer_file;
+	
+	        button -bgc 0.77 0.89 0.8 -h 20 -label "Open Optimize Report File" 
+	             -c "string $fileName=`textFieldButtonGrp -q -fi Optimizer_file`; \
+	                showHelp -a $fileName;";             
+	
+	showWindow OptimizerWin;
+}// End AS_Optimizer
+

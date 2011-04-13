@@ -1,0 +1,60 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//select vertices, then select other objects with identical topology
+global proc doZenTransferPointPositions()
+{
+	string	$sel[]=`ls -sl`;
+	string 	$targetObjects[]=stringArrayCatenate(`ls -tr -sl`,`ls -s -sl`);
+		
+	string	$sourceComponents[]=stringArrayRemove($targetObjects,`ls -sl -fl`);
+	string	$sourceObjs[]=`ls -o $sourceComponents`;
+		$sourceObjs=`stringArrayRemoveDuplicates $sourceObjs`;
+		
+		if(size($sourceObjs)>1) error "Select components on only one object.";
+		
+		if(`nodeType $sourceObjs`=="mesh" || `nodeType $sourceObjs`=="subdiv")
+		{
+			select $sourceComponents;
+			ConvertSelectionToVertices;
+			$sourceComponents=`ls -sl -fl`;			
+		}	
+		
+	string	$targetComponents[];
+		
+	float	$tr[];
+	
+		progressWindow -ii true -title "Working" -status "Moving Verts" -max (size($sourceComponents)*size($targetObjects)) -progress 0;
+	
+	string	$targetObj;
+		for($targetObj in $targetObjects)
+		{
+			$targetComponents=`zenMimicSelection $sourceComponents $targetObj`;
+			
+			for($i=0;$i<size($sourceComponents);$i++)
+			{
+				$tr=`xform -q -t $sourceComponents[$i]`;				
+				xform -t $tr[0] $tr[1] $tr[2] $targetComponents[$i];
+				progressWindow -e -s 1;
+				if(`progressWindow -q -ic`)
+				{
+					progressWindow -endProgress;
+					error "User Interupt.";
+				}
+			}
+		}
+		
+		progressWindow -endProgress;
+		select $sel;
+}

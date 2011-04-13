@@ -1,0 +1,34 @@
+global proc string[] zooAssetsDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $includeFiles[] = {};
+	string $helpDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $return[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_str";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_int";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_float";
+	$melDependencies[( `size $melDependencies` )] = "zooAssetsUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooObjMenuUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooTriggeredUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooStrUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$includeFiles[( `size $includeFiles` )] = "zooAssetsWin";
+	$includeFiles[( `size $includeFiles` )] = "zooAssets_RWExtensions";
+	$helpDependencies[( `size $helpDependencies` )] = "zooAssetsHelp";
+	$helpDependencies[( `size $helpDependencies` )] = "zooAssetsTechnical";
+	$iconDependencies[( `size $iconDependencies` )] = "zooAssets.xpm";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+
+	if( $mode == "-deps" ) return $melDependencies;
+	if( $mode == "-docs" ) return $helpDependencies;
+	if( $mode == "-icons" ) return $iconDependencies;
+	if( $mode == "-scripts" ) {
+		$return = $melDependencies;
+		$return = `zooAddArray_str $return $includeFiles`;
+		$return = `stringArrayRemoveDuplicates $return`;
+		}
+
+	return $return;
+	}

@@ -1,0 +1,168 @@
+zooArrays_str;
+zooFlags;
+zooStrUtils;
+zooUtils;
+
+
+//this script will create a window to ask the user a question which may be answered by
+//either optional choice, custom text feedback or both.  The script will then mail the
+//results to an aribitrary list of people.  Its a simple tool, but enables highly
+//accessible, context sensitive feedback from within tools which makes it more likely
+//for people to be involved in the reporting of bugs, and the communication of good
+//or bad features.
+//
+//It also allows easy polling of large groups - say for example if you wanted to know
+//whether many people used a certain feature - conduct a poll.  If its easy, people will
+//be more likely to respond/
+//
+//The tool takes the following flags when creating a poll:
+// -topic [str]			the topic - basically just a simple, one or two word subject for the poll
+// -info [str]				this is where you can put lots of detail on what the poll is about - it is stored as a popup label on the poll description
+// -question [str]		this is the question that is displayed - below the topic and above the answers
+// -answers [str]			this is a comma-separated list of answers.  Each answer gets represented as a radio button
+// -showAnswers [int]	do you want the answer list displayed?
+// -recipients [str]		comma separated list of recipients - usernames only
+// -button [str]			the label shown on the submit button
+// -customNote [str]		the custom note is displayed above the custom entry textField - by default it just displays "other:"
+// -custom [int]			do you want the user to be able to enter custom feedback?
+// -cmd [str]				you can specify a mel command here - the results of which get included in the email sent to the recipient list
+global proc zooPollster( string $optionStr ) {
+	string $temp[] = {};
+	string $topic = "a Poll";
+	string $pollInfo = "";
+	string $question = "do you like Polls?";
+	string $answerStr = "yes,no";
+	string $recipientStr = "#";
+	string $buttonLbl = "submit answer";
+	string $customNote = "other:";
+	string $cmd = "";
+	int $showAnswers = 1;
+	int $allowCustom = 0;
+
+	$temp = `zooGetFlagArguments $optionStr topic`; if( `size $temp` ) $topic = `zooArrayToStr_str $temp " "`;
+	$temp = `zooGetFlagArguments $optionStr info`; if( `size $temp` ) $pollInfo = `zooArrayToStr_str $temp " "`;
+	$temp = `zooGetFlagArguments $optionStr question`; if( `size $temp` ) $question = `zooArrayToStr_str $temp " "`;
+	$temp = `zooGetFlagArguments $optionStr answers`; if( `size $temp` ) $answerStr = `zooArrayToStr_str $temp " "`;
+	$temp = `zooGetFlagArguments $optionStr showAnswers`; if( `size $temp` ) $showAnswers = $temp[0];
+	$temp = `zooGetFlagArguments $optionStr recipients`; if( `size $temp` ) $recipientStr = `zooArrayToStr_str $temp " "`;
+	$temp = `zooGetFlagArguments $optionStr button`; if( `size $temp` ) $buttonLbl = `zooArrayToStr_str $temp " "`;
+	$temp = `zooGetFlagArguments $optionStr customNote`; if( `size $temp` ) $customNote = `zooArrayToStr_str $temp " "`;
+	$temp = `zooGetFlagArguments $optionStr custom`; if( `size $temp` ) $allowCustom = $temp[0];
+	$temp = `zooGetFlagArguments $optionStr cmd`; if( `size $temp` ) $cmd = `zooArrayToStr_str $temp " "`;
+
+	//parse the info
+	string $answers[] = {};
+	string $recipients[] = {};
+
+	tokenize $answerStr "," $answers;
+	tokenize $recipientStr ", " $recipients;
+	if( $answers[0] == "!" ) $answers = {};
+	for( $n=0; $n<`size $recipients`; $n++ ) if( $recipients[$n] == "#" ) $recipients[$n] = `getenv USER`;
+	$pollInfo = `zooReplaceInString $pollInfo "[-']+" "`"`;
+	$question = `zooReplaceInString $question "[-']+" "`"`;
+
+	//now build the window
+	string $windowName = "zooPollsterWin";
+	string $windowTitle = "Pollster";
+	int $customTop = 0;
+
+	if( `window -exists $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -width 280 -height 350 -sizeable 1 $windowName;
+		menuBarLayout;
+			menu -label "Poll Info";
+				menuItem -l "Who gets the feedback?";
+				menuItem -d 1;
+				for( $r in $recipients ) menuItem -l $r;
+
+		string $masterForm = `formLayout`;
+			string $topicLbl = `text -l $topic -ann $pollInfo zooPollUITopic`;
+			string $line = `separator`;
+			string $infoLbl = `text -l( zooWrapString($question,50)) -ann $pollInfo -align left zooPollUIQuestion`;
+			string $answerCol = `columnLayout -adj 1`;  setParent ..;
+			string $customLbl = `text -l $customNote -align left -vis $allowCustom`;
+			string $customResponse = `scrollField -vis $allowCustom -ww 1 zooPollUICustom`;
+			string $submit = `button -l $buttonLbl -docTag $cmd -c( "zooSubmitPoll {\""+ (zooArrayToStr_str($recipients,"\",\"")) +"\"};" ) zooPollUISubmit`;
+
+	string $rads = `radioCollection zooPollAnswers`;
+	setParent $answerCol;
+	if( $showAnswers ) for( $a in $answers ) radioButton -l $a -align left;
+
+	formLayout -e
+		-af $topicLbl "top" 3
+		-af $topicLbl "left" 15
+		-af $topicLbl "right" 0
+		-an $topicLbl "bottom"
+
+		-ac $line "top" 3 $topicLbl
+		-af $line "left" 2
+		-af $line "right" 2
+		-an $line "bottom"
+
+		-ac $infoLbl "top" 3 $line
+		-af $infoLbl "left" 3
+		-af $infoLbl "right" 0
+		-an $infoLbl "bottom"
+
+		-ac $answerCol "top" 6 $infoLbl
+		-af $answerCol "left" 0
+		-af $answerCol "right" 0
+		-an $answerCol "bottom"
+
+		-ac $customLbl "top" 6 $answerCol
+		-af $customLbl "left" 0
+		-af $customLbl "right" 0
+		-an $customLbl "bottom"
+
+		-ac $customResponse "top" 0 $customLbl
+		-af $customResponse "left" 0
+		-af $customResponse "right" 0
+		-ac $customResponse "bottom" 0 $submit
+
+		-an $submit "top"
+		-af $submit "left" 0
+		-af $submit "right" 0
+		-af $submit "bottom" 0
+		$masterForm;
+
+	showWindow $windowName;
+	}
+
+
+//this proc gethers relevant data from the UI, constructs the email and sends it
+//to the recipient list
+global proc zooSubmitPoll( string $recipients[] ) {
+	string $answer = `radioCollection -q -sl zooPollAnswers`;
+	string $recipientStr = `zooArrayToStr_str $recipients " "`;
+	string $subject = `text -q -l zooPollUITopic`;
+	string $question = `text -q -l zooPollUIQuestion`;
+	string $customAnswer = `scrollField -q -tx zooPollUICustom`;
+	string $body = `getenv USER` +"`s answer to the poll was:\n";
+	string $preppedA = "";
+	string $preppedQ = $question;
+	string $cmd = `button -q -docTag zooPollUISubmit`;
+	string $customData = "";
+
+	$customAnswer = `zooReplaceInString $customAnswer "-" "="`;
+	if( $cmd != "" ) $customData = `eval $cmd`;
+	if( `control -ex $answer` ) $answer = `radioButton -q -l $answer`;
+	else $answer = "";
+	$answer = `zooReplaceInString $answer "'" "`"`;
+	$customAnswer = `zooReplaceInString $customAnswer "'" "`"`;
+	$preppedA = $answer;
+
+	if( $answer == "" ) $preppedA = $customAnswer;
+	if( `size $preppedA` > 20 ) $preppedA = `substring $preppedA 1 20`;
+
+	$preppedA = `zooReplaceInString $preppedA "\n" " "`;
+	$preppedQ = `zooReplaceInString $question "\n" " "`;
+	if( strip($answer) != "" ) $body += "selected answer was:\n**************\n"+ $answer +"\n\n\n";
+	if( strip($customAnswer) != "" ) $body += "custom answer was:\n**************\n"+ $customAnswer +"\n\n\n";
+	if( $customData != "" ) $body += "additional data:\n**************\n"+ $customData +"\n\n\n";
+	$body += "The question asked was:\n**************\n"+ $preppedQ;
+
+	zooSendMail ( "-to "+ $recipientStr +" -subject [animation poll] "+ $subject +": "+ $preppedA ) $body;
+	deleteUI zooPollsterWin;
+	}
+
+
+//zoo.end

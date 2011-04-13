@@ -1,0 +1,11 @@
+/// edit this file for your o/s by removing the slashes (//)
+/// from in front of the line for your o/s
+///
+/// the basic format is:
+/// + OMT_toolbox 0.0 "absolute path to your OMToolbox directory"
+
+/// Windows sample
+/// + OMT_toolbox 0.0 C:\Documents and Settings\User Name\My Documents\maya\x.x\omtoolbox
+
+/// Linux/Rrix sample
+/// + OMT_toolbox 0.0 /u/user_name/maya/x.x/omtoolbox

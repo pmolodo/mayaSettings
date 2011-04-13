@@ -1,0 +1,240 @@
+
+Dual Quaternion skinning in Maya
+================================
+
+This Maya plugin implements a smooth skinning node doing 
+dual quaternion skinning. It is described in the tech report
+"Dual Quaternions for Rigid Transformation Blending" by Kavan et al.
+(see also his page http://isg.cs.tcd.ie/projects/DualQuaternions )
+
+Basically, it does the same as a skinCluster node. The plugin adds 
+a new Maya node called "skinClusterDq". 
+
+As it is quite involved to set up a skinning network in Maya (which 
+is hidden from the user by some MEL scripting), setting up a 
+skinClusterDq node is done by copying the internal Maya structure
+for an existing skinCluster node. MEL helper functions are provided
+to do this.
+
+
+
+License
+=======
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the author(s) be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+
+
+
+Contact
+=======
+
+This plugin was written by Guido de Haan. 
+
+Many thanks to my employer, Guerrilla (www.guerrilla-games.com), for 
+letting me release this project publicly as it was partially written 
+in company time.
+
+
+
+Quick start
+===========
+
+1) Make sure you load skinClusterDq.mll
+2) Make sure you load the skinClusterDqUtils.mel script
+3) Create or load a scene with skinClusters in it
+4) Call the MEL function 'createSceneSkinClusterDq' to
+   create skinClusterDq nodes for each skinCluster node
+   in the scene.
+   NB: This can take some time as all attribute values/connections
+   are copied one-by-one.
+5) That's it...
+
+
+
+skinClusterDq node
+==================
+
+You can see the difference between dual quaternion skinning and 
+normal Linear Blend Skinning (LBS, as done by Maya's standard 
+skinCluster node) by changing the "skinningMode" attribute of 
+the skinClusterDq node.
+
+Easiest way to change this is to select the skinClusterDq
+node and open up the attribute editor. There are 3 possibilites
+for setting the skinning mode:
+0: LBS - Linear Blend Skinning
+   Default skinCluster behavior
+1: DQLB - DualQuaternion Linear Blending
+   Skinning with fast dualquaternion blending
+2: DQIB - DualQuaternion Iterative Blending
+   Skinning with iterative dualquaternion blending. Higher 
+   quality, but more expensive.
+
+When you created the skinClusterDq node via 'createSceneSkinClusterDq'
+or 'createSkinClusterDq', the skinClusterDq is linked to the 
+original skinCluster node via a message attribute called 
+'origSkinCluster'. Other MEL utility functions use this to e.g.
+switch or copy settings from the original skinCluster node.
+
+
+
+Weight Painting
+===============
+
+When you replaced a skinCluster node by a skinClusterDq node,
+starting the weight painting tool refuses to work. This is due
+to the MEL scripts handling the weight painting are expecting
+a skinCluster node to be present. It uses the 'skinCluster' 
+command to query all sorts of information, most importantly
+the influence objects. 
+
+To make it work with the 'skinClusterDq' node, some minor 
+modifications were needed of the original Maya MEL scripts.
+A modified version of 'artAttrSkinJointMenu.mel' (Maya 7.0) is 
+included and contains some small changes that were necessary to 
+make it work again. 
+
+After you loaded this script, you can start painting weights
+using 'artAttrSkinDqToolScript 3', as opposed to the normal
+behavior 'artAttrSkinToolScript 3'.
+
+See MEL Scripts section for more info.
+
+
+
+
+MEL scripts
+===========
+
+1) skinClusterDqUtils.mel
+
+Contains several helper functions to support skinClusterDq workflow.
+Most important ones are:
+
+* createSceneSkinClusterDq:
+  Create 'skinClusterDq' nodes for each existing 'skinCluster' node 
+  in the scene
+
+* createSkinClusterDq(string $skinClusterNodeName):
+  Create 'skinClusterDq' node for given 'skinCluster' node
+  and reconnects Maya graph from old skinCluster node to the 
+  new node.
+  NB: This can take some time as all attribute values/connections
+  are copied one-by-one. 
+
+* toggleSkinClusterDqOutput(string $skinClusterDqNodeName):
+  Toggles geometry output of a skinClusterDq and its corresponding 
+  skinCluster node. You can return to your original skinCluster
+  node with this, in case some standard MEL scripts refuse to
+  work when a skinClusterDq node is attached instead of a 
+  skinCluster node.
+
+* syncSkinClusterDq(string $skinClusterDqNodeName):
+  Copies all settings from the original skinClusterNode to
+  the given skinClusterDq node.
+  
+* syncSkinCluster(string $skinClusterDqNodeName):
+  Copies all settings from the the given skinClusterDq node
+  to its original skinClusterNode.
+  
+* artAttrSkinDqToolScript(int $setToTool):
+  Copy of artAttrSkinToolScript() which starts the skin weight
+  painting tool. Weight painting will not work by default as
+  its MEL scripts assume it's working with skinCluster nodes
+  and not with skinClusterDq nodes.
+  The biggest problem here is that the 'skinCluster' command
+  is used in a lot of places.
+  To start painting, use 'artAttrSkinDqToolScript 3'.
+  
+2) AEskinClusterDqTemplate.mel:
+
+Provides Attribute Editor settings for the skinClusterDq node.
+Hides most of its input attributes. Copied from 
+AEskinClusterTemplate.mel
+
+3) artAttrSkinJointMenu.mel:
+
+This is a modified version of the Maya 7.0 script
+$(MAYADIR)/scripts/others/artAttrSkinJointMenu.mel
+This script handles the weight painting tool window, but uses
+the 'skinCluster' command to get the influence objects.
+
+All calls 'skinCluster -q -inf $NODENAME' were replaced by a 
+call to a helper function called 'artGetSkinInfluenceObjects'.
+When the $NODENAME refers to a skinCluster node, it will
+just call 'skinCluster -q -inf'. When it's a skinClusterDq
+node, it will returns all 'skinClusterDq.matrix' connections
+as the influence objects.
+
+NB: You have to replace this script in order for painting 
+to work!
+
+
+
+Known Bugs
+==========
+
+- Maya's component editor doesn't show skin vertex weights
+  when a skinClusterDq node is used
+
+
+
+Changes
+=======
+
+2007/01/15:
+Initial release version
+
+2007/01/18:
+Fixed bug in "copyInputAttr" and "copyOutputAttr" commands.
+Destination array attributes were not cleared first, only
+existing elements were copied.
+
+2007/01/30:
+Blending quaternions in dual quaternion blending algorithms is 
+now using the quaternion with max weight as a pivot (to make 
+sure the shortest path is taken by sign selection of quaternion 
+dot product).
+
+MEL function 'createSceneSkinClusterDq' now returns the list
+of skinClusterDq nodes it created.
+
+2007/01/31:
+The clearing of array attributes for "copyInputAttr" and 
+"copyOutputAttr" commands didn't work properly. There's no
+easy way of doing this using the Maya API, so attempted
+a different approach.
+
+2007/03/02:
+Working approach for copying array attributes using the
+"removeMultiInstance" MEL command to clear the destination
+attribute before copying.
+
+2007/03/19:
+Public binary release. Source code will be released on
+SourceForge.net soon.
+
+2007/03/21:
+Public release. Visit http://mayadqskinning.sourceforge.net/
+
+2008/03/28:
+Minor compile fixes for Visual Studio 2005. Added support for
+(orthogonal) scaling.
+Added Maya 2008 version.
+
+
+

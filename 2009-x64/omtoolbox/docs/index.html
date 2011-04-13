@@ -1,0 +1,361 @@
+<html>
+<head>
+<meta name="GENERATOR" content="Jakob Welner">
+<meta name="ProgId" content="Nodepad_ultra_super_pro v 19085638539.89">
+<meta name="description" content="OMToolbox documentation">
+<meta name="keywords" content="3D, toolbox, alias, maya, modeling, graphic, welner, jakob, omtoolbox, jwtoolbox, jakobwelner">
+<meta name="ROBOTS" content="ALL" />
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<title>Open Maya Toolbox Documentation</title>
+</head>
+<body bgcolor="#91999C" link="#1F3645" vlink="#1F3645">
+
+
+<table cellpadding="10">
+<tr>
+<td>
+
+<table>
+  <tr>
+      <td>
+	<h1>Open Maya Toolbox Documentation.</h1>
+
+	<b>Latest release news: 0.5.1</b><br />
+	- Removed spyware'ish java tracker from this html doc<br />
+	- Fixed the installer to take better care of write protected/network userSetup files
+      </td>
+  </tr>
+  <tr>
+      <td>
+	<b>Last release news: 0.5.0</b><br />
+	- fixed bug on linux in the select outline script<br />
+	- rewrote the installer to take care of all cases I can think of in both linux and windows, and hopefully OSX as well.<br />
+	- fixed GUI bug in linux which removed all content of the settings menu.<br />
+	- added toggle save selection tool<br />
+	- added x-ray toggle tool<br />
+	- changed the select element procedure<br />
+	- removed marking menu<br />
+	- automated 'set deafults' from the settings menu 
+      </td>
+  </tr>
+</table>
+<br />
+
+
+ <h3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Get it going:</h3>
+
+ <font size="4pt">Get the files:</font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="600" align="left" valign="top">
+Fetch the toolbox from the listed download mirrors.<br /><br />
+<b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Download script</b><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="http://www.alias.com/glb/eng/community/developers_corner.jsp" target="_blank">OMToolbox @ Alias.com</a><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="http://sourceforge.net/projects/omtoolbox/" target="_blank">OMToolbox @ Sourceforge.net</a><br />
+<br />
+
+The toolbox is seperated into a bunch of small files, each containing a tool. <br />
+The tools are all managed by the OMT_toolboxMenu.mel which checks the omtoolbox/scripts dir for mel files and arranges them into known files (starting with OMT_[something] and 'custom' files.
+It then creates a list of the mel files in the omtoolbox -> Settings -> Tool Managing which makes you able to load/unload whatever tools you like to appear in your menu, and furthermore set the maya mode for which you want them to appear.
+<br /><br />
+<i>When placing your own custom tool files in the omtoolbox dir, beware that it only contains one actual tool and that it gets executed by typing it's filename in the command line</i>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Installation:</font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="600" align="left" valign="top">
+First of all.. Unpack the zip file to a destination of your choice.
+Open the "OMT_installer.mel" located in ".../omtoolbox/installer" in Maya and copy/paste the absolute path to where you have placed the omtoolbox dir into the field and click next. <br />
+If you cant see any issues regarding what the installer says that it is about to do, click "Install" and the OMToolbox menu should appear in your main menu.
+<br /><br />
+If the installer fails, the procedure gets a bit more complicated.
+<br />
+Start by placing the .../omtoolbox/installer/preMade/OMToolbox.module in your /home/maya/x.x/modules (if you havn't got this directory, create one), open the file with your favorite editor and remove the "///" in front of the line matching your OS.<br />
+Edit the path to point at your omtoolbox dir.<br />
+If you are using a userSetup.mel file (usually located in your .../maya/x.x/scripts dir), open it and copy/paste the content of .../omtoolbox/installer/preMade/userSetup.txt into it. Save and start Maya.
+<br />
+Else simply rename .../omtoolbox/installer/preMade/userSetup.txt to userSetup.mel or copy the content into a new userSetup.mel file and place it in any scripts dir (omtoolbox/script ;  home/maya/x.x/scripts ; home/maya/scripts)
+<br />
+When all of this is done, you should have omtoolbox on your menu in Maya (if not, mail someone and ask for help).
+<br />
+If no bugs were encountered, you should be set and ready to go. Have fun. 
+
+	</td>
+   </tr>
+ </table>
+<br />
+
+
+
+ <h3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tools:</h3>
+<a href="http://www.techsmith.com/download/codecsdefault.asp" target="_blank">Download Techsmith video codec</a><br /><br />
+
+
+ <font size="4pt">Menu System: <br /><i><font size="2pt">Jakob Welner, v 1.6</font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Manages the toolbox tools in a menu.<br />
+Loads all .mel files located in the omtoolbox/scripts dir into a GUI [settings] and lets you load/unload 
+tools into the menu and select for which maya mode the different tools should appear in the menu.<br />
+To use your own custom tool with the menu system, make sure that the tool gets executed by a string matching the filename (without ".mel).
+Place your tool in the omtoolbox/scripts dir and load it from the settings window.
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Save Selection Toggle: <br /><i><font size="2pt">Jakob Welner, v 1.10</font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Saves component selections and reloads them once returning to the same component mode.<br />
+Works with polygonal and subDiv meshes.
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/saveSelectionToggle.avi">Save Selection sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">X-Ray Toggle: <br /><i><font size="2pt">Jonathan Perry, v 1.00</font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Toggles X-Ray on selected objects.
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/xrayToggle.avi">X-Ray Toggle sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Select Loop: <br /><i><font size="2pt">Jakob Welner, v 1.01</font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Selects a loop/partial selection from a poly edge selection.
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/selectLoop.avi">Select Loop sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Select Outline: <br /><i><font size="2pt">Henry Korol, v 1.21</font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Selects an outline from a given poly face selection.<br />
+Optionbox to switch border selections on/off
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/selectOutline.avi">Select Outline sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Select Ring: <br /><i><font size="2pt">Jakob Welner, v 1.01 </font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Selects a loop/partial ring selection from a poly edge selection.
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/selectRing.avi">Select Ring sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Select Element: <br /><i><font size="2pt">Jakob Welner, v 1.00 </font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Selects all geometry which has adjacent faces/edges/vertices, so that several combined geometries where the vertices hasn't been merged can be selected individually.
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/selectElement.avi">Select Element sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Scale Position: <br /><i><font size="2pt">Jakob Welner, v 1.00 </font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Enables you to move several objects as they would do if scaled while keeping their size.
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/scalePosition.avi">Scale Position sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Connect Components: <br /><i><font size="2pt">Jakob Welner, v 0.50 </font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Connects selected vertex/edge/face components and enabled the selection dragger on the new edge(s).
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/connectComponents.avi">Connect Components sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Extrude Components: <br /><i><font size="2pt">Jakob Welner, v 1.00 </font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Extrudes selected component.
+	</td>
+ 	<td width="400" align="left" valign="top">&nbsp;
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Selection Dragger: <br /><i><font size="2pt">Jakob Welner, v 1.00 </font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Enables you to slide the current poly edge selection sideways and along 3 different normals by dragging with MMB and LMB.<br />
+
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/selectionDragger.avi">Selection Dragger sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Spin Edge: <br /><i><font size="2pt">Geoff Wedig, v 0.1a </font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Spins selected edge or the adjacent edge on two selected faces one vertex counter clockwise.<br />
+
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/spinEdge.avi">Spin Edge sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Split Around Selected: <br /><i><font size="2pt">Jakob Welner, v 0.50 </font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+Splits around current vertex/egde/face selection and enabled the selection dragger on the new edge(s).<br />
+
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/splitAroundSelected.avi">Split Around Selected sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+
+ <font size="4pt">Split Loop: <br /><i><font size="2pt">Jakob Welner, v 0.50 </font></i></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+creates one or several loops / partial loops from a poly edge selection and enabled the selection dragger on the new edge(s).<br />
+
+	</td>
+ 	<td width="400" align="left" valign="top">
+<a href="videos/splitLoop.avi">Split Loop sample video</a>
+	</td>
+   </tr>
+ </table>
+<br />
+<br />
+<br />
+<br />
+
+
+
+
+
+ <table>
+ <tr>
+   <td width="400" valign="top">
+    <font size="4">&nbsp;&nbsp;&nbsp;* dragSlider * :</font><br />
+   - Cursor: Track <br />
+   - slide using MMB / LMB for sideways/normal slide. <br />
+   - ctrl + MMB / LMB to adjust the multiplier<br />
+   - shift + LMB at loopSplit snaps to smooth/noSmooth<br />
+   - shift + MMB / LMB to snap to 10%<br />
+  - 'q' to quit tool
+    </td>
+   <td valign="top">
+    <font size="4">&nbsp;&nbsp;&nbsp;* Partial * :</font><br />
+ Executes procedure only between two selections:<br />
+ Supported by loopSplit, ring-/loop-select
+
+   </td>
+ </tr>
+</table>
+
+ <br /><br />
+ <font size="4">&nbsp;&nbsp;&nbsp;*Normal vector calculations* :<br /><br /></font>
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+<b> - Projection:</b> The projection option is calculated using vector projections as shown to the right.
+from er vertex point of view where the forward direction is defined by the selected edge you want to move, 
+it uses the shortest distance from the vertex to the line going from the left verte to the right one.<br /><br /> 
+<i>This makes it unusable in normal sliding after a split as the distance from the new vertex to the line would be zero</i><br />
+
+	</td>
+ 	<td width="400" align="left" valign="top">
+<img src="images/selectionDragger_projectionExplenation.jpg">
+	</td>
+   </tr>
+ </table>
+
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+<b> - Flow Dependent:</b> This one uses bezier curves to get the normal vector. 
+It steps one edge to each sides of the vertex where it checks the flow of the planes and generates a vector which is used to the bezier calculations.<br /><br />
+<i>This makes it usable with splits but a bit more unstable as it checks on geometry not directly connected to the selection.</i><br />
+
+	</td>
+ 	<td width="400" align="left" valign="top">
+<img src="images/selectionDragger_flowDepExplenation.jpg">
+	</td>
+   </tr>
+ </table>
+
+ <table cellspacing="5">
+   <tr>
+ 	<td width="400" align="left" valign="top">
+<b> - Similar:</b> This one uses Mayas own normal vectors that all have similar lengths which causes all the vertices to move with the same speed<br />
+
+	</td>
+ 	<td width="400" align="left" valign="top">
+&nbsp;
+	</td>
+   </tr>
+ </table>
+
+</td>
+</tr>
+</table>
+
+ </body>
+</html>

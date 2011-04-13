@@ -1,0 +1,52 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+source zenArrayToVector;
+
+//finds end uvs
+global proc string[] zenFindEndUVsFast(string $uvPoints[])
+{
+		
+	string	$returnVal[];
+		$uvPoints=`ls -fl $uvPoints`;
+		if(size($uvPoints)<3) return $uvPoints;
+	float	$uvDistance;
+	float	$uvA[];
+	float	$uvB[];
+	float	$greatestDistance=0;
+	vector	$vectorA;
+	vector	$vectorB;
+	
+		progressWindow -isInterruptable 1 -title "Working" -max (size($uvPoints)*size($uvPoints)) -progress 0 -status "Sorting";
+	
+		for($u in $uvPoints)
+		{
+			$uvA=`polyEditUV -q $u`;
+			for($v in $uvPoints)
+			{
+				$uvB=`polyEditUV -q $v`;
+				$vectorA=`zenArrayToVector $uvA`;
+				$vectorB=`zenArrayToVector $uvB`;
+				$uvDistance=mag($vectorA-$vectorB);
+				if($uvDistance>$greatestDistance)
+				{
+					$returnVal={$u,$v};
+					$greatestDistance=$uvDistance;
+				}
+				progressWindow -e -s 1;
+			}
+		}
+		progressWindow -endProgress;
+	return	$returnVal;
+}

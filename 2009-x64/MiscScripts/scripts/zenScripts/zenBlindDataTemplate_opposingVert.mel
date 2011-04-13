@@ -1,0 +1,49 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc int zenBlindDataTemplate_opposingVert()
+{
+	int	$blindDataTypeID=666999;
+
+	string	$blindDataTemplate=zenReturnFirstStringItem
+		(
+			`ls -type blindDataTemplate "zenBlindData_polyOpposingVertex"`
+		);
+	
+	//check to see if our blind data template already exists, if not create one
+	
+		if(objExists($blindDataTemplate))
+		{
+			$blindDataTypeID=getAttr($blindDataTemplate+".typeId");
+		}
+		else
+		{
+			for($blindDataTypeID=$blindDataTypeID;$blindDataTypeID<9999999999;$blindDataTypeID++)
+			{
+				if(!size(`blindDataType -q -id $blindDataTypeID`)) break;
+			}
+		
+			$blindDataTemplate=blindDataType
+			(
+				"-ldn","opposite",
+				"-sdn","opp",
+				"-id",$blindDataTypeID,
+				"-dt","int"
+			);
+			
+			$blindDataTemplate=`rename $blindDataTemplate "zenBlindData_polyOpposingVertex"`;
+		}
+		
+	return	$blindDataTypeID;
+}

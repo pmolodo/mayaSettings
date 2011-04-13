@@ -1,0 +1,226 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <title>Light Map Gen</title>
+  <meta content="text/html; charset=ISO-8859-1"
+ http-equiv="content-type">
+</head>
+<body>
+<br>
+<br>
+<h1>Light Map Gen<br>
+</h1>
+<br>
+Jeremy Pronk 2005<br>
+www.happiestdays.com<br>
+<br>
+Version 1.0beta4<br>
+<br>
+<h2>Whats New</h2>
+<br>
+1.0beta4<br>
+<ul>
+  <li>Increased precision in light map files</li>
+  <li>Outputs sample solid angle (spherical area) to the light file map
+(current only implemented for Median Cut)<br>
+  </li>
+  <li>New normalize technique, set total light map intensity to 1 (old
+technique is called -normalize2)<br>
+  </li>
+  <li>Runtime speed increased due to new compiler optimizations (Win32
+version)</li>
+  <li>Linux version (x86)<br>
+  </li>
+</ul>
+<br>
+1.0beta3<br>
+<ul>
+  <li>Added median cut sampling. Based on
+ideas in the sketch "A Median Cut Algorithm for Light Probe Sampling"
+by Paul Debevec.</li>
+  <li>Added "resize" parameter.</li>
+  <li>Added lightMapGen_loader MEL script</li>
+</ul>
+<br>
+1.0beta2<br>
+<ul>
+  <li>Initial release.</li>
+</ul>
+<br>
+<br>
+<h2>Overview</h2>
+<br>
+lightMapGen is a small application designed to find the most
+appropriate sample locations in an intensity map.<br>
+<br>
+<big>See <a href="lightMapGen_QuickStart.html">quick start</a>.</big><br>
+<br>
+For specific details on the techniques employed it is essential one
+reads the following papers<br>
+<ol>
+  <li> <a
+ href="http://projects.ict.usc.edu/graphics/research/MedianCut/">A
+Median Cut Algorithm for Light Probe Sampling</a> by Paul Debevec </li>
+  <li> <strong><a
+ href="http://portal.acm.org/citation.cfm?id=882411&amp;coll=portal&amp;dl=ACM&amp;CFID=44413273&amp;CFTOKEN=950096">
+    <span style="font-weight: normal;">Efficient illumination by high
+dynamic
+range images</span></a></strong> by Thomas Kollig and Alexander Keller.
+  </li>
+  <li> <a href="http://portal.acm.org/citation.cfm?id=732285">Interleaved
+Sampling</a> by Alexander Keller and Wolfgang Heidrich</li>
+</ol>
+<br>
+<h2>Usage</h2>
+<br>
+The command line program "lightMapGen" accepts a single high dynamic
+range floating-point TIFF image and a number of parameters. The common
+use of lightMapGen is to generate a light map from a latlong HDR Tiff
+image which can then be used directly by sphericalLight to illuminate
+geometry in mental ray.<br>
+<br>
+lightMapGen may also be useful for those interested in utilizing the
+light map file in their own light shader. Hopefully the file format is
+self explanatory. <br>
+<br>
+<big>See <a href="lightMapGen_QuickStart.html">quick start</a>.</big><br>
+<br>
+<br>
+<h2>Light Map Gen Loader</h2>
+lightMapGen_loader is a simple Maya MEL script which will load a
+lightMapGen light map as a "dome" of lights. There are simple controls
+for all the lights in the transform of the parent locator.<br>
+<br>
+<br>
+<h2>What is Interleaving Sampling? </h2>
+Interleaved sampling is an idea which was central to the creation of
+lightMapGen. Please see <a
+ href="http://graphics.uni-ulm.de/Interleave.pdf">Interleaving Sampling</a>,
+Alexander Keller and Wolfgang Heidrich for a thorough explanation.<br>
+<br>
+The basic idea is to render with the same number of light samples but
+to choose alternating (light) sample locations actually calculated from
+the map itself. This provides for much improved anti-aliasing
+particularly in the shadowed (or occluded) parts of the render.<br>
+<br>
+<br>
+<br>
+<h2>Parameters</h2>
+<br>
+<h3>Required Arguments</h3>
+<span style="font-weight: bold;">Input map (-in filename)</span><br>
+Input intensity map. Must be a valid <span style="font-weight: bold;">floating-point</span>
+TIFF file.<br>
+<br>
+<span style="font-weight: bold;">Sample number (-s N M)</span><br>
+N is the number of samples to calculate<br>
+M is only used for sampling type 3 &amp; 4 and is the number of
+interleave levels for each sample. If M is specified interleaved sample
+generation is invoked.<br>
+<br>
+<br>
+<h3>Optional Arguments</h3>
+<span style="font-weight: bold;">Sampling type (-st sampling-type)</span><br>
+0 - voronoi tessellation (used for debugging) <br>
+1 - centroidal voronoi tessellation (CVT), similar to technique used in
+lightGen<br>
+2 - importance voronoi tessellation, much improved variation on CVT<br>
+3 - interleaved importance voronoi tessellation, as 2 with multiple
+interleave levels for each sample<br>
+4 - median cut (default)<br>
+<span style="font-weight: bold;"></span><br>
+<span style="font-weight: bold;">Map type (-mt map-type)</span><br>
+Format of input intensity map.<br>
+0 - flat map<br>
+1 - lat-long or spherical map, must have an aspect ratio of 2:1
+(default)<br>
+2 - test map, for debugging<br>
+<br>
+<span style="font-weight: bold;">Resize (-resize amount)</span><br>
+Resizes the input image amount times before processing. Good for up
+sizing small maps when using median cut and for downsizing large maps
+we using voronoi style sampling. (defaults to 1.0)<br>
+<br>
+<span style="font-weight: bold;">Normalize (-normalize)</span><br>
+When specified, the samples will be scaled so the total intensity is 1
+(i.e. all samples add up to 1)<br>
+<br>
+<span style="font-weight: bold;">Normalize2 (-normalize2)</span><br>
+When specified, the samples will be scaled so the maximum sample
+value is 1.<br>
+<br>
+<span style="font-weight: bold;">Write diagnostic images
+(-writeDiagImages)</span><br>
+Writes a TIFF representation of the voronoi tessellation after each
+iteration. The results is slightly different depending on which
+sampling technique is employed but general each region has a unique
+grey level, whilst mass centroids and region generators (samples) are
+represented by red and green pixels. The output images are floating
+point TIFFs. See <a href="lightMapGen_Example.html">example</a>.<br>
+<br>
+<span style="font-weight: bold;">Write density (-writeDensity)</span><br>
+Writes the intensity map of the input image. I.e. the intensity
+value(s) used internally in the calculations.<br>
+<br>
+<h3>Voronoi Specific Arguments</h3>
+<span style="font-weight: bold;">Max centroidal offset (-mo offset)</span><br>
+Maximum offset (in pixels) allowed for an CVT calculate. Note that the
+max centroidal iterations param will override this. Defaults to 2.<br>
+<br>
+<span style="font-weight: bold;">Max centroidal iterations (-mi
+iterations)</span><br>
+Maximum number of centroidal iterations allowed. Regardless of the
+current mass centroid offset, there will be no more than this number of
+iterations. Defaults to 8.<br>
+<br>
+<span style="font-weight: bold;">Interleaved iterations (-ii iterations)</span><br>
+Number of interleaved iterations to perform. Defaults to 3.<br>
+<br>
+<span style="font-weight: bold;">Radius of perturbation (-rp offset)</span><br>
+When inserting new samples, they will be a maximum of offset pixels
+from the insertion location. The idea is to keep new samples close to
+but not on top of the high intensity region generators. The offset is a
+percentage of image size. Defaults to 0.015 (1.5%).<br>
+<br>
+<br>
+<br>
+<br>
+<h2>Tips and Tricks</h2>
+<br>
+I recommend using the median cut sampling algorithm, it is very quick
+and quite efficient.<br>
+When using median cut I suggest you use full size image maps as input
+or use the resize option.<br>
+<br>
+<br>
+<h2>Known Problems</h2>
+<ol>
+  <li>all flavours of voronoi tesselations can fail at higher sampling
+counts and this is dependant on the input image<br>
+  </li>
+</ol>
+<br>
+<br>
+<h2>References</h2>
+<br>
+<ol>
+  <li> <a href="http://www.uni-kl.de/AG-Heinrich/EIbHDRI.pdf">Efficient
+Illumination by High Dynamic Range Images</a> </li>
+  <li> <a href="http://orion.math.iastate.edu/gunzburg/voronoi.html"><strong></strong>Centroidal
+Voronoi Tessellations</a> </li>
+  <li> <a
+ href="http://www.ict.usc.edu/%7Ejcohen/lightgen/lightgen.html">lightGen
+    </a> </li>
+  <li> <a href="http://www.hdrshop.com/">HDR Shop</a> </li>
+  <li> <a href="http://www.debevec.org/">Paul Debevec</a></li>
+</ol>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+</body>
+</html>

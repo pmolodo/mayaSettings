@@ -1,0 +1,132 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//auto maps all faces proportionally and lays them out in the 0 to 1 range
+proc autoMap(int $layoutPerObject)
+{
+	float	$time=`timerX`;
+
+		ConvertSelectionToFaces;
+
+	string	$sel[]=`ls -sl -fl`;
+		
+	string	$objects[]=`ls -o $sel`;
+		$objects=`stringArrayRemoveDuplicates $objects`;
+		
+		delete -ch $objects;
+		
+	string	$obj=zenReturnFirstStringItem(`ls -o $sel[0]`);
+	string	$dup=zenReturnFirstStringItem(`duplicate $obj`);
+	string	$dupSel[]=zenMimicSelection($sel,$dup);
+		polySoftEdge -a 0 $dup;
+		
+	string	$meshInfo=`createNode pointOnMeshInfo`;
+		connectAttr -f ($dup+".worldMesh[0]") ($meshInfo+".inMesh");
+		
+	string	$faceEdges[]=`polyListComponentConversion -ff -te $sel[0]`;
+	string	$edge=zenReturnFirstStringItem(`ls -fl $faceEdges`);
+	float	$referenceEL=`arclen $edge`;
+	string	$projectionNode;
+	float 	$width;
+	float 	$height;
+	
+	int	$faces=zenReturnFirstIntegerItem(`polyEvaluate -f $objects`);
+	
+		progressWindow -ii 1 -title "Working" -status "Mapping UV's" -max $faces -progress 0;
+	
+		select -clear;
+		
+		undoInfo -swf 0;
+		
+	int	$n;
+	
+		for($i=0;$i<size($sel);$i++)
+		{
+			if(zenReturnFirstStringItem(`ls -o $sel[$i]`)!=$obj)
+			{
+				delete -ch $dup $obj;
+				polyTransfer -v 0 -vc 0 -uv 1 -ao $dup $obj;
+				delete -ch $dup $obj;
+				$obj=zenReturnFirstStringItem(`ls -o $sel[$i]`);
+				delete $dup;
+				$dup=zenReturnFirstStringItem(`duplicate $obj`);
+				$dupSel=zenMimicSelection($sel,$dup);
+				polySoftEdge -a 0 $dup;
+				connectAttr -f ($dup+".worldMesh[0]") ($meshInfo+".inMesh");
+			}
+			
+			select -r $dupSel[$i];
+			
+			$projectionNode=zenReturnFirstStringItem(`polyProjection -ch 1 -type Planar -ibd on -kir -md b $dupSel[$i]`);
+					
+			setAttr ($projectionNode+".projectionWidth") 1;
+			setAttr ($projectionNode+".projectionHeight") 1;
+			
+			
+			delete -ch $objects $dup;
+			
+			progressWindow -e -s 1;
+			if(`progressWindow -q -ic`)
+			{
+				delete -ch $dup $obj;
+				delete $dup;
+				progressWindow -ep;
+				error "User Intrupt.";
+			}
+		}
+		
+		delete -ch $dup $obj;
+		polyTransfer -v 0 -vc 0 -uv 1 -ao $dup $obj;
+		delete -ch $dup $obj;
+		delete $dup;
+		
+		undoInfo -swf 1;
+		
+		progressWindow -ep;
+				
+	string	$others[];
+	
+		if($layoutPerObject)
+		{
+			for($o in $objects)
+			{
+				select -r $sel;
+
+				$others=`stringArrayRemove {$o} $objects`;
+
+				for($n in $others)
+				{
+					eval("select -d "+$n+".f[\"*\"]");
+				}
+
+				polyLayoutUV -sc 1 -se 0 -rbf 0 -fr 1 -ps 0.2 -l 2;
+			}
+		}
+		else
+		{
+			polyMultiLayoutUV -sc 1 -rbf 0 -fr 1 -ps 0.2 -l 2 $sel;
+		}
+		
+		print `timerX -st $time`;
+}
+
+global proc doZenAutoMap()
+{
+	int 	$err=catch(`autoMap 1`);
+		if($err)
+		{
+			progressWindow -ep;	
+			undoInfo -swf 1;
+		}
+}

@@ -1,0 +1,13 @@
+*.pi
+*.pyc
+/.project
+/.pydevproject
+*.egg-info
+._*
+*.tmproj
+*~
+mayaRenderLog.txt
+mayaJournal
+mayaLog
+shelf_*.mel.deleted
+autobak.mb

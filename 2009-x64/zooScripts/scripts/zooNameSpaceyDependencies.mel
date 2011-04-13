@@ -1,0 +1,18 @@
+global proc string[] zooNameSpaceyDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $helpDependencies[] = {};
+	string $return[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooNameSpaceyUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooHelp";
+	$helpDependencies[( `size $helpDependencies` )] = "zooNameSpacey_help";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+	$iconDependencies[( `size $iconDependencies` )] = "zooNameSpacey.xpm";
+
+	if( $mode == "-scripts" ) $return = $melDependencies;
+	if( $mode == "-docs" ) $return = $helpDependencies;
+	if( $mode == "-icons" ) $return = $iconDependencies;
+	return $return;
+	}

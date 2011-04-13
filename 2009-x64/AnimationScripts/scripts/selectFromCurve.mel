@@ -1,0 +1,47 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: selectFromCurve v1.4
+''    Author: Seith
+''    Last Updated: August 4, 2003
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=animation#2463
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+//====================
+// select from curve
+//====================
+
+/* We all know the situation: you have hundreds of curves visible in
+the graph editor, and you select a curve or a key. Now you have to hunt
+down in the left column, to find what channel in the world it affects...
+Well not anymore. After you select the specific key(s) or curve(s) you want,
+just launch this little script. It will clear up the graph, keeping selected
+only the objects affected by the selected curve(s) or key(s)... Yey! */
+
+global proc selectFromCurve ()
+{
+string $currentSelection[] = `ls -sl` ;
+string $animCurves[] = `keyframe -q -name` ;
+string $objectsToStaySelected[] ;
+float $testForSelection[] = `keyframe -q -sl` ;
+
+if ( `size $testForSelection` < 1 )
+	error "===> You must select an animation curve or a key first!!!" ;
+
+for ($i=0;$i<`size $animCurves`;$i++)
+	{
+	string $effects[0] = `listConnections -plugs true $animCurves[$i]` ; //print (" $effects[" + $i + "]=" + $effects[0]) ;
+	string $buffer[] ;								
+	$numTokens = `tokenize $effects[0] "." $buffer` ;	 
+	$objectsToStaySelected[$i] = $buffer[0] ; //print (" $objectsToStaySelected[" + $i + "]=" + $objectsToStaySelected[$i]) ;
+	}
+string $objectsToBeUnselected[] = stringArrayRemove($objectsToStaySelected, $currentSelection) ;
+select -d $objectsToBeUnselected ;
+}
+selectFromCurve ;

@@ -1,0 +1,21 @@
+/* XPM */
+static char *spinnerUpOn[] = {
+/* columns rows colors chars-per-pixel */
+"13 10 5 1",
+"  s bg c green",
+". c #8D8989",
+"X c gray100",
+"o c black",
+"O c gray100",
+/* pixels */
+"  ooooooooo  ",
+" o.........o ",
+"o...........X",
+"o...........X",
+"......o.....X",
+".....ooo....X",
+"....ooooo...X",
+"............X",
+"...........X ",
+"..XXXXXXXXX  "
+};

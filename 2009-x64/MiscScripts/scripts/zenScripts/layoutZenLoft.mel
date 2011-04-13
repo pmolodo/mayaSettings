@@ -1,0 +1,92 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+global proc string layoutZenLoft()
+{
+	int 	$windowWidth=245;
+	
+	global 	int	$zenOptions_loftDistribution,
+			$zenOptions_keepLoftedSurface,
+			$zenMinimumWindowWidth;
+	
+	string	$zenLoftColumn=`zenClearToolColumn`;
+	
+		layout -e -w $zenMinimumWindowWidth $zenLoftColumn;
+
+	global 	string $zenToolsWindow;
+	
+		window -e -title "ZenLoft" $zenToolsWindow;
+
+		text -al left -p $zenLoftColumn -label "Distribution:";		
+		
+	string	$loftDistributionChangeCommand=
+		(
+			"$zenOptions_loftDistribution=`radioButtonGrp -q -select zenOptions_loftDistribution`;\n"+
+			"if($zenOptions_loftDistribution==1) button -e -en 1 zenLoftBaseButton;\n"+
+			"else button -e -en 0 zenLoftBaseButton;"
+		);
+		
+		radioButtonGrp 
+			-p $zenLoftColumn
+			-numberOfRadioButtons 3 
+			-l1 "Chord Length" 
+			-l2 "Uniform" 
+			-l3 "Closest"
+			-select $zenOptions_loftDistribution 
+			-cc $loftDistributionChangeCommand
+			-columnWidth3 95 70 60
+			zenOptions_loftDistribution;
+		
+		separator -p $zenLoftColumn -w $zenMinimumWindowWidth;
+		
+		checkBox 
+			-al left
+			-p $zenLoftColumn
+			-w 120 
+			-v $zenOptions_keepLoftedSurface 
+			-cc "$zenOptions_keepLoftedSurface=`checkBox -q -v zenOptions_keepLoftedSurface`"
+			-label "Keep Surface" 
+			zenOptions_keepLoftedSurface;
+
+		separator -p $zenLoftColumn;
+
+	string	$alternateBaseButtonCmd=
+		(	
+			"$zenLoftChordLengthObj=zenReturnFirstStringItem(`ls -sl`);\n"+
+			"$zenLoftChordLengthObj=zenReturnFirstStringItem(`stringToStringArray $zenLoftChordLengthObj \".\"`);\n"+
+			"button -e -l (\"Alternate Base: \"+$zenLoftChordLengthObj) zenLoftBaseButton;\n"+
+			"if($zenLoftChordLengthObj==\"\") button -e -l \"Set Alternate Base\" zenLoftBaseButton;\n"+
+			"else print ($zenLoftChordLengthObj+\" will be used to calculate chord length ratios.\\n\");"
+		);
+			
+		button
+			-h 20
+			-p $zenLoftColumn
+			-en 0
+			-annotation "Use an alternate object for calculating chord length distribution."
+			-l "Set Alternate Base"
+			-c $alternateBaseButtonCmd
+			zenLoftBaseButton;				
+
+		button
+			-h 20
+			-p $zenLoftColumn
+			-label Apply
+			-command "doZenCommand doZenLoft";
+		
+		eval $loftDistributionChangeCommand;
+		
+	return	$zenLoftColumn;
+}

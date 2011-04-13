@@ -1,0 +1,27 @@
+global proc buildFaceFromVerts()
+{
+	string $sel[] = `sz_ReturnComponentSelectionInOrder`;
+	string $vertNums[] = `mhGetVertNums $sel`;
+	// build the command
+	string $command = "polyAppendVertex";
+	for($i = 1; $i<size($vertNums);$i++)
+		{
+			$command = ($command + " -v " + $vertNums[$i] + " ");
+		}
+	eval $command;
+}
+
+global proc string[] mhGetVertNums(string $sel[])
+{
+string $hold[];
+for($cur in $sel)
+	{
+		string $buffer[];
+		string $buffer2[];
+		int $numT = `tokenize $cur "[" $buffer`;
+		int $numT2 = `tokenize $buffer[1] "]" $buffer2`;
+		$hold[`size($hold)`] = $buffer2[0];
+		clear $buffer; clear $buffer2;
+	}
+return $hold;
+}

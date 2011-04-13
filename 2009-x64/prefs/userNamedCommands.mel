@@ -1,0 +1,1450 @@
+//Maya Preference 2009 (Release 1)
+//
+//
+
+nameCommand
+	-annotation "RedoNameCommand"
+	-sourceType "mel"
+	-command ("Redo")
+	RedoNameCommand;
+
+nameCommand
+	-annotation "SelectVertexMaskNameCommand"
+	-sourceType "mel"
+	-command ("SelectVertexMask")
+	SelectVertexMaskNameCommand;
+
+nameCommand
+	-annotation "SelectToggleModeNameCommand"
+	-sourceType "mel"
+	-command ("SelectToggleMode")
+	SelectToggleModeNameCommand;
+
+nameCommand
+	-annotation "FrameSelectedNameCommand"
+	-sourceType "mel"
+	-command ("FrameSelected")
+	FrameSelectedNameCommand;
+
+nameCommand
+	-annotation "LookAtSelectionNameCommand"
+	-sourceType "mel"
+	-command ("LookAtSelection")
+	LookAtSelectionNameCommand;
+
+nameCommand
+	-annotation "SelectEdgeMaskNameCommand"
+	-sourceType "mel"
+	-command ("SelectEdgeMask")
+	SelectEdgeMaskNameCommand;
+
+nameCommand
+	-annotation "SelectFacetMaskNameCommand"
+	-sourceType "mel"
+	-command ("SelectFacetMask")
+	SelectFacetMaskNameCommand;
+
+nameCommand
+	-annotation "ArtPaintSelectToolNameCommand"
+	-sourceType "mel"
+	-command ("ArtPaintSelectTool")
+	ArtPaintSelectToolNameCommand;
+
+nameCommand
+	-annotation "CreatePolygonCubeNameCommand"
+	-sourceType "mel"
+	-command ("CreatePolygonCube")
+	CreatePolygonCubeNameCommand;
+
+nameCommand
+	-annotation "ExtrudeFaceNameCommand"
+	-sourceType "mel"
+	-command ("ExtrudeFace")
+	ExtrudeFaceNameCommand;
+
+nameCommand
+	-annotation "ModifyUpperRadiusPressNameCommand"
+	-sourceType "mel"
+	-command ("ModifyUpperRadiusPress")
+	ModifyUpperRadiusPressNameCommand;
+
+nameCommand
+	-annotation "ModifyUpperRadiusReleaseNameCommand"
+	-sourceType "mel"
+	-command ("ModifyUpperRadiusRelease")
+	ModifyUpperRadiusReleaseNameCommand;
+
+nameCommand
+	-annotation "BevelPolygonNameCommand"
+	-sourceType "mel"
+	-command ("BevelPolygon")
+	BevelPolygonNameCommand;
+
+nameCommand
+	-annotation "BevelPolygonOptionsNameCommand"
+	-sourceType "mel"
+	-command ("BevelPolygonOptions")
+	BevelPolygonOptionsNameCommand;
+
+nameCommand
+	-annotation "ExtrudeFaceOptionsNameCommand"
+	-sourceType "mel"
+	-command ("ExtrudeFaceOptions")
+	ExtrudeFaceOptionsNameCommand;
+
+nameCommand
+	-annotation "PolyFromVertsNameCommand"
+	-sourceType "mel"
+	-command ("PolyFromVerts")
+	PolyFromVertsNameCommand;
+
+nameCommand
+	-annotation "ConvertSelectionToContainedFacesNameCommand"
+	-sourceType "mel"
+	-command ("ConvertSelectionToContainedFaces")
+	ConvertSelectionToContainedFacesNameCommand;
+
+nameCommand
+	-annotation "ConvertSelectionToContainedEdgesNameCommand"
+	-sourceType "mel"
+	-command ("ConvertSelectionToContainedEdges")
+	ConvertSelectionToContainedEdgesNameCommand;
+
+nameCommand
+	-annotation "SlideEdgeNameCommand"
+	-sourceType "mel"
+	-command ("SlideEdge")
+	SlideEdgeNameCommand;
+
+nameCommand
+	-annotation "SplitPolygonToolNameCommand"
+	-sourceType "mel"
+	-command ("SplitPolygonTool")
+	SplitPolygonToolNameCommand;
+
+nameCommand
+	-annotation "SplitEdgeRingToolNameCommand"
+	-sourceType "mel"
+	-command ("SplitEdgeRingTool")
+	SplitEdgeRingToolNameCommand;
+
+nameCommand
+	-annotation "AverageVertexNameCommand"
+	-sourceType "mel"
+	-command ("AverageVertex")
+	AverageVertexNameCommand;
+
+nameCommand
+	-annotation "cpsToggleProxyVisibilityNameCommand"
+	-sourceType "mel"
+	-command ("cpsToggleProxyVisibility")
+	cpsToggleProxyVisibilityNameCommand;
+
+nameCommand
+	-annotation "cpsToggleBaseShadingNameCommand"
+	-sourceType "mel"
+	-command ("cpsToggleBaseShading")
+	cpsToggleBaseShadingNameCommand;
+
+nameCommand
+	-annotation "cameraFrontViewNameCommand"
+	-sourceType "mel"
+	-command ("cameraFrontView")
+	cameraFrontViewNameCommand;
+
+nameCommand
+	-annotation "cameraTopViewNameCommand"
+	-sourceType "mel"
+	-command ("cameraTopView")
+	cameraTopViewNameCommand;
+
+nameCommand
+	-annotation "cameraRightSideViewNameCommand"
+	-sourceType "mel"
+	-command ("cameraRightSideView")
+	cameraRightSideViewNameCommand;
+
+nameCommand
+	-annotation "cameraLeftSideViewNameCommand"
+	-sourceType "mel"
+	-command ("cameraLeftSideView")
+	cameraLeftSideViewNameCommand;
+
+nameCommand
+	-annotation "cameraBottomViewNameCommand"
+	-sourceType "mel"
+	-command ("cameraBottomView")
+	cameraBottomViewNameCommand;
+
+nameCommand
+	-annotation "cameraRearViewNameCommand"
+	-sourceType "mel"
+	-command ("cameraRearView")
+	cameraRearViewNameCommand;
+
+nameCommand
+	-annotation "cameraPerspViewNameCommand"
+	-sourceType "mel"
+	-command ("cameraPerspView")
+	cameraPerspViewNameCommand;
+
+nameCommand
+	-annotation "DisplayWireframeNameCommand"
+	-sourceType "mel"
+	-command ("DisplayWireframe")
+	DisplayWireframeNameCommand;
+
+nameCommand
+	-annotation "DisplayShadedNameCommand"
+	-sourceType "mel"
+	-command ("DisplayShaded")
+	DisplayShadedNameCommand;
+
+nameCommand
+	-annotation "DisplaySmoothShadedNameCommand"
+	-sourceType "mel"
+	-command ("DisplaySmoothShaded")
+	DisplaySmoothShadedNameCommand;
+
+nameCommand
+	-annotation "xRayToggleNameCommand"
+	-sourceType "mel"
+	-command ("xRayToggle")
+	xRayToggleNameCommand;
+
+nameCommand
+	-annotation "displayFlatShadedNameCommand"
+	-sourceType "mel"
+	-command ("displayFlatShaded")
+	displayFlatShadedNameCommand;
+
+nameCommand
+	-annotation "SelectEdgeLoopNameCommand"
+	-sourceType "mel"
+	-command ("SelectEdgeLoop")
+	SelectEdgeLoopNameCommand;
+
+nameCommand
+	-annotation "SelectEdgeRingNameCommand"
+	-sourceType "mel"
+	-command ("SelectEdgeRing")
+	SelectEdgeRingNameCommand;
+
+nameCommand
+	-annotation "selectAllNameCommand"
+	-sourceType "mel"
+	-command ("selectAll")
+	selectAllNameCommand;
+
+nameCommand
+	-annotation "deselectAllNameCommand"
+	-sourceType "mel"
+	-command ("deselectAll")
+	deselectAllNameCommand;
+
+nameCommand
+	-annotation "RepeatLastNameCommand"
+	-sourceType "mel"
+	-command ("RepeatLast")
+	RepeatLastNameCommand;
+
+nameCommand
+	-annotation "cpsToggleProxyEditableNameCommand"
+	-sourceType "mel"
+	-command ("cpsToggleProxyEditable")
+	cpsToggleProxyEditableNameCommand;
+
+nameCommand
+	-annotation "cpsToggleSubdivisionNameCommand"
+	-sourceType "mel"
+	-command ("cpsToggleSubdivision")
+	cpsToggleSubdivisionNameCommand;
+
+nameCommand
+	-annotation "componentTransformManipulatorNameCommand"
+	-sourceType "mel"
+	-command ("componentTransformManipulator")
+	componentTransformManipulatorNameCommand;
+
+nameCommand
+	-annotation "HideSelectedObjectsNameCommand"
+	-sourceType "mel"
+	-command ("HideSelectedObjects")
+	HideSelectedObjectsNameCommand;
+
+nameCommand
+	-annotation "ShowAllNameCommand"
+	-sourceType "mel"
+	-command ("ShowAll")
+	ShowAllNameCommand;
+
+nameCommand
+	-annotation "localToolsNameCommand"
+	-sourceType "mel"
+	-command ("localTools")
+	localToolsNameCommand;
+
+nameCommand
+	-annotation "ConnectNameCommand"
+	-sourceType "mel"
+	-command ("Connect")
+	ConnectNameCommand;
+
+nameCommand
+	-annotation "convertToVertsAndChangeSelectionModeNameCommand"
+	-sourceType "mel"
+	-command ("convertToVertsAndChangeSelectionMode")
+	convertToVertsAndChangeSelectionModeNameCommand;
+
+nameCommand
+	-annotation "convertToEdgesAndChangeSelectionModeNameCommand"
+	-sourceType "mel"
+	-command ("convertToEdgesAndChangeSelectionMode")
+	convertToEdgesAndChangeSelectionModeNameCommand;
+
+nameCommand
+	-annotation "convertToFacesAndChangeSelectionModeNameCommand"
+	-sourceType "mel"
+	-command ("convertToFacesAndChangeSelectionMode")
+	convertToFacesAndChangeSelectionModeNameCommand;
+
+nameCommand
+	-annotation "convertToContainedEdgesAndChangeSelectionModeNameCommand"
+	-sourceType "mel"
+	-command ("convertToContainedEdgesAndChangeSelectionMode")
+	convertToContainedEdgesAndChangeSelectionModeNameCommand;
+
+nameCommand
+	-annotation "convertToContainedFacesAndChangeSelectionModeNameCommand"
+	-sourceType "mel"
+	-command ("convertToContainedFacesAndChangeSelectionMode")
+	convertToContainedFacesAndChangeSelectionModeNameCommand;
+
+nameCommand
+	-annotation "HKMagnetToolsUndoNameCommand"
+	-sourceType "mel"
+	-command ("HKMagnetToolsUndo")
+	HKMagnetToolsUndoNameCommand;
+
+nameCommand
+	-annotation "SnapToGridNameCommand"
+	-sourceType "mel"
+	-command ("SnapToGrid")
+	SnapToGridNameCommand;
+
+nameCommand
+	-annotation "AttributeEditorNameCommand"
+	-sourceType "mel"
+	-command ("AttributeEditor")
+	AttributeEditorNameCommand;
+
+nameCommand
+	-annotation "MovePolygonComponentNameCommand"
+	-sourceType "mel"
+	-command ("MovePolygonComponent")
+	MovePolygonComponentNameCommand;
+
+nameCommand
+	-annotation "DuplicateNameCommand"
+	-sourceType "mel"
+	-command ("Duplicate")
+	DuplicateNameCommand;
+
+nameCommand
+	-annotation "CreateUnitCubeNameCommand"
+	-sourceType "mel"
+	-command ("CreateUnitCube")
+	CreateUnitCubeNameCommand;
+
+nameCommand
+	-annotation "DecreaseManipulatorSizeNameCommand"
+	-sourceType "mel"
+	-command ("DecreaseManipulatorSize")
+	DecreaseManipulatorSizeNameCommand;
+
+nameCommand
+	-annotation "DisplayShadedAndTexturedNameCommand"
+	-sourceType "mel"
+	-command ("DisplayShadedAndTextured")
+	DisplayShadedAndTexturedNameCommand;
+
+nameCommand
+	-annotation "PickWalkUpNameCommand"
+	-sourceType "mel"
+	-command ("PickWalkUp")
+	PickWalkUpNameCommand;
+
+nameCommand
+	-annotation "PickWalkDownNameCommand"
+	-sourceType "mel"
+	-command ("PickWalkDown")
+	PickWalkDownNameCommand;
+
+nameCommand
+	-annotation "PickWalkLeftNameCommand"
+	-sourceType "mel"
+	-command ("PickWalkLeft")
+	PickWalkLeftNameCommand;
+
+nameCommand
+	-annotation "PickWalkRightNameCommand"
+	-sourceType "mel"
+	-command ("PickWalkRight")
+	PickWalkRightNameCommand;
+
+nameCommand
+	-annotation "PreviousFrameNameCommand"
+	-sourceType "mel"
+	-command ("PreviousFrame")
+	PreviousFrameNameCommand;
+
+nameCommand
+	-annotation "NextFrameNameCommand"
+	-sourceType "mel"
+	-command ("NextFrame")
+	NextFrameNameCommand;
+
+nameCommand
+	-annotation "PlaybackToggleNameCommand"
+	-sourceType "mel"
+	-command ("PlaybackToggle")
+	PlaybackToggleNameCommand;
+
+nameCommand
+	-annotation "PlaybackBackwardNameCommand"
+	-sourceType "mel"
+	-command ("PlaybackBackward")
+	PlaybackBackwardNameCommand;
+
+nameCommand
+	-annotation "PlaybackStopNameCommand"
+	-sourceType "mel"
+	-command ("PlaybackStop")
+	PlaybackStopNameCommand;
+
+nameCommand
+	-annotation "GraphEditorNameCommand"
+	-sourceType "mel"
+	-command ("GraphEditor")
+	GraphEditorNameCommand;
+
+nameCommand
+	-annotation "SetKeyNameCommand"
+	-sourceType "mel"
+	-command ("SetKey")
+	SetKeyNameCommand;
+
+nameCommand
+	-annotation "SelectAllNameCommand"
+	-sourceType "mel"
+	-command ("SelectAll")
+	SelectAllNameCommand;
+
+nameCommand
+	-annotation "PlaybackForwardNameCommand"
+	-sourceType "mel"
+	-command ("PlaybackForward")
+	PlaybackForwardNameCommand;
+
+nameCommand
+	-annotation "PreviousKeyNameCommand"
+	-sourceType "mel"
+	-command ("PreviousKey")
+	PreviousKeyNameCommand;
+
+nameCommand
+	-annotation "NextKeyNameCommand"
+	-sourceType "mel"
+	-command ("NextKey")
+	NextKeyNameCommand;
+
+nameCommand
+	-annotation "BreakTangentsNameCommand"
+	-sourceType "mel"
+	-command ("BreakTangents")
+	BreakTangentsNameCommand;
+
+nameCommand
+	-annotation "AddKeyNameCommand"
+	-sourceType "mel"
+	-command ("AddKey")
+	AddKeyNameCommand;
+
+nameCommand
+	-annotation "GimbalNameCommand"
+	-sourceType "mel"
+	-command ("Gimbal")
+	GimbalNameCommand;
+
+nameCommand
+	-annotation "Gimbal_RotateNameCommand"
+	-sourceType "mel"
+	-command ("Gimbal_Rotate")
+	Gimbal_RotateNameCommand;
+
+nameCommand
+	-annotation "Local_RotateNameCommand"
+	-sourceType "mel"
+	-command ("Local_Rotate")
+	Local_RotateNameCommand;
+
+nameCommand
+	-annotation "Gimbal_RotationNameCommand"
+	-sourceType "mel"
+	-command ("Gimbal_Rotation")
+	Gimbal_RotationNameCommand;
+
+nameCommand
+	-annotation "Local_RotationNameCommand"
+	-sourceType "mel"
+	-command ("Local_Rotation")
+	Local_RotationNameCommand;
+
+nameCommand
+	-annotation "Break_TangentNameCommand"
+	-sourceType "mel"
+	-command ("Break_Tangent")
+	Break_TangentNameCommand;
+
+nameCommand
+	-annotation "Copy_Key_GraphEditorNameCommand"
+	-sourceType "mel"
+	-command ("Copy_Key_GraphEditor")
+	Copy_Key_GraphEditorNameCommand;
+
+nameCommand
+	-annotation "Paste_Key_GraphEditorNameCommand"
+	-sourceType "mel"
+	-command ("Paste_Key_GraphEditor")
+	Paste_Key_GraphEditorNameCommand;
+
+nameCommand
+	-annotation "Play_FWDNameCommand"
+	-sourceType "mel"
+	-command ("Play_FWD")
+	Play_FWDNameCommand;
+
+nameCommand
+	-annotation "CopyKeyNameCommand"
+	-sourceType "mel"
+	-command ("CopyKey")
+	CopyKeyNameCommand;
+
+nameCommand
+	-annotation "PasteKeyNameCommand"
+	-sourceType "mel"
+	-command ("PasteKey")
+	PasteKeyNameCommand;
+
+nameCommand
+	-annotation "CopyKeyTimeSliderNameCommand"
+	-sourceType "mel"
+	-command ("CopyKeyTimeSlider")
+	CopyKeyTimeSliderNameCommand;
+
+nameCommand
+	-annotation "PasteKeyTimeSliderNameCommand"
+	-sourceType "mel"
+	-command ("PasteKeyTimeSlider")
+	PasteKeyTimeSliderNameCommand;
+
+nameCommand
+	-annotation "ScreenLargeNameCommand"
+	-sourceType "mel"
+	-command ("ScreenLarge")
+	ScreenLargeNameCommand;
+
+nameCommand
+	-annotation "TranslateObjectNameCommand"
+	-sourceType "mel"
+	-command ("TranslateObject")
+	TranslateObjectNameCommand;
+
+nameCommand
+	-annotation "TranslateWorldNameCommand"
+	-sourceType "mel"
+	-command ("TranslateWorld")
+	TranslateWorldNameCommand;
+
+nameCommand
+	-annotation "Head_TrailNameCommand"
+	-sourceType "mel"
+	-command ("Head_Trail")
+	Head_TrailNameCommand;
+
+nameCommand
+	-annotation "PlayblastOptionsNameCommand"
+	-sourceType "mel"
+	-command ("PlayblastOptions")
+	PlayblastOptionsNameCommand;
+
+nameCommand
+	-annotation "PlayblastWindowNameCommand"
+	-sourceType "mel"
+	-command ("PlayblastWindow")
+	PlayblastWindowNameCommand;
+
+nameCommand
+	-annotation "WeightTangentNameCommand"
+	-sourceType "mel"
+	-command ("WeightTangent")
+	WeightTangentNameCommand;
+
+nameCommand
+	-annotation "LockTangentNameCommand"
+	-sourceType "mel"
+	-command ("LockTangent")
+	LockTangentNameCommand;
+
+nameCommand
+	-annotation "BreakTangntNameCommand"
+	-sourceType "mel"
+	-command ("BreakTangnt")
+	BreakTangntNameCommand;
+
+nameCommand
+	-annotation "TangentsFlatNameCommand"
+	-sourceType "mel"
+	-command ("TangentsFlat")
+	TangentsFlatNameCommand;
+
+nameCommand
+	-annotation "CopyKeysNameCommand"
+	-sourceType "mel"
+	-command ("CopyKeys")
+	CopyKeysNameCommand;
+
+nameCommand
+	-annotation "PasteKeysNameCommand"
+	-sourceType "mel"
+	-command ("PasteKeys")
+	PasteKeysNameCommand;
+
+nameCommand
+	-annotation "copyKey_GraphEdNameCommand"
+	-sourceType "mel"
+	-command ("copyKey_GraphEd")
+	copyKey_GraphEdNameCommand;
+
+nameCommand
+	-annotation "SnapPointToPointNameCommand"
+	-sourceType "mel"
+	-command ("SnapPointToPoint")
+	SnapPointToPointNameCommand;
+
+nameCommand
+	-annotation "SnapToPointNameCommand"
+	-sourceType "mel"
+	-command ("SnapToPoint")
+	SnapToPointNameCommand;
+
+nameCommand
+	-annotation "paste_keyNameCommand"
+	-sourceType "mel"
+	-command ("paste_key")
+	paste_keyNameCommand;
+
+nameCommand
+	-annotation "DeleteKeyNameCommand"
+	-sourceType "mel"
+	-command ("DeleteKey")
+	DeleteKeyNameCommand;
+
+nameCommand
+	-annotation "DeleteTimeSliderKeyNameCommand"
+	-sourceType "mel"
+	-command ("DeleteTimeSliderKey")
+	DeleteTimeSliderKeyNameCommand;
+
+nameCommand
+	-annotation "GraphCenterCurrentTimeNameCommand"
+	-sourceType "mel"
+	-command ("GraphCenterCurrentTime")
+	GraphCenterCurrentTimeNameCommand;
+
+nameCommand
+	-annotation "ChannelBoxNameCommand"
+	-sourceType "mel"
+	-command ("ChannelBox")
+	ChannelBoxNameCommand;
+
+nameCommand
+	-annotation "ToggleControlBoxesNameCommand"
+	-sourceType "mel"
+	-command ("ToggleControlBoxes")
+	ToggleControlBoxesNameCommand;
+
+nameCommand
+	-annotation "TangentsSplineNameCommand"
+	-sourceType "mel"
+	-command ("TangentsSpline")
+	TangentsSplineNameCommand;
+
+nameCommand
+	-annotation "TimeSlider_Flat_TangentNameCommand"
+	-sourceType "mel"
+	-command ("TimeSlider_Flat_Tangent")
+	TimeSlider_Flat_TangentNameCommand;
+
+nameCommand
+	-annotation "UnifyTangentsNameCommand"
+	-sourceType "mel"
+	-command ("UnifyTangents")
+	UnifyTangentsNameCommand;
+
+nameCommand
+	-annotation "FreeTangentWeightNameCommand"
+	-sourceType "mel"
+	-command ("FreeTangentWeight")
+	FreeTangentWeightNameCommand;
+
+nameCommand
+	-annotation "AnimConv_AutoTangentNameCommand"
+	-sourceType "mel"
+	-command ("AnimConv_AutoTangent")
+	AnimConv_AutoTangentNameCommand;
+
+nameCommand
+	-annotation "AnimConvergeNameCommand"
+	-sourceType "mel"
+	-command ("AnimConverge")
+	AnimConvergeNameCommand;
+
+nameCommand
+	-annotation "ToggleChannelBoxNameCommand"
+	-sourceType "mel"
+	-command ("ToggleChannelBox")
+	ToggleChannelBoxNameCommand;
+
+nameCommand
+	-annotation "HideNURBSCurvesNameCommand"
+	-sourceType "mel"
+	-command ("HideNURBSCurves")
+	HideNURBSCurvesNameCommand;
+
+nameCommand
+	-annotation "ShowNURBSCurvesNameCommand"
+	-sourceType "mel"
+	-command ("ShowNURBSCurves")
+	ShowNURBSCurvesNameCommand;
+
+nameCommand
+	-annotation "ChannelBox_ToggleNameCommand"
+	-sourceType "mel"
+	-command ("ChannelBox_Toggle")
+	ChannelBox_ToggleNameCommand;
+
+nameCommand
+	-annotation "LocalRotateNameCommand"
+	-sourceType "mel"
+	-command ("LocalRotate")
+	LocalRotateNameCommand;
+
+nameCommand
+	-annotation "GimbalRotateNameCommand"
+	-sourceType "mel"
+	-command ("GimbalRotate")
+	GimbalRotateNameCommand;
+
+nameCommand
+	-annotation "Translate_WorldNameCommand"
+	-sourceType "mel"
+	-command ("Translate_World")
+	Translate_WorldNameCommand;
+
+nameCommand
+	-annotation "Translate_ObjectNameCommand"
+	-sourceType "mel"
+	-command ("Translate_Object")
+	Translate_ObjectNameCommand;
+
+nameCommand
+	-annotation "FilterCurvesNameCommand"
+	-sourceType "mel"
+	-command ("FilterCurves")
+	FilterCurvesNameCommand;
+
+nameCommand
+	-annotation "Nudge_FwdNameCommand"
+	-sourceType "mel"
+	-command ("Nudge_Fwd")
+	Nudge_FwdNameCommand;
+
+nameCommand
+	-annotation "Nudge_BkwdNameCommand"
+	-sourceType "mel"
+	-command ("Nudge_Bkwd")
+	Nudge_BkwdNameCommand;
+
+nameCommand
+	-annotation "Nudge_DnNameCommand"
+	-sourceType "mel"
+	-command ("Nudge_Dn")
+	Nudge_DnNameCommand;
+
+nameCommand
+	-annotation "Nudge_UpNameCommand"
+	-sourceType "mel"
+	-command ("Nudge_Up")
+	Nudge_UpNameCommand;
+
+nameCommand
+	-annotation "XrayNameCommand"
+	-sourceType "mel"
+	-command ("Xray")
+	XrayNameCommand;
+
+nameCommand
+	-annotation "WeightedFreeTangentsNameCommand"
+	-sourceType "mel"
+	-command ("WeightedFreeTangents")
+	WeightedFreeTangentsNameCommand;
+
+nameCommand
+	-annotation "MotionTrailNameCommand"
+	-sourceType "mel"
+	-command ("MotionTrail")
+	MotionTrailNameCommand;
+
+nameCommand
+	-annotation "Translate_LocalNameCommand"
+	-sourceType "mel"
+	-command ("Translate_Local")
+	Translate_LocalNameCommand;
+
+nameCommand
+	-annotation "DeleteTimeSlideKeyNameCommand"
+	-sourceType "mel"
+	-command ("DeleteTimeSlideKey")
+	DeleteTimeSlideKeyNameCommand;
+
+nameCommand
+	-annotation "LoadAnimationHotkeysNameCommand"
+	-sourceType "mel"
+	-command ("LoadAnimationHotkeys")
+	LoadAnimationHotkeysNameCommand;
+
+nameCommand
+	-annotation "LoadModelingHotkeysNameCommand"
+	-sourceType "mel"
+	-command ("LoadModelingHotkeys")
+	LoadModelingHotkeysNameCommand;
+
+nameCommand
+	-annotation "ToggleUnifyBreakKeyTangentsNameCommand"
+	-sourceType "mel"
+	-command ("ToggleUnifyBreakKeyTangents")
+	ToggleUnifyBreakKeyTangentsNameCommand;
+
+nameCommand
+	-annotation "AutoTangentCommandNameCommand"
+	-sourceType "mel"
+	-command ("AutoTangentCommand")
+	AutoTangentCommandNameCommand;
+
+nameCommand
+	-annotation "TangentsLinearNameCommand"
+	-sourceType "mel"
+	-command ("TangentsLinear")
+	TangentsLinearNameCommand;
+
+nameCommand
+	-annotation "InTangentSplineNameCommand"
+	-sourceType "mel"
+	-command ("InTangentSpline")
+	InTangentSplineNameCommand;
+
+nameCommand
+	-annotation "TangentsSteppedNameCommand"
+	-sourceType "mel"
+	-command ("TangentsStepped")
+	TangentsSteppedNameCommand;
+
+nameCommand
+	-annotation "FramePlaybackRangeInGraphEditorNameCommand"
+	-sourceType "mel"
+	-command ("FramePlaybackRangeInGraphEditor")
+	FramePlaybackRangeInGraphEditorNameCommand;
+
+nameCommand
+	-annotation "ViewImageNameCommand"
+	-sourceType "mel"
+	-command ("ViewImage")
+	ViewImageNameCommand;
+
+nameCommand
+	-annotation "SaveAnimationHotkeysNameCommand"
+	-sourceType "mel"
+	-command ("SaveAnimationHotkeys")
+	SaveAnimationHotkeysNameCommand;
+
+nameCommand
+	-annotation "SaveModelingHotkeysNameCommand"
+	-sourceType "mel"
+	-command ("SaveModelingHotkeys")
+	SaveModelingHotkeysNameCommand;
+
+nameCommand
+	-annotation "defaultTangentsSplineNameCommand"
+	-sourceType "mel"
+	-command ("defaultTangentsSpline")
+	defaultTangentsSplineNameCommand;
+
+nameCommand
+	-annotation "defaultTangentsLinearNameCommand"
+	-sourceType "mel"
+	-command ("defaultTangentsLinear")
+	defaultTangentsLinearNameCommand;
+
+nameCommand
+	-annotation "defaultTangentsSteppedNameCommand"
+	-sourceType "mel"
+	-command ("defaultTangentsStepped")
+	defaultTangentsSteppedNameCommand;
+
+nameCommand
+	-annotation "LoadThierryHotkeysNameCommand"
+	-sourceType "mel"
+	-command ("LoadThierryHotkeys")
+	LoadThierryHotkeysNameCommand;
+
+nameCommand
+	-annotation "AddInbetweenNameCommand"
+	-sourceType "mel"
+	-command ("AddInbetween")
+	AddInbetweenNameCommand;
+
+nameCommand
+	-annotation "RemoveInbetweenNameCommand"
+	-sourceType "mel"
+	-command ("RemoveInbetween")
+	RemoveInbetweenNameCommand;
+
+nameCommand
+	-annotation "defaultTangentsFlatNameCommand"
+	-sourceType "mel"
+	-command ("defaultTangentsFlat")
+	defaultTangentsFlatNameCommand;
+
+nameCommand
+	-annotation "ParentNameCommand"
+	-sourceType "mel"
+	-command ("Parent")
+	ParentNameCommand;
+
+nameCommand
+	-annotation "UnparentNameCommand"
+	-sourceType "mel"
+	-command ("Unparent")
+	UnparentNameCommand;
+
+nameCommand
+	-annotation "defaultTangentsPlateauNameCommand"
+	-sourceType "mel"
+	-command ("defaultTangentsPlateau")
+	defaultTangentsPlateauNameCommand;
+
+nameCommand
+	-annotation "TangentsPlateauNameCommand"
+	-sourceType "mel"
+	-command ("TangentsPlateau")
+	TangentsPlateauNameCommand;
+
+nameCommand
+	-annotation "defaultTangentsClampedNameCommand"
+	-sourceType "mel"
+	-command ("defaultTangentsClamped")
+	defaultTangentsClampedNameCommand;
+
+nameCommand
+	-annotation "TangentsClampedNameCommand"
+	-sourceType "mel"
+	-command ("TangentsClamped")
+	TangentsClampedNameCommand;
+
+nameCommand
+	-annotation "ShowSelectedObjectsNameCommand"
+	-sourceType "mel"
+	-command ("ShowSelectedObjects")
+	ShowSelectedObjectsNameCommand;
+
+nameCommand
+	-annotation "PreviousKeyframeNoUpdateNameCommand"
+	-sourceType "mel"
+	-command ("PreviousKeyframeNoUpdate")
+	PreviousKeyframeNoUpdateNameCommand;
+
+nameCommand
+	-annotation "NextKeyframeNoUpdateNameCommand"
+	-sourceType "mel"
+	-command ("NextKeyframeNoUpdate")
+	NextKeyframeNoUpdateNameCommand;
+
+nameCommand
+	-annotation "ToggleLockedKeyTangentWeightsNameCommand"
+	-sourceType "mel"
+	-command ("ToggleLockedKeyTangentWeights")
+	ToggleLockedKeyTangentWeightsNameCommand;
+
+nameCommand
+	-annotation "AutoTangentSoftCommandNameCommand"
+	-sourceType "mel"
+	-command ("AutoTangentSoftCommand")
+	AutoTangentSoftCommandNameCommand;
+
+nameCommand
+	-annotation "extrudeComponentNameCommand"
+	-sourceType "mel"
+	-command ("extrudeComponent")
+	extrudeComponentNameCommand;
+
+nameCommand
+	-annotation "HypershadeWindowNameCommand"
+	-sourceType "mel"
+	-command ("HypershadeWindow")
+	HypershadeWindowNameCommand;
+
+nameCommand
+	-annotation "SelectUVMaskNameCommand"
+	-sourceType "mel"
+	-command ("SelectUVMask")
+	SelectUVMaskNameCommand;
+
+nameCommand
+	-annotation "ToggleVertexNormalDisplayNameCommand"
+	-sourceType "mel"
+	-command ("ToggleVertexNormalDisplay")
+	ToggleVertexNormalDisplayNameCommand;
+
+nameCommand
+	-annotation "ToggleFaceNormalDisplayNameCommand"
+	-sourceType "mel"
+	-command ("ToggleFaceNormalDisplay")
+	ToggleFaceNormalDisplayNameCommand;
+
+nameCommand
+	-annotation "LoadDefaultHotkeysNameCommand"
+	-sourceType "mel"
+	-command ("LoadDefaultHotkeys")
+	LoadDefaultHotkeysNameCommand;
+
+nameCommand
+	-annotation "SaveThierryHotkeysNameCommand"
+	-sourceType "mel"
+	-command ("SaveThierryHotkeys")
+	SaveThierryHotkeysNameCommand;
+
+nameCommand
+	-annotation "SaveHotkeysDummyNameCommand"
+	-sourceType "mel"
+	-command ("SaveHotkeysDummy")
+	SaveHotkeysDummyNameCommand;
+
+nameCommand
+	-annotation "AppendToPolygonToolNameCommand"
+	-sourceType "mel"
+	-command ("AppendToPolygonTool")
+	AppendToPolygonToolNameCommand;
+
+nameCommand
+	-annotation "PolyMergeNameCommand"
+	-sourceType "mel"
+	-command ("PolyMerge")
+	PolyMergeNameCommand;
+
+nameCommand
+	-annotation "FillHoleNameCommand"
+	-sourceType "mel"
+	-command ("FillHole")
+	FillHoleNameCommand;
+
+nameCommand
+	-annotation "convertToUVsAndChangeSelectionModeNameCommand"
+	-sourceType "mel"
+	-command ("convertToUVsAndChangeSelectionMode")
+	convertToUVsAndChangeSelectionModeNameCommand;
+
+nameCommand
+	-annotation "DisplaySmoothShadedNoTextureNameCommand"
+	-sourceType "mel"
+	-command ("DisplaySmoothShadedNoTexture")
+	DisplaySmoothShadedNoTextureNameCommand;
+
+nameCommand
+	-annotation "TextureViewWindowNameCommand"
+	-sourceType "mel"
+	-command ("TextureViewWindow")
+	TextureViewWindowNameCommand;
+
+nameCommand
+	-annotation "PMP_hideUnselectedCommandNameCommand"
+	-sourceType "mel"
+	-command ("PMP_hideUnselectedCommand")
+	PMP_hideUnselectedCommandNameCommand;
+
+nameCommand
+	-annotation "bridgeFacesCommandNameCommand"
+	-sourceType "mel"
+	-command ("bridgeFacesCommand")
+	bridgeFacesCommandNameCommand;
+
+nameCommand
+	-annotation "OutlinerWindowNameCommand"
+	-sourceType "mel"
+	-command ("OutlinerWindow")
+	OutlinerWindowNameCommand;
+
+nameCommand
+	-annotation "convertToUVShellAndChangeSelectionModeNameCommand"
+	-sourceType "mel"
+	-command ("convertToUVShellAndChangeSelectionMode")
+	convertToUVShellAndChangeSelectionModeNameCommand;
+
+nameCommand
+	-annotation "ConnectionEditorNameCommand"
+	-sourceType "mel"
+	-command ("ConnectionEditor")
+	ConnectionEditorNameCommand;
+
+nameCommand
+	-annotation "HypergraphDGWindowNameCommand"
+	-sourceType "mel"
+	-command ("HypergraphDGWindow")
+	HypergraphDGWindowNameCommand;
+
+nameCommand
+	-annotation "HypergraphHierarchyWindowNameCommand"
+	-sourceType "mel"
+	-command ("HypergraphHierarchyWindow")
+	HypergraphHierarchyWindowNameCommand;
+
+nameCommand
+	-annotation "InstanceNameCommand"
+	-sourceType "mel"
+	-command ("Instance")
+	InstanceNameCommand;
+
+nameCommand
+	-annotation "UpdatePSDTexturesNameCommand"
+	-sourceType "mel"
+	-command ("UpdatePSDTextures")
+	UpdatePSDTexturesNameCommand;
+
+nameCommand
+	-annotation "toggleMayaDisplaySmoothingNameCommand"
+	-sourceType "mel"
+	-command ("toggleMayaDisplaySmoothing")
+	toggleMayaDisplaySmoothingNameCommand;
+
+nameCommand
+	-annotation "toggleMayaDisplaySmoothingCageNameCommand"
+	-sourceType "mel"
+	-command ("toggleMayaDisplaySmoothingCage")
+	toggleMayaDisplaySmoothingCageNameCommand;
+
+nameCommand
+	-annotation "Add items to 'Down' of selection"
+	-sourceType "mel"
+	-command ("PMP_pickWalkAddSelection_Down_RTC")
+	PMP_pickWalkAddSelection_Down_RTCNameCommand;
+
+nameCommand
+	-annotation "Add items to 'Left' of selection"
+	-sourceType "mel"
+	-command ("PMP_pickWalkAddSelection_Left_RTC")
+	PMP_pickWalkAddSelection_Left_RTCNameCommand;
+
+nameCommand
+	-annotation "Add items to 'Right' of selection"
+	-sourceType "mel"
+	-command ("PMP_pickWalkAddSelection_Right_RTC")
+	PMP_pickWalkAddSelection_Right_RTCNameCommand;
+
+nameCommand
+	-annotation "Add items to 'Up' of selection"
+	-sourceType "mel"
+	-command ("PMP_pickWalkAddSelection_Up_RTC")
+	PMP_pickWalkAddSelection_Up_RTCNameCommand;
+
+nameCommand
+	-annotation "SelectNextIntermediatObjectNameCommand"
+	-sourceType "mel"
+	-command ("SelectNextIntermediatObject")
+	SelectNextIntermediatObjectNameCommand;
+
+nameCommand
+	-annotation "SelectIsolateNameCommand"
+	-sourceType "mel"
+	-command ("SelectIsolate")
+	SelectIsolateNameCommand;
+
+nameCommand
+	-annotation "UngroupNameCommand"
+	-sourceType "mel"
+	-command ("Ungroup")
+	UngroupNameCommand;
+
+nameCommand
+	-annotation "walkCamForwardNameCommand"
+	-sourceType "mel"
+	-command ("walkCamForward")
+	walkCamForwardNameCommand;
+
+nameCommand
+	-annotation "walkCamBackwardNameCommand"
+	-sourceType "mel"
+	-command ("walkCamBackward")
+	walkCamBackwardNameCommand;
+
+nameCommand
+	-annotation "walkCamLeftNameCommand"
+	-sourceType "mel"
+	-command ("walkCamLeft")
+	walkCamLeftNameCommand;
+
+nameCommand
+	-annotation "walkCamRightNameCommand"
+	-sourceType "mel"
+	-command ("walkCamRight")
+	walkCamRightNameCommand;
+
+nameCommand
+	-annotation "walkCamStopNameCommand"
+	-sourceType "mel"
+	-command ("walkCamStop")
+	walkCamStopNameCommand;
+
+nameCommand
+	-annotation "UndoNameCommand"
+	-sourceType "mel"
+	-command ("Undo")
+	UndoNameCommand;
+
+nameCommand
+	-annotation "SlideEdgeToolNameCommand"
+	-sourceType "mel"
+	-command ("SlideEdgeTool")
+	SlideEdgeToolNameCommand;
+
+nameCommand
+	-annotation "ParentRelativeNameCommand"
+	-sourceType "mel"
+	-command ("ParentRelative")
+	ParentRelativeNameCommand;
+
+nameCommand
+	-annotation "InvertSelectionNameCommand"
+	-sourceType "mel"
+	-command ("InvertSelection")
+	InvertSelectionNameCommand;
+
+nameCommand
+	-annotation "BridgeEdgeNameCommand"
+	-sourceType "mel"
+	-command ("BridgeEdge")
+	BridgeEdgeNameCommand;
+
+nameCommand
+	-annotation "toggleSymmetricModelingNameCommand"
+	-sourceType "mel"
+	-command ("toggleSymmetricModeling")
+	toggleSymmetricModelingNameCommand;
+
+nameCommand
+	-annotation "toggleSoftSelectionNameCommand"
+	-sourceType "mel"
+	-command ("toggleSoftSelection")
+	toggleSoftSelectionNameCommand;
+
+nameCommand
+	-annotation "ModifyLowerRadiusPressNameCommand"
+	-sourceType "mel"
+	-command ("ModifyLowerRadiusPress")
+	ModifyLowerRadiusPressNameCommand;
+
+nameCommand
+	-annotation "ModifyLowerRadiusReleaseNameCommand"
+	-sourceType "mel"
+	-command ("ModifyLowerRadiusRelease")
+	ModifyLowerRadiusReleaseNameCommand;
+
+nameCommand
+	-annotation "CombinePolygonsNameCommand"
+	-sourceType "mel"
+	-command ("CombinePolygons")
+	CombinePolygonsNameCommand;
+
+nameCommand
+	-annotation "SeparatePolygonNameCommand"
+	-sourceType "mel"
+	-command ("SeparatePolygon")
+	SeparatePolygonNameCommand;
+
+nameCommand
+	-annotation "PMP_printHi"
+	-sourceType "mel"
+	-command ("PMP_printHi")
+	PMP_printHi;
+
+nameCommand
+	-annotation "Loads the 'Default' hotkey set"
+	-sourceType "mel"
+	-command ("LoadDefaultHotkeys")
+	LoadDefaultHotkeys;
+
+nameCommand
+	-annotation "Loads the 'Animation' hotkey set"
+	-sourceType "mel"
+	-command ("LoadAnimationHotkeys")
+	LoadAnimationHotkeys;
+
+nameCommand
+	-annotation "Loads the 'Modeling' hotkey set"
+	-sourceType "mel"
+	-command ("LoadModelingHotkeys")
+	LoadModelingHotkeys;
+
+nameCommand
+	-annotation "Saves the current hotkey set"
+	-sourceType "mel"
+	-command ("SaveCurrentHotkeys")
+	SaveCurrentHotkeys;
+
+nameCommand
+	-annotation "displayFlatShadedNoTextureNameCommand"
+	-sourceType "mel"
+	-command ("displayFlatShadedNoTexture")
+	displayFlatShadedNoTextureNameCommand;
+
+nameCommand
+	-annotation "displaySmoothShadedNoTextureNameCommand"
+	-sourceType "mel"
+	-command ("displaySmoothShadedNoTexture")
+	displaySmoothShadedNoTextureNameCommand;
+
+nameCommand
+	-annotation "Thierry_stickyPreviousFrame_pressNameCommand"
+	-sourceType "mel"
+	-command ("Thierry_stickyPreviousFrame_press")
+	Thierry_stickyPreviousFrame_pressNameCommand;
+
+nameCommand
+	-annotation "Thierry_stickyPreviousFrame_releaseNameCommand"
+	-sourceType "mel"
+	-command ("Thierry_stickyPreviousFrame_release")
+	Thierry_stickyPreviousFrame_releaseNameCommand;
+
+nameCommand
+	-annotation "Thierry_stickyNextFrame_pressNameCommand"
+	-sourceType "mel"
+	-command ("Thierry_stickyNextFrame_press")
+	Thierry_stickyNextFrame_pressNameCommand;
+
+nameCommand
+	-annotation "Thierry_stickyNextFrame_releaseNameCommand"
+	-sourceType "mel"
+	-command ("Thierry_stickyNextFrame_release")
+	Thierry_stickyNextFrame_releaseNameCommand;
+
+nameCommand
+	-annotation "SetDrivenKeyOptionsNameCommand"
+	-sourceType "mel"
+	-command ("SetDrivenKeyOptions")
+	SetDrivenKeyOptionsNameCommand;
+
+nameCommand
+	-annotation "GraphPasteNameCommand"
+	-sourceType "mel"
+	-command ("GraphPaste")
+	GraphPasteNameCommand;
+
+nameCommand
+	-annotation "GraphCopyNameCommand"
+	-sourceType "mel"
+	-command ("GraphCopy")
+	GraphCopyNameCommand;
+
+nameCommand
+	-annotation "WorldRotateNameCommand"
+	-sourceType "mel"
+	-command ("WorldRotate")
+	WorldRotateNameCommand;
+
+nameCommand
+	-annotation "ModifyDisplacementPressNameCommand"
+	-sourceType "mel"
+	-command ("ModifyDisplacementPress")
+	ModifyDisplacementPressNameCommand;
+
+nameCommand
+	-annotation "ModifyDisplacementReleaseNameCommand"
+	-sourceType "mel"
+	-command ("ModifyDisplacementRelease")
+	ModifyDisplacementReleaseNameCommand;
+
+nameCommand
+	-annotation "ToggleIsolateSelectNameCommand"
+	-sourceType "mel"
+	-command ("ToggleIsolateSelect")
+	ToggleIsolateSelectNameCommand;
+
+nameCommand
+	-annotation "InsertKeyNameCommand"
+	-sourceType "mel"
+	-command ("InsertKey")
+	InsertKeyNameCommand;
+
+nameCommand
+	-annotation "pmp_selectionModeEdgeNameCommand"
+	-sourceType "mel"
+	-command ("pmp_selectionModeEdge")
+	pmp_selectionModeEdgeNameCommand;
+
+nameCommand
+	-annotation "pmp_selectionModeFaceNameCommand"
+	-sourceType "mel"
+	-command ("pmp_selectionModeFace")
+	pmp_selectionModeFaceNameCommand;
+
+nameCommand
+	-annotation "pmp_selectionModeObjectNameCommand"
+	-sourceType "mel"
+	-command ("pmp_selectionModeObject")
+	pmp_selectionModeObjectNameCommand;
+
+nameCommand
+	-annotation "pmp_selectionModeVertexNameCommand"
+	-sourceType "mel"
+	-command ("pmp_selectionModeVertex")
+	pmp_selectionModeVertexNameCommand;
+
+nameCommand
+	-annotation "LassoToolNameCommand"
+	-sourceType "mel"
+	-command ("LassoTool")
+	LassoToolNameCommand;
+
+nameCommand
+	-annotation "selectSurfacesOnNameCommand"
+	-sourceType "mel"
+	-command ("selectSurfacesOn")
+	selectSurfacesOnNameCommand;
+
+nameCommand
+	-annotation "selectSurfacesOffNameCommand"
+	-sourceType "mel"
+	-command ("selectSurfacesOff")
+	selectSurfacesOffNameCommand;
+
+nameCommand
+	-annotation "ToggleChannelsLayersNameCommand"
+	-sourceType "mel"
+	-command ("ToggleChannelsLayers")
+	ToggleChannelsLayersNameCommand;
+
+nameCommand
+	-annotation "ToggleLayerBarNameCommand"
+	-sourceType "mel"
+	-command ("ToggleLayerBar")
+	ToggleLayerBarNameCommand;
+

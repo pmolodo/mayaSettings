@@ -1,0 +1,220 @@
+// zooRemind
+//
+// Created by Hamish McKenzie zootoolbox@googlegroups.com
+// Created : 19 October 2003
+//
+// Description:
+// zooRemind is a simple script that pops up a window with a custom message.  Its
+// an easy way of setting reminders that open up with a scene, by putting a load
+// string into the sceneConfig node.
+//
+// Usage:
+//  zooRemindSetReminderUI will open the set reminder UI
+//  otherwise, zooRemind can be called to just popup a window with any custom
+//  message you might need.  this can be useful for calling from other scripts
+//
+// Hamish McKenzie ©2007...
+
+
+//when called, it will simply popup a window with a custom message in it.
+global proc zooRemind( string $messageTitle, string $message ) {
+	string $windowName = "zooRemindWindow";
+	string $windowTitle = "Reminder  zooRemind v" + `zooRemindInfo version`;
+	string $about = "This is a reminder window.  It has appeared because someone has set a reminder for you.  The login name of person who set this reminder is recorded in the tab name of the reminder.\n--------\n\nzooRemind\nVersion: " + `zooRemindInfo version` + "\nCreated on: " + `zooRemindInfo created` + "\nModified on: " + `zooRemindInfo modified` + "\n\nzooRemind was written by Macaroni Kazoo Productions  www.macaronikazoo.com\n\n" + `zooRemindInfo history`;
+
+	//if ( `window -exists $windowName` ) deleteUI $windowName;
+	if ( `window -exists $windowName` ) zooRemindAddRemindTab $messageTitle $message;
+	else {
+
+		window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -widthHeight 300 400 $windowName;
+
+		 string $form = `formLayout`;
+		 string $tabs = `tabLayout -innerMarginWidth 5 -innerMarginHeight 5 zooRemindTabMessages`;
+		 string $image = `image -p $form -width 300 -height 8 -backgroundColor ((float)96/255) ((float)100/255) ((float)146/255) -image ( internalVar("-userBitmapsDir") + "/zoo_sig.tga" )`;
+		 formLayout -edit
+			-attachForm $tabs "top" 0
+			-attachForm $tabs "left" 0
+			-attachForm $tabs "right" 0
+			-attachControl $tabs "bottom" 2 $image
+
+			-attachNone $image "top"
+			-attachForm $image "left" 0
+			-attachForm $image "right" 0
+			-attachForm $image "bottom" 0
+			$form;
+
+			string $child1 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $message zooRemindScrollReminderDisplay;
+				setParent ..;
+
+			string $child2 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $about;
+				setParent ..;
+
+			tabLayout -e -tabLabel $child1 $messageTitle -tabLabel $child2 "About zooRemind" $tabs;
+
+		popupMenu -p $image -b 1 -pmc ( "showHelp -a \"http://www.macaronikazoo.com/\"" );
+		showWindow $windowName;
+		}
+	}
+
+
+//simply returns the contents of a file.  this can be useful for loading reminders from a file...  eg:  zooRemind reminder `zooRemindReadFile "c:/reminder.txt"`;
+global proc string zooRemindReadFile( string $reminderFile ) {
+	string $printString = "--- Reminder ---\n";
+	string $word = "";
+	int $fileId = `fopen $reminderFile "r"`;
+
+	$word = `fgetline $fileId`;
+	$printString = $printString + $word;
+
+	while( `size $word` > 0 ){
+		$word = `fgetline $fileId`;
+		$printString = $printString + $word;
+		}
+
+	fclose $fileId;
+
+	return $printString;
+	}
+
+
+//this creates the UI for the set reminder.
+global proc zooRemindSetReminderUI() {
+	string $windowName = "zooRemindSetReminderUIWindow";
+	string $windowTitle = "Set Reminder  zooRemind v" + `zooRemindInfo version`;
+	string $previousReminder = `zooRemindGetPrevious`;
+
+	if ( `window -exists $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -widthHeight 300 400 $windowName;
+
+		string $form = `formLayout`;
+		string $messageField = `scrollField -ed 1 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $previousReminder`;
+		string $buttonRow = `rowLayout -numberOfColumns 2 -columnWidth2 180 120 -columnAttach 1 "both" 1 -columnAttach 2 "both" 1`;
+		string $image = `image -p $form -width 300 -height 8 -backgroundColor ((float)96/255) ((float)100/255) ((float)146/255) -image ( internalVar("-userBitmapsDir") + "/zoo_sig.tga" )`;
+		formLayout -edit
+			-attachForm $messageField "top" 0
+			-attachForm $messageField "left" 0
+			-attachForm $messageField "right" 0
+			-attachControl $messageField "bottom" 2 $buttonRow
+
+			-attachNone $buttonRow "top"
+			-attachForm $buttonRow "left" 0
+			-attachForm $buttonRow "right" 0
+			-attachControl $buttonRow "bottom" 2 $image
+
+			-attachNone $image "top"
+			-attachForm $image "left" 0
+			-attachForm $image "right" 0
+			-attachForm $image "bottom" 0
+			$form;
+
+	button -p $buttonRow -l "set reminder" -c( "zooRemindSetReminder `scrollField -q -text " + $messageField + "`; deleteUI " + $windowName );
+	button -p $buttonRow -l "remove reminders" -c( "zooRemindRemoveReminder; deleteUI " + $windowName );
+
+	popupMenu -p $image -b 1 -pmc ( "showHelp -a \"http://www.macaronikazoo.com/\"" );
+	showWindow $windowName;
+	}
+
+
+global proc zooRemindAddRemindTab( string $messageTitle, string $message ) {
+	string $parent = "zooRemindTabMessages";
+
+	setParent $parent;
+	$message = $message + "\n\n--------\nMore than one reminder has been set.  Flip through the tabs to see them all";
+
+	string $messageUI = `paneLayout -configuration "single"`;
+		scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $message;
+		setParent ..;
+
+	tabLayout -e -moveTab ( `tabLayout -q -numberOfChildren $parent` ) 1 $parent;
+	tabLayout -e -tabLabelIndex 1 $messageTitle $parent;
+	}
+
+
+//this is a REAL dodgy proc, but i'm not sure of any other way to solve this problem...
+global proc string zooRemindGetPrevious() {
+	string $message = "";
+	if( `objExists zooRemind.before` ) {
+		eval( `getAttr zooRemind.before` );
+		$message = `scrollField -q -text zooRemindScrollReminderDisplay`;
+		deleteUI zooRemindWindow;
+		}
+	return $message;
+	}
+
+
+//this proc deals with creating the reminder script node
+global proc zooRemindSetReminder( string $message ) {
+	$message = `zooRemindPrepMessageString $message`;
+	zooRemindRemoveReminder;
+	string $user = `getenv USER`;
+	string $demoText = "This is what your reminder will look like when it appears\\n--------\\n\\n";
+	string $cmd = ( "zooRemind \"From "  + $user + "\" \"" + $message + "\";" );
+	string $demoCmd = ( "zooRemind \"From "  + $user + "\" \"" + $demoText + $message + "\";" );
+	string $scriptNodeName = `scriptNode -beforeScript $cmd -n zooRemind`;
+	setAttr ( $scriptNodeName + ".scriptType" ) 1;
+	addAttr -ln zooRemind -at bool $scriptNodeName;
+	eval( $demoCmd );
+	}
+
+
+global proc zooRemindRemoveReminder() {
+	string $scriptNodes[] = `ls -type script`;
+	for( $node in $scriptNodes ) if( `objExists ( $node + ".zooRemind" )` ) catchQuiet( `delete $node` );
+	}
+
+
+//goes through a string, and turns carriage returns into escaped carriage returns
+global proc string zooRemindPrepMessageString( string $message ) {
+	string $messageString = $message;
+	string $temp = $message;
+	int $stillChanging = 1;
+
+	//replace newline characters with escaped newline characters...
+	$messageString = `zooReplaceInString $messageString "\n" "\\n"`;
+
+	//replace carriage returns with nothing, as all carriage returns are newlines instead
+	$messageString = `zooReplaceInString $messageString "\r" ""`;
+
+	//changes quote marks into single quote marks so we don't get unterminated string errors
+	$messageString = `zooReplaceInString $messageString "\"" "'"`;
+
+	return $messageString;
+	}
+
+
+//simply returns versioning, and date information about this script
+global proc string zooRemindInfo ( string $function ) {
+	string $creationDate = "19 October 2003";
+	string $lastRevision = "30 October 2003";
+	string $revisionHistory = "v1.12  03-02-04\nMEL: now relies on zooUtils\n\nv1.11  30-10-03\nNEW: read from file procedure, for loading reminders from file.\n\nv1.03  22-10-03\nFIX: if there are multiple reminders in a scene, they now all appear in the same window, on different tabs.\n\nv1.02  20-10-03\nminor UI improvements.  windows close when finished with, and example reminder window says its an example.\n\nv1.01  19-10-03\ninitial version.  has interface for creating and removing reminders.  Base command can be used simply to pop up an information window.";
+	string $info = "";
+	float $currentVersion = 1.12;
+
+	if ( $function == "created" ) $info = $creationDate;
+	if ( $function == "modified" ) $info = $lastRevision;
+	if ( $function == "history" ) $info = $revisionHistory;
+	if ( $function == "version" ) $info = $currentVersion;
+	return $info;
+	}
+
+
+//these dependencies allow the zooZipScript to package this script easily for distribution
+global proc string[] zooRemindDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $return[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+	$iconDependencies[( `size $iconDependencies` )] = "zooRemind.xpm";
+
+	if( $mode == "-scripts" ) $return = $melDependencies;
+	if( $mode == "-icons" ) $return = $iconDependencies;
+	return $return;
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

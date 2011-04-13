@@ -1,0 +1,2390 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: Skinny
+''    Author:  
+''    Last Updated: May 25, 2007
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/misc/2950.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//	SCRIPT:	AS_Skinny v 3.8
+//	AUTHOR:	Asi Sudai Character TD, Animator
+//			asi@asimation.com | www.reel.asimation.com
+//
+//	DATE:		01/4/2007 18:00
+//
+//	DESCRIPTION:	Skinny is skinning tool/UI.  Skinny main advantage, on Maya
+//					Paint Weight tool, is it's presets list of joints & Influences.
+//					the Presets of joints makes the skinning process much more efficient. 
+//
+//	Update	3.8: 
+//				- User can paint on selected vertex's ( isolate mode )
+//				- Copy one Vertex weight to other ( solve crazy vertex's problem, and matching weight between diffrent mesh's )
+//				
+//
+//
+//-------------------------------------------------------------------------------------------------------------------------------------//
+//
+//	Run Proc: AS_Skinny
+//
+//-------------------------------------------------------------------------------------------------------------------------------------//
+
+AS_Skinny;
+//////////////////////////////
+//	Weight Tools features	//
+//////////////////////////////
+
+// Assign Joint to Vertex's:
+global proc SkinnyVertex.assignValue()
+{
+	// If selected item, isn't Vertex or CV or Lattice, exit:
+	string $joint[] =`textScrollList -q -si jointScrollList`;
+	$joint[0] = `AS_SkinnyTokenize $joint[0]`;
+	float $Value = `textFieldButtonGrp -q -tx SkinnyUI|skinToolmenuBar|SkinnyMainLayout|skinnyVertexFrame|skinnyVertexFrameCol|assignValue`;
+	string $target[] =`ls -fl -sl`;
+	if (size($target)==0){print "Skinny: Select Vertex's to assign\n";return;}	
+	string $trns[] =`listTransforms $target[0]`;
+	string $skinCluster = `findRelatedSkinCluster $trns[0]`;
+	if ($skinCluster==""){print "Skinny: Select Vertex's aren't skinned\n";return;}	
+	skinPercent -nrm 1 -tv $joint[0] $Value $skinCluster $target;
+	print ("Skinny: Assign selection to " + $joint[0] + "  Value: " + $Value +"\n");
+}// End Fun
+
+
+// Zero skin value on point. before copying new value.
+proc SkinnyVertex.zeroValue(string $item, string $T_skincluster){
+	string $joints[] = `skinPercent -ib 0.001 -q -t $T_skincluster $item`;
+	for ($i=0;$i<`size($joints)`;$i++)
+		 skinPercent -nrm 0 -tv $joints[$i] 0 $T_skincluster $item;	
+}//End fun
+
+// Update UI with selected Vertex:
+global proc SkinnyVertex.getSource()
+{
+	// If selected item, isn't Vertex or CV or Lattice, exit:
+	string $ls[0] = `ls -fl -sl -hd 1 `;
+	if (`objectType $ls[0]` != "nurbsSurface" && `objectType $ls[0]` != "mesh" &&
+		`objectType $ls[0]` != "lattice")
+		{
+			warning ("Works only on Vertexs,CV's,Lattice points.\n");
+			return;		
+		}
+	textFieldButtonGrp -e -tx $ls[0] SourceV;
+}// End Fun
+
+// Copy Skin Value:
+global proc SkinnyVertex.copyValue()
+{
+	//Time Debug:
+	$startTime = `timerX`;
+	// Get Source Values:
+	string $Source = `textFieldButtonGrp -q -tx SkinnyUI|skinToolmenuBar|SkinnyMainLayout|skinnyVertexFrame|skinnyVertexFrameCol|SourceV`;
+	if (!`objExists $Source`){ warning "Please Select one Vertex or Cv point to copy weights from";return;}
+	string $S_trns[] = `listRelatives -p $Source`;
+	string $S_skincluster = `findRelatedSkinCluster $S_trns[0]`;
+	string $joints[] = `skinPercent -ib 0.002 -q -t $S_skincluster $Source`;
+	float $values[]= `skinPercent -ib 0.002 -q -v $S_skincluster $Source`;
+	// Optimize: turn off skinCluster
+	setAttr ($S_skincluster + ".envelope") 0;
+	setAttr ($S_skincluster + ".normalizeWeights") 0;
+	setAttr ($S_skincluster + ".nodeState") 1;
+	// Copy skinValue to targets:
+	string $targets[] = `ls -sl`;
+	string $numParents[] = `listRelatives -ap $targets`;
+	
+	string $T_trns[];
+	string $T_skincluster;
+	if (`size($numParents)`==1){
+		$T_trns = `listRelatives -p $targets[0]`;
+		$T_skincluster = `findRelatedSkinCluster $T_trns[0]`;
+
+		for ($item in $targets){
+			SkinnyVertex.zeroValue($item, $T_skincluster);
+			for ($i=0;$i<`size($joints)`;$i++)
+				skinPercent -nrm 0 -tv $joints[$i] $values[$i] $T_skincluster $item;
+			}
+	} else {
+			for ($item in $targets){
+				$T_trns = `listRelatives -p $item`;
+				$T_skincluster = `findRelatedSkinCluster $T_trns[0]`;
+				SkinnyVertex.zeroValue($item, $T_skincluster);
+				for ($i=0;$i<`size($joints)`;$i++){
+					catchQuiet (`skinPercent -nrm 0 -tv $joints[$i] $values[$i] $T_skincluster $item`);
+					print $i;
+					}
+				}
+			}
+// Optimization off:
+setAttr ($S_skincluster + ".envelope") 1;
+setAttr ($S_skincluster + ".normalizeWeights") 1;
+setAttr ($S_skincluster + ".nodeState") 0;
+//Time Debug:
+$totalTime = `timerX -startTime $startTime`;
+print ("\nSkinny Copy Total Time: "+$totalTime+"\n");
+print ("Skinny Copy Weight - Done\n");
+
+
+}// End Fun
+
+
+
+
+//This procedure transfers skinCluster weight between two influence objects.
+//We either loop through all the points in the skinCluster set, or use the current selection of points.
+//We speed this process up by not acting on points that have a zero value per-infuence.
+//This should work on all surface types, curves, and lattices.
+//NOTE: $infB is the destination influence, $infA is the source influence.
+//ST_TransferInfluence joint2 joint1 skinCluster1 1 1 100;
+proc ST_TransferInfluence(string $infB, string $infA, string $skinCluster, int $mode, int $componentsCheck, float $percent)
+{
+//Report errors.
+if ((! `objExists $skinCluster`) || (`nodeType $skinCluster` != "skinCluster"))
+	error "Skin cluster specified incorrectly. Try again.";
+//If either $obj1 or $obj2 are not in the influence list for the skinCluster, report an error.
+string $influences[] = `skinCluster -q -inf $skinCluster`;
+//DOESN´T WORK: if ((! `stringArrayCount($infB, $influences)`) || (! `stringArrayCount($infB, $influences)`))
+int $obj1Count = stringArrayCount($infB, $influences);
+int $obj2Count = stringArrayCount($infA, $influences);
+if (! $obj1Count)
+	error ($infB + " is not in the list of influences for " + $skinCluster + ". Try again.");
+if (! $obj2Count)
+	error ($infA + " is not in the list of influences for " + $skinCluster + ". Try again.");
+
+
+//Let´s time the operation, using the `timerX` cmd.
+$startTime = `timerX`;
+
+//Get the value of the skinCluster.normalizeWeights attr. Turn it off. Later turn it back on.
+//This isn´t really necessary, but is a precaution.
+int $normalize = `getAttr ($skinCluster + ".normalizeWeights")`;
+if ($normalize)
+	setAttr ($skinCluster + ".normalizeWeights") 0;
+	
+//Get the cluster set.
+string $skinClusterSet[] = `listConnections -type objectSet $skinCluster`;
+
+//Assign the components - either all points in set, or selected points.
+string $components[];
+if ($componentsCheck == 1)
+	{
+	$components = `sets -q $skinClusterSet[0]`;
+	if (! `size $components`)
+		error ($skinCluster + " has no members. Try again.");
+	//filter set membership: 36 - subD mesh points; 28 - CV´s; 31 - polygon mesh vertices; 46 - lattice points.
+	$components = `filterExpand -sm 36 -sm 28 -sm 31 -sm 46 $components`;
+	}
+else if ($componentsCheck == 2)
+	{
+	$components = `ls -sl -fl`;
+	if (! `size $components`)
+		error ("Select some points and try again.");
+	
+	//Check if the user has selected components, or (by mistake) the object.
+	string $objectSelection[] = `ls -sl -o`;
+	if ($objectSelection[0] == $components[0])
+		error ("Select some points and try again.");
+	}
+
+//Set "Hold" off for both joints.
+int $hold1 = `getAttr ($infB + ".lockInfluenceWeights")`;
+int $hold2 = `getAttr ($infA + ".lockInfluenceWeights")`;
+if ($hold1)
+	setAttr ($infB + ".lockInfluenceWeights") 0;
+if ($hold2)
+	setAttr ($infB + ".lockInfluenceWeights") 0;
+	
+	
+//WE NEED TO QUERY THE VALUE OF EACH POINT IN BOTH OBJS, AND TRANSFER THIS.
+//Start the progress bar.
+global string $gMainProgressBar;
+int $numberOfPoints = `size $components`;	//-maxValue for progressBar
+progressBar 	
+	-edit 
+	-beginProgress 
+	-isInterruptable 1 
+	-status ("Transferring skin weights between " + $infA + " and " + $infB + "...") 
+	-maxValue $numberOfPoints
+	$gMainProgressBar;
+
+float $infAValue;		//Source weight.	
+float $infBValue;		//Destination weight.
+//print ($mode + "\n");
+for ($c in $components)
+	{
+	//Query values of both influences for current component.
+	$infAValue = `skinPercent -t $infA -q -v $skinCluster $c`;
+	if ($mode == 2)
+		$infBValue = `skinPercent -t $infB -q -v $skinCluster $c`;
+
+	//Reset component values to zero first. This allows us to transfer values only if the original value was greater than zero.
+	//If the original value was zero, it will remain zero, and we can go to the next iteration *much* faster by not touching it.
+	if ($infAValue > 0.0)
+		skinPercent -tv $infA 0 $skinCluster $c;
+	if (($infBValue > 0.0) && ($mode == 2))
+		skinPercent -tv $infB 0 $skinCluster $c;
+	
+	//print ("The mode is: " + $mode + "\n");
+	//print ("Influence " + $infB + "'s original value is " + `skinPercent -t $infB -q -v $skinCluster $c` + "\n");
+
+	//Transfer component values between influences, only if the original value was greater than zero.
+	if ($infAValue > 0.0)
+		{
+		//print ("The weight of " + $infA + " is " + $infAValue + "\n");
+		//print ("The percentage is: " +  $percent + "\n");
+		//print ("The percent value is: " + ($infAValue * ($percent/100)) + "\n");
+		
+		//Transfer the $infAValue onto $infB - use relative mode in order to add to any existing weight.
+		skinPercent -tv $infB ($infAValue * ($percent/100)) -relative 1 $skinCluster $c;
+		//Now, because of the percent factor, we need to put back any weight that remains on infA.
+		if ($percent < 100)
+			skinPercent -tv $infA ($infAValue * ((100 - $percent)/100)) -relative 1 $skinCluster $c;
+		}
+	if (($infBValue > 0.0) && ($mode == 2))
+		{
+		//Transfer the $infBValue onto $infA
+		skinPercent -tv $infA ($infBValue * ($percent/100)) -relative 1 $skinCluster $c;
+		//And put back any remaining weight onto $infB
+		if ($percent < 100)
+			skinPercent -tv $infB ($infBValue * ((100 - $percent)/100)) -relative 1 $skinCluster $c;
+		}
+	
+	//print ("Influence " + $infB + "'s new value is " + `skinPercent -t $infB -q -v $skinCluster $c` + "\n");
+
+
+
+		
+	if (`progressBar -q -isCancelled $gMainProgressBar`)
+		{
+		progressBar -edit -endProgress $gMainProgressBar;
+		break;
+		}
+
+	//Increase the progress bar.
+	progressBar -edit -step 1 $gMainProgressBar;
+	}
+	
+//End progress bar.
+progressBar -edit -endProgress $gMainProgressBar;
+
+
+
+//Turn on "Hold".
+if ($hold1)
+	setAttr ($infB + ".liw") 1;
+if ($hold2)
+	setAttr ($infB + ".liw") 1;
+	
+//Turn normalizeWeights back on.
+if ($normalize)
+	setAttr ($skinCluster + ".normalizeWeights") 1;
+	
+	
+//How long did it take?
+$totalTime = `timerX -startTime $startTime`;
+print ("Total Time: " + $totalTime + " seconds. \n");
+}
+
+
+global proc SkinnyVertex.transferValue(){
+	global string $g_skinnySelOrder[];
+	
+	string $source = `AS_SkinnyTokenize $g_skinnySelOrder[0]`;
+	string $target = `AS_SkinnyTokenize $g_skinnySelOrder[1]`;
+	string $ls[0] = `ls -sl`;
+	string $skinCluster;
+	string $lsPoints[];
+	print `objectType $ls[0]`;
+	// can work on entire mesh or selected point:
+	if (`objectType $ls[0]` == "nurbsSurface" || `objectType $ls[0]` == "mesh" ||
+		`objectType $ls[0]` == "lattice")
+		{
+			string $trns[] =`listTransforms $ls[0]`;
+			$skinCluster = `findRelatedSkinCluster $trns[0]`;
+			if ($skinCluster==""){ warning "Select Skinned object"; return;}
+			ST_TransferInfluence $target $source $skinCluster 1 2 100;			
+		}else{
+			$skinCluster = `findRelatedSkinCluster $ls[0]`;
+			if ($skinCluster==""){ warning "Select Skinned object ot vertex"; return;}
+			ST_TransferInfluence $target $source $skinCluster 1 1 100;
+		}
+		textScrollList -e -da -si $g_skinnySelOrder[1] jointScrollList;
+		setSmoothSkinInfluence $target;
+	
+	//ST_TransferInfluence joint2 joint3 skinCluster1 1 1 100;
+}//End Proc
+
+
+//////////////////////
+//	CLUSTER FEATURE	//
+//////////////////////
+
+// Append string to String Arry. return New Arry
+proc string[] Skinny_AppendStringtoArry(string $Arry[],string $string) {	
+	int $size=size($Arry);
+	$Arry[$size]=$string;
+	return $Arry;
+}//END Proc
+
+//-----------------------------
+// find related Cluster deformer connected to given object
+//-----------------------------
+proc string[] findRelatedClusters(string $obj) {
+	
+	string $ClusterList[];	// The return array of all related Clusters
+	string $objShape[]=`listRelatives -noIntermediate -shapes $obj`;
+	if (!size($objShape)) return {"",""};
+	string $ListObjSets[]=`listConnections -d on -s off -type objectSet $objShape[0]`;
+	for ($set in $ListObjSets) {
+		string $foundCluster[0]=`listConnections -type cluster $set`;
+		if (size($foundCluster))
+			Skinny_AppendStringtoArry $ClusterList $foundCluster[0];
+	}	
+	return $ClusterList;
+}
+// End findRelatedClusters
+
+
+//-------------------------------
+// Prunce Cluster weight less then threshold
+// 	if member weight below threshold, remove it
+//-------------------------------
+proc skinny_pruneCluster() {
+
+	string $Cluster[0]=`textScrollList -q -si jointScrollList`;
+	if ($Cluster[0]=="") { warning "Select cluster to purne"; return; }
+	string $ClusterSet[0]=`listConnections -type objectSet $Cluster[0]`;
+	string $ClusterMembers[]=`sets -q $ClusterSet[0]`;
+	// filterExpand 31= vertex,28 =CVs, 36=Subdivision, 46=Lattice Points. 
+	$ClusterMembers=`filterExpand -sm 31 -sm 28 -sm 36 -sm 46 $ClusterMembers`;	
+	int $i=0;
+	float $PurneValue=`floatField -q -v PurneClusterWeightField`;
+	for ($member in $ClusterMembers) {
+		float $memberWeight[]=`percent -q -v $Cluster[0] $member`;
+		if ($memberWeight[0] <= $PurneValue) {
+			sets -remove $ClusterSet[0] $member;
+			$i++;
+		}
+	}
+	print ("\t Number of members removed: "+$i+"\n");
+}
+// End skinny_pruneCluster
+
+
+
+//---------------------------
+// create attrFieldSliderGrp
+//---------------------------
+proc Skinny_createClusterSlider(string $label, float $min,
+		float $max, float $cw[],string $at, string $SliderName, int $resetValue) 
+{	
+attrFieldSliderGrp
+	-parent "skinnyClustercolumn"
+	-at $at
+	-l $label	
+	-pre 1
+	-step 0.2
+	-en true
+	-min $min					
+	-max $max
+	-cw 1 $cw[0]					
+	-cw 2 $cw[1]
+	-cw 3 $cw[2]					
+	-cat 1 "right" 0
+	-cat 2 "both" 2
+	-cat 3 "both" 2
+	-cal 3 "center"
+	$SliderName;
+
+	// Clusters PopupMenu		
+	popupMenu -parent $SliderName;	
+		menuItem -l "Reset" -c ("setAttr " + $at + " "+ $resetValue);
+}
+// End Skinny_attrFieldSliderGrp
+
+//-----------------------
+// Edit Cluster Members
+// to paint members need to turn off Skinny 
+//-----------------------
+global proc Skinny_clusterEditMembers() {
+	string $Cluster[0]=`textScrollList -q -si jointScrollList`;
+	if (`size($Cluster)`==0) return;
+	checkBoxGrp -e -v1 0 ScriptJobBox;
+	Skinny_ScriptJob;
+	// Open Edit Painter
+	PaintSetMembershipTool;
+	//setEditPaintToolScript 4; Note: working only in ver Maya 5
+	toolPropertyWindow -inMainWindow true;	
+	string $ClusterSet[0]=`listConnections -type objectSet $Cluster[0]`;
+	textScrollList -e -si $ClusterSet[0] artSetPaintScrollList;
+	//setEditPaintCtx -e -settomodify $ClusterSet[0] `currentCtx`; Note: working only in ver Maya 5	
+	artSetScrollListClick artSetPaintCtx;
+	textScrollList -e -si $ClusterSet[0] artSetPaintScrollList;	
+}
+// End Skinny_clusterEditMembers
+
+
+//	Cluster Reset transformation proc
+//	$function = reset All or Selected
+//--------------------
+global proc Skinny_ClusterTranformReset (string $function) {
+	string $allItems[];
+	int $reset;
+	if ($function=="All")
+		$allItems=`textScrollList -q -ai jointScrollList`;
+	 	else 
+			$allItems=`textScrollList -q -si jointScrollList`;
+	
+	string $transform[]={"translate","rotate","scale"};
+	
+	for ($item in $allItems) {
+		string $clusterHandle=`cluster -q -weightedNode $item`;
+		for ($trans in $transform) {
+			if ($trans!="scale") { $reset=0; } else { $reset=1; }
+			setAttr ( $clusterHandle + "." + $trans + "X" ) $reset;
+			setAttr ( $clusterHandle + "." + $trans + "Y" ) $reset;
+			setAttr ( $clusterHandle + "." + $trans + "Z" ) $reset;
+		}
+	}
+}
+// End Skinny_ClusterTranformReset //
+
+
+
+//---------------------------
+// manipulte the cluster by it's UI sliders
+// create ClusterSlider from selected cluster
+// in scroollList.
+//---------------------------
+global proc Skinny_ClusterTranformProc(string $transform) {
+	// Delete existsing Sliders
+	columnLayout -e -m 0 skinnyJNTRotMaincolumn;
+	if (`attrFieldSliderGrp -ex "ClusterSliderX"`) deleteUI ClusterSliderX;
+	if (`attrFieldSliderGrp -ex "ClusterSliderY"`) deleteUI ClusterSliderY;
+	if (`attrFieldSliderGrp -ex "ClusterSliderZ"`) deleteUI ClusterSliderZ;
+	// Create new ones
+	int $reset; int $min; int $max;	
+	if ($transform!="scale") { $reset=0; } else { $reset=1; } // Set Reset Value
+	if ($transform!="rotate") { $min="-10"; $max="10";  } 	// Set Min Max value
+		else { $min="-180"; $max="180";  }			
+	string $selItem[]=`textScrollList -q -si jointScrollList`;
+	if (size($selItem)==0) return;
+	string $clusterHandle=`cluster -q -weightedNode $selItem[0]`;
+	Skinny_createClusterSlider ("X", $min, $max, {15,48,225},
+		($clusterHandle+"."+$transform+"X") , "ClusterSliderX", $reset);
+	Skinny_createClusterSlider ("Y",  $min, $max, {15,48,225},
+		($clusterHandle+"."+$transform+"Y") , "ClusterSliderY", $reset);	
+	Skinny_createClusterSlider ("Z",  $min, $max, {15,48,225},
+		($clusterHandle+"."+$transform+"Z") , "ClusterSliderZ", $reset);
+	// Create Reset All button.
+	if (`rowColumnLayout -q -exists skinnyClusterResetColumn`) deleteUI "skinnyClusterResetColumn";
+	rowColumnLayout -parent "skinnyClustercolumn" -numberOfRows 1 -rowHeight 1 22 "skinnyClusterResetColumn";
+		button -bgc 0.756 0.857 0.955 -w 240 -l "Reset Selected" -c ("Skinny_ClusterTranformReset Select") -ann "Reset Selected Cluster";
+		button -bgc 0.636 0.817 0.915 -w 50 -l "All" -c ("Skinny_ClusterTranformReset All") -ann "Reset All Clusters";
+		
+	columnLayout -e -m 1 skinnyJNTRotMaincolumn;
+}
+// End Skinny_ClusterTranformProc	
+
+	
+//-------------------
+// Skinny UI switcher between Skin / Cluster
+// Change Skinny UI to current Mode
+//-------------------
+global proc Skinny_UISwitcher(string $mode) {	
+	
+// Global string of current contextTool in Skinny.
+// Skin = artAttrSkinContext , Cluster = artAttrContext.
+global string $Skinny_CurrentCtx;
+
+if ($mode=="cluster")
+{
+	// CurrentCtx
+	$Skinny_CurrentCtx = "artAttrContext";
+	
+	// Call updateSetsScrollList
+	Skinny_updateSetsScrollList;
+	
+	// Create SkinnyClusterSets Node
+	if (!`objExists "SkinnyClusterSets"`)
+		{
+			string $lsSel[]=`ls -sl`;
+			createNode objectSet -n "SkinnyClusterSets";
+			select $lsSel;
+		}
+	
+	// MenuBar
+		int $SetToolStatus=`menuItem -q -cb Skinny_SetsTool`;
+	menu -e -deleteAllItems -l "Cluster Sets" SkinToolPreset;		
+		menuItem -p "SkinToolPreset" -cb $SetToolStatus -label "Sets Tool" -c ( "Skinny_SetsTool" ) Skinny_SetsTool;
+		menuItem -p "SkinToolPreset" -d 1;
+		menuItem -p "SkinToolPreset" -cb 1 -label "All Clusters" -c ( "AS_SkinnyFullSet" ) Skinny_FullSet;
+	Skinny_findSets;	
+	menu -e -vis 0 -en 0 SkinToolOrder;
+	
+	
+	// ScrollList
+	textScrollList -e -removeAll jointScrollList;
+	textScrollList -e -allowMultiSelection 1 -dcc ( "" ) jointScrollList;
+	// PopupMenu for Clusters Create
+	popupMenu -e -dai jointScrollListPopup;
+		menuItem -p jointScrollListPopup -l "Edit Membership" -c ( "Skinny_clusterEditMembers" );
+	
+	// Lock & unLock Weight buttons:
+	rowColumnLayout -e -m 0 Skinny_LockweightColumn;
+	rowColumnLayout -e -m 0 Skinny_unLockweightColumn;
+	if (!`button -exists Skinny_editMembership`)
+		button -bgc 0.756 0.857 0.955 -parent LockUnlockColumn -h 20 -label "Edit Membership" 
+				-c ( "Skinny_clusterEditMembers" ) Skinny_editMembership;
+	
+	button -e -en 1 -m 1 Skinny_editMembership;	
+	
+	// Influnce Frame
+	frameLayout -e -m 0 skinnyInfluenceFrame;
+	
+	// UI Buttons	
+	columnLayout -e -enable 1 LockUnlockColumn ;
+	
+	// Joint Rotation / Cluster Translation
+	frameLayout -e -label "Cluster Transform" skinnyJNTRotFrame;		
+	columnLayout -e -m 0  skinnyJNTRotcolumn;
+	if (!`columnLayout -exists skinnyClustercolumn`) {
+		columnLayout -parent "skinnyJNTRotMaincolumn" -adj 1 -rs 1 skinnyClustercolumn;
+		// clusters transformation radioButton
+		radioButtonGrp -label "" 
+				    -numberOfRadioButtons 3
+				    -label1 "Translate"
+				    -label2 "Rotate"
+				    -label3 "Scale"	
+					-on1 ("Skinny_ClusterTranformProc translate")
+					-on2 ("Skinny_ClusterTranformProc rotate")
+					-on3 ("Skinny_ClusterTranformProc scale")
+					-cw 1 10   -cw 2 80
+				    -cw 3 70  -cw 4 70
+				    -select 1 skinnyClusterTransRadio;		
+		separator -h 2 -w 10 -style single -horizontal on -bgc 0.4 0.7 1;
+		// Delete existsing Sliders
+		if (`attrFieldSliderGrp -ex "ClusterSliderX"`) deleteUI ClusterSliderX;
+		if (`attrFieldSliderGrp -ex "ClusterSliderY"`) deleteUI ClusterSliderY;
+		if (`attrFieldSliderGrp -ex "ClusterSliderZ"`) deleteUI ClusterSliderZ;
+		} else {
+			columnLayout -e -m 1 skinnyClustercolumn;
+		}// End of cluster coulmn building
+		
+	// Util Frame
+		formLayout -e -m 0 skinnyUtilForm; // Disable Skin Util FormLayout
+		if (!`rowColumnLayout -ex skinnyClusterUtilColumn`) {
+		rowColumnLayout -parent skinnyUtilCoulmn -cw 2 33 -nc 2 skinnyClusterUtilColumn;
+			//symbolButton -image "AS_SkinnyPurne.XPM" -c ("skinny_pruneCluster") -ann "Prune members ( vertex, cv's ) that have zero weight. from all related clusters" PurneClusterWeight;
+			button -l "Prune Weight" -c ("skinny_pruneCluster") -ann "Prune members ( vertex, cv's ) that have zero weight. from all related clusters" PurneClusterWeight;
+			floatField -v 0.01 -minValue 0.001 -maxValue 1 -precision 2 -step .001 PurneClusterWeightField;
+		
+		//button  -enable 0 -l "Purne Cluster Memebers" 
+		//			-c ("string $SelObj[1]=`ls -sl -hd 1`; cluster -e -prune $SelObj[0];");
+		} else { 
+			rowColumnLayout -e -m 1 skinnyClusterUtilColumn;
+		}				
+
+	// Update ScrollList
+	Skinny_UpdateCluster;
+	// Update ScriptJob
+	Skinny_ScriptJob;
+	// Update Skinny UI
+	Skinny_QueryUI;	
+}
+	
+if ($mode=="skin")
+{	
+	// CurrentCtx
+	$Skinny_CurrentCtx = "artAttrSkinContext";
+	
+	// Call updateSetsScrollList
+	Skinny_updateSetsScrollList;
+	
+	// Sets menuBar
+	int $SetToolStatus=`menuItem -q -cb Skinny_SetsTool`;
+	menu -e -dai -l "Skin Sets" SkinToolPreset;
+		menuItem -p "SkinToolPreset" -cb $SetToolStatus -label "Sets Tool" -c ( "Skinny_SetsTool" ) Skinny_SetsTool;
+		menuItem -p "SkinToolPreset" -d 1;
+		menuItem -p "SkinToolPreset" -cb 1 -label "All Bind Set" -c ( "AS_SkinnyFullSet" ) Skinny_FullSet;
+	Skinny_findSets;
+	menu -e -vis 1 -en 1 SkinToolOrder;
+	
+	// ScrollList
+	textScrollList -e -removeAll jointScrollList; // Clear before switching
+	textScrollList -e -allowMultiSelection 1
+		-dcc ( "Skinny_Function DubbleClickHold" ) "jointScrollList";	
+	
+	// scrollList PopupMenu create again
+		menuItem -p jointScrollListPopup -l "Lock Selected" -c ( "AS_SkinnyLockFunction Selected 1" );
+		menuItem -p jointScrollListPopup -l "UnLock Selected" -c ( "AS_SkinnyLockFunction Selected 0" );
+		menuItem -p jointScrollListPopup -d 1;
+		menuItem -p jointScrollListPopup -l "Lock All" -c ( "AS_SkinnyLockFunction All 1" );
+		menuItem -p jointScrollListPopup -l "UnLock All" -c ( "AS_SkinnyLockFunction All 0" );
+		menuItem -p jointScrollListPopup -d 1;
+		//menuItem -p jointScrollListPopup -l "Set Selected" -c ( "AS_SkinnySetsMakerUI" );
+	
+	// Lock & unLock Weight buttons:
+	rowColumnLayout -e -m 1 Skinny_LockweightColumn;
+	rowColumnLayout -e -m 1 Skinny_unLockweightColumn;
+	button -e -m 0 Skinny_editMembership;	
+	
+	// Influnce Frame
+	frameLayout -e -m 1 skinnyInfluenceFrame;
+	
+	// UI Buttons	
+	columnLayout -e -enable 1 LockUnlockColumn;
+	
+	// Joint Rotation / Cluster Translation
+	frameLayout -e -label "Joint Rotate     " skinnyJNTRotFrame;
+	columnLayout -e -m 1  skinnyJNTRotcolumn;
+	columnLayout-e -m 0 skinnyClustercolumn;
+	
+	// Util Frame
+		rowColumnLayout -e -m 0 skinnyClusterUtilColumn;
+		formLayout -e -m 1 skinnyUtilForm;
+	
+		// Update ScrollList
+		Skinny_UpdateSkin ByName 0;
+		// Update ScriptJob
+		Skinny_ScriptJob;
+		// Update Skinny UI
+		Skinny_QueryUI;		
+}
+}
+// End ScrollListClusterMode
+	
+	
+//------------------	
+// Update Skinny ScrollList Clusters
+// 	Update ScrollList with Cluster according to selected Sets
+//	And if no Set active, show all available cluster
+//-------------------
+global proc Skinny_UpdateCluster() {
+
+// Active Sets collection:
+	// Find Active Sets, ask if active.
+	//	If one or more active, use them.
+	string $ClusterSets[]=`listAttr -ud "SkinnyClusterSets"`;
+	string $SetCollector[];
+	for ( $SetFound in $ClusterSets) {
+		if (`menuItem -q -cb ("Skinny_"+$SetFound) `) {
+			string $tempString=`addAttr -q -enumName  ("SkinnyClusterSets."+$SetFound)`;
+			string $SetMembers[];
+			tokenize $tempString ":" $SetMembers;		
+			int $SetSize = size($SetMembers);
+			appendStringArray ( $SetCollector, $SetMembers, $SetSize );
+			menuItem -e -cb 0 Skinny_FullSet;
+		}
+	}
+	// Remove Duplicate cluster from list.
+	$SetCollector=stringArrayRemoveDuplicates($SetCollector);
+
+
+// No Set Active:
+	// if no set is active, get all the cluster ralted to the object.	
+	// findRelatedCluster to update jointScrollList
+	if (size($SetCollector)==0)
+	{
+		menuItem -e -cb 1 Skinny_FullSet; // turn on All clusters menuItem
+		string $selObj[]=`ls -sl`;
+		if (size($selObj)==0) return;	// if nothing selected return;
+		$SetCollector=`findRelatedClusters $selObj[0]`;
+		if (size($SetCollector)==0) return;	// if no cluster found return;
+	} 
+	
+	// switch to Cluster Ctx
+	if ( `currentCtx` != "artAttrContext" ) {
+		artAttrToolScript 4 "cluster";
+		artAttrInitPaintableAttr;;
+	}
+
+// TextScrollList Update
+	// Add cluster in to jointScrollList;
+	textScrollList -e -removeAll jointScrollList; // Clear before update
+	for ( $cluster in $SetCollector)
+		textScrollList -e -append $cluster jointScrollList;	
+}
+// End SkinnyGoClusterMode
+	
+
+
+
+/// ADD MAYA SMOOTH SKIN MENU
+proc AddSmoothSkinMenu() {
+	menu -l "Smooth Skin" -parent skinToolmenuBar -to true -aob true;		
+	    menuItem -l "Add Influence"	-annotation "Add Influence: Select surface(s) first and then the influence transform" -c "AddInfluence";
+	    menuItem -optionBox true -annotation "Add Influence Option Box"	-l "Add Influence Option Box" -c "AddInfluenceOptions";
+		menuItem -l "Remove Influence"	-annotation "Remove Influence: Select surface(s) first and then the influence transform" -c "RemoveInfluence";
+		menuItem -l "Set Max Influences..."	-annotation "Set Max Influences: Display dialog to set max influences" -c "SetMaxInfluences";
+		menuItem -divider true;
+		menuItem -l "Mirror Skin Weights" -annotation "Mirror Skin Weights: Select either a single skin or the source and the destination skin."  -c "MirrorSkinWeights";
+	    menuItem -optionBox true -annotation "Mirror Skin Weights Option Box" -l "Mirror Skin Weights Option Box"	-c "MirrorSkinWeightsOptions";
+		menuItem -l "Copy Skin Weights"	-annotation "Copy Skin Weights: Select the source surface and the destination surface" -c "CopySkinWeights";
+		menuItem -l "Reset Weights to Default" -annotation "Reset Weights to Default: Select the surface(s) or component(s)" -c "ResetWeightsToDefault";
+		menuItem -l "Prune Small Weights" -annotation "Prune Small Weights: Select the surface(s) or component(s)" -c "PruneSmallWeights"; 
+	    menuItem -optionBox true -annotation "Prune Small Weights Option Box" -l "Prune Small Weights Option Box" -c "PruneSmallWeightsOptions";
+		menuItem -l "Remove Unused Influences" -annotation "Remove Unused Influences: Select the skin and unused joints and influences will be disconnected to improve performance." -c "removeUnusedInfluences"; 
+		menuItem -divider true;
+		menuItem -l "Disable Weight Normalization"	-annotation "Disable Weight Normalization: Select the surface(s)" -c "doNormalizeWeightsArgList 1 {\"1\"}";
+		menuItem -l "Enable Weight Normalization" -annotation "Enable Weight Normalization: Select the surface(s)" -c "doNormalizeWeightsArgList 1 {\"2\"}";
+		menuItem -l "Normalize Weights" -annotation "Normalize Weights: Select the surface(s) or component(s)" -c "doNormalizeWeightsArgList 1 {\"3\"}";
+}//END Proc
+
+
+/// REMOVE INFLUENCE FEATURE Version 1.00
+    
+ global proc Skinny_createSet()
+    {
+    	string $SelObj[]=`ls -sl`;
+    	for ($item in $SelObj) {
+        	$getSelectedSkinCluster= `findRelatedSkinCluster $item`;
+        	if ($getSelectedSkinCluster!="") {
+print "debug2";
+            	$jointsInSkinCluster=`skinCluster -q -inf $getSelectedSkinCluster`;    	
+            	if(`objExists "SkinnySets"`) {
+            	    sets -cl "SkinnySets";
+            	    sets -add "SkinnySets" $jointsInSkinCluster;
+            	    //print ("Skinny Message: "+$item + " Skinny FullSet Updated \n"); 
+            	    } else {
+            	        sets -n "SkinnySets" $jointsInSkinCluster;            	        
+            	    }      	
+    	}   } 	
+    }//End Proc
+    
+    // Find Joints with no Weight
+    proc string[] FindNoWeight(string $SelObj){          	
+    	// get SkinCluster Name & all joints in skinCluster
+    	string $getSelectedSkinCluster= `findRelatedSkinCluster $SelObj`;
+		if ($getSelectedSkinCluster=="") return {""};
+    	string $jointsInSkinCluster[]=`skinCluster -q -inf $getSelectedSkinCluster`;
+    	// get all the joints with WEIGHTS & Substract the unused joints
+    	string $jointsWithWeight[]=`skinCluster -q -wi $getSelectedSkinCluster`;    	
+		$jointsWithNoWeight=stringArrayRemove($jointsWithWeight,$jointsInSkinCluster);
+		return $jointsWithNoWeight;
+    }//End Proc
+    
+    
+    // Add muilti influences to object
+     global proc Skinny_addInflunce() {
+        string $listSelected[]=`ls -sl`;
+        string $Joints[];
+        string $SkinObj[];
+        string $SkinCluster;
+        for ($item in $listSelected) {
+            if (`objectType $item`=="joint")
+                    Skinny_AppendStringtoArry $Joints $item;
+            else
+               // If item isn't joint type, ask if tansfrom, and if so ask if he has skinCluster.
+               if (`objectType $item`=="transform") {
+                    $SkinCluster=`findRelatedSkinCluster $item`;
+                    if ($SkinCluster!="")
+                        Skinny_AppendStringtoArry $SkinObj $item;
+               }
+        }
+        // Add all selected joints, to all selected SkinObj
+        for ($obj in $SkinObj) {
+            string $SkinCluster=`findRelatedSkinCluster $obj`;
+print "debug4";
+			string $existingInfluences[] = `skinCluster -q -inf $SkinCluster`;
+            for ($joint in $Joints) {
+				// Check if joints isn't already a member
+				int $alreadyConnected;
+				for ($ei in $existingInfluences)
+					if ($ei == $joint) {
+						$alreadyConnected=1;
+						print ("\nJoint already a member\n");
+					}
+				if  (!$alreadyConnected) {
+					skinCluster -e  -dr 8 -lw true -wt 0 -ai $joint $SkinCluster;				
+				    print ("\nSkinny Add influence " + $joint + " to " + $obj + "\n");
+				}								
+			}
+		}	                
+    }//END Proc          
+                
+                
+      
+    // Remove selected joints with in JointScrollList from SkinCluster
+    global proc Skinny_removeInflunce(){
+        // Get Selected joints from ScrollList
+        string $SelItemsName[]=`textScrollList -q -si jointScrollList`;
+        // Find Selected Obj & SkinCluster
+        string $SelObj[]=`ls -sl`;
+        string $buffer;
+        if (!size($SelObj)) {
+            print "Skinny Message: Nothing Is Selected\n";
+            return;
+            }
+        for ($item in $SelObj){
+            string $SkinCluster= `findRelatedSkinCluster $item`;
+            for ($joint in $SelItemsName) {
+                $buffer=`AS_SkinnyTokenize $joint`;       
+    	        skinCluster -e  -ri $buffer $SkinCluster;
+    	        print ("Skinny Message: "+$buffer+" removed\n");
+            }
+        }
+        // Deselect removed joints
+        textScrollList -e -da "jointScrollList";
+        // Update the ScrollList
+	    Skinny_UpdateSkin "ByName" "1";
+    }//End Proc
+    
+
+/// SMOOTH MESH FEATURE Version 1.00	///
+
+//------------------------------
+// Check if object can be smooth. only if it's connected
+//	To Skincluster or cluster, And it's shape is mesh kind.
+//------------------------------
+proc int CheckIfSmooth(string $SelObj){
+	int $IsSmooth=0;
+	string $ObjShapes[]=`listRelatives -shapes $SelObj`;
+	// For every shape found, check if it's Mesh & it's connected to Skincluster.inMesh.
+	for ($shape in $ObjShapes){
+		if (`nodeType $shape`=="mesh"){				
+			string $InMeshNode[1]=`listConnections -d off -s on ($shape+".inMesh")`;
+			if ($InMeshNode[0]!="")
+				if( `nodeType $InMeshNode[0]`=="skinCluster" || `nodeType $InMeshNode[0]`=="cluster")
+				{
+				$IsSmooth="1";					
+				break;
+				}
+		}
+	}
+	return $IsSmooth;
+}// End Proc      
+
+// Smooth Selected object and connect the smooth divisions to display layer for control
+proc SmoothSelected(string $SelObj) {
+	// Check If Obj can be Smooth
+	if (`CheckIfSmooth $SelObj`){
+		//string $PolyNode[0]=`polySmooth -mth 0 -dv 1 -c 1 -kb 1 -ksb 1 -khe 0 -kt 1 -kmb 1 -suv 0 -sl 1 -dpe 1 -ps 0.1 -ro 1 -ch 1 $SelObj`;
+		string $PolyNode[0]=`polySmooth -mth 0 -dv 1 $SelObj`;
+		$PolyNode[0]=`rename $PolyNode[0] ("SkinnySmooth_"+$SelObj)`;
+		// Add menuitem to toggel on/off into MeshSmooth Menu
+		menuItem -cb 1 -c ("Skinny_LayerSmoothToggel") -label $SelObj -p SkinnyUI|skinToolmenuBar|SkinnyMeshSmooth ("SkinnySmooth_"+$SelObj);
+		// Bug Fix: after smooth the mesh color change... so a select again, and it's fix:)
+		select $SelObj;
+		print ("Skinny Message: MeshSmooth Applied on "+$SelObj+"\n");			
+	}	
+}//End Proc  
+// Remove SmoothNode & DisplayNode
+proc RemoveSmooth(string $SelObj) {
+	string $ObjShapes[]=`listRelatives -shapes $SelObj`;
+	for ($shape in $ObjShapes){
+		// Check if shapes are Skinny related
+		if (`nodeType $shape`=="mesh" && `CheckIfSmooth $SelObj`==0){
+			// Find Connected Node to the Obj
+			string $InMeshNode[1]=`listConnections -d off -s on ($shape+".inMesh")`;
+			if ($InMeshNode[0]!=""){
+				if (`nodeType $InMeshNode[0]`=="polySmoothFace"){			
+					//string $DisplayNode[1]=`listConnections -d off -s on ($InMeshNode[0]+".divisions")`;
+					// Check if they Skinny related and del them.
+					if (`gmatch $InMeshNode[0] "SkinnySmooth*"`)
+						delete $InMeshNode[0];
+					// delete Smooth MenuItem from Skinny UI
+					deleteUI -menuItem ("SkinnyUI|skinToolmenuBar|SkinnyMeshSmooth|"+"SkinnySmooth_"+$SelObj);
+					// Bug Fix: after smooth the mesh color change... so a select again, and it's fix:)
+					select $SelObj;
+					print ("Skinny Message: MeshSmooth Removed From "+$SelObj+"\n");
+					break;
+				}
+			}
+		}			
+	}
+}//End Proc
+
+// Find & Add SmoothObject to MeshSmooth menuBar
+proc FindSmoothMesh() {
+	// Find Skinny displayLayers
+	string $SkinnySets[]=`ls -type "polySmoothFace" "SkinnySmooth_*"`;
+	// Add Found displayLayers to SkinnyUI|skinToolmenuBar|SkinnyMeshSmooth
+	for ( $SetFound in $SkinnySets) {
+		string $newMenuName=`substitute "SkinnySmooth_" $SetFound ""`;
+		// query smooth division to match Ui to divisions
+		int $state=`getAttr ($SetFound+".divisions")`;			
+		menuItem -cb $state -c ("Skinny_LayerSmoothToggel") -label $newMenuName -p SkinnyUI|skinToolmenuBar|SkinnyMeshSmooth ("SkinnySmooth_"+$newMenuName);
+	}  
+}//End Proc
+
+
+//----------------------------
+// Calling proc to make/remove Skinny smooth
+//----------------------------
+global proc Skinny_SmoothMesh(string $function) {
+	string $ListSelected[]=`ls -sl`;
+	if (!size($ListSelected)){
+		print "Skinny Message: Nothing Is Selected\n";
+		return;}
+	if ($function=="make"){	 
+		for ($SelObj in $ListSelected)
+			SmoothSelected $SelObj;	        
+	} else {
+		for ($SelObj in $ListSelected)
+			RemoveSmooth $SelObj;	    
+	}
+}//End Proc
+
+	
+	
+//----------------------
+// Toggel layerVis on/off
+//----------------------
+global proc Skinny_LayerSmoothToggel()
+{        
+	// Get Menu item stats
+	string $MenuList[]=`menu -q -ia SkinnyUI|skinToolmenuBar|SkinnyMeshSmooth`;
+	for ($menuItem in $MenuList)
+	{		
+		if(`gmatch $menuItem "SkinnySmooth_*"`==1)
+		{
+			int $Value=`menuItem -q -cb $menuItem`;
+			setAttr ($menuItem+".divisions") $Value;				
+		}   
+	}
+	// Bug Fix: when toggel smooth, current painting obj become opacity.
+	// Fix this bug with simply selecting joint to paint.
+	Skinny_Function paint;
+}
+//End Skinny_LayerSmoothToggel
+    
+
+
+
+//--------------------------------
+//	ScriptJob manger. Check if ScriptJob should be active.
+//	then check if should be in Skin / Cluster mode.
+//--------------------------------		
+global proc Skinny_ScriptJob(){
+	global int $SkinnyScriptJob;
+	
+	// Check if should be active. if not kill.
+	if (!`checkBoxGrp -q -v1 ScriptJobBox`) {
+		if (`scriptJob -exists $SkinnyScriptJob` && $SkinnyScriptJob!=0 )
+				scriptJob -kill $SkinnyScriptJob -force;		
+		global string $gSelect; setToolTo $gSelect;
+		print "\nhere1";
+		return;
+	}
+	
+	// Check if in Skin mode.
+	if (`radioButton -q -sl SkinnyModeSkin`) {
+		if (`scriptJob -exists $SkinnyScriptJob` && $SkinnyScriptJob!=0 ) 
+				scriptJob -kill $SkinnyScriptJob -force;
+		Skinny_UpdateSkin ByName 0;
+		$SkinnyScriptJob=`scriptJob -p SkinnyUI -e "SelectionChanged" "Skinny_UpdateSkin ByName 1"`;			
+		return;		
+	}
+	
+	// Check if in Cluster Mode
+	if (`radioButton -q -sl SkinnyModeCluster`) {
+		if (`scriptJob -exists $SkinnyScriptJob` && $SkinnyScriptJob!=0 ) 
+				scriptJob -kill $SkinnyScriptJob -force;
+		Skinny_UpdateCluster;
+		$SkinnyScriptJob=`scriptJob -p SkinnyUI -e "SelectionChanged" "Skinny_UpdateCluster"`;			
+	}
+	
+}
+// END Skinny_ScriptJob //
+
+
+
+
+
+///////////////////////////////////////
+/// Query From Paint Weight Tool: //////
+///  Value, Display, Brush, Statlus /////
+///   Operation(replace,add,smooth) /////
+///	And Applying to SkinTool UI  /////
+///////////////////////////////////////////
+global proc Skinny_QueryUI() {
+
+	// CurrentCtx
+	global string $Skinny_CurrentCtx;
+
+	// 	artAttrSkinContext & artAttrContext need to be open first
+	//	before Skinny can query them. Open and close them to fix that.
+	if (`artAttrCtx -ex artAttrSkinContext`==0 ) { // Skin Context		
+	   ArtPaintSkinWeightsTool;
+	   SelectMaskToolMarkingMenu;
+	   SelectMaskToolMarkingMenuPopDown;
+	   //artAttrCtx artAttrSkinContext;
+	}
+	if (`artAttrCtx -ex artAttrContext`==0 ) { // Cluster Context
+		artAttrCtx artAttrContext;
+	   //ArtPaintSkinWeightsTool;
+	   //SelectMaskToolMarkingMenu;
+	   //SelectMaskToolMarkingMenuPopDown;
+	}
+	
+	
+// Query-Paint Value
+	floatSliderGrp -e -v `artAttrCtx -q -value $Skinny_CurrentCtx` ValSlider;	
+// Query-Display Value
+	floatSliderGrp -e -v `artAttrCtx -q -colorrangeupper $Skinny_CurrentCtx` DisSlider;
+// Query-Staylus On/Off
+	checkBoxGrp -e -v1 `artAttrCtx -q -usepressure $Skinny_CurrentCtx` statlusBox;
+// Query-Paint Operation
+	radioButton -e -sl ("Operation"+ `artAttrCtx -q -sao $Skinny_CurrentCtx`);
+	 
+// Query-Brush type
+	if (`artAttrCtx -q -stampProfile $Skinny_CurrentCtx`=="gaussian") {
+		iconTextRadioButton -e -sl ButtonBrush1;
+		} else if (`artAttrCtx -q -stampProfile $Skinny_CurrentCtx`=="poly") {
+		iconTextRadioButton -e -sl ButtonBrush2;
+		} else if (`artAttrCtx -q -stampProfile $Skinny_CurrentCtx`=="solid") {
+		iconTextRadioButton -e -sl ButtonBrush3;
+	}
+// Query Color FeedBack & WireFrame
+    checkBoxGrp -e -v1 `artAttrCtx -q -showactive $Skinny_CurrentCtx` SkinnyWireFrame;
+    checkBoxGrp -e -v1 `artAttrCtx -q -colorfeedback $Skinny_CurrentCtx` SkinnyColorFeed;
+} // Query From Paint Weight Tool END//
+
+
+ 
+
+
+
+
+
+/////////////////////////////////
+//// SkinToolHELP Windows   ////
+/////////////////////////////// 
+
+global proc AS_SkinnyHelp ( int $function ) {
+if (`window -ex SkinToolHelpUI`)
+	{
+	deleteUI SkinToolHelpUI;
+	}
+window -tlb 1 -title "Skinny helper" SkinToolHelpUI;
+formLayout SkinToolHelp;
+string $tabs = `tabLayout -innerMarginWidth 5 -innerMarginHeight 5 SkinToolHelpTab `;
+
+// FormLayout Adjustment Start
+	formLayout -edit
+	-attachForm $tabs "top"    0
+		-attachForm $tabs "left"   0
+		-attachForm $tabs "bottom" 0
+		-attachForm $tabs "right"  0
+		SkinToolHelp;
+
+		string $HelpTab = `columnLayout -columnAlign "left"`;
+			text  -w 340 -fn "tinyBoldLabelFont" ("Skinny version 3.8\n" + "  Asi Sudai   asi@asimation.com www.reel.asimation.com\n");
+			
+			text  -h 15 "Skinny Features:\n";
+			
+			text  -h 15 "   Paint Tools\n";
+			text  -h 15 "      All the basic Paint tools from Maya paint weight tool.";
+			text  -h 15 "      Add, Replace, Smooth, Scale...";
+			text  -h 15 "      Val Slider is value of the brush";
+			text  -h 15 "      Dis Slider is the max color feedback";
+			text  -h 15 " ";
+			
+			text  -h 15 "   Joint Rotate\n";
+			text  -h 15 "      Rotate Joints while skinning.\n";
+			text  -h 15 "      select joints from ScrollList and Rotate them.\n";
+			text  -h 15 "      can work on muiltiply joints. if joint rotate is already connect\n";
+			text  -h 15 "      it won't be rotated.\n";
+			text  -h 15 " ";
+			
+			text  -h 15 "   Preset\n";
+			text  -h 15 "      The reason i made Skinny, Maya UI joint List uncomfortable.\n";
+			text  -h 15 "      make set for Parts you want to paint, and hide the rest.\n";
+			text  -h 15 "      See & Paint only the Joints you need, joints that you don't see\n";
+			text  -h 15 "      in ScrollList are automatic hold/lock by skinny\n";
+			text  -h 15 "      So they won't be painted by mistake.\n";
+			text  -h 15 " ";
+
+			text  -h 15 "   Joint Order\n";
+			text  -h 27 "      `Alphabetical`, `Graph Order` And `By Hold`.\n";
+
+			text  -h 15 "   Utility\n";			
+			text  -h 15 "      Mirror Weight, simple mirror X+ to X- and backwards.\n";
+			text  -h 15 "                   Right Click open Maya Mirror Options.";			
+			text  -h 15 "      Purne Weight, with Purne Value.";
+			
+			text  -h 15 "   Influence\n";			
+			text  -h 15 "      -Show Zero Weights, show in Skinny ScrollList only joints.\n";
+			text  -h 20 "       that have 0 weight on current painted object.\n";
+			text  -h 15 "      -Remove influence. select joints in Skinny and remove them from.\n";
+			text  -h 20 "       from current painted object.\n";
+			text  -h 15 "      -Add influence. select joints to add to selected objects with skin.\n";
+			text  -h 15 "       the order of selection ( joints & skinObj ) isn't important.\n";
+
+			setParent ..;
+
+		string $BugsTab = `columnLayout -columnAlign "left"`;
+			text  -h 15 "Bugs And Other `Features` \n";
+
+			text  -h 15 "   - Skinny won't update selection if select paint joint\n";
+			text  -h 15 "     from outside Skinny UI .\n";			
+			text  -h 15 "   - when Removing influence,Skinny show warning messages\n";
+			text  -h 15 "     It's ok,  Ignore it... \n";			
+			text  -h 15 " ";
+			text  -h 15 " If you find a Bug or even worse, lot's of Bugs! Email me \n";
+			text  -h 15 -w 300 -fn "tinyBoldLabelFont" "Asi Sudai, asi@asimation.com";
+			setParent ..;
+
+		tabLayout -edit
+			-tabLabel $HelpTab "help..." -tabLabel $BugsTab "known Bugs"
+			$tabs;
+	// FormLayout Adjustment END
+	
+//Query Witch tab should show. If 1 "known Bugs" <-else-> "help..."
+if ( $function==1 ) {
+tabLayout -e -selectTabIndex 2 SkinToolHelpTab;
+}
+	
+window -e -w 350 -h 620 -s 0 SkinToolHelpUI;
+showWindow;
+}// END
+
+//////////////////////////////////
+//// SkinToolHELP Windows END ///
+////////////////////////////////
+
+
+
+
+/////////////////////////////////
+//// SkinTool Update Proc   ////
+///////////////////////////////
+global proc Skinny_UpdateSkin ( string $ByName, int $createFullSet ) {
+
+// If selected Obj have SkinCluster 
+// Then open Paint Skin Weights
+// If nothing is selected skip Updating
+
+string $SelObj[1]= `ls -hd 1 -sl`;
+if (size($SelObj)==1) {
+	// Note.Error msg accurse if Nothing selected.
+	string $SClusterName= `findRelatedSkinCluster $SelObj[0]`;
+	if ( $SClusterName == ""){
+		string $Shape[] = `listRelatives -ni -p $SelObj[0]`;
+		$SClusterName= `findRelatedSkinCluster $Shape[0]`;
+		}
+	if ( `currentCtx` != "artAttrSkinContext" ) {
+		if ( $SClusterName != "") {
+			ArtPaintSkinWeightsTool;
+		} else {
+		    textScrollList -e -removeAll jointScrollList;
+			print "Skinny Message: works only on Skinned Objects\n";
+			return;
+			}
+	}
+	// Create Skinny Full Set for selected Objs.
+	if ($createFullSet)
+        Skinny_createSet;
+	// Get ScrollList Items from Proc AS_SkinnyScrollListItems.	
+	string $SortedScrollListItems[] = `AS_SkinnyScrollListItems`;
+
+	// $ByName ask if Update ScrollList items should be kept by-
+	// Name or line Number
+	string $SelItemsName[];
+	int $SelItemsNumber[];
+	if ( $ByName=="ByName" ) {
+		$SelItemsName=`textScrollList -q -si jointScrollList`;
+		} else {
+		$SelItemsNumber=`textScrollList -q -sii jointScrollList`;
+		}
+
+	// Clear ScrollList before updateing ScrollList
+	textScrollList -e -removeAll jointScrollList;
+
+
+	// Add Items to jointScrollList.
+	// If Hold, Add Prifx "[H]   " to Hold Joints
+	for ( $ScrollListItem in $SortedScrollListItems ) {
+		if ( `getAttr ( $ScrollListItem + ".liw" )` == 1 ) {
+			string $ScrollListHoldItem = "[H]   " + $ScrollListItem;
+			textScrollList -e -append $ScrollListHoldItem jointScrollList;
+			} else {
+			string $ScrollListCleanItem= "       " + $ScrollListItem;
+			textScrollList -e -append $ScrollListCleanItem jointScrollList;
+			} 
+		}
+
+	// Get back Selected Items In ScrollList.
+	if ( $ByName=="ByName" ) {
+
+		//string $itemName;
+		for ($itemName in $SelItemsName) {
+			textScrollList -e -si $itemName jointScrollList;
+			}
+		} else {
+		//int $itemNum;
+		for ($itemNum in $SelItemsNumber) {
+			textScrollList -e -sii $itemNum jointScrollList;
+			}
+		}
+		
+	// Lock Joints that are in SkinCluster and NOT in ScrollList right now.
+	AS_SkinnyHoldPresets;
+}// End of If nothing selected
+	
+}// END
+/////////////////////////////////////
+//// SkinTool Update Proc END   ////
+///////////////////////////////////
+
+
+///////////////////
+// Tokenize Proc //
+///////////////////
+global proc string AS_SkinnyTokenize ( string $TokenizeString) { 
+
+string $buffer[]; // Temp String
+
+int $tokens = `tokenize $TokenizeString "[]   " $buffer`;
+
+if ($tokens==1){
+	return $buffer[0];
+	} else {
+	return $buffer[1];
+	}
+}//End  Rotate Joint Proc
+
+
+
+
+/////////////////////////////////
+//// SkinTool Functions Proc////
+///////////////////////////////
+global proc Skinny_Function ( string $function ) {
+	
+	// global function to hold selected by order
+	global string $g_skinnySelOrder[];
+	
+	switch ( $function ) {
+
+
+//--------------------
+// ScrollList selection proc: Skin / Cluster mode.
+// Check whice mode is on.
+//--------------------		
+case "paint":
+	
+	// Used for Wieght Tools, transfer weight;
+	string $tempArray[] = `textScrollList -q -si jointScrollList`;
+	print $tempArray[1];
+	if(size($tempArray)==1){
+		clear $g_skinnySelOrder;
+		$g_skinnySelOrder[0] = $tempArray[0];
+	}
+		else
+			if ($g_skinnySelOrder[0] == $tempArray[0])
+				$g_skinnySelOrder[1] = $tempArray[1];
+			else
+				$g_skinnySelOrder[1] = $tempArray[0];
+
+		
+	if (!`checkBoxGrp -q -v1 ScriptJobBox`) return;
+	
+	string $scrollListItems[]= `textScrollList -q -selectItem jointScrollList`;
+	if (size($scrollListItems)==0) return;
+	if (`radioButton -q -sl SkinnyModeSkin`) // If Skin mode
+	{	
+		
+    	string $PaintSelJoint = `AS_SkinnyTokenize $scrollListItems[0]`;
+    	setSmoothSkinInfluence $PaintSelJoint; // paint joint	
+    	// Update Joint Rotation Slider to Joint Rotation
+    	float $SelJointRot[] = `getAttr ($PaintSelJoint+".rotate")`;
+    	floatSliderGrp -e -v $SelJointRot[0] SliderX;
+    	floatSliderGrp -e -v $SelJointRot[1] SliderY;
+    	floatSliderGrp -e -v $SelJointRot[2] SliderZ;
+	} 
+	
+	else  // If Cluster mode
+	{	
+	artSetToolAndSelectAttr( "artAttrCtx", ("cluster."+ $scrollListItems[0] +".weights") );
+	// Cluster transform layout
+	int $ClusterRadioButton=`radioButtonGrp -q -sl skinnyClusterTransRadio`;
+	string $transform;
+	if ($ClusterRadioButton){$transform="translate";}
+		else if ($ClusterRadioButton==2){$transform="rotate";}
+			else if ($ClusterRadioButton==3){$transform="scale";}
+	Skinny_ClusterTranformProc $transform;
+	print "\n"; // Fix maya warning for no reason. 
+	}
+	break; // case "paint" END
+
+
+case "DubbleClickHold": //ASI NOTE, an all Update isn't needed can be more simple
+string $SelJoint[]= `textScrollList -q -selectItem jointScrollList`;
+	
+	
+	string $buffer[];
+	int $tokens=`tokenize $SelJoint[0] " " $buffer`;
+	if ($tokens==1){
+	setAttr ( $buffer[0] + ".liw" ) 1;
+	 } else {
+	setAttr ( $buffer[1] + ".liw" ) 0;
+	}
+	
+// update the ScrollList
+	Skinny_UpdateSkin ByNumber 0;
+	
+// Update Maya influnce list
+	artAttrSkinJointMenu("skinClusterInflList",""+ "artAttrCtx"+"");	
+	break; // case DubbleClickHold END
+
+	}
+}// Skinny_Function END
+/////////////////////////////////////
+//// SkinTool Functions Proc END////
+///////////////////////////////////
+
+
+
+
+
+//////////////////////////
+/// Weighting Proc	//
+///	Mirror, Purn	//
+/////////////////////////	
+global proc AS_SkinnyWeightFunction ( string $case, string $function ) {
+
+	//Find SkinCluster number
+		string $SelObj[1]= `ls -hd 1 -sl`;
+		string $SClusterName= `findRelatedSkinCluster $SelObj[0]`;
+
+switch ($case) { 
+
+
+case "MirorWeight":
+	if ( $function == "X" ) {
+	copySkinWeights -ss $SClusterName -ds $SClusterName -mirrorMode YZ;
+	} else {
+	copySkinWeights -ss $SClusterName -ds $SClusterName -mirrorInverse -mirrorMode YZ;
+	}
+	break;
+	
+	
+case "PurnWeight":
+	float $PurneValue = `floatField -q -v PurneWeightText`;
+	//Purn Weight
+		skinPercent -prw $PurneValue $SClusterName;
+	break;
+    }
+// Bug Fix. need to update paint weight tool to show new status
+ select `ls -sl`;
+} // END
+////////////////////////////////////
+////   Weighting Proc END    //////
+//////////////////////////////////
+
+
+
+//////////////////////////
+/// Lock & UnLock Proc //
+/////////////////////////
+global proc AS_SkinnyLockFunction ( string $AllorSel, int $setLockValue ) {
+
+switch ($AllorSel) { 
+
+	case "All": // Get All items from jointScrollList
+		string $ItemsInJointScroll[] = `textScrollList -q -ai jointScrollList`;
+	break;
+
+	case "Selected": // Get Selected items from jointScrollList
+		string $ItemsInJointScroll[] = `textScrollList -q -selectItem jointScrollList`;
+	break;
+	}
+// Lock or Unlock Action
+for ( $jointScroll in $ItemsInJointScroll ) 
+	setAttr `AS_SkinnyTokenize ( $jointScroll + ".liw")` $setLockValue;
+// Update jointScrollList
+	Skinny_UpdateSkin ByNumber 0;
+// Update Maya Influnce list
+	artAttrSkinJointMenu("skinClusterInflList",""+ "artAttrCtx"+"");
+} // END
+////////////////////////////////////
+////  Lock & UnLock Proc END //////
+//////////////////////////////////
+
+
+
+
+//--------------
+// Set Finder
+//  make menuItem for the Sets Attributes in SkinnySets Node
+//--------------
+global proc Skinny_findSets()
+{
+	// Which Mode are we?
+	// 		$SkinnySet[0]= which mode are we
+	// 		$SkinnySet[1]= what action to do
+	string $SkinnySet[2];
+	if (`radioButton -q -sl SkinnyModeSkin`) // If Skin mode
+		$SkinnySet={"SkinnySets", "Skinny_UpdateSkin ByName 0"};	
+	else
+		$SkinnySet={"SkinnyClusterSets", "Skinny_UpdateCluster"};
+	
+	// Find Sets that start with "Skinny_"
+	string $SkinnySets[]=sort(`listAttr -ud $SkinnySet[0]`);
+	
+	// Add Found Sets to SkinnyUI|skinToolmenuBar|SkinToolPreset
+	for ( $SetFound in $SkinnySets)	menuItem -cb 0 -c ( $SkinnySet[1] ) -label $SetFound -p SkinnyUI|skinToolmenuBar|SkinToolPreset ("Skinny_"+$SetFound);
+}// Skinny_findSets END
+
+
+
+//-----------
+// Set Maker
+//  add Set to SkinnySets or SkinnyClusterSets.
+//  get setName and Memebers from SkinnyUI makeSet button
+//-----------
+global proc Skinny_SetMaker( string $setName, string $setMembers[])
+{
+	// Quary which Mode are we Skin or Cluster, an add
+	// Set to the right Mode. SkinnySets or SkinnyClusterSets.
+	string $SkinnySet[2];
+	if (`radioButton -q -sl SkinnyModeSkin`) // If Skin mode
+		$SkinnySet={"SkinnySets", "Skinny_UpdateSkin ByName 0"};	
+	else
+		$SkinnySet={"SkinnyClusterSets", "Skinny_UpdateCluster"};
+	
+	// selected item from scrollList need to be toknized
+	for ( $i=0 ; $i < size($setMembers) ; $i++ )
+		$setMembers[$i]=`AS_SkinnyTokenize $setMembers[$i]`;
+		
+	// we need to break the SetsMemebrs array to add ":"
+	// so later on we could use this string to add "enum" attr.
+	int $SizeMembers=`size($setMembers)`;
+	int $i=0;
+	string $tempString="";
+	do{
+		$tempString=($tempString+$setMembers[$i]+":");
+		$i++;
+	} while ($i<=$SizeMembers);
+	
+	// now we can add the members in to SkinntSets Node.
+	addAttr -ln $setName -at "enum" -en $tempString  $SkinnySet[0];
+	setAttr -k on ($SkinnySet[0]+"."+$setName);
+	
+	// Add Set menu to Skinny UI
+	if (!`menuItem -q -ex ("Skinny_"+$setName)`)
+		menuItem -cb 0 -c ( $SkinnySet[1] ) -label $setName -p SkinnyUI|skinToolmenuBar|SkinToolPreset ("Skinny_"+$setName);
+} //Skinny_SetsMaker
+
+
+
+
+//--------------------
+//	Save / Load Skinny sets into files
+//--------------------
+global proc Skinny_saveSet(){
+	fileBrowserDialog 
+		-m 1 
+		-fc "Skinny_saveSetProc"
+		-fileType "mel"		
+		-an "Save";
+}// End proc
+
+
+
+//------------
+// Update SetsTool ScrollList
+//------------
+global proc Skinny_updateSetsScrollList()
+{
+	// If set Tools isn't exists return,no error jumps.
+	if (!`textScrollList -ex skinny_SetsScrollList`) return;	
+	
+	// Switch between Modes
+	string $SkinnySet;
+	if (`radioButton -q -sl SkinnyModeSkin`) // If Skin mode
+		$SkinnySet="SkinnySets";	
+	else
+		$SkinnySet="SkinnyClusterSets";
+	
+	// Find all sets from SetsNode
+	string $SkinnySets[]=sort(`listAttr -ud $SkinnySet`);
+	
+	// Clear current items from Sets ScrollList
+	textScrollList -e -ra skinny_SetsScrollList;
+	
+	// Add current Sets
+	for ($item in $SkinnySets)
+		textScrollList -e -append $item skinny_SetsScrollList;
+
+}//Skinny_updateSetsScrollList
+
+//---------------
+// Add Remove from Set
+//---------------
+global proc Skinny_AddRemove2Set(string $whatToDo)
+{
+	// Check which mode are we Skin or Cluster
+	string $SkinnySet;
+	if (`radioButton -q -sl SkinnyModeSkin`) // If Skin mode
+		$SkinnySet="SkinnySets";	
+	else
+		$SkinnySet="SkinnyClusterSets";
+	
+		
+	// Get selected Sets
+	string $selSets[]=`textScrollList -q -si skinny_SetsScrollList`;
+	if (`size($selSets)`==0) return;
+	
+	// Get selected Items. And clear there names.
+	string $selItems[]=`textScrollList -q -si jointScrollList`;
+	for ( $i=0 ; $i<size($selItems) ; $i++ )
+			$selItems[$i] = `AS_SkinnyTokenize $selItems[$i]`;
+
+	// Start the Loop for each selected Set
+	for ($setName in $selSets)
+	{ // addAttr -q -enumName  ("SkinnySets.set1")
+		// Get selected Set members.		
+		string $tempString=`addAttr -q -enumName  ($SkinnySet+"."+$setName)`;
+		string $members[]; // the Clean members Array.
+		tokenize $tempString ":" $members;		
+		// Add
+		if ($whatToDo=="Add")
+		{		
+			for ( $i=0 ; $i<size($selItems) ; $i++ )
+			{
+				string $NewMembers[];
+				if (`stringArrayCount $selItems[$i] $members`==0)
+				{
+					$NewMembers=`Skinny_AppendStringtoArry $members $selItems[$i]`;
+					deleteAttr ($SkinnySet+"."+$setName);
+					Skinny_SetMaker ($setName, $NewMembers);
+				}
+			}		
+		} else { 
+		// Remove
+			
+		for ( $i=0 ; $i<size($selItems) ; $i++ )
+			{
+				string $removeMembers[];
+				if (`stringArrayCount $selItems[$i] $members`!=0)
+					$removeMembers=`Skinny_AppendStringtoArry $removeMembers $selItems[$i]`;
+				if ( size($removeMembers)!=size($members) )
+				{
+					string $NewMembers[]=stringArrayRemove($removeMembers, $members);
+					deleteAttr ($SkinnySet+"."+$setName);
+					if (`size($NewMembers)`!=0)					
+						Skinny_SetMaker ($setName, $NewMembers);
+					textScrollList -e -da jointScrollList;
+					textScrollList -e -da jointScrollList;
+					textScrollList -e -da jointScrollList;
+				} else {
+					deleteAttr ($SkinnySet+"."+$setName);
+					deleteUI -mi ("Skinny_"+$setName);					
+				}
+			}
+		}
+	// Update Skinny UI
+	Skinny_updateSetsScrollList;
+	if ($SkinnySet=="SkinnySets")
+		Skinny_UpdateSkin ByName 0;
+	}
+}// 
+
+
+//----------
+// Sets Tool
+//----------
+global proc Skinny_SetsTool()
+{
+if (`menuItem -q -cb "Skinny_SetsTool"`)
+{
+
+	// Hide Paint Tools UI
+	frameLayout -e -cll 1 -cl 0 -l "Set Tools" 
+			-cc "menuItem -e -cb 0 Skinny_SetsTool; Skinny_SetsTool"
+			skinnyPaintFrame;
+	
+	formLayout -e -m 0 skinnyPaintForm;	
+	
+	// Sets Tool UI creation:
+	if (!`columnLayout -ex skinnySetsTool`)
+	{
+	columnLayout -adj 1 -rs 2 -p "skinnyPaintColumn" skinnySetsTool;
+		
+		// Set Maker
+		columnLayout -rs 1 -adj 1;
+			textField -w 133 -it "- Set Name - " skinny_setName;
+			button -h 18 -l "Make Set"
+				-c "string $setName=`textField -q -tx skinny_setName`; string $setMembers[]=`textScrollList -q -si jointScrollList`; if (size($setMembers)>0) { Skinny_SetMaker ($setName, $setMembers); Skinny_updateSetsScrollList; textField -e -tx \"- Set Name - \" skinny_setName; print \"New Set Created\";	} else { warning \"Select Items to set first\"; }";
+			
+			separator -bgc 0.5 0.6 1 -h 3;
+		setParent ..;
+			
+		// Set Tools
+		textScrollList -h 180 -allowMultiSelection 1 skinny_SetsScrollList;		
+		separator -bgc 0.5 0.6 1 -h 3;
+		
+		rowColumnLayout -nc 2 -cs 2 3 -cw 1 65 -cw 2 65;
+			button -h 18 -l "Add" -ann "Add items to Set" -c ("Skinny_AddRemove2Set Add");
+			
+			button  -h 18 -l "Remove" -ann "Remove items to Set" -c ("Skinny_AddRemove2Set Remove");
+			
+			
+		setParent ..;
+		
+		rowColumnLayout -nc 2 -cs 2 1 -cw 1 65 -cw 2 65;
+			button -en 0 -h 18 -l "Save Sets" -c ("Skinny_saveSet");
+			button -en 0 -h 18 -l "Load Sets" -c ("Skinny_loadSet");
+		setParent ..;
+		
+		button -h 18 -l "Delete Set" 
+				-c "string $Sets[]=`textScrollList -q -si skinny_SetsScrollList`;	string $SkinnySet=\"SkinnySets\";if (!`radioButton -q -sl SkinnyModeSkin`) $SkinnySet=\"SkinnyClusterSets\";for ($item in $Sets) {	deleteAttr ($SkinnySet+\".\"+$item);	deleteUI -mi (\"Skinny_\"+$item); }Skinny_updateSetsScrollList; ";
+				
+	} // End of if SetsTool UI exists
+	else columnLayout -e -m 1 skinnySetsTool;
+	
+	// Call updateSetsScrollList
+	Skinny_updateSetsScrollList;
+}
+// If Sets Tool menuItem is 0
+else {
+	
+	// Hide Sets Tools UI
+	frameLayout -e -cl 0 skinnyPaintFrame;
+	frameLayout -e -l "Paint Tools"
+		-cc "menuItem -e -cb 1 Skinny_SetsTool; Skinny_SetsTool"
+		skinnyPaintFrame;
+	columnLayout -e -m 0 skinnySetsTool;
+	
+	// Show Paint Tools UI
+	formLayout -e -m 1 skinnyPaintForm;
+}
+
+}// Skinny_SetsTool
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////////
+/// Hold Joints not in ScrollList    ///
+/// When one or more Preset changes ///
+//////////////////////////////////////
+global proc AS_SkinnyHoldPresets() {
+
+// Get joints in ScrollList, DON'T hold them.
+// Hold all the other joints in SkinCluster.
+	string $ScrollListItems[] = `textScrollList -q -ai jointScrollList`;
+	for ( $i=0 ; $i<size($ScrollListItems) ; $i++ ) {
+		$ScrollListItems[$i] = `AS_SkinnyTokenize $ScrollListItems[$i]`;
+	}
+	
+// Get Joints in SkinCluster that should be Hold
+	string $SelObj[1]= `ls -hd 1 -sl`;
+	string $SClusterName= `findRelatedSkinCluster $SelObj[0]`;
+	// Fix small Error msg
+
+	if (`size($SClusterName)`>0){
+		string $NotInScrollListItems[]=`skinCluster -q -inf $SClusterName`;
+
+		// stringArrayRemove (Joints ScrollList) from (Joints in SkinCluster)
+		$NotInScrollListItems = stringArrayRemove($ScrollListItems, $NotInScrollListItems);
+
+		// Lock All the joints that aren't in ScrollListItems
+		for ( $jointScroll in $NotInScrollListItems ) {
+			setAttr (`AS_SkinnyTokenize ($jointScroll+ ".liw")`) 1;
+			}
+	}
+}// AS_SkinnyHoldPresets END
+///////////////////////////////////////////
+/// Hold Joints not in ScrollList END  ///
+/////////////////////////////////////////
+
+
+
+//----------------
+// manger menuItem "complete set" in Skinny UI
+//----------------
+global proc AS_SkinnyFullSet(){
+	string $SkinSetMode="SkinnySets";
+	if (!`radioButton -q -sl SkinnyModeSkin`)
+			$SkinSetMode="SkinnyClusterSets";
+	
+	string $SkinnySets[]=`listAttr -ud $SkinSetMode`;
+	// If Full Set Is Select. UnSelect all the others
+	if (`menuItem -q -cb Skinny_FullSet`==1){
+		for ( $SetFound in $SkinnySets) {
+			menuItem -e -cb 0 ("Skinny_"+$SetFound);
+			}
+		}
+	// Run Update ScrollList
+	if ($SkinSetMode=="SkinnySets")
+		Skinny_UpdateSkin ByName 0;
+	else
+		Skinny_UpdateCluster;
+}
+
+
+///////////////////////////////////////////////
+// Show ScrollList items by Skinny Presets ///
+/////////////////////////////////////////////
+global proc string[] AS_SkinnyScrollListItems() {
+
+
+// Find Sets that start with "Skinny_"
+	string $SkinnySets[]=`listAttr -ud "SkinnySets"`;
+// Query state of Skinny Sets  
+	string $SetCollector[];		// Sets Collector Items
+	string $ScrollListItems[];	// The Final Items Arry.
+	string $tempString;
+
+// PRESET Collector.
+// Ask Sets Status (On/Off)
+for ( $SetFound in $SkinnySets) {
+	
+// If any of SkinnySet menuItems are ON,Collect there Sets Members	
+	if (`menuItem -q -cb ("Skinny_"+$SetFound) `) {
+		$tempString=`addAttr -q -enumName  ("SkinnySets."+$SetFound)`;
+		string $SetMembers[];
+		tokenize $tempString ":" $SetMembers;		
+		int $SetSize = size($SetMembers);
+		appendStringArray ( $SetCollector, $SetMembers, $SetSize );
+	//UnSelect "Full Set" PresetMenu
+	menuItem -e -cb 0 Skinny_FullSet;
+		}
+    }
+
+    // Remove From collected Set, members that aren't bind joint, cause they can't be Locked, and they couse error messages.
+    string $JointsToRemove[];
+    for ($item in $SetCollector) {
+        // ask if joint have lockInfluenceWeights attr, if not remove him from string arry.
+        if (!size(`listAttr -r -st "lockInfluenceWeights" $item`))
+            $JointsToRemove=`Skinny_AppendStringtoArry $JointsToRemove $item`;
+    }
+        // Remove found Joints from SetCollector
+        $SetCollector=stringArrayRemove($JointsToRemove, $SetCollector);
+
+// If ALL SkinnySet menuItems are OFF, Get Members from Full Set SkinnyFullSet_+ObjName.
+    string $SelObj[5]= `ls -sl`;
+	if (!size($SetCollector)){
+	    for ($item in $SelObj) { 
+	        if (!`objExists "SkinnySets"`) return $ScrollListItems;
+	        string $FullSetMembers[]=`sets -q "SkinnySets"`;
+	        int $SetSize=size($FullSetMembers);
+	        appendStringArray($SetCollector, $FullSetMembers, $SetSize);
+	    }
+	        
+		// Select "Full Set" PresetMenu
+		menuItem -e -cb 1 Skinny_FullSet;
+	}
+	
+	// Remove Sets Duplicate Members.
+	string $ScrollListItems[] = stringArrayRemoveDuplicates($SetCollector);
+
+	
+	// Zero Weight take only the joints with no influence from it list.
+	if (`checkBoxGrp -q -v1 ShowZeroWeight`) {
+    	string $ListOfNoWeight[]=`FindNoWeight $SelObj[0]`;    	
+    	// Substract list of Zero Weight with Sorted list, and then substract again for clear list
+    	string $ListOfWeight[]=stringArrayRemove($ListOfNoWeight, $ScrollListItems);
+    	$ScrollListItems=stringArrayRemove($ListOfWeight, $ScrollListItems);    	
+	}
+
+// After All Members were collected.
+// Ask if need to Sort by: Alphabetical/Graph Order/By Hold/.
+// Sorted or Not?
+	string $SortedScrollListItems[];
+	//Alphabetical//
+	if ( `menuItem -q -rb SkinnyUI|skinToolmenuBar|SkinToolOrder|OrderAlph`==1 ) {
+		$SortedScrollListItems = `sort $ScrollListItems`;
+	//By Hold//
+	} else if ( `menuItem -q -rb SkinnyUI|skinToolmenuBar|SkinToolOrder|OrderHold`==1 ) {
+		string $buffer[];	
+		for ( $ScrollListItem in $ScrollListItems ) {
+			if ( `getAttr ( $ScrollListItem + ".liw" )` == 0 ) {
+				$buffer[0] = $ScrollListItem;
+				appendStringArray($SortedScrollListItems, $buffer, 1);
+				} 
+			}
+		for ( $ScrollListItem in $ScrollListItems ) {
+			if ( `getAttr ( $ScrollListItem + ".liw" )` == 1 ) {
+				$buffer[0] = $ScrollListItem;
+				appendStringArray($SortedScrollListItems, $buffer, 1);
+				} 
+			}
+	//Graph Order//
+	} else {
+		$SortedScrollListItems = $ScrollListItems;
+	}
+
+return $SortedScrollListItems;
+}// AS_SkinnyScrollListItems END
+
+
+
+
+
+// Joint Rotation FrameLayout Command
+//  Set Key on Selected joints
+
+
+// Rotate Joints 
+global proc SkinnyRotJNT(string $Selected ,int $reset) {
+// Query Selected Items in ScrollList.
+    string $JNTsRotate[];
+    if ($Selected=="Selected"){
+	$JNTsRotate=`textScrollList -q -si jointScrollList`;
+	} else {
+	$JNTsRotate=`textScrollList -q -ai jointScrollList`;
+	}
+	if ($reset) {
+		// Reset Value
+		floatSliderGrp -e -v 0.0 SliderX;
+		floatSliderGrp -e -v 0.0 SliderY;
+		floatSliderGrp -e -v 0.0 SliderZ;
+		}
+
+	// Rotate Selected Joints
+	for ( $i=0 ; $i < size($JNTsRotate) ; $i++ ) {
+		// Clean Joint name
+		string $JNTRotate= `AS_SkinnyTokenize $JNTsRotate[$i]`;
+	    // Connect Slider Value To Joint
+		int $RotXvalue = `floatSliderGrp -q -v SliderX`;
+		int $RotYvalue = `floatSliderGrp -q -v SliderY`;
+		int $RotZvalue = `floatSliderGrp -q -v SliderZ`;
+	
+
+		rotate $RotXvalue $RotYvalue $RotZvalue $JNTRotate;
+	}
+}//End  Rotate Joint Proc
+
+
+
+global proc JointRotKey ( string $function, string $Selection ){
+// Query Selected Joints
+string $JNTtoKey[];
+if ($Selection=="Selected")
+    $JNTtoKey=`textScrollList -q -si jointScrollList`;
+if ($Selection=="All")
+    $JNTtoKey=`textScrollList -q -ai jointScrollList`;
+
+
+if (size($JNTtoKey)==0){
+    print "Skinny Message: Nothing Is Selected\n";
+} else {
+if ($function=="SetKey")
+{
+    // Turn off autoKey, can cause problem with Keying joints
+    if (`autoKeyframe -q -state`){
+    autoKeyframe -state false;
+    print "Skinny Message: autoKeyframe was turn off. can make unwanted keys\n";
+    }
+    // Set Key
+    for ( $joint in $JNTtoKey) {
+        $joint= `AS_SkinnyTokenize $joint`;
+        setKeyframe ($joint + ".rotate");
+    }
+    // Print confirmation message
+    print "Skinny Message: Set Keyframes For Selected Joints\n";
+} else {
+    // Delete Keys
+    for ( $joint in $JNTtoKey){
+        $joint= `AS_SkinnyTokenize $joint`;
+        // Cut all Keys
+        cutKey -attribute rotate $joint;
+        // Reset Slider
+        SkinnyRotJNT Selected 1;
+    }
+    // Print confirmation message
+    print "Skinny Message:  Delete Keyframes Form Selected Joints\n";
+        }
+    }
+}//End JointRotKey
+
+
+//---------------
+// Skinny Check for missing XPM before loading Skinny
+//---------------
+proc string XpmFileCheck()
+{
+	global string $gXBMLANGPATH[];
+	string $FoundedXpm[];
+	string $XmpFiles[]={						
+						"AS_SkinnyAdd.XPM",
+						"AS_SkinnyFLOOD.XPM",
+						"AS_SkinnyMirorMins.XPM",
+						"AS_SkinnyMirorPlus.XPM",
+						"AS_SkinnyPurne.XPM",
+						"AS_SkinnyRemove.XPM"
+						};
+							
+	for ($t=0; $t<=size($XmpFiles); $t++) {
+		for ($i=0; $i<=size($gXBMLANGPATH); $i++) {
+			string $srchSkinny[]=`getFileList -folder "E:/My Pictures/maya/6.0/prefs/icons/" -filespec $XmpFiles[$t]`;
+			if (`size($srchSkinny)`){				
+				$FoundedXpm[$t]=$XmpFiles[$t];
+				break;
+			}
+		}
+	}
+	
+	string $missingXpm[]=stringArrayRemove($FoundedXpm, $XmpFiles);
+	if (`size($missingXpm)`==0) return "Ok";
+		
+	string $PrintMisingXpm;	
+	for ($i=0; $i<=size($missingXpm); $i++)
+		$PrintMisingXpm=($PrintMisingXpm+$missingXpm[$i]+"\n");
+	
+	string $XpmCheck=`confirmDialog -title "Missing XPM files"
+		-message ("Skinny is missing Xpm images: \n"+$PrintMisingXpm+"Copy missing Xpm files to your ICONS path and RESTART Maya")
+ 		-button "Confirm" -cancelButton "Confirm" -dismissString "Confirm"`;
+	return $XpmCheck;
+
+}//END XPMCheck
+
+
+
+
+//----------------------
+//	Skinny Main Proc. build UI
+//----------------------
+global proc AS_Skinny() {
+	
+// Run Xpm file Check
+	//if (`XpmFileCheck`!="Ok") return;
+
+// CurrentCtx
+global string $Skinny_CurrentCtx;
+
+if (`window -ex SkinnyUI`) { deleteUI SkinnyUI; }
+	
+// Window Creation //
+	$skinToolWindow = `window -rtf 1 -h 420 -w 295 -s 1 -title "Skinny V 3.8" SkinnyUI`;
+
+/// Menu Bars : "Preset", "Order", "Edit Smooth Skin".
+	menuBarLayout -p SkinnyUI skinToolmenuBar ;
+		menu -label "Skin Sets" -to 1 SkinToolPreset;
+			menuItem -cb 0 -label "Sets Tool" -c ( "Skinny_SetsTool" ) Skinny_SetsTool;
+			menuItem -d 1;
+			menuItem -cb 1 -label "All Bind Set" -c ( "AS_SkinnyFullSet" ) Skinny_FullSet;
+			
+		menu -label "Order" SkinToolOrder;
+			radioMenuItemCollection;
+				menuItem -label "Alphabetical" -c ( "Skinny_UpdateSkin ByName 0" ) -radioButton off OrderAlph;
+			    menuItem -label "Graph Order"  -c ( "Skinny_UpdateSkin ByName 0" ) -radioButton on OrderGrap;
+				menuItem -label "By Hold"  -c ( "Skinny_UpdateSkin ByName 0" ) -radioButton off OrderHold;
+		    
+		menu -label "MeshSmooth" -to 1 SkinnyMeshSmooth;
+		    menuItem  -c ("Skinny_SmoothMesh make") -label "Smooth Selected";
+		    menuItem -c ("Skinny_SmoothMesh remove") -label "Smooth Remove";
+		    menuItem -d 1;
+	    
+	    // Add MAYA SMOOTH SKIN MENU
+	   // AddSmoothSkinMenu;		
+		menu -label "Help";	
+			menuItem -l "Help..." -c ( "AS_SkinnyHelp 0" );
+			menuItem -l "Bugs & Features" -c ( "AS_SkinnyHelp 1" );
+			
+
+	// Menu Bars END //
+
+
+
+
+// FormLayout Creation Main FormLayout
+	
+	formLayout SkinnyMainLayout;
+	
+	//ScrollList jointScrollList.
+	textScrollList -w 150 -h 270 -numberOfRows 20 -allowMultiSelection 1
+		-sc ( "Skinny_Function paint" ) -dcc ( "Skinny_Function DubbleClickHold" ) "jointScrollList";
+		//ScrollList Lock/Unlock PopUp Menus
+		popupMenu -parent jointScrollList jointScrollListPopup;
+			menuItem -l "Lock Selected" -c ( "AS_SkinnyLockFunction Selected 1" );
+			menuItem -l "UnLock Selected" -c ( "AS_SkinnyLockFunction Selected 0" );
+		  	menuItem -d 1;
+		  	menuItem -l "Lock All" -c ( "AS_SkinnyLockFunction All 1" );
+		  	menuItem -l "UnLock All" -c ( "AS_SkinnyLockFunction All 0" );
+		  	menuItem -d 1;
+		  	//menuItem -l "Set Selected" -c ( "AS_SkinnySetsMakerUI" );
+     	
+		  	
+		// Buttons-Lock/UnLock 	
+        columnLayout -adj 1 LockUnlockColumn;
+        rowColumnLayout -numberOfRows 1 -rowHeight 1 18 Skinny_LockweightColumn;        
+            button -bgc 0.955 0.905 0.718 -w 120 -c ( "AS_SkinnyLockFunction Selected 1" ) -ann "Lock weight on selected joints" -label "Lock Weight";
+            button -bgc 0.955 0.905 0.718 -w 30 -c ( "AS_SkinnyLockFunction All 1" ) -ann "Lock weight on All joints in Skinny ScrollList" -label "All";
+        setParent ..;
+            rowColumnLayout -numberOfRows 1 -rowHeight 1 18 Skinny_unLockweightColumn;
+            button -bgc 0.832 0.865 0.955 -w 120 -c ( "AS_SkinnyLockFunction Selected 0" ) -ann "UnLock weight on selected joints" -label "UnLock Weight";
+            button -bgc 0.832 0.865 0.955 -w 30 -c ( "AS_SkinnyLockFunction All 0" ) -ann "UnLock weight on All joints in Skinny ScrollList" -label "All";
+      
+        setParent ..; 
+        setParent ..; 
+
+
+/////////////////////////////////
+// Paint Selected FrameLayout //
+///////////////////////////////
+float $color[] = {0.7, 0.8, 0.5};
+frameLayout -bgc $color[0] $color[1] $color[2] -lv 0 -mw 2 -mh 2 -label "Selection" -labelAlign "top" -cll 0 -li 5 -borderStyle "etchedOut" -font "smallFixedWidthFont" skinnySelectionFrame;
+	columnLayout -bgc $color[0] $color[1] $color[2];          
+          checkBoxGrp -bgc $color[0] $color[1] $color[2] -cc ("Skinny_ScriptJob") -v1 1 -l "Skinny Active" -ann "Active scriptJob, Auto Paint on selection"
+			  			-cw 1 80 -cw 2 53 -adj 2  ScriptJobBox;
+          
+		  // Skinny Skin / Cluster modes
+		  rowColumnLayout -bgc $color[0] $color[1] $color[2] -numberOfRows 1 SkinModeLayout;
+		  	radioCollection; 
+		  		radioButton -bgc $color[0] $color[1] $color[2] -sl -onc ("Skinny_UISwitcher skin") -label "Skin" SkinnyModeSkin;
+				radioButton -bgc $color[0] $color[1] $color[2] -onc ("Skinny_UISwitcher cluster") -label "Cluster" SkinnyModeCluster;			
+		  
+		 setParent ..;  
+    setParent ..; 
+setParent ..;
+        
+///////////////////////   	
+// Paint Frame Layout//
+///////////////////////
+frameLayout -label "Paint Tools" -labelAlign "top"  -mh 2 -mw 3 -cll 1 -cl 0
+	-cc "menuItem -e -cb 1 Skinny_SetsTool; Skinny_SetsTool"
+	-borderStyle "etchedOut" -font "smallFixedWidthFont" skinnyPaintFrame;
+	columnLayout skinnyPaintColumn;
+		formLayout skinnyPaintForm;	
+	
+	
+	// Buttons-Brushs size
+	iconTextRadioCollection;
+		iconTextRadioButton -w 40 -h 38 -onc ( "artAttrCtx -e -stP \"gaussian\" $Skinny_CurrentCtx;" ) -image1 "circleGaus.xpm" ButtonBrush1;
+		iconTextRadioButton -w 40 -h 38 -onc ( "artAttrCtx -e -stP \"poly\" $Skinny_CurrentCtx;" ) -image1 "circlePoly.xpm" ButtonBrush2;
+		iconTextRadioButton -w 40 -h 38 -onc ( "artAttrCtx -e -stP \"solid\" $Skinny_CurrentCtx;" ) -image1 "circleSolid.xpm" ButtonBrush3;
+	
+
+
+	// Button-Paint operations ( Replace, Add ,Scale, Smooth )
+	radioCollection;
+		radioButton -onc ( "artAttrCtx -e -sao \"absolute\" $Skinny_CurrentCtx" ) -label "replace" Operationabsolute;
+		radioButton -onc ( "artAttrCtx -e -sao \"additive\" $Skinny_CurrentCtx" ) -label "add" Operationadditive;
+		radioButton -onc ( "artAttrCtx -e -sao \"scale\" $Skinny_CurrentCtx" ) -label "scale" Operationscale;
+		radioButton -onc ( "artAttrCtx -e -sao \"smooth\" $Skinny_CurrentCtx") -label "smooth" Operationsmooth;
+	
+	// Button-Flood
+	  //symbolButton -c ( "artAttrCtx -e -clear $Skinny_CurrentCtx" ) -image "AS_SkinnyFLOOD.XPM" -ann "Flood paint weight" Operationflood;
+		button -h 20 -l "Flood" -c ( "artAttrCtx -e -clear $Skinny_CurrentCtx" ) -ann "Flood paint weight" Operationflood;
+	
+	// ChackBox-Staylus pressure
+	checkBoxGrp -onc ( "artAttrCtx -e -usepressure 1 $Skinny_CurrentCtx;" ) 
+				-ofc ( "artAttrCtx -e -usepressure 0 $Skinny_CurrentCtx;" )
+			-v1 1 -l "Stylus pressure" -ann "Stylus pressure on/off" 
+			-cw 1 80 -cw 2 15 -adj 2 statlusBox; 
+		
+	// Sliders-Value&Display
+	floatSliderGrp -label "Val" -field true // Value Slider.
+					-minValue -0 -maxValue 1
+					-fieldMinValue -0 -fieldMaxValue 1
+					-dc ( "artAttrCtx -e -value `floatSliderGrp -q -v ValSlider` $Skinny_CurrentCtx;" )
+					-cc ( "artAttrCtx -e -value `floatSliderGrp -q -v ValSlider` $Skinny_CurrentCtx;" )
+					-pre 2 -s 0.05
+					-ann "Paint Brush Value"
+					-adj 3 -cw 1 25 -cw 2 30 -cw 3 70
+					-value 1 ValSlider;
+					
+		popupMenu -parent ValSlider;			
+			menuItem -l "0.10" -c ( "floatSliderGrp -e -v 0.10 ValSlider; artAttrCtx -e -value 0.10 $Skinny_CurrentCtx;" );
+			menuItem -l "0.25" -c ( "floatSliderGrp -e -v 0.25 ValSlider; artAttrCtx -e -value 0.25 $Skinny_CurrentCtx;" );
+			menuItem -l "0.50" -c ( "floatSliderGrp -e -v 0.50 ValSlider; artAttrCtx -e -value 0.50 $Skinny_CurrentCtx;" );
+					
+	floatSliderGrp -label "Dis" -field true // Display Slider.
+					-minValue 0.01 -maxValue 1
+					-fieldMinValue 0.01 -fieldMaxValue 1
+					-dc ( "artAttrCtx -e -colorrangeupper `floatSliderGrp -q -v DisSlider` $Skinny_CurrentCtx;" )
+					-cc ( "artAttrCtx -e -colorrangeupper `floatSliderGrp -q -v DisSlider` $Skinny_CurrentCtx;" )
+					-pre 2 -s 0.05
+					-ann "Max Value Of Color Feedback Display"
+					-adj 3 -cw 1 25 -cw 2 30 -cw 3 70
+					-value 1 DisSlider;
+					
+		popupMenu -parent DisSlider;
+			menuItem -l "0.10" -c ( "floatSliderGrp -e -v 0.10 DisSlider; artAttrCtx -e -colorrangeupper 0.10 $Skinny_CurrentCtx;" );
+			menuItem -l "0.25" -c ( "floatSliderGrp -e -v 0.25 DisSlider; artAttrCtx -e -colorrangeupper 0.25 $Skinny_CurrentCtx;" );
+			menuItem -l "0.50" -c ( "floatSliderGrp -e -v 0.50 DisSlider; artAttrCtx -e -colorrangeupper 0.50 $Skinny_CurrentCtx;" );
+
+		
+	// ChackBox-Show Wireframe & Color Feedback
+	checkBoxGrp -onc ("artAttrCtx -e -showactive true $Skinny_CurrentCtx;") -ofc ("artAttrCtx -e -showactive false $Skinny_CurrentCtx;")
+			-v1 1 -l "Wire" -ann "Show WireFrame while painting" SkinnyWireFrame; 
+	checkBoxGrp -e -adj 1 -cw 1 32  SkinnyWireFrame;
+	checkBoxGrp -e -adj 2 -cw 2 25  SkinnyWireFrame;	
+	
+	checkBoxGrp -onc ("artAttrCtx -e -colorfeedback true $Skinny_CurrentCtx;") -ofc ("artAttrCtx -e -colorfeedback false $Skinny_CurrentCtx;")
+			-v1 1 -l "Color" -ann "Show color feedback" SkinnyColorFeed; 
+	checkBoxGrp -e -adj 1 -cw 1 45  SkinnyColorFeed;
+	checkBoxGrp -e -adj 2 -cw 2 15  SkinnyColorFeed;
+	
+		setParent ..;
+	setParent ..; // Go back up to skinnyPaintFrame.
+setParent ..; // Go back up to SkinnyMainLayout.
+
+
+///////////////////////
+// Util Frame Layout //
+///////////////////////
+frameLayout -mh 3 -mw 4 -label "Util" -labelAlign "top" -cll 1 -cl 1 -borderStyle "etchedOut" -font "smallFixedWidthFont" skinnyUtilFrame;
+	columnLayout skinnyUtilCoulmn;
+	formLayout skinnyUtilForm;
+	
+	//symbolButton -image "AS_SkinnyMirorPlus.XPM" -c ("AS_SkinnyWeightFunction MirorWeight X") -ann " Mirror Weight from Right to Left, +X" UtilMirorPlus;
+	button -h 20 -w 90 -l "Mirror X+" -c ("AS_SkinnyWeightFunction MirorWeight X") -ann " Mirror Weight from Right to Left, +X" UtilMirorPlus;
+		popupMenu;
+			menuItem -l "Mirror Options" -c ("MirrorSkinWeightsOptions");
+		//symbolButton -image "AS_SkinnyMirorMins.XPM" -c ("AS_SkinnyWeightFunction MirorWeight Xinvert") -ann " Mirror Weight from Left to Right, -X" UtilMirorMinus;
+		button -h 20 -w 40 -l "X-" -c ("AS_SkinnyWeightFunction MirorWeight Xinvert") -ann " Mirror Weight from Left to Right, -X" UtilMirorMinus;
+		//symbolButton -image "AS_SkinnyPurne.XPM" -c ("AS_SkinnyWeightFunction PurnWeight Purne") -ann "Purne weight below purne value" PurneWeight;
+		button -h 20 -w 90 -l "Prune Weight" -c ("AS_SkinnyWeightFunction PurnWeight Purne") -ann "Purne weight below purne value" PurneWeight;		
+		floatField -w 39 -v 0.01 -minValue 0 -maxValue 1 -precision 2 -step .001 PurneWeightText;		
+	setParent ..;
+setParent ..;
+setParent ..;
+// FormLayout End //
+
+
+///////////////////////////
+// Influence Frame Layout//
+///////////////////////////
+frameLayout  -mh 2 -mw 4 -label "Influences" -labelAlign "top" -cll 1 -cl 1 -borderStyle "etchedOut" -font "smallFixedWidthFont" skinnyInfluenceFrame;
+   //formLayout skinnyInfluenceForm;
+   columnLayout -adj 1 -rowSpacing 3;
+    checkBoxGrp -cc ("Skinny_UpdateSkin ByName 0") -v1 0 -l "Show Zero Weight" -ann "Show joint with zero weight only" ShowZeroWeight;
+          checkBoxGrp -e -adj 1 -cw 1 100  ShowZeroWeight;
+	      checkBoxGrp -e -adj 2 -cw 2 28  ShowZeroWeight;	
+    //symbolButton -image "AS_SkinnyRemove.XPM" -c ("Skinny_removeInflunce") -ann "Disconnect joints from current SkinCluster";
+	button -h 20 -l "Remove Influnce" -c ("Skinny_removeInflunce") -ann "Disconnect joints from current SkinCluster";
+    //symbolButton -image "AS_SkinnyAdd.XPM" -c ("Skinny_addInflunce") -ann "Add multiple influnences to multiple skin Objects, Select Joints and Object";
+	button -h 20 -l "Add Influnce" -c ("Skinny_addInflunce") -ann "Add multiple influnences to multiple skin Objects, Select Joints and Object";        
+    	setParent ..;
+setParent ..;
+
+///////////////////////////
+// Vertexs Frame Layout //
+/////////////////////////
+frameLayout  -mh 2 -mw 4 -label "Vertex Tools" -labelAlign "top" -cll 1 -cl 1 -borderStyle "etchedOut" -font "smallFixedWidthFont" skinnyVertexFrame;
+	columnLayout -rs 2 skinnyVertexFrameCol;
+	
+		// Copy Vertex Value:
+	        textFieldButtonGrp
+		        		-cw2 85 40        		
+		        		-tx "Source Vertex"
+		    		    -bl "Select"
+		    		    -bc "SkinnyVertex.getSource()"
+						-ann "select one vertex or CV to copy weight from"
+		    		    SourceV;	   
+		        button -w 130 -l "Copy Skin Value" -h 18 -align "center"
+					-ann "Select couple of Vertexs or CV's to copy weigth to"
+		        	 -bgc 0.75 0.8 0.9 -c "SkinnyVertex.copyValue()";
+				separator -height 10 -w 125 -style "in";
+
+		// assign value
+				text -rs on -l "select joint from list \n and vertex's to assign:";
+				textFieldButtonGrp
+						-cw2 40 150        		
+		        		-tx "1.0"
+						-bgc 0.75 0.8 0.9 
+		    		    -bl "Assign Selection"
+		    		    -bc "SkinnyVertex.assignValue()"
+						-ann "select joint from Skinny, and vertex's to assign to" assignValue;
+					
+				separator -height 10 -w 125 -style "in";
+
+				
+		// Copy from Joint:
+			text -rs on -l "select source and target:";
+			 button  -w 130  -l "Transfer Skin" -h 18 -align "center"
+					-ann "Select source and target joints from the list, then select couple of Vertexs or CV's to copy weigth to"
+		        	 -bgc 0.75 0.8 0.7 -c "SkinnyVertex.transferValue()";
+	setParent..;
+setParent..; 
+
+
+/////////////////////////
+// Rotate Frame Layout //
+/////////////////////////
+frameLayout -label "Joint Rotate     " -labelAlign "top" -cll 1 -cl 1
+	-borderStyle "etchedOut" -font "smallFixedWidthFont" skinnyJNTRotFrame;
+	columnLayout  skinnyJNTRotMaincolumn;
+	columnLayout -adj 1 skinnyJNTRotcolumn;
+
+	// Rotate Sliders
+		floatSliderGrp -label "X" -field true
+			-minValue -180 -maxValue 180
+			-fieldMinValue -360 -fieldMaxValue 360
+			-dc ( "SkinnyRotJNT Selected 0" )
+			-cc ( "SkinnyRotJNT Selected 0" )
+			-ann "Rotate X selected joints"
+			-adj 3 -cw 1 25 -cw 2 35 -cw 3 222
+			-value 0 SliderX;
+
+		floatSliderGrp -label "Y" -field true
+			-minValue -180 -maxValue 180
+			-fieldMinValue -360 -fieldMaxValue 360
+			-dc ( "SkinnyRotJNT Selected 0" )
+			-cc ( "SkinnyRotJNT Selected 0" )
+			-ann "Rotate Y selected joints"
+			-adj 3 -cw 1 25 -cw 2 35 -cw 3 222
+			-value 0 SliderY;
+
+		floatSliderGrp -label "Z" -field true
+			-minValue -180 -maxValue 180
+			-fieldMinValue -360 -fieldMaxValue 360
+			-dc ( "SkinnyRotJNT Selected 0" )
+			-cc ( "SkinnyRotJNT Selected 0" )
+			-ann "Rotate Z selected joints"
+			-adj 3 -cw 1 25 -cw 2 35 -cw 3 222
+			-value 0 SliderZ;		
+
+	    // PopUp Menu for Sliders
+    	 popupMenu -parent SliderX ;
+    	    menuItem -label "Reset Rotations" -c ( "SkinnyRotJNT Selected 1" );
+      	 popupMenu -parent SliderY ;
+    	    menuItem -label "Reset Rotations" -c ( "SkinnyRotJNT Selected 1" );
+    	 popupMenu -parent SliderZ ;
+    	    menuItem -label "Reset Rotations" -c ( "SkinnyRotJNT Selected 1" );  	    
+
+    // Rotation Buttons ( Reset , Key , DelKey )
+    columnLayout -adj 1 ;
+        // Reset Rotation Button
+    	rowColumnLayout -numberOfRows 1 -rowHeight 1 22;
+    	  button -w 240 -l "Reset Selected Rotation" -c ("SkinnyRotJNT Selected 1") -ann "Reset Selected Joints Rotation" JointRotReset;
+    	  button -w 50 -l "All" -c ("SkinnyRotJNT all 1") -ann "Reset Rotations for All the Joints in ScrollList";
+    	setParent ..;
+    	
+      	// Set Key Button
+      	rowColumnLayout -numberOfRows 1 -rowHeight 1 20;
+    	  button -w 120 -bgc 0.578 0.8 0.567 -l "Key Selected" -c ("JointRotKey SetKey Selected") -ann "Set Rotation Keyframes On Selected Joints" JointRotKey;
+    	  button -w 120 -bgc 1 0.6 0.6 -l "Del Selected" -c ("JointRotKey DelKey Selected") -ann "Delete Rotation Keyframes From Selected Joints" JointRotDelKey;
+    	  button -w 50  -l "All" -c ("JointRotKey DelKey All") -ann "Delete Rotation Keyframes From All the Joints in ScrollList" JointRotDelAllKey;    	    
+        setParent ..;
+    setParent ..;
+    
+
+// FormLayout Adjustment Start
+formLayout -edit
+				
+		-attachForm 		skinnyJNTRotFrame 	"bottom"	5
+		-attachForm 		skinnyJNTRotFrame	"left"		5
+		
+		-attachForm         LockUnlockColumn	"left"		5
+		-attachControl 		LockUnlockColumn	"bottom"	10	skinnyJNTRotFrame
+		
+       	-attachForm         jointScrollList		"top"		5
+		-attachForm         jointScrollList		"left"		5
+		-attachControl 		jointScrollList		"bottom"	2	LockUnlockColumn
+		
+		-attachControl 		skinnySelectionFrame 	"left"		3	jointScrollList
+		-attachForm 		skinnySelectionFrame	"top"		3
+       	
+
+		-attachControl 		skinnyPaintFrame 	"left"		3	jointScrollList
+		-attachControl 		skinnyPaintFrame	"top"		3   skinnySelectionFrame
+       	
+       	-attachControl 		skinnyVertexFrame 	"left"		3	jointScrollList
+		-attachControl 		skinnyVertexFrame 	"top"		3	skinnyPaintFrame		
+		
+		
+		-attachControl 		skinnyUtilFrame 	"left"		3	jointScrollList
+		-attachControl 		skinnyUtilFrame 	"top"		3	skinnyVertexFrame
+		
+       		
+	    -attachControl 		skinnyInfluenceFrame 	"left"		3	jointScrollList
+		-attachControl 		skinnyInfluenceFrame 	"top"		3	skinnyUtilFrame
+				
+	SkinnyMainLayout; //END edit of main Layout.
+
+
+
+formLayout -edit // FormLayout, skinnyPaintForm, Edit
+		
+		-attachForm 		    ButtonBrush1 		"left"		3	
+		-attachForm 		    ButtonBrush1		"top"		3
+		
+		-attachControl 		    ButtonBrush2 		"left"		3	ButtonBrush1
+		-attachForm 		    ButtonBrush2		"top"		3
+		
+		-attachControl 		    ButtonBrush3 		"left"		3	ButtonBrush2
+		-attachForm 		    ButtonBrush3		"top"		3
+		
+		-attachForm 		    Operationabsolute	"left"		3	
+		-attachControl 		    Operationabsolute	"top"		10	ButtonBrush1
+		
+		-attachOppositeControl 	Operationadditive 	"left"		60	Operationabsolute
+		-attachOppositeControl 	Operationadditive	"bottom"	0	Operationabsolute
+	
+		-attachForm 		    Operationscale 		"left"		3	
+		-attachControl 		    Operationscale		"top"		25	ButtonBrush1
+	
+		-attachOppositeControl 	Operationsmooth 	"left"		60	Operationscale
+		-attachOppositeControl 	Operationsmooth		"bottom"	0	Operationscale
+			
+		-attachForm 		    statlusBox 	    	"left"		3	
+		-attachControl       	statlusBox		    "top"		5	Operationsmooth
+	
+		-attachForm 		    ValSlider 		    "left"		3	
+		-attachControl       	ValSlider		    "top"		5	statlusBox
+			
+		-attachForm 		    DisSlider 		    "left"		3	
+		-attachControl       	DisSlider		    "top"		0	ValSlider
+
+		-attachForm 		    Operationflood 	    "left"		2	
+		-attachForm 		    Operationflood 	    "right"		2
+		-attachControl 	        Operationflood		"top"		5	DisSlider
+		
+		-attachForm 		    SkinnyWireFrame     "left"		3	
+		-attachControl 	        SkinnyWireFrame		"top"		3	Operationflood
+
+		-attachControl 		    SkinnyColorFeed     "left"		3	SkinnyWireFrame
+		-attachControl      	SkinnyColorFeed	    "top"		3	Operationflood
+		
+	skinnyPaintForm;//END edit of Slave FormLayout
+
+
+formLayout -edit // FormLayout, skinnyUtilForm, Edit
+
+		-attachForm 		UtilMirorPlus		"top"		1
+		-attachForm 		UtilMirorPlus		"left"		0
+
+		-attachForm 		UtilMirorMinus		"top"		1
+		-attachControl 		UtilMirorMinus		"left"		0	UtilMirorPlus	
+		
+		-attachControl 		PurneWeight		    "top"		3	UtilMirorPlus
+		-attachForm 		PurneWeight		    "left"		0	
+	
+		-attachControl 		PurneWeightText		"top"		3	UtilMirorPlus
+		-attachControl 		PurneWeightText		"left"		0	PurneWeight	
+		
+	skinnyUtilForm;
+// FormLayout Ajustment End //
+
+
+showWindow SkinnyUI;
+// Create SkinnySets Node
+string $ls[] = `ls -sl`;
+if (!`objExists "SkinnySets"`)
+	createNode objectSet -n "SkinnySets";
+select $ls;
+// Find SkinTool Sets, add them to UI "Preset" 
+	Skinny_findSets;
+/// Skinny CurrentCtx, default is Skin
+	$Skinny_CurrentCtx = "artAttrSkinContext";
+// Query Status of Paint Weight Tools
+	Skinny_QueryUI;
+// Update the ScrollList
+	Skinny_UpdateSkin ByName 0;
+// Find SkinnySmooth Meshes
+    FindSmoothMesh;
+/// ScriptJob : Update when Select change	
+	Skinny_ScriptJob;	
+/// Print Skinny Version
+    print "\nSkinny Version 3.80 \n";
+}// Skinny UI End //
+

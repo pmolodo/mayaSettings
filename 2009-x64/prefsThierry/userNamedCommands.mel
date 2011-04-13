@@ -1,0 +1,532 @@
+//Maya Preference 2009 (Release 1)
+//
+//
+
+nameCommand
+	-annotation "NextFrameNameCommand"
+	-sourceType "mel"
+	-command ("NextFrame")
+	NextFrameNameCommand;
+
+nameCommand
+	-annotation "PreviousFrameNameCommand"
+	-sourceType "mel"
+	-command ("PreviousFrame")
+	PreviousFrameNameCommand;
+
+nameCommand
+	-annotation "PlaybackForwardNameCommand"
+	-sourceType "mel"
+	-command ("PlaybackForward")
+	PlaybackForwardNameCommand;
+
+nameCommand
+	-annotation "PlaybackBackwardNameCommand"
+	-sourceType "mel"
+	-command ("PlaybackBackward")
+	PlaybackBackwardNameCommand;
+
+nameCommand
+	-annotation "PlaybackStopNameCommand"
+	-sourceType "mel"
+	-command ("PlaybackStop")
+	PlaybackStopNameCommand;
+
+nameCommand
+	-annotation "PreviousKeyNameCommand"
+	-sourceType "mel"
+	-command ("PreviousKey")
+	PreviousKeyNameCommand;
+
+nameCommand
+	-annotation "NextKeyNameCommand"
+	-sourceType "mel"
+	-command ("NextKey")
+	NextKeyNameCommand;
+
+nameCommand
+	-annotation "BreakTangentsNameCommand"
+	-sourceType "mel"
+	-command ("BreakTangents")
+	BreakTangentsNameCommand;
+
+nameCommand
+	-annotation "AddKeyNameCommand"
+	-sourceType "mel"
+	-command ("AddKey")
+	AddKeyNameCommand;
+
+nameCommand
+	-annotation "GimbalNameCommand"
+	-sourceType "mel"
+	-command ("Gimbal")
+	GimbalNameCommand;
+
+nameCommand
+	-annotation "Gimbal_RotateNameCommand"
+	-sourceType "mel"
+	-command ("Gimbal_Rotate")
+	Gimbal_RotateNameCommand;
+
+nameCommand
+	-annotation "Local_RotateNameCommand"
+	-sourceType "mel"
+	-command ("Local_Rotate")
+	Local_RotateNameCommand;
+
+nameCommand
+	-annotation "Gimbal_RotationNameCommand"
+	-sourceType "mel"
+	-command ("Gimbal_Rotation")
+	Gimbal_RotationNameCommand;
+
+nameCommand
+	-annotation "Local_RotationNameCommand"
+	-sourceType "mel"
+	-command ("Local_Rotation")
+	Local_RotationNameCommand;
+
+nameCommand
+	-annotation "Break_TangentNameCommand"
+	-sourceType "mel"
+	-command ("Break_Tangent")
+	Break_TangentNameCommand;
+
+nameCommand
+	-annotation "Copy_Key_GraphEditorNameCommand"
+	-sourceType "mel"
+	-command ("Copy_Key_GraphEditor")
+	Copy_Key_GraphEditorNameCommand;
+
+nameCommand
+	-annotation "Paste_Key_GraphEditorNameCommand"
+	-sourceType "mel"
+	-command ("Paste_Key_GraphEditor")
+	Paste_Key_GraphEditorNameCommand;
+
+nameCommand
+	-annotation "Play_FWDNameCommand"
+	-sourceType "mel"
+	-command ("Play_FWD")
+	Play_FWDNameCommand;
+
+nameCommand
+	-annotation "CopyKeyNameCommand"
+	-sourceType "mel"
+	-command ("CopyKey")
+	CopyKeyNameCommand;
+
+nameCommand
+	-annotation "PasteKeyNameCommand"
+	-sourceType "mel"
+	-command ("PasteKey")
+	PasteKeyNameCommand;
+
+nameCommand
+	-annotation "CopyKeyTimeSliderNameCommand"
+	-sourceType "mel"
+	-command ("CopyKeyTimeSlider")
+	CopyKeyTimeSliderNameCommand;
+
+nameCommand
+	-annotation "PasteKeyTimeSliderNameCommand"
+	-sourceType "mel"
+	-command ("PasteKeyTimeSlider")
+	PasteKeyTimeSliderNameCommand;
+
+nameCommand
+	-annotation "ScreenLargeNameCommand"
+	-sourceType "mel"
+	-command ("ScreenLarge")
+	ScreenLargeNameCommand;
+
+nameCommand
+	-annotation "TranslateObjectNameCommand"
+	-sourceType "mel"
+	-command ("TranslateObject")
+	TranslateObjectNameCommand;
+
+nameCommand
+	-annotation "TranslateWorldNameCommand"
+	-sourceType "mel"
+	-command ("TranslateWorld")
+	TranslateWorldNameCommand;
+
+nameCommand
+	-annotation "Head_TrailNameCommand"
+	-sourceType "mel"
+	-command ("Head_Trail")
+	Head_TrailNameCommand;
+
+nameCommand
+	-annotation "PlayblastOptionsNameCommand"
+	-sourceType "mel"
+	-command ("PlayblastOptions")
+	PlayblastOptionsNameCommand;
+
+nameCommand
+	-annotation "PlayblastWindowNameCommand"
+	-sourceType "mel"
+	-command ("PlayblastWindow")
+	PlayblastWindowNameCommand;
+
+nameCommand
+	-annotation "WeightTangentNameCommand"
+	-sourceType "mel"
+	-command ("WeightTangent")
+	WeightTangentNameCommand;
+
+nameCommand
+	-annotation "LockTangentNameCommand"
+	-sourceType "mel"
+	-command ("LockTangent")
+	LockTangentNameCommand;
+
+nameCommand
+	-annotation "BreakTangntNameCommand"
+	-sourceType "mel"
+	-command ("BreakTangnt")
+	BreakTangntNameCommand;
+
+nameCommand
+	-annotation "TangentsFlatNameCommand"
+	-sourceType "mel"
+	-command ("TangentsFlat")
+	TangentsFlatNameCommand;
+
+nameCommand
+	-annotation "CopyKeysNameCommand"
+	-sourceType "mel"
+	-command ("CopyKeys")
+	CopyKeysNameCommand;
+
+nameCommand
+	-annotation "PasteKeysNameCommand"
+	-sourceType "mel"
+	-command ("PasteKeys")
+	PasteKeysNameCommand;
+
+nameCommand
+	-annotation "copyKey_GraphEdNameCommand"
+	-sourceType "mel"
+	-command ("copyKey_GraphEd")
+	copyKey_GraphEdNameCommand;
+
+nameCommand
+	-annotation "SnapPointToPointNameCommand"
+	-sourceType "mel"
+	-command ("SnapPointToPoint")
+	SnapPointToPointNameCommand;
+
+nameCommand
+	-annotation "SnapToPointNameCommand"
+	-sourceType "mel"
+	-command ("SnapToPoint")
+	SnapToPointNameCommand;
+
+nameCommand
+	-annotation "paste_keyNameCommand"
+	-sourceType "mel"
+	-command ("paste_key")
+	paste_keyNameCommand;
+
+nameCommand
+	-annotation "DeleteKeyNameCommand"
+	-sourceType "mel"
+	-command ("DeleteKey")
+	DeleteKeyNameCommand;
+
+nameCommand
+	-annotation "DeleteTimeSliderKeyNameCommand"
+	-sourceType "mel"
+	-command ("DeleteTimeSliderKey")
+	DeleteTimeSliderKeyNameCommand;
+
+nameCommand
+	-annotation "GraphCenterCurrentTimeNameCommand"
+	-sourceType "mel"
+	-command ("GraphCenterCurrentTime")
+	GraphCenterCurrentTimeNameCommand;
+
+nameCommand
+	-annotation "ChannelBoxNameCommand"
+	-sourceType "mel"
+	-command ("ChannelBox")
+	ChannelBoxNameCommand;
+
+nameCommand
+	-annotation "ToggleControlBoxesNameCommand"
+	-sourceType "mel"
+	-command ("ToggleControlBoxes")
+	ToggleControlBoxesNameCommand;
+
+nameCommand
+	-annotation "TangentsSplineNameCommand"
+	-sourceType "mel"
+	-command ("TangentsSpline")
+	TangentsSplineNameCommand;
+
+nameCommand
+	-annotation "TimeSlider_Flat_TangentNameCommand"
+	-sourceType "mel"
+	-command ("TimeSlider_Flat_Tangent")
+	TimeSlider_Flat_TangentNameCommand;
+
+nameCommand
+	-annotation "RepeatLastNameCommand"
+	-sourceType "mel"
+	-command ("RepeatLast")
+	RepeatLastNameCommand;
+
+nameCommand
+	-annotation "GraphEditorNameCommand"
+	-sourceType "mel"
+	-command ("GraphEditor")
+	GraphEditorNameCommand;
+
+nameCommand
+	-annotation "PlaybackToggleNameCommand"
+	-sourceType "mel"
+	-command ("PlaybackToggle")
+	PlaybackToggleNameCommand;
+
+nameCommand
+	-annotation "UnifyTangentsNameCommand"
+	-sourceType "mel"
+	-command ("UnifyTangents")
+	UnifyTangentsNameCommand;
+
+nameCommand
+	-annotation "FreeTangentWeightNameCommand"
+	-sourceType "mel"
+	-command ("FreeTangentWeight")
+	FreeTangentWeightNameCommand;
+
+nameCommand
+	-annotation "AnimConv_AutoTangentNameCommand"
+	-sourceType "mel"
+	-command ("AnimConv_AutoTangent")
+	AnimConv_AutoTangentNameCommand;
+
+nameCommand
+	-annotation "AnimConvergeNameCommand"
+	-sourceType "mel"
+	-command ("AnimConverge")
+	AnimConvergeNameCommand;
+
+nameCommand
+	-annotation "ToggleChannelBoxNameCommand"
+	-sourceType "mel"
+	-command ("ToggleChannelBox")
+	ToggleChannelBoxNameCommand;
+
+nameCommand
+	-annotation "HideNURBSCurvesNameCommand"
+	-sourceType "mel"
+	-command ("HideNURBSCurves")
+	HideNURBSCurvesNameCommand;
+
+nameCommand
+	-annotation "ShowNURBSCurvesNameCommand"
+	-sourceType "mel"
+	-command ("ShowNURBSCurves")
+	ShowNURBSCurvesNameCommand;
+
+nameCommand
+	-annotation "ChannelBox_ToggleNameCommand"
+	-sourceType "mel"
+	-command ("ChannelBox_Toggle")
+	ChannelBox_ToggleNameCommand;
+
+nameCommand
+	-annotation "LocalRotateNameCommand"
+	-sourceType "mel"
+	-command ("LocalRotate")
+	LocalRotateNameCommand;
+
+nameCommand
+	-annotation "GimbalRotateNameCommand"
+	-sourceType "mel"
+	-command ("GimbalRotate")
+	GimbalRotateNameCommand;
+
+nameCommand
+	-annotation "Translate_WorldNameCommand"
+	-sourceType "mel"
+	-command ("Translate_World")
+	Translate_WorldNameCommand;
+
+nameCommand
+	-annotation "Translate_ObjectNameCommand"
+	-sourceType "mel"
+	-command ("Translate_Object")
+	Translate_ObjectNameCommand;
+
+nameCommand
+	-annotation "FilterCurvesNameCommand"
+	-sourceType "mel"
+	-command ("FilterCurves")
+	FilterCurvesNameCommand;
+
+nameCommand
+	-annotation "Nudge_FwdNameCommand"
+	-sourceType "mel"
+	-command ("Nudge_Fwd")
+	Nudge_FwdNameCommand;
+
+nameCommand
+	-annotation "Nudge_BkwdNameCommand"
+	-sourceType "mel"
+	-command ("Nudge_Bkwd")
+	Nudge_BkwdNameCommand;
+
+nameCommand
+	-annotation "Nudge_DnNameCommand"
+	-sourceType "mel"
+	-command ("Nudge_Dn")
+	Nudge_DnNameCommand;
+
+nameCommand
+	-annotation "Nudge_UpNameCommand"
+	-sourceType "mel"
+	-command ("Nudge_Up")
+	Nudge_UpNameCommand;
+
+nameCommand
+	-annotation "XrayNameCommand"
+	-sourceType "mel"
+	-command ("Xray")
+	XrayNameCommand;
+
+nameCommand
+	-annotation "WeightedFreeTangentsNameCommand"
+	-sourceType "mel"
+	-command ("WeightedFreeTangents")
+	WeightedFreeTangentsNameCommand;
+
+nameCommand
+	-annotation "MotionTrailNameCommand"
+	-sourceType "mel"
+	-command ("MotionTrail")
+	MotionTrailNameCommand;
+
+nameCommand
+	-annotation "Translate_LocalNameCommand"
+	-sourceType "mel"
+	-command ("Translate_Local")
+	Translate_LocalNameCommand;
+
+nameCommand
+	-annotation "DeleteTimeSlideKeyNameCommand"
+	-sourceType "mel"
+	-command ("DeleteTimeSlideKey")
+	DeleteTimeSlideKeyNameCommand;
+
+nameCommand
+	-annotation "PickWalk_UpNameCommand"
+	-sourceType "mel"
+	-command ("PickWalk_Up")
+	PickWalk_UpNameCommand;
+
+nameCommand
+	-annotation "jsPickWalk_leftNameCommand"
+	-sourceType "mel"
+	-command ("jsPickWalk_left")
+	jsPickWalk_leftNameCommand;
+
+nameCommand
+	-annotation "jsPickWalk_rightNameCommand"
+	-sourceType "mel"
+	-command ("jsPickWalk_right")
+	jsPickWalk_rightNameCommand;
+
+nameCommand
+	-annotation "jsPickWalk_upNameCommand"
+	-sourceType "mel"
+	-command ("jsPickWalk_up")
+	jsPickWalk_upNameCommand;
+
+nameCommand
+	-annotation "jsPickWalk_downNameCommand"
+	-sourceType "mel"
+	-command ("jsPickWalk_down")
+	jsPickWalk_downNameCommand;
+
+nameCommand
+	-annotation "AutoTangntNameCommand"
+	-sourceType "mel"
+	-command ("AutoTangnt")
+	AutoTangntNameCommand;
+
+nameCommand
+	-annotation "PickWalkDownNameCommand"
+	-sourceType "mel"
+	-command ("PickWalkDown")
+	PickWalkDownNameCommand;
+
+nameCommand
+	-annotation "PickWalkUpNameCommand"
+	-sourceType "mel"
+	-command ("PickWalkUp")
+	PickWalkUpNameCommand;
+
+nameCommand
+	-annotation "rippleTimeSliderKeysFWDNameCommand"
+	-sourceType "mel"
+	-command ("rippleTimeSliderKeysFWD")
+	rippleTimeSliderKeysFWDNameCommand;
+
+nameCommand
+	-annotation "rippleTimeSliderKeysBKWDNameCommand"
+	-sourceType "mel"
+	-command ("rippleTimeSliderKeysBKWD")
+	rippleTimeSliderKeysBKWDNameCommand;
+
+nameCommand
+	-annotation "CurrentTimeGraphEditorNameCommand"
+	-sourceType "mel"
+	-command ("CurrentTimeGraphEditor")
+	CurrentTimeGraphEditorNameCommand;
+
+nameCommand
+	-annotation "L_KeyTap_PressNameCommand"
+	-sourceType "mel"
+	-command ("L_KeyTap_Press")
+	L_KeyTap_PressNameCommand;
+
+nameCommand
+	-annotation "L_KeyTap_ReleaseNameCommand"
+	-sourceType "mel"
+	-command ("L_KeyTap_Release")
+	L_KeyTap_ReleaseNameCommand;
+
+nameCommand
+	-annotation "R_KeyTap_PressNameCommand"
+	-sourceType "mel"
+	-command ("R_KeyTap_Press")
+	R_KeyTap_PressNameCommand;
+
+nameCommand
+	-annotation "R_KeyTap_ReleaseNameCommand"
+	-sourceType "mel"
+	-command ("R_KeyTap_Release")
+	R_KeyTap_ReleaseNameCommand;
+
+nameCommand
+	-annotation "Insert_KeyNameCommand"
+	-sourceType "mel"
+	-command ("Insert_Key")
+	Insert_KeyNameCommand;
+
+nameCommand
+	-annotation "Play_Range_EndNameCommand"
+	-sourceType "mel"
+	-command ("Play_Range_End")
+	Play_Range_EndNameCommand;
+
+nameCommand
+	-annotation "Play_Range_StartNameCommand"
+	-sourceType "mel"
+	-command ("Play_Range_Start")
+	Play_Range_StartNameCommand;
+

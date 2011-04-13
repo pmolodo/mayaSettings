@@ -1,0 +1,117 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: transfXuv_UI v0.3
+''    Author: jm Lepretre
+''    Last Updated: June 3, 2004
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=rendering#2944
+''  
+''  History:
+''    transfXuv_UI v0.3 on june 03, 2004 by jm Lepretre
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+
+
+
+//transfXuv_UI --------------------------------------------------------------				
+//                                                                          				 
+// script name :   transfXuv_UI.mel                                         				                                                                           				 //
+// Creation Date: 24 Mai 2004                                            				
+//                                                                 					
+// Last Updated:  3 June 2004					
+//                                                                 					
+// Author:        Jean-Marc Lepretre -  -// www.jmlepretre.com \\-   XD-PRODUCTIONS                             				 
+//                                                                					 
+// Description:   Au contraire de Maya ce script de debutant peut transferer les uv du 1er polygone selectione sur tous les autres de la selection.
+//			>> selectionner le poly source puis tous les polys cibles, lancer la fenetre (transfXUV_UI) /appuyer sur TRANSFERT 			
+//			Unlike Maya does, this B-A BA Script Can do the incredible task to transfer
+//			 the UV's from the first Poly objet in the selection to the hundred of other polygons selected. 		
+//                >> select the source and then the target polys, launch the window (transfXUV_UI) /Hit TRANSFERT                                                 			 		
+// Setup:                                                        			 			 
+//      Source transfXuv_UI.mel or place it in your             						 
+//	~user/my Documents/maya/5.0/scripts folder. 								
+//                     													
+//   Command:      transfXuv_UI; 			
+//                                                                 
+//		nota:	evidemment ne fonctionne que si les conditions requisent
+//		 pour Polygon/transfert/UV sont verifiees:
+//		la meme topologie, etc... (voir Maya help) 
+//
+//		nota:	only works if conditions required
+//		 for Polygon/transfer/UV are true:
+//		same topologie, etc... (see Maya help) 
+//
+		//futures amelioration:
+		//testeur de transfert avec le decompte des differences/  detecter si certains objets ne remplissent pas les conditions requisent
+		//possibilite de transferer les vertex aussi ou les 2 / avec ou sans l'historique  
+		//Version 0.3 added some warns  
+		//Version 0.2 caps in the name and Command description corrected .  Desole Sorry
+		//Suggestions - commentaires bienvenus - Merci!!
+
+//NOTES: mon 1er mel(...utile...)!                                          
+//***Merci Hubert!***                                                        
+////
+// ****Ce script est dedie a tous les paresseux de la souris, les faineants de la touche Enter,**** \\
+// ****et les lazy guys de la HotBox.**** \\
+////
+
+
+global proc transfXuv_UI()
+{
+if (`window -exists transfXuv_UI`) deleteUI transfXuv_UI ;
+string $window = `window -title "transfert 1-2-X poly UV - XD-PRODUCTIONS v0.3" -s 1 
+	-wh 50 12 -iconName "transfXuv" transfXuv_UI` ;
+columnLayout -adjustableColumn true;
+  button -label "X TRANSFERT !!! " -command transfXuv;
+button -label "Close" -command ("deleteUI -window " + $window);
+setParent ..;
+
+
+
+showWindow $window ;
+
+}
+
+global proc transfXuv()
+
+{
+string $lsSel[] = `ls -sl` ;
+int $UV[] ;
+$size = size($lsSel); 
+
+	if ($size == 0)
+ 		{ 
+			error "No Poly"; 
+		} 
+	else if ($size == 1)
+		{ 
+			error "Select more than 1 Poly"; 
+		} 
+
+
+
+for ($i = 1 ; $i < $size ; $i++)
+	{
+	$UV = `polyEvaluate -t $lsSel[$i]` ;
+int $numt = $UV[0];
+
+		if ($UV[0] < 1)
+			{ 
+				error "no triangle in poly!"; 
+			} 
+
+polyTransfer -uv 1 -ao ($lsSel[0]) ($lsSel[$i]) ;
+
+	}
+print ($size);
+print " polygons of ";
+print  ($UV[0]);
+print " triangles DONE";  
+}
+	

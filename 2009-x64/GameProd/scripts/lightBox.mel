@@ -1,0 +1,149 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: lightBox.mel v1.1
+''    Author: Kang, Sung-Uk
+''    Last Updated: March 19, 2001
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=rendering#936
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+/* lightBox.mel v1.1
+
+ MEL script for Maya
+
+ by Kang, Sung-Uk
+    mayan@naver.com
+    http://myhom.naver.com/mayan
+
+    studio PRISM
+    Seoul, South Korea
+    http://www.studioprism.co.kr
+
+ Last update : 6 Mar 2001
+*/
+
+global proc lightBox()
+{
+if ((`window -ex lightBoxWin`) == true) deleteUI lightBoxWin;
+window -title "Light Box v1.1" -widthHeight 169 223 -sizeable false lightBoxWin;
+
+columnLayout -adj true;
+
+gridLayout -numberOfColumns 5 -cellWidthHeight 32 32;
+
+iconTextButton -ann "Create Ambient Light"
+-l "Ambient Light" -i1 "ambientlight.xpm" -st "iconOnly"
+-c "defaultAmbientLight(1, 0.45, 1,1,1, \"0\", 0,0,0, \"1\");";
+
+iconTextButton -ann "Create Directional Light"
+-l "Directional Light" -i1 "directionallight.xpm" -st "iconOnly"
+-c "defaultDirectionalLight(1, 1,1,1, \"0\", 0,0,0);";
+
+iconTextButton -ann "Create Point Light"
+-l "Point Light" -i1 "pointlight.xpm" -st "iconOnly"
+-c "defaultPointLight(1, 1,1,1, 0, 0, 0,0,0, 1);";
+
+iconTextButton -ann "Create Spot Light"
+-l "Spot Light" -i1 "spotlight.xpm" -st "iconOnly"
+-c "defaultSpotLight(1, 1,1,1, 0, 40, 0, 0, 0, 0,0,0, 1);";
+
+iconTextButton -ann "Create Area Light"
+-l "Area Light" -i1 "arealight.xpm" -st "iconOnly"
+-c "defaultAreaLight(1, 1,1,1, 0, 0, 0,0,0, 1);";
+
+setParent..;
+setParent..;
+
+button -label "Decay Intensity" -command "decayLight";
+button -label "Decay Dmap Shadow" -command "decayShadow";
+button -label "Shadow Only Light" -command "shadowOnlyLight";
+text " ";
+button -label "Graph Editor" -command "openGraphEditor";
+button -label "Relationship Editor" -command "openRelationshipEditor";
+text " ";
+
+button -label "Close" -command "deleteUI lightBoxWin;";
+
+showWindow;
+}
+
+global proc decayLight()
+{
+string $sel[] = `ls -dag -s -sl`;
+setKeyframe -at "intensity" -f 0 -v 1;
+setKeyframe -at "intensity" -f 10 -v 0;
+string $inf = `shadingNode -asUtility lightInfo`;
+connectAttr -f ($sel[0] + ".worldMatrix[0]") ($inf + ".worldMatrix");
+connectAttr -f ($inf + ".sampleDistance") ($sel[0] + "_intensity.input");
+select -r $sel[0];
+}
+
+global proc decayShadow()
+{
+string $sel[] = `ls -dag -s -sl`;
+string $useDmap = $sel[0] + ".useDepthMapShadows";
+setAttr $useDmap 1;
+setKeyframe -at "dmapFilterSize" -f 0 -v 1;
+setKeyframe -at "dmapFilterSize" -f 10 -v 10;
+string $inf = `shadingNode -asUtility lightInfo`;
+connectAttr -f ($sel[0] + ".worldMatrix[0]") ($inf + ".worldMatrix");
+connectAttr -f ($inf + ".sampleDistance") ($sel[0] + "_dmapFilterSize.input");
+select -r $sel[0];
+}
+
+global proc shadowOnlyLight()
+{
+string $pos[] = `ls -sl`;
+string $posShape[] = `ls -dag -s -sl`;
+string $positive = $pos[0];
+string $positiveShape = $posShape[0];
+
+duplicate -rr;
+string $neg[] = `ls -sl`;
+string $negShape[] = `ls -dag -s -sl`;
+string $negative = $neg[0];
+string $negativeShape = $negShape[0];
+	
+connectAttr -f ($positiveShape + ".color") ($negativeShape + ".color");
+connectAttr -f ($positiveShape + ".coneAngle") ($negativeShape + ".coneAngle");
+connectAttr -f ($positiveShape + ".penumbraAngle") ($negativeShape + ".penumbraAngle");
+connectAttr -f ($positiveShape + ".dropoff") ($negativeShape + ".dropoff");
+connectAttr -f ($positiveShape + ".barnDoors") ($negativeShape + ".barnDoors");
+connectAttr -f ($positiveShape + ".leftBarnDoor") ($negativeShape + ".leftBarnDoor");
+connectAttr -f ($positiveShape + ".rightBarnDoor") ($negativeShape + ".rightBarnDoor");
+connectAttr -f ($positiveShape + ".topBarnDoor") ($negativeShape + ".topBarnDoor");
+connectAttr -f ($positiveShape + ".bottomBarnDoor") ($negativeShape + ".bottomBarnDoor");
+connectAttr -f ($positiveShape + ".useDecayRegions") ($negativeShape + ".useDecayRegions");
+connectAttr -f ($positiveShape + ".startDistance1") ($negativeShape + ".startDistance1");
+connectAttr -f ($positiveShape + ".endDistance1") ($negativeShape + ".endDistance1");
+connectAttr -f ($positiveShape + ".startDistance2") ($negativeShape + ".startDistance2");
+connectAttr -f ($positiveShape + ".endDistance2") ($negativeShape + ".endDistance2");
+connectAttr -f ($positiveShape + ".startDistance3") ($negativeShape + ".startDistance3");
+connectAttr -f ($positiveShape + ".endDistance3") ($negativeShape + ".endDistance3");
+
+expression -s ($negativeShape + ".intensity = -" + $positiveShape + ".intensity;");
+
+setAttr ($positiveShape + ".useDepthMapShadows") 1;
+select -add $positive;
+parent;
+setAttr ($negativeShape + ".overrideEnabled") 1;
+setAttr ($negativeShape + ".overrideDisplayType") 2;
+select -r $positive;
+ToggleSelectionHandles;
+}
+
+global proc openGraphEditor()
+{
+	tearOffPanel "Graph Editor" "graphEditor" true;
+}
+
+global proc openRelationshipEditor()
+{
+	LightCentricLightLinkingEditor;
+}

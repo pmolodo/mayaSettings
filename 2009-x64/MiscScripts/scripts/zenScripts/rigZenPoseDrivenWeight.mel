@@ -1,0 +1,188 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//creates a node network and returns an attribute signifying the weight of $poseB relative to $poseA, 
+//useful for driving corrective blends or muscle deformations
+
+global proc string rigZenPoseDrivenWeight(string $poseA, string $poseB)
+{
+	DisableAll;
+	zenDeferCommand("	EnableAll");
+	
+	float	$tol=.001;
+	
+	string	$joints[]=`dagPose -q -ap $poseB`;
+	//string	$joints[]=`dagPose -q -m $poseA`;
+	
+		print $joints;print "\n";
+	
+	string	$root=zenReturnFirstStringItem(`dagPose -q -m $poseA`);
+
+	//this part gives errors sometimes even though it shouldn't
+	//so we loop through it a few times to make sure everything goes as planned
+	
+	int	$err=true;
+	
+		print $root;print "\n";
+		
+		print $poseA;print "\n";
+		
+		print $poseB;print "\n";
+	
+		for( $i=0; $i<10 && $err ; $i++ )
+			$err=catchQuiet(`dagPose -r -g $poseB $root`);
+		
+		if($err) error("Error.");
+				
+	//find which attributes on each joint differ from $poseA
+	
+	float	$jointTrXB[];
+	float	$jointTrYB[];
+	float	$jointTrZB[];
+	
+	float	$jointRotXB[];
+	float	$jointRotYB[];
+	float	$jointRotZB[];
+
+	float	$jointScaleXB[];
+	float	$jointScaleYB[];
+	float	$jointScaleZB[];
+	
+		for($i=0;$i<size($joints);$i++)
+		{
+			$jointTrXB[$i]=`getAttr ($joints[$i]+".tx")`;
+			$jointTrYB[$i]=`getAttr ($joints[$i]+".ty")`;
+			$jointTrZB[$i]=`getAttr ($joints[$i]+".tz")`;
+			
+			$jointRotXB[$i]=`getAttr ($joints[$i]+".rx")`;
+			$jointRotYB[$i]=`getAttr ($joints[$i]+".ry")`;
+			$jointRotZB[$i]=`getAttr ($joints[$i]+".rz")`;
+			
+			$jointScaleXB[$i]=`getAttr ($joints[$i]+".sx")`;
+			$jointScaleYB[$i]=`getAttr ($joints[$i]+".sy")`;
+			$jointScaleZB[$i]=`getAttr ($joints[$i]+".sz")`;
+		}
+		
+		dagPose -r -g $poseA;
+	
+		for($i=0;$i<size($joints);$i++)
+		{
+			$jointTrA[$i]=zenArrayToVector(`getAttr ($joints[$i]+".t")`);
+			$jointTrA[$i]=zenArrayToVector(`getAttr ($joints[$i]+".r")`);
+			$jointTrA[$i]=zenArrayToVector(`getAttr ($joints[$i]+".s")`);
+		}
+		
+	//set up a node network to return an average of the differential bias'
+	
+	string	$averageBias=`createNode plusMinusAverage`;
+	
+			setAttr ($averageBias+".operation") 3;
+	
+	string	$differenceNode;
+	string	$multiplyDivideNode;
+	string	$clampNode;
+
+	string	$attributes[];
+	
+	float	$bValues[];
+	
+	float	$val;
+	float	$difference;
+	
+	int	$plug=0;
+	
+		for($i=0;$i<size($joints);$i++)
+		{			
+			$attributes=
+			{
+				($joints[$i]+".tx"),
+				($joints[$i]+".ty"),
+				($joints[$i]+".tz"),
+				($joints[$i]+".rx"),
+				($joints[$i]+".ry"),
+				($joints[$i]+".rz"),
+				($joints[$i]+".sx"),
+				($joints[$i]+".sy"),
+				($joints[$i]+".sz")
+			};
+			
+			$bValues=
+			{
+				$jointTrXB[$i],
+				$jointTrYB[$i],
+				$jointTrZB[$i],
+				$jointRotXB[$i],
+				$jointRotYB[$i],
+				$jointRotZB[$i],
+				$jointScaleXB[$i],
+				$jointScaleYB[$i],
+				$jointScaleZB[$i]
+			};
+			
+			for($n=0;$n<size($attributes);$n++)
+			{
+				$val=`getAttr ($attributes[$n])`;
+			
+				if(abs($bValues[$n]-$val)>$tol)
+				{
+					$differenceNode=`createNode plusMinusAverage`;
+
+						setAttr ($differenceNode+".operation") 2;
+
+					if($bValues[$n]>$val)
+					{
+						connectAttr ($attributes[$n]) ($differenceNode+".i1[0]");
+						//print $val;
+						setAttr ($differenceNode+".i1[1]") $val;
+						//print("xxx");
+						
+						$difference=$bValues[$n]-$val;
+					}
+					else
+					{
+						setAttr ($differenceNode+".i1[0]") $val;
+						connectAttr ($attributes[$n]) ($differenceNode+".i1[1]");
+						
+						$difference=$val-$bValues[$n];
+					}
+					
+					$multiplyDivideNode=`createNode multiplyDivide`;
+					
+						setAttr ($multiplyDivideNode+".operation") 2;
+						setAttr ($multiplyDivideNode+".i2x") $difference;
+						
+						connectAttr ($differenceNode+".o1") ($multiplyDivideNode+".i1x");
+						
+					$clampNode=`createNode clamp`;
+					
+						setAttr ($clampNode+".mnr") 0;
+						setAttr ($clampNode+".mxr") 1;
+						
+						connectAttr ($multiplyDivideNode+".ox") ($clampNode+".ipr");
+						
+					connectAttr -f ($clampNode+".opr") ($averageBias+".i1["+(string($plug++))+"]");					
+				}
+			}		
+		}
+			
+	string	$rangeNode=`createNode -n "poseWeightNode#" setRange`;
+	
+			setAttr ($rangeNode+".maxX") 1;
+			setAttr ($rangeNode+".oldMaxX") 1;
+			aliasAttr "bias" ($rangeNode+".oldMinX");
+	
+		connectAttr -f ($averageBias+".o1") ($rangeNode+".valueX");
+				
+	return	($rangeNode+".ox");
+}

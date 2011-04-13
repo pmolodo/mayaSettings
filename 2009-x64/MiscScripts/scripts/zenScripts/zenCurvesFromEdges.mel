@@ -1,0 +1,80 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+////////////////////////////////////////
+//ZenAttach
+////////////////////////////////////////
+global proc string[] zenCurvesFromEdges(int $degree)
+{
+		waitCursor -state on;
+	
+		/*
+	//create notes string for notes attribute
+	string	$notes=
+		(
+			"source zenTools;\n"+
+			"select -r "+`zenSelectionString`+";\n"+
+			"zenCurvesFromEdges "+
+			(string($degree))+";"
+		);
+		*/
+		
+	string	$curveNodes[];	
+			
+	string	$sel[]=`ls -sl -fl`;
+	string	$edgesString[]=`zenIsolateLoops $sel`;
+	string	$curveNodes[];
+	string	$curveTransforms[];
+	int	$progress;
+	
+		if(size($edgesString)>5)
+		{
+			progressWindow -title "Working" -status "Creating Curve History" -progress 0 -ii 1 -max (size($edgesString));
+			$progress=1;
+		}
+		
+		for($i=0;$i<size($edgesString);$i++)
+		{
+			string	$edges[]=`stringToStringArray $edgesString[$i] ","`;
+				$curveTransforms[$i]=`createNode -n "CurveFromEdgeLoop#" transform`; 
+				$curveNodes[$i]=`createNode -n ($curveTransforms[$i]+"Shape") -p ($curveTransforms[$i])  nurbsCurve`;
+				connectAttr -f (`zenEdgeCurveNode $edges $degree`+".outputCurve") ($curveNodes[$i]+".create");
+				
+				if($progress)
+				{
+					progressWindow -e -s 1;
+					if(`progressWindow -q -ic`)
+					{
+						progressWindow -ep;
+						error "User Interupt.";
+					}
+				}
+		}
+		
+		progressWindow -ep;
+		
+		/*
+		for($n in $curveTransforms)
+		{
+			if(!`objExists ($n+".notes")`)
+				addAttr -dt "string" -ln "notes" $n;
+
+			setAttr -type "string" ($n+".notes") $notes;
+		}
+		*/
+		
+		waitCursor -state off;
+						
+	return	$curveTransforms;
+}

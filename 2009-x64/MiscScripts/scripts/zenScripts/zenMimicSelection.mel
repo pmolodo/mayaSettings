@@ -1,0 +1,27 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//return identical selection on different object
+global proc string[] zenMimicSelection(string $oldArray[],string $newObj)
+{
+	string 	$newArray[];
+	string	$tempArray[];
+		for($i=0;$i<size($oldArray);$i++)
+		{
+			$tempArray=`stringToStringArray $oldArray[$i] "."`;
+			$tempArray=`stringArrayRemove {$tempArray[0]} $tempArray`;
+			$newArray[$i]=$newObj+"."+`stringArrayToString $tempArray "."`;
+		}
+	return $newArray;
+}

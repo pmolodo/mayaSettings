@@ -1,0 +1,20 @@
+global proc string[] zooSketchyDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $helpDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $return[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_str";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooGetLookat";
+	$melDependencies[( `size $melDependencies` )] = "zooSetLookat";
+	$melDependencies[( `size $melDependencies` )] = "zooRegister";
+	$melDependencies[( `size $melDependencies` )] = "zooTriggeredUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooVectors";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+
+	if( $mode == "-scripts" ) $return = $melDependencies;
+	if( $mode == "-docs" ) $return = $helpDependencies;
+	if( $mode == "-icons" ) $return = $iconDependencies;
+	return $return;
+	}

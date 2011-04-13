@@ -1,0 +1,62 @@
+Following is a list of all the tools that come with the zooTools distribution.  Many of these tools don't appear in the UI for various reasons.  Feel free to try any of them out.  If they don't come with obvious documentation, please open up the actual script file in your text editor of choice - they should have at least a breif description of how to use them at the beginning of the file.
+
+If you find these tools useful, please donate at the macaroniKazoo website.  Your support helps fuel the continued support and maintenance of these tools.
+
+UI Tools
+--------------
+zooAnimStore
+zooAssets
+zooAutoSave
+zooBodgeK
+zooBoltOnIK
+zooCam
+zooChangeLog
+zooCST
+zooCurveLight
+zooGraphFilter
+zooGreaseMonkey
+zooHUDCtrl
+zooKeyCommands
+zooNameSpacey
+zooPanelCycler
+zooReblender
+zooRemind
+zooRenamer
+zooScriptLoader
+zooSetMenu
+zooSetkey
+zooShots
+zooSurgeon
+zooTangentWks
+zooToggleUI
+zooTriggered
+zooWeightSave
+zooXferAnim
+
+
+Command-line only Tools:
+--------------
+zooAlign
+zooChangeRoo
+zooChangeSpace
+zooMatchNames
+
+
+Utility Tools:
+--------------
+zooArrays_float
+zooArrays_int
+zooArrays_str
+zooBounds
+zooBrandTools
+zooFlags
+zooHelp
+zooHotkeyer
+zooRegister
+zooShelveIt
+zooSortToHeirarchy
+zooSpaceSwtiching
+zooStrUtils
+zooTips
+zooUtils
+zooVectors

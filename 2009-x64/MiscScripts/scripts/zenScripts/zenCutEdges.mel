@@ -1,0 +1,238 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//cuts edges
+proc int zenCutEdgesAccurate(string $edges[])
+{
+	string	$obj=zenReturnFirstStringItem(`ls -o $edges`);
+	
+		$edges=`ls -fl $edges`;
+		$edges=`stringArrayRemove {""} $edges`;
+	string	$endVerts[]=`zenFindEdgeSelectionEndVerts $edges`;
+	
+	string	$allVerts[]=`polyListComponentConversion -tv $edges`;
+		$allVerts=`ls -fl $allVerts`;
+		
+	string	$innerVerts[]=`stringArrayRemove $endVerts $allVerts`;
+	
+	string	$casualtyEdges[]=`polyListComponentConversion -te $innerVerts`;
+		$casualtyEdges=`ls -fl $casualtyEdges`;
+		$casualtyEdges=`stringArrayRemove $edges $casualtyEdges`;
+		
+	string	$rimVerts[]=`polyListComponentConversion -tv $casualtyEdges`;
+		$rimVerts=`ls -fl $rimVerts`;
+		$rimVerts=`stringArrayRemove $innerVerts $rimVerts`;
+		
+	string	$rimFaces[]=`polyListComponentConversion -tf $casualtyEdges`;
+	
+		$rimFaces=`ls -fl $rimFaces`;
+		
+	//find the faces for which shared edges should be sewed after the operation
+	string	$sewEdgeFaces[];
+	string	$uvsOnEdge[];
+	int	$sewUV[];
+	string	$sewFacesA[];
+	string	$sewFacesB[];
+	string	$uvsFace1[];
+	string	$uvsFace2[];
+	
+		polyOptions -db true;
+	
+		progressWindow -isInterruptable 1 -title "Working" -status "Cutting edges" -max (size($casualtyEdges)*2);
+		for($i=0;$i<size($casualtyEdges);$i++)
+		{
+			$uvsOnEdge=`polyListComponentConversion -tuv $casualtyEdges[$i]`;
+			$uvsOnEdge=`ls -fl $uvsOnEdge`;
+			
+			$sewEdgeFaces=`polyListComponentConversion -tf $casualtyEdges[$i]`;
+			$sewEdgeFaces=`ls -fl $sewEdgeFaces`;
+			
+			if(size($sewEdgeFaces)>1)
+			{
+				$sewFacesA[size($sewFacesA)]=$sewEdgeFaces[0];
+				$sewFacesB[size($sewFacesB)]=$sewEdgeFaces[1];
+				$sewUV[size($sewUV)]=size($uvsOnEdge);
+			}
+			
+			progressWindow -e -s 1;
+			if(`progressWindow -q -ic`)
+			{
+				progressWindow -endProgress;
+				error "User Interupt";
+			}		
+		}
+	
+	//split inner vertices,
+		polySplitVertex -ch 0 $innerVerts;
+	
+	//sew casualty edges
+		for($i=0;$i<size($sewFacesA);$i++)
+		{
+			catch(`delete -ch $obj`);
+			catch(`polyMergeVertex -d .001 $sewFacesA[$i] $sewFacesB[$i]`);
+		
+			if($sewUV[$i])
+				catch(`polyMergeUV -d .01 $sewFacesA[$i] $sewFacesB[$i]`);
+				
+			progressWindow -e -s 1;
+			
+			if(`progressWindow -q -ic`)
+			{
+				progressWindow -endProgress;
+				error "User Interupt";
+			}
+		}
+		
+		progressWindow -endProgress;
+		
+	string	$nonManifold[]=`polyInfo -nmv $endVerts`;
+	
+		if(size($nonManifold))
+			polySplitVertex $nonManifold;
+		
+		delete -ch $obj;
+		select -clear;
+		return 1;
+}
+
+//cuts edges
+proc zenMergeNonManifoldEdges(string $obj)
+{
+	string 	$nonManifoldVerts[]=`polyInfo -nmv $obj`;
+	string 	$merge;
+	string 	$dump[];
+	
+		for ($vert in $nonManifoldVerts)
+		{
+			$merge="polyMergeVertex ";
+			select $vert;
+			polySelectConstraint -type 0x0001 -w 1 -m 2 -pp 1;
+			polySelectConstraint -dis;
+			$dump=`ls -sl -fl`;
+			for ($d in $dump)
+			{
+				if (!(stringArrayContains($d,$nonManifoldVerts)))
+					$merge=$merge+$d+" ";
+			}
+			eval($merge);
+		}
+}
+
+global proc zenCutEdgesFast(string $edges[])
+{
+		polyOptions -db true;		
+		select $edges;
+		
+	string	$sel[]=`ls -sl`;
+	string 	$vtxs[]=`polyListComponentConversion -fe -tv $edges`;
+	string	$faces[]=`polyListComponentConversion -fv -tf $vtxs`;
+
+	string 	$obj=zenReturnFirstStringItem(`stringToStringArray $vtxs[0] "."`);
+	
+		setAttr ($obj+".displayBorders") 1;
+		select $edges;
+
+		//de-select border edges and grow at the same time
+		polySelectConstraint -m 2 -pp 1 -w 2 -t 0x8000;
+		polySelectConstraint -dis;
+	
+		//convert back to vertices and remove originals
+		select (`polyListComponentConversion -fe -tv`);
+		select -tgl $vtxs;
+		
+	string 	$rVtxs[]=`ls -sl`;
+		
+		
+		//split original vtxs
+		polySplitVertex $vtxs;
+				
+		zenMergeNonManifoldEdges $obj;
+		
+		//select edges
+		select (`polyListComponentConversion -fv -te $rVtxs`);
+
+		//make sure they're on the border
+		polySelectConstraint -w 1 -m 2 -type 0x8000;
+		polySelectConstraint -dis;
+		
+		if (size(`ls -sl -fl`)>1)
+		{
+			polySewEdge -t 0.01 -tx 0 -ws 1;
+			polySoftEdge -a 180 -ch 0;
+		}			
+		
+		if(size(`polyListComponentConversion -tuv $faces`))
+			polyMergeUV -d .01 $faces;
+}
+
+global proc int zenCutEdgesAndConfirm(string $edges[])
+{
+	string	$command;
+	int	$countSel=size(`ls -sl -fl`);
+	string 	$obj=zenReturnFirstStringItem(`stringToStringArray $edges[0] "."`);
+	string	$shape=zenReturnFirstStringItem(`listRelatives -f -s -ni $obj`);
+	
+		if(!`objExists $shape` && `nodeType $obj`=="mesh")
+			$shape=$obj;
+			
+	string	$dup=zenReturnFirstStringItem(`duplicate $shape`);
+	string	$dupTr=$dup;
+	
+		if(`nodeType $dupTr`=="mesh")
+			$tr=zenReturnFirstStringItem(`listRelatives -p $dup`);	
+		
+	int	$edgeCountBefore=zenReturnFirstIntegerItem(`polyEvaluate -e $shape`);
+	
+	int	$err=catch(`zenCutEdgesFast $edges`);
+
+	int	$edgeCountAfter=zenReturnFirstIntegerItem(`polyEvaluate -e $shape`);
+	
+	int	$predict=$edgeCountBefore+$countSel;	
+
+
+	string	$edgesNew[];
+		if($predict!=$edgeCountAfter || $err)
+		{
+			$edgesNew=`zenMimicSelection $edges $dup`;
+			delete -ch $shape;
+			$err=catch(`zenCutEdgesAccurate $edgesNew`);
+			connectAttr -f ($dup+".outMesh") ($shape+".inMesh");
+			delete -ch $shape;
+		}
+		
+		if(`objExists $dupTr`) delete $dupTr;		
+				
+		if($err) return 0;
+		
+	return	1;
+}
+
+
+global proc zenCutEdges(string $edges[])
+{
+	string	$testVerts[]=`polyListComponentConversion -fe -tv $edges`;
+	string	$inFacesV[]=`polyListComponentConversion -fv -tf -in $testVerts`;
+		$inFacesV=`ls -fl $inFacesV`;
+	string	$inFacesE[]=`polyListComponentConversion -fe -tf -in $edges`;
+		$inFacesE=`ls -fl $inFacesE`;
+		
+		if(size($inFacesV)>(size($inFacesE)))
+			zenCutEdgesAccurate $edges;
+		else
+			zenCutEdgesAndConfirm $edges;
+			
+		select -clear;
+		
+		selectMode -co;
+}

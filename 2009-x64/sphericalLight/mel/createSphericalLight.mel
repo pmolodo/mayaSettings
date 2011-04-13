@@ -1,0 +1,35 @@
+
+/*
+#
+# Utility to create a mental ray spherical light  
+#
+# Copyright (c) Jeremy Pronk 2005
+#
+*/
+
+//source "lightMapGen_loader.mel";
+
+global proc createSphericalLight( )
+{
+	waitCursor -state on;
+	
+	// mental ray should be loaded
+	string $plugin = "Mayatomr";
+	if( !eval( "pluginInfo -query -loaded " + $plugin ) )
+		loadPlugin $plugin;
+	
+	string $mayaLight = `spotLight -i 0 -ca 175`;
+	string $mrLight = `mrCreateCustomNode -asUtility ( "defaultNavigation -connectToExisting -destination " + $mayaLight + ".miLightShader -source %node" ) sphericalLight`;
+	setAttr ( $mayaLight+".areaLight" ) 1;
+	setAttr ( $mayaLight+".areaType" ) 4;
+	setAttr ( $mayaLight+".areaSamplingU" ) 1024;
+	setAttr ( $mayaLight+".areaSamplingV" ) 1024;
+	string $mayaLightTransform[] = `listRelatives -p $mayaLight`;
+	$mayaLightTransform[0] = `rename $mayaLightTransform[0] "sphericalLight#"`;
+	
+	//createLightMapDome( "lightMapGenDome", $mayaLightTransform[0], 100 );
+	
+	select $mrLight;
+	
+	waitCursor -state off;
+}

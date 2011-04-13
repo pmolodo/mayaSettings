@@ -1,0 +1,32 @@
+/* XPM */
+static char *nexStatusOff[] = {
+/* columns rows colors chars-per-pixel */
+"20 20 6 1",
+"  s bg c blue",
+". c #00FF61",
+"X c #F24444",
+"o c gray100",
+"O c black",
+"+ c gray100",
+/* pixels */
+"OOO  OOO  OOO  OOO  ",
+"OXO  OXO  OXO  OXO  ",
+"OOO  OOO  OOO  OOO  ",
+"                    ",
+"    OOOOO           ",
+"OOO O...O  OOO      ",
+"OXO O...O  OoO      ",
+"OOO O...O  OoO      ",
+"    OOOOO  OoO      ",
+"           OOO      ",
+"OOO                 ",
+"OXO  OOOOO OOO OOOOO",
+"OOO  OoooO OoO OoooO",
+"     OOOOO OOO OOOOO",
+"                    ",
+"OOO        OOO      ",
+"OXO        OoO      ",
+"OOO        OoO      ",
+"           OoO      ",
+"           OOO      "
+};

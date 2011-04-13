@@ -1,0 +1,75 @@
+/*
+zooBreakTime
+
+Created by Hamish McKenzie zootoolbox@googlegroups.com
+Created : 09 October 2003
+
+Description:
+Makes maya look like its doing something real important, while you pop out for a drink,
+bite to eat, or whatever it is you do.  Kudos to Matt Wood for the idea-it just needed
+to be expanded on a little.  :)
+
+Hamish McKenzie ©2007...
+*/
+
+
+global proc zooBreakTime() {
+	string $taskStrings[] = { "sorting...", "re-meshing", "cycle check", "initialising connections", "discovering dependencies", "updating node database", "re-evaluating DAG", "evaluating outputs", "calculating attributes", "caching results", "traversing graph", "recursing heirarchy", "scene analysis" };
+	string $lsTypes[] = { "mesh", "brush", "file", "lambert", "camera", "pointLight" };
+	float $progress = 0;
+	float $increment = 0.1;
+	int $currentPhase = 1;
+	int $numTasks = `size $taskStrings`;
+	int $numlsTypes = `size $lsTypes`;
+	int $phaseLength = 25;
+
+	waitCursor -state 1;
+	$increment = 100/(float)$phaseLength;
+	progressWindow -title "Working..." -progress 0 -status "" -isInterruptable 1;
+	while( true ) {
+		int $j = 0;
+
+		if( `progressWindow -q -isCancelled` ) break;
+		for( $j = 0; $j < $phaseLength; $j++ ) {
+			string $taskName = "";
+			float $type = `rand $numlsTypes`;
+			float $task = `rand $numTasks`;
+			float $time = `rand 800`;
+			int $n;
+			int $i;
+
+			if( `progressWindow -q -isCancelled` ) break;
+			$taskName = $taskStrings[(int)$task];
+
+			//update progress window
+			$progress += $increment;
+			progressWindow -e -progress ((int)$progress) -status ( "Phase " + $currentPhase + ": " + $taskName );
+
+			//now since the pause command can't pause for fractions of a second, we must make maya do something to take up time...
+			for( $i = 0; $i < $time*10; $i++ ) { string $nothing[] = `ls -type ($lsTypes[(int)$type])`; }
+			}
+
+		$currentPhase++;
+		$progress = 0;
+		}
+
+	progressWindow -endProgress;
+	waitCursor -state 0;
+	}
+
+
+global proc string[] zooBreakTimeDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $helpDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $return[] = {};
+
+	if( $mode == "-scripts" ) $return = $melDependencies;
+	if( $mode == "-docs" ) $return = $helpDependencies;
+	if( $mode == "-icons" ) $return = $iconDependencies;
+	return $return;
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

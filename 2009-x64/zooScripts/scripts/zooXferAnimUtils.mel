@@ -1,0 +1,316 @@
+zooAlign "-load 1";
+zooAnimFile;
+zooArrays_float;
+zooArrays_int;
+zooArrays_str;
+zooFlags;
+zooUtils;
+
+
+//------
+//this script contains all the core functionality of zooXferAnim, and contains all
+//the functionality to do anything that the zooXferAnim UI can do via command line
+//------
+global proc zooXferAnimUtils() {
+	return;
+	}
+
+
+//------
+//blind transfer automatically does a name matching on the source/target list.  the name matching
+//performed is the same as happens through the UI - using the zooMatchNames script
+//
+//see the zooXferBatch for a description of the flags to use
+//zooXferBlindTransfer "-mode 3 -filename c:/temp/char_run_cycle.znm" {} `sets -q char_selection_set`;
+//------
+global proc zooXferBlindTransfer( string $optionStr, string $srcList[], string $tgtList[] ) {
+	//------
+	//parse optionStr to determine which flags are enabled for this proc
+	//------
+	string $optionTemp[] = {};
+	string $matchedTgts[] = {};
+	string $mode = "0";
+
+	$optionTemp = `zooGetFlagArguments $optionStr mode`; if( `size $optionTemp` ) $mode = $optionTemp[0];
+
+	switch( $mode ) {
+		case "3":
+		case "file":
+			//if we have a file import then automatically load the objects in the file as the source list
+			string $filename = "";
+			$optionTemp = `zooGetFlagArguments $optionStr filename`; if( `size $optionTemp` ) $filename = `zooArrayToStr_str $optionTemp " "`;
+			if( !`size $srcList` ) $srcList = `zooAnimFileGetObjs $filename`;
+			$matchedTgts = `zooMatchNames $srcList $tgtList ( $optionStr +" -parity 1 -threshold 0.8" )`;
+			//for( $n=0; $n<`size $srcList`; $n++ ) print( "src:  "+ `zooPadAfter_str $srcList[$n] 30 " "` +"tgt:  "+ $matchedTgts[$n] +"\n" );
+			break;
+
+		default:
+			$srcList = `zooSortToHeirarchy $srcList`;
+			$matchedTgts = `zooMatchNames $srcList $tgtList ( $optionStr +" -parity 1 -threshold 0.8" )`;
+			break;
+		}
+
+	zooXferBatch $optionStr $srcList $matchedTgts;
+	}
+
+
+/*
+this proc is the main zooXferAnim proc. it batch processes animation transfer between a list of
+source and target objects. each source object is mapped to its corresponding target object in the
+target list. ie the first source object is matched to the first target object, etc...
+------
+
+the option string is a standard flag string.
+-mode [int]					the following are valid modes for the transfer
+	0 duplicate/instance
+	1 copy/paste
+	2 trace
+	3 file import
+-keys [int]					this is a boolean to trace keys only - mode 2 only
+-matchRo [int]				boolean to match rotation order
+-range [float] [float]	start and end time ranges - mode 1 and 2 only
+-instance [int]			boolean to instance animation - mode 0 only
+-filename [string]		the path to the .znm file to import
+-offset [float]			time offset to apply to imported animation
+
+
+example:
+zooXferBatch "-mode 2 -keys 1 -range 5 20" { "source1", ... } { "target1", ... };
+does a trace using keys only, from frame 5 to 20
+
+zooXferBatch "-mode 0 -instance 0" { "source1", ... } { "target1", ... };
+does a duplicate with instance turned off
+*/
+global proc zooXferBatch( string $optionStr, string $srcList[], string $tgtList[] ) {
+	//------
+	//parse optionStr to determine which flags are enabled for this proc
+	//------
+	string $optionTemp[] = {};
+	float $progress = 0;
+	float $increment = ( `size $srcList` )? 100/(float)( `size $srcList` ): 1;
+	string $mode = "0";
+
+	$optionTemp = `zooGetFlagArguments $optionStr mode`; if( `size $optionTemp` ) $mode = $optionTemp[0];
+
+	//------
+	//now execute the transfer
+	//------
+	switch( $mode ) {
+		case "0":
+		case "duplicate":
+		case "dupe":
+			//duplicate/instance transfer mode
+			progressWindow -title "Duplicating animCurves" -progress ((int)$progress) -status "Progress: 0%" -isInterruptable 1;
+			int $instance = 0;
+			int $matchRo = 1;
+
+			$optionTemp = `zooGetFlagArguments $optionStr instance`; if( `size $optionTemp` ) $instance = $optionTemp[0];
+			$optionTemp = `zooGetFlagArguments $optionStr matchRo`; if( `size $optionTemp` ) $matchRo = $optionTemp[0];
+			for( $n=0; $n<`size $srcList`; $n++ ) {
+				zooXferAnimTransfer $srcList[$n] $tgtList[$n] $instance $matchRo;
+
+				//update progress window
+				$progress += $increment;
+				if( `progressWindow -q -ic` ) break;
+				progressWindow -e -progress ((int)$progress) -status ( $srcList[$n] +" -> "+ $tgtList[$n] );
+				}
+			progressWindow -endProgress;
+			break;
+
+		case "1":
+		case "copy":
+			//copy/paste transfer mode
+			progressWindow -title "Copying animCurves" -progress ((int)$progress) -status "Progress: 0%" -isInterruptable 1;
+			float $offset = `currentTime -q`;
+			int $start = 0;
+			int $end = 0;
+			int $matchRo = 1;
+
+			$optionTemp = `zooGetFlagArguments $optionStr offset`; if( `size $optionTemp` ) $offset = $optionTemp[0];
+			$optionTemp = `zooGetFlagArguments $optionStr matchRo`; if( `size $optionTemp` ) $matchRo = $optionTemp[0];
+			$optionTemp = `zooGetFlagArguments $optionStr range`; if( `size $optionTemp` ) {
+				if( $optionTemp[0] == "." ) $start = `currentTime -q`;
+				else $start = $optionTemp[0];
+				if( $optionTemp[1] == "." ) $end = `currentTime -q`;
+				else $end = $optionTemp[1];
+				}
+			for( $n=0; $n<`size $srcList`; $n++ ) {
+				zooXferAnimTransferAdd $srcList[$n] $tgtList[$n] ( $start +":"+ $end ) $offset $matchRo;
+
+				//update progress window
+				$progress += $increment;
+				if( `progressWindow -q -ic` ) break;
+				progressWindow -e -progress ((int)$progress) -status ( $srcList[$n] +" -> "+ $tgtList[$n] );
+				}
+			progressWindow -endProgress;
+			break;
+
+		case "2":
+		case "trace":
+			//trace transfer mode
+			int $keysOnly = 1;
+			int $matchRo = 1;
+			int $start = 0;
+			int $end = 0;
+
+			$optionTemp = `zooGetFlagArguments $optionStr keys`; if( `size $optionTemp` ) $keysOnly = $optionTemp[0];
+			$optionTemp = `zooGetFlagArguments $optionStr matchRo`; if( `size $optionTemp` ) $matchRo = $optionTemp[0];
+			$optionTemp = `zooGetFlagArguments $optionStr range`; if( `size $optionTemp` ) {
+				if( $optionTemp[0] == "." ) $start = `currentTime -q`;
+				else $start = $optionTemp[0];
+				if( $optionTemp[1] == "." ) $end = `currentTime -q`;
+				else $end = $optionTemp[1];
+				}
+
+			zooXferTrace $srcList $tgtList $keysOnly $matchRo $start $end;
+			break;
+
+		case "3":
+		case "file":
+			//import from file transfer mode
+			string $filename = "";
+			$optionTemp = `zooGetFlagArguments $optionStr filename`; if( `size $optionTemp` ) $filename = `zooArrayToStr_str $optionTemp " "`;
+			zooAnimFileLoadObjects $filename $optionStr $srcList $tgtList;
+			break;
+		}
+	print( "zooXferBatch \""+ $optionStr +"\" {\""+ `zooArrayToStr_str $srcList "\",\""` +"\"} {\""+ `zooArrayToStr_str $tgtList "\",\""` +"\"};\n" );
+	}
+
+
+//------
+//this is the core proc for node duplication/instancing animation transfers. you can call this proc
+//directly, but it was meant to be called from the zooXferBatch command. this command donly deals with
+//a single source, single target. it therefore must be called once for each source object
+//------
+global proc zooXferAnimTransfer( string $src, string $tgt, int $instance, int $matchRo ) {
+	if( !`objExists $src` || !`objExists $tgt` ) return;
+
+	string $attribs[] = `listAttr -keyable -visible -scalar -multi $src`;
+	for( $attrib in $attribs ) if( `objExists ( $tgt +"."+ $attrib )` && `getAttr -settable ( $tgt +"."+ $attrib )` ) {
+		string $srcAnimCurveName;
+		string $srcAnimCurveOut;
+
+		if( $matchRo ) if( `objExists ($src+".ro")` && `objExists ($tgt+".ro")` ) setAttr ( $tgt+".ro" ) `getAttr ( $src+".ro" )`;
+
+		string $srcAnimCurveInfo[] = `listConnections -d 0 -connections 0 -plugs 1 -type animCurve ( $src +"."+ $attrib )`;
+		if( `size $srcAnimCurveInfo` ) {
+			string $buffer[] = {};
+			tokenize $srcAnimCurveInfo[0] "." $buffer;
+			$srcAnimCurveName = $buffer[0]; //stores the name of the anim curve node
+			$srcAnimCurveOut = $buffer[1]; //stores the output attribute name
+
+			//is the destination connectable?
+			if( !`getAttr -se ( $tgt +"."+ $attrib )` ) continue;
+
+			//if the user doesn't want to instance the anim curves, then duplicate the anim curve nodes
+			if( !$instance ) $srcAnimCurveName = zooGetElement_str(0,`duplicate $srcAnimCurveName`);
+			connectAttr -f ( $srcAnimCurveName +"."+ $srcAnimCurveOut ) ( $tgt +"."+ $attrib );
+			}
+		}
+	}
+
+
+//------
+//this is the core proc for copy/paste animation transfers. like the transfer command, this proc only
+//works with a single source, single target
+//------
+global proc zooXferAnimTransferAdd( string $src, string $tgt, string $rangeStr, string $tgtTime, int $matchRo ) {
+	if( !`objExists $src` || !`objExists $tgt` ) return;
+	if( $rangeStr == "" ) $rangeStr = ":";
+
+	//if there are no keys, quit
+	if( size(`keyframe -q -tc $src`) == 0 ) return;
+	float $time = `currentTime -q`;
+	if( $tgtTime != "" ) $time = $tgtTime;
+
+	//match the rotation orders of the objects.
+	if( $matchRo ) if( `objExists ($src+".ro")` && `objExists ($tgt+".ro")` ) setAttr ($tgt+".ro") `getAttr ($src+".ro")`;
+
+	copyKey -time $rangeStr -hierarchy none -animation objects -o curve $src;
+	pasteKey -time $time -option merge -animation objects $tgt;
+	}
+
+
+//------
+//given a list of source objects, and a list of targets, trace all source objects to the corresponding
+//objects in the target array
+//
+//unlike the core functions for the transfer and add function, the trace
+//function takes an array of source objects and an array of target objects. this is because the proc
+//steps through all frames specified by the user. knowing all the objects in advance allows the proc
+//to trace each object on a single frame before advancing to the next. this saves having to step through
+//all frames once for each object
+//------
+global proc zooXferTrace( string $srcList[], string $tgtList[], int $keysOnly, int $matchRo, int $start, int $end ) {
+	zooAllViews 0;
+	float $timeList[] = `keyframe -q -tc $srcList`;
+	float $progress = 0;
+	float $increment = 100/(float)( `size $srcList` );
+
+	//make sure the start time is smaller than the end time
+	$start = ( $start < $end )? $start: $end;
+	$end = ( $start < $end )? $end: $start;
+
+	//sort the targets properly - we want the targets sorted heirarchically - but we also need to sort the source objects the exact same way
+	int $orderList[] = `zooGetHeirarchyLevels $tgtList`;
+	$srcList = `zooOrderArrayUsing_str $srcList $orderList`;
+	$tgtList = `zooOrderArrayUsing_str $tgtList $orderList`;
+
+	progressWindow -title "Trace in progress" -progress ((int)$progress) -status "Progress: 0%" -isInterruptable 1;
+
+	//if keys only is non-zero, the create an array with all key times
+	if( $keysOnly ) $timeList = zooRemoveDupeItems_float( `sort $timeList` );
+
+	//if keys only is 2, this means trace only keys within a given time range - so crop the key time array to suit
+	if( $keysOnly == 2 ) $timeList = `zooCropArray_float $timeList $start $end`;
+
+	//if its not keys only, build a list of each frame to trace
+	if( $keysOnly == 0 ) {
+		clear $timeList;
+		for( $n=$start; $n<=$end; $n++ ) $timeList[( `size $timeList` )] = $n;
+		}
+
+	//if there are no keys in the key list, issue a warning
+	if( !`size $timeList` ) { progressWindow -endProgress; warning "no keys on source"; return; }
+
+	//match the rotation orders of the objects.
+	for( $n=0; $n<`size $srcList`; $n++ ) if( $matchRo ) if( `objExists ($srcList[$n]+".ro")` && `objExists ($tgtList[$n]+".ro")` ) setAttr ( $tgtList[$n]+".ro" ) `getAttr ( $srcList[$n]+".ro" )`;
+
+	$increment = $increment/( `size $timeList` );
+	for( $i=0; $i<`size $timeList`; $i++ ) {
+		if( `progressWindow -q -isCancelled` ) break;
+
+		int $t = $timeList[$i];
+		for( $j=0; $j<`size $srcList`; $j++ ) {
+			//update progress window
+			$progress += $increment;
+			progressWindow -e -progress ((int)$progress) -status ( $srcList[$j] +" -> "+ $tgtList[$j] );
+
+			if( `keyframe -t $t -q -kc $srcList[$j]` || $keysOnly == 0 ) zooXferTraceTime $srcList[$j] $tgtList[$j] $t;
+			}
+		}
+
+	progressWindow -endProgress;
+	zooAllViews 1;
+	}
+
+
+//------
+//this proc snaps the target to the source object, and matches any attributes on the target to
+//corresponding attributes on the source if they exist. this proc is called for each object on each
+//frame in the target list by the zooXferTrace proc
+//------
+global proc zooXferTraceTime( string $src, string $tgt, float $time ) {
+	if( !`objExists $src` || !`objExists $tgt` ) return;
+
+	currentTime -e $time;
+	zooAlignFast $src $tgt 1 0;
+	string $attribs[] = zooSubtractArray_str(`listAttr -keyable -visible -scalar -multi $src`, { "translateX", "translateY", "translateZ", "rotateX", "rotateY", "rotateZ" });
+	for( $attrib in $attribs ) if( `objExists ( $tgt +"."+ $attrib )` && `getAttr -settable ( $tgt +"."+ $attrib )` ) {
+		setKeyframe -at $attrib -v `getAttr ( $src +"."+ $attrib )` -t $time $tgt;
+		}
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

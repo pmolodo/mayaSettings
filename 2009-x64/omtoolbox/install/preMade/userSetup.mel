@@ -1,0 +1,21 @@
+///////////////////////////////////////////////////////////////////////////////////
+///  Start: OpenMaya Toolbox userSetup.mel					///
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+/// if you have an existing userSetup.mel file you will need to append 		///
+/// this code to have all the OMtools available					///
+/// cut and paste the contents of this file into your existing userSetup.mel	///
+/// and restart maya to get the full effect					///
+///										///
+/// scriptJob to rebuild menu as working mode changes				///
+scriptJob 									///
+	-permanent								///
+	-event "MenuModeChanged" "OMT_toolboxMenu";				///
+										///
+/// build the menu the first time						///
+OMT_toolboxMenu;								///
+										///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+/// End: OpenMaya Toolbox userSetup.mel						///
+///////////////////////////////////////////////////////////////////////////////////

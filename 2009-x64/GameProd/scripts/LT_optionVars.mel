@@ -1,0 +1,376 @@
+// Copyright (C) 1997-2003 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+// Alias|Wavefront Script File
+// MODIFY THIS AT YOUR OWN RISK
+//
+//
+// LT_optionVars.mel
+//
+// Defines the default setting for LT_UI.mel
+//
+// Author:             Steven T. L. Roselle
+//                     
+//
+// Creation Date:      ( 04/04/03 )
+// Last Update:        ( 11/29/04 )
+//
+// Version:		LevelTools 2.0
+
+
+
+global proc LT_optionVars()
+{
+	//Define optionVars if they don't already exist
+
+	//////////////////////
+	//		Tabs
+	//
+	if (`optionVar -ex LT_selectedTab` == 0)
+		optionVar -intValue LT_selectedTab 1;  //1:Layout 2:Display 3:Import
+	
+	//////////////////////
+	//		General
+	//
+	if (`optionVar -ex LT_generalFrame` == 0)
+		optionVar -intValue LT_generalFrame 0;
+	
+	//////////////////////
+	//		Position
+	//
+	if (`optionVar -ex LT_positionFrame` == 0)
+		optionVar -intValue LT_positionFrame 0;
+	
+	if (`optionVar -ex LT_moveOffsetAxis` == 0)
+		optionVar -intValue LT_moveOffsetAxis 1;
+	if (`optionVar -ex LT_moveSpace` == 0)
+		optionVar -stringValue LT_moveSpace "-ws";
+	if (`optionVar -ex LT_moveValue` == 0)
+		optionVar -floatValue LT_moveValue 5;
+
+	//////////////////////
+	//		Orient
+	//
+	if (`optionVar -ex LT_orientFrame` == 0)
+		optionVar -intValue LT_orientFrame 0;
+	
+	if (`optionVar -ex LT_rotateOffsetAxis` == 0)
+		optionVar -intValue LT_rotateOffsetAxis 2;
+	if (`optionVar -ex LT_rotateSpace` == 0)
+		optionVar -stringValue LT_rotateSpace "-os";
+	if (`optionVar -ex LT_rotateValue` == 0)
+		optionVar -floatValue LT_rotateValue 15;
+	
+	if (`optionVar -ex LT_orientToolType` == 0)
+		optionVar -stringValue LT_orientToolType "vert";	
+	
+	//used by bonusTools also	
+	if (`optionVar -ex rotationalAlignAxis` == 0)
+		optionVar -intValue rotationalAlignAxis 1;	
+	if (`optionVar -ex rotationalAlignEdgeAxis` == 0)
+		optionVar -intValue rotationalAlignEdgeAxis 1;
+
+	//////////////////////
+	//		Align
+	//
+	if (`optionVar -ex LT_alignFrame` == 0)
+		optionVar -intValue LT_alignFrame 0;
+	
+	if (`optionVar -ex LT_alignAxis` == 0)
+		optionVar -intValue LT_alignAxis 1;	
+	
+	//////////////////////
+	//		Snap
+	//
+	if (`optionVar -ex LT_snapFrame` == 0)
+		optionVar -intValue LT_snapFrame 0;
+	
+	if (`optionVar -ex LT_edgeSegment` == 0)
+		{
+		optionVar -intValue LT_edgeSegment 0;
+		//set default prefs for edge snapping
+		snapMode -edgeMagnet 1;
+		snapMode -edgeMagnetTolerance 0;
+
+		// using LT_edgeSegment just to see if optionVars exist
+		// if not then set default face and orient option for snapTogether
+		snapTogetherCtx -edit -spf 0 snapTogetherToolCtx;				 
+		snapTogetherCtx -edit -so 0 snapTogetherToolCtx;
+		}
+
+	//////////////////////
+	//		Replace
+	//
+	if (`optionVar -ex LT_replaceFrame` == 0)
+		optionVar -intValue LT_replaceFrame 0;
+	
+	if (`optionVar -ex LT_replaceInst` == 0)
+		optionVar -intValue LT_replaceInst 0;
+	if (`optionVar -ex LT_replaceRotate` == 0)
+		optionVar -intValue LT_replaceRotate 1;
+	if (`optionVar -ex LT_replaceScale` == 0)
+		optionVar -intValue LT_replaceScale 1;
+
+	
+	//////////////////////
+	//		Info
+	//
+	if (`optionVar -ex LT_infoFrame` == 0)
+		optionVar -intValue LT_infoFrame 0;
+	
+	
+	//////////////////////
+	//		View
+	//
+	if (`optionVar -ex LT_viewFrame` == 0)
+		optionVar -intValue LT_viewFrame 0;
+	
+	if (`optionVar -ex LT_walkCamSpeed` == 0)
+		optionVar -floatValue LT_walkCamSpeed 0.5;	
+
+	
+	//////////////////////
+	//		Poly
+	//
+	if (`optionVar -ex LT_polyFrame` == 0)
+		optionVar -intValue LT_polyFrame 0;
+		
+
+	//////////////////////
+	//		Color
+	//
+	if (`optionVar -ex LT_colorFrame` == 0)
+		optionVar -intValue LT_colorFrame 0;
+	
+		
+	//////////////////////
+	//		Import/Ref
+	//
+	if (`optionVar -ex LT_groundValue` == 0)
+		optionVar -floatValue LT_groundValue 0; 
+	
+	if (`optionVar -ex LT_userImportPath ` == 0)
+		optionVar -stringValue LT_userImportPath "undefined";
+	if (`optionVar -ex LT_relativeToProject` == 0)
+		optionVar -intValue LT_relativeToProject 1;   // 1=project : 0=user
+	if (`optionVar -ex LT_includeSubfolders` == 0)
+		optionVar -intValue LT_includeSubfolders 0;   // 1=recursive : 0=non
+	if (`optionVar -ex LT_importPrefix` == 0)
+		optionVar -stringValue LT_importPrefix "props";
+
+	// create optionVar only for 5.0 or earlier
+	// this var should already exist for later cuts 
+	if (`optionVar -ex removeDuplicateShadingNetworksOnImport` == 0)
+		optionVar -iv removeDuplicateShadingNetworksOnImport 1;
+	
+	if (`optionVar -ex LT_reference` == 0)
+		optionVar -intValue LT_reference 0;  // 1=reference : 0=import
+	if (`optionVar -ex LT_createRefLocator` == 0)
+		optionVar -intValue LT_createRefLocator 0;
+
+}
+
+
+global proc LT_deleteImportOptionVars()
+{
+	//Delete import optionVars so they can be reset back to default values
+		
+	//////////////////////
+	//		Import/Ref
+	//
+	optionVar -rm LT_userImportPath;
+	optionVar -rm LT_relativeToProject;  
+	optionVar -rm LT_includeSubfolders; 
+	optionVar -rm LT_importPrefix;
+		
+	// instead of deleting standard optionVar just set default for file import
+	optionVar -iv removeDuplicateShadingNetworksOnImport 1;
+	
+	optionVar -rm LT_reference;
+	optionVar -rm LT_createRefLocator;
+	
+	optionVar -rm LT_groundValue; 
+
+		
+}		
+
+
+
+global proc LT_deleteLayoutOptionVars()
+{
+	//Delete layout optionVars so they can be reset back to default values
+
+	//////////////////////
+	//		Tabs
+	//
+	optionVar -rm LT_selectedTab; 
+	
+	//////////////////////
+	//		General
+	//
+	optionVar -rm LT_generalFrame;
+	
+	//////////////////////
+	//		Position
+	//
+	optionVar -rm LT_positionFrame;
+	optionVar -rm LT_moveOffsetAxis;
+	optionVar -rm LT_moveSpace;
+	optionVar -rm LT_moveValue;
+
+	//////////////////////
+	//		Orient
+	//
+	optionVar -rm LT_orientFrame;
+	optionVar -rm LT_rotateOffsetAxis;
+	optionVar -rm LT_rotateSpace;
+	optionVar -rm LT_rotateValue;
+	
+	optionVar -rm LT_orientToolType;		
+	
+	//////////////////////
+	//		Align
+	//
+	optionVar -rm LT_alignFrame;
+	optionVar -rm LT_alignAxis;	
+	
+	//////////////////////
+	//		Snap
+	//
+	optionVar -rm LT_snapFrame;
+	optionVar -rm LT_edgeSegment;
+
+	//////////////////////
+	//		Replace
+	//
+	optionVar -rm LT_replaceFrame;
+	optionVar -rm LT_replaceInst;
+	optionVar -rm LT_replaceRotate;
+	optionVar -rm LT_replaceScale;
+		
+	//////////////////////
+	//		Info
+	//
+	optionVar -rm LT_infoFrame;
+	
+	//////////////////////
+	//		View
+	//
+	optionVar -rm LT_viewFrame;
+	optionVar -rm LT_walkCamSpeed;
+	
+	//////////////////////
+	//		Poly
+	//
+	optionVar -rm LT_polyFrame;
+	
+	//////////////////////
+	//		Color
+	//
+	optionVar -rm LT_colorFrame;	
+}
+
+
+//////////////////////////////////////////////////////////////////
+// UI optionVar procs
+//////////////////////////////////////////////////////////////////
+
+
+global proc float setMoveValue(string $id)
+{
+	// Return number from integer field change
+	//
+
+	float $val = `floatField -q -value $id` ;
+	optionVar -fv LT_moveValue $val;
+	return $val;
+}
+
+
+global proc float setRotateValue(string $id)
+{
+	// Return number from float field change
+	//
+
+	float $val = `floatField -q -value $id` ;
+	optionVar -fv LT_rotateValue $val;
+	return $val;
+}
+
+
+global proc int setEdgeSegment(string $id)
+{
+	int $val = `optionMenu -q -sl $id` ;
+
+	if ($val > 3)
+		{
+		PreferencesWindow;
+		switchPrefTabs 17;
+		}
+	else
+		{
+		optionVar -iv LT_edgeSegment $val;
+		snapMode -edgeMagnet $val;
+		}
+	return $val;
+}
+	
+
+global proc float setWalkCamSpeed(string $id)
+{
+	// Return number from float field change
+	//
+
+	float $val = `floatSlider -q -value $id` ;
+	optionVar -fv LT_walkCamSpeed $val;
+	return $val;
+}
+
+global proc string setUserImportPathName (string $path, string $type)
+{
+	optionVar -sv LT_userImportPath ($path + "/");
+	return $path;
+}
+
+
+global proc string setImportPrefix (string $id)
+{
+	string $text = `textField -q -tx $id`;
+	optionVar -sv LT_importPrefix $text;
+	return $text;
+}
+
+global proc float setGroundValue(string $id)
+{
+	// Return number from float field change
+	//
+
+	float $val = `floatField -q -value $id` ;
+	optionVar -fv LT_groundValue $val;
+	return $val;
+}
+
+global proc updateOrientToolOptions()
+{
+	if (`optionVar -q LT_orientToolType` == "vert")
+		orientToVertToolValues orientToVertTool;
+	else if (`optionVar -q LT_orientToolType` == "edge")
+		orientToEdgeToolValues orientToEdgeTool;
+	else 
+		warning ("No tool to update.");
+}
+		
+		

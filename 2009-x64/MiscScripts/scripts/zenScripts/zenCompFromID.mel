@@ -1,0 +1,25 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//return an array of components given their id's
+//compType is the abbreviation for the component as found in it's selection string
+global proc string[] zenCompFromID(string $obj,string $compType,int $ID[])
+{
+	string	$components[];
+		for($i=0;$i<size($ID);$i++)
+		{
+			$components[$i]=($obj+"."+$compType+"["+(string($ID[$i]))+"]");
+		}
+	return	$components;
+}

@@ -1,0 +1,25 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//zenPlacementInStringArray returns the items place in the array, or -1 if it is not in the array
+global proc int zenPlacementInStringArray(string $item, string $array[])
+{
+	for($i=0;$i<size($array);$i++)
+	{
+		if($array[$i]==$item)
+			return $i;
+	}
+		
+	return -1;
+}

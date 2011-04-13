@@ -1,0 +1,316 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: Multiple Lights Control v1.0
+''    Author: kuba roth
+''    Last Updated: November 12, 2004
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=rendering#3241
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+// Multiple Lights Control - Kuba Roth - 12.11.2004
+
+//this script lets to simultaneously modify most popular attributes of several selected lights
+
+if (`window -exists $winName`)
+deleteUI -window $myWindow;
+
+string $winName = "kuaa";
+string $myWindow = `window -title "Light Attributes"
+	-w 200
+	-h 300
+	-minimizeButton 1
+	-maximizeButton 1
+	-bgc .5 .5 .5
+	-tlc 260 40
+	$winName`;
+
+// Przyciski - tworzenie
+
+
+frameLayout -l "";
+	columnLayout mainLayout;
+				
+		rowColumnLayout -nc 4 -cw 1 35 -cw 2 35 -cw 3 35 -cw 4 15;
+		
+			text -l "    X";
+			text -l "    Y";
+			text -l "    Z";
+			text -l "0/1";
+			
+			floatField -w 35 -pre 3  -value 0 fFloatFieldX;
+			floatField -w 35 -pre 3  -value 0 fFloatFieldY;
+			floatField -w 35 -pre 3  -value 0 fFloatFieldZ;
+			floatField -w 15 -min 0 -max 1 -value 0 fFloatFieldSwitch;
+
+		setParent mainLayout;	
+
+		floatField -w 120 -pre 9  -value 0 fFloatField;
+
+		button -w 120 -l "Color" -c _color;
+		button -w 120 -l "Intensity" -c _intensity;
+		button -w 120 -l "Shadow Color" -c _shadowC;	
+		button -w 120 -l "Use DM Shadows" -c _useDMS;	
+		button -w 120 -l "DM Resolution" -c _DMRes;
+		button -w 120 -l "Use RT Shadows" -c _useRTS;
+
+		separator -style none;
+		separator -w 120;
+		separator -style none;	
+		
+		//Mental Ray buttons	
+	
+		button -w 120 -l "Emit Photons" -c _emitPh;
+		button -w 120 -l "Photon Intensity" -c _Phintensity;	
+		button -w 120 -l "Exponent" -c _exponent;	
+		button -w 120 -l "Caustic Photons" -c _causticPh;	
+		button -w 120 -l "GI Photons" -c _GIPh;	
+		button -w 120 -l "Area Light" -c _areaLight;	
+	
+		
+		
+		
+		
+showWindow $winName;
+
+proc _color()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartoscX = `floatField -q -value fFloatFieldX`;
+	float $wartoscY = `floatField -q -value fFloatFieldY`;
+	float $wartoscZ = `floatField -q -value fFloatFieldZ`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".color") -type double3 $wartoscX $wartoscY $wartoscZ;
+
+	}
+
+}
+
+proc _intensity()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartosc = `floatField -q -value fFloatField`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".intensity") $wartosc;
+	}
+
+}
+
+proc _shadowC()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartoscX = `floatField -q -value fFloatFieldX`;
+	float $wartoscY = `floatField -q -value fFloatFieldY`;
+	float $wartoscZ = `floatField -q -value fFloatFieldZ`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".shadowColor") -type double3 $wartoscX $wartoscY $wartoscZ;
+
+	}
+
+}
+
+proc _useDMS()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartosc = `floatField -q -value fFloatFieldSwitch`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".useDepthMapShadows") $wartosc;
+
+	}
+
+}
+
+proc _DMRes()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartosc = `floatField -q -value fFloatField`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".dmapResolution") $wartosc;
+	}
+
+}
+
+proc _useRTS()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartosc = `floatField -q -value fFloatFieldSwitch`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".useRayTraceShadows") $wartosc;
+
+	}
+
+}
+
+proc _emitPh()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartosc = `floatField -q -value fFloatFieldSwitch`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".emitPhotons") $wartosc;
+
+	}
+
+}
+
+proc _Phintensity()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartosc = `floatField -q -value fFloatField`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".photonIntensity") $wartosc;
+	}
+
+}
+
+proc _exponent()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartosc = `floatField -q -value fFloatField`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".exponent") $wartosc;
+	}
+
+}
+
+proc _causticPh()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartosc = `floatField -q -value fFloatField`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".causticPhotons") $wartosc;
+	}
+
+}
+
+proc _areaLight()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartosc = `floatField -q -value fFloatFieldSwitch`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".areaLight") $wartosc;
+
+	}
+
+}
+proc _GIPh()
+
+{	
+	string $selection[] = `ls -sl`;
+	pickWalk -d down;
+
+	float $wartosc = `floatField -q -value fFloatField`;
+	
+	string $selectionShape[] = `ls -sl`;
+	print $selectionShape;
+
+	for ($kazdy in $selectionShape) 
+	{
+
+		setAttr ($kazdy+".globIllPhotons") $wartosc;
+	}
+
+}

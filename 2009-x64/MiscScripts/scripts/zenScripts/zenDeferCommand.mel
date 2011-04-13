@@ -1,0 +1,57 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc zenDeferCommand(string $command)
+{
+	global	string	$zenDelayedCommands;
+	global	int	$zenDelayedCommandsSJ;
+	string	$commandsDelayed;
+	
+	int	$SJExists=false;
+
+		if(size($zenDelayedCommands))
+			$SJExists=true;
+
+	string	$commandArray[]=stringArrayCatenate
+		(
+			stringToStringArray($zenDelayedCommands,";"),
+			stringToStringArray($command,";")
+		);
+
+		for( $c in $commandArray ) 
+			$c=strip($c);
+
+		$commandArray=stringArrayRemoveDuplicates($commandArray);
+		$commandArray=stringArrayRemove({""},$commandArray);
+		$zenDelayedCommands=stringArrayToString($commandArray,";");
+
+		if(!$zenDelayedCommandsSJ || !$SJExists)
+		{
+			$commandsDelayed=
+			(
+				"print(\"\\n//Running Delayed Commands//\\n\");\n"+
+				"for($c in (stringArrayRemoveDuplicates(stringToStringArray($zenDelayedCommands,\";\"))))\n"+
+				"{\n"+
+				"	catch(`evalEcho($c)`);\n"+  
+				"}\n"+
+				"$zenDelayedCommands=\"\";\n"+
+				"$zenDelayedCommandsSJ=0;"
+			);
+			
+			$zenDelayedCommandsSJ=`scriptJob -ro true -e "idle" ($commandsDelayed)`;
+		}		
+		
+
+		//print $zenDelayedCommands;		
+}

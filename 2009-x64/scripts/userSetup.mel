@@ -1,0 +1,107 @@
+print "Starting userSetup.mel...\n";
+
+// Set the time before popuphelp is displayed, in ms
+help -popupPauseTime 400;
+
+// Enable Help Line
+if(! `about -batch`)
+{
+    // No longer needed - correctly remembers help line in prefs
+    // string $helpLineComponent = "Help Line";
+    // if( `exists "isUIComponentVisible"`
+    //     && !isUIComponentVisible($helpLineComponent))
+    // {
+    //     toggleUIComponentVisibility($helpLineComponent);
+    // }
+
+    abxSmartKey;
+
+
+
+
+
+    if(`exists "bonusToolsMenu"`)
+    {
+
+////////////////////////////////
+//  bonusTools userSetup.mel
+////////////////////////////////
+//
+// if you have an existing userSetup.mel file you will need to append
+// this code to have all the bonusTools available
+// cut and paste the contents of this file into your existing userSetup.mel
+// and restart maya to get the full effect
+
+// scriptJob to rebuild menu as working mode changes
+        scriptJob
+            -permanent
+            -event "MenuModeChanged" "bonusToolsMenu";
+
+// build the menu the first time
+        bonusToolsMenu;
+
+// publish (ctrl+RMB in channelBox)
+// aka Quick Connect Attributes
+// uncomment the next line if you wish to use this functionality
+//publish;
+
+
+///////////////////////////////////
+// end bonusTools userSetUp.mel
+///////////////////////////////////
+    }
+
+    source "cometMenu.mel" ;
+    
+// OMToolbox userSetup
+    scriptJob
+        -permanent
+        -event "MenuModeChanged" "OMT_toolboxMenu";
+    OMT_toolboxMenu;
+// OMT Stop
+
+//cpsInstallMenu; // Install CPS menu entry in Maya's main window. This line was created by cpsSetup.
+
+/// In 2009, need to call buildFileMenu before adding anything to it!
+    global string $gMainFileMenu;
+    string $fileMenuItems[] = `menu -q -ia $gMainFileMenu`;
+    if(size($fileMenuItems)==0)
+    {
+        buildFileMenu;
+    }
+    ajrAutoSave();
+
+
+//source NPautoSave;
+
+// Filter out the 'currentTime -q;' commands that happen when you move a window
+// when "Echo All Commands" is on...
+    global proc addCurrentTimeEchoFilter()
+    {
+        string $echoFilter[] = `commandEcho -q -filter`;
+        $echoFilter[size($echoFilter)] = "currentTime -q";
+        commandEcho -filter $echoFilter;
+    }
+
+    evalDeferred -lowestPriority "addCurrentTimeEchoFilter()";
+
+
+    PMP_setProjectOnSceneOpen(true);
+}
+//Mapy
+//commandPort -eo -n ":2255";
+
+//create alias'
+source "PMP_getDef.mel";
+alias h help -doc;
+alias w whatIs;
+alias d PMP_printDef;
+alias l listProcs;
+alias e PMP_edit;
+global proc hw()
+{
+    python("import PMP.maya");
+    python("PMP.maya.hw()");
+}
+
+print "Finished userSetup.mel...\n";

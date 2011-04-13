@@ -1,0 +1,50 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//returns string array $verts in order of their distance from vertex $vert
+global proc string[] zenSortVertsByDistance(string $vert, string $verts[])
+{
+	global	int $zenVertDistances[];
+		clear $zenVertDistances;
+		
+		$verts=`stringArrayRemove {$vert} $verts`;
+	int	$distances[]=`zenEdgeDistance $vert $verts`;
+	string 	$ordered[];
+	int 	$edgeDistance;
+	int	$tempIntArray[];
+	
+		$ordered[0]=$vert;
+		for($i=0;$i<(size($verts));$i++)
+		{
+			$ordered[$distances[$i]]=$verts[$i];
+			$tempIntArray[$distances[$i]]=$distances[$i];
+		}
+		
+	string	$newArray[];
+	int	$n;
+	int	$last;
+	
+		for($i=0;$i<(size($ordered));$i++)
+		{
+			if(size($ordered[$i]))
+			{
+				$zenVertDistances[$n]=$tempIntArray[$i]-$last;
+				$last=$tempIntArray[$i];
+				$newArray[$n++]=$ordered[$i];
+			}
+		}
+		
+		$ordered=$newArray;
+	return 	$ordered;
+}

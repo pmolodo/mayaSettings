@@ -1,0 +1,29 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//returns string array $uvPoints in order of distance from uv $uv
+global proc string[] zenSortUVsByDistance(string $uv, string $uvPoints[])
+{
+		$uvPoints=`stringArrayRemove {$uv} $uvPoints`;
+	int	$distances[]=`zenUVEdgeDistance $uv $uvPoints`;
+	string 	$ordered[];
+	int 	$edgeDistance;
+		$ordered[0]=$uv;
+		for($i=0;$i<(size($uvPoints));$i++)
+		{
+			$ordered[($distances[$i])]=$uvPoints[$i];
+		}
+		$ordered=`stringArrayRemove {""} $ordered`;
+		return $ordered;
+}

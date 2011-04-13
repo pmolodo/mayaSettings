@@ -1,0 +1,36 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//parent the shape beneath the first transform to the second transform
+global proc int zenParentShape(string $sel[])
+{
+	string	$targetTr=$sel[(size($sel)-1)];
+	
+		if(!(size(`ls -tr $targetTr`))) $targetTr=zenReturnFirstStringItem(`listRelatives -p $targetTr`);
+		
+	string	$sourceTr[]=`stringArrayRemove {$targetTr,($sel[size($sel)-1])} $sel`;
+	string	$sourceSh[]=stringArrayCatenate(`ls -typ shape $sourceTr`,`listRelatives -s $sourceTr`);
+	string	$tr[];
+	
+		for($i=0;$i<size($sourceTr);$i++)
+		{
+			$tr=`listRelatives -p $sourceSh[$i]`;
+			parent $tr $targetTr;
+			makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 $sourceTr[$i];
+			parent -s -r -add $sourceSh[$i] $targetTr;
+			delete $tr;
+		}
+		
+	return 1;
+}

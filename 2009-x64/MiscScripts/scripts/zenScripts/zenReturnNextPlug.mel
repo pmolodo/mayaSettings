@@ -1,0 +1,43 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//given a multi-input attribute, nextPlug determines the next available plug and returns it as an integer
+global proc string zenReturnNextPlug(string $attr)
+{
+	string 	$plugs[]=`ls ($attr+"[*]")`;
+	
+	string	$parts1[]=stringToStringArray(zenReturnLastStringItem($plugs),"[");
+	
+	string	$parts2[];
+		
+	string	$parts3String;
+	
+		if(size($parts1)>=2)
+			$parts2[0]=stringArrayToString(zenStringArraySector($parts1,0,(size($parts1)-2)),"[");
+					
+		$parts2=`stringArrayCatenate $parts2  (stringToStringArray(zenReturnLastStringItem($parts1),"]"))`;
+				
+	string	$next=string(int(zenReturnFirstStringItem(stringToStringArray(zenReturnLastStringItem($parts1),"]")))+1);
+	
+		$parts2=zenStringArrayReplace(zenReturnFirstStringItem(stringToStringArray(zenReturnLastStringItem($parts1),"]")),$next,$parts2);
+	
+	string	$returnVal;
+	
+		$returnVal=$parts2[0]+"["+$next+"]";
+		
+		if(size(stringToStringArray(zenReturnLastStringItem($parts1),"]"))>1)
+			$returnVal=$returnVal+zenReturnLastStringItem(stringToStringArray(zenReturnLastStringItem($parts1),"]"));
+	
+	return	$returnVal;
+}

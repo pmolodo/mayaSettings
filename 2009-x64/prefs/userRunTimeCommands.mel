@@ -1,0 +1,907 @@
+//Maya Preference 2009 (Release 1)
+//
+//
+
+runTimeCommand
+	-annotation "Aims the camera at the selection"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("viewLookAt;")
+	LookAtSelection;
+
+runTimeCommand
+	-annotation "Append a poly using the selected verts (select counter-clockwise)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("buildFaceFromVerts;")
+	PolyFromVerts;
+
+runTimeCommand
+	-annotation "Slide Edge along neighbors"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("OMT_to_selectionDragger;")
+	SlideEdge;
+
+runTimeCommand
+	-annotation "Connect selected components"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("OMT_to_connectComponents;")
+	Connect;
+
+runTimeCommand
+	-annotation "Toggle base geometry shading"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("cpsc_control toggleShading")
+	cpsToggleBaseShading;
+
+runTimeCommand
+	-annotation "Sets the camera to the top orthographic view"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("viewSet -fit -ff 0.8 -krs true -an 0 -top")
+	cameraTopView;
+
+runTimeCommand
+	-annotation "Sets the camera to the bottom orthographic view"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("viewSet -fit -ff 0.8 -krs true -an 0 -bottom")
+	cameraBottomView;
+
+runTimeCommand
+	-annotation "Sets the camera to the left side orthographic view (from the left)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("viewSet -fit -ff 0.8 -krs true -an 0 -leftSide")
+	cameraLeftSideView;
+
+runTimeCommand
+	-annotation "Sets the camera to the right side orthographic view (from the right)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("viewSet -fit -ff 0.8 -krs true -an 0 -rightSide")
+	cameraRightSideView;
+
+runTimeCommand
+	-annotation "Sets the camera to the rear orthographic view"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("viewSet -fit -ff 0.8 -krs true -an 0 -back")
+	cameraRearView;
+
+runTimeCommand
+	-annotation "Sets the camera to the front orthographic view"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("viewSet -fit -ff 0.8 -krs true -an 0 -front")
+	cameraFrontView;
+
+runTimeCommand
+	-annotation "Sets the camera to the standard perspective view"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("viewSet -fit -ff 0.8 -krs true -an 0 -persp")
+	cameraPerspView;
+
+runTimeCommand
+	-annotation "Toggle x-ray shading on selected object, or all objects if none selected"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("source extras_to_xrayToggle;\r\nextras_to_xrayToggleAsGroup;")
+	xRayToggle;
+
+runTimeCommand
+	-annotation "Sets the current view to display objects in flat shading with textures"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{\r\n    string $currentPanel = `getPanel -underPointer`;\r\n    if (\"\" == $currentPanel) {\r\n        $currentPanel = `getPanel -withFocus`;\r\n    }\r\n    if (\"\" != $currentPanel) {\r\n        string $panelType = `getPanel -typeOf $currentPanel`;\r\n        if ($panelType ==  \"modelPanel\") {\r\n            modelEditor -edit -displayAppearance \"flatShaded\" -displayTextures on \r\n                -displayLights \"default\" $currentPanel;\r\n        } else if (`isTrue \"MayaCreatorExists\"` && `scriptedPanel -exists $currentPanel` \r\n            && `scriptedPanel -query -type $currentPanel` == \"dynPaintScriptedPanelType\") {\r\n            dynPaintEditor -edit -displayTextures 1 -displayAppearance \"flatShaded\"\r\n                -displayLights \"default\" $gDynPaintEditorName;\r\n        } else if ($panelType ==  \"scriptedPanel\") {\r\n             string $scriptedType = `scriptedPanel -q -type $currentPanel`;\r\n            if ($scriptedType == \"referenceEditorPanel\") {\r\n               global string $gReferenceEditorModelEditor;\r\n              modelEditor -edit -displayAppearance \"flatShaded\"                 -displayTextures on -displayLights \"default\"                 $gReferenceEditorModelEditor;\r\n            }\r\n        }\r\n    }\r\n}")
+	displayFlatShaded;
+
+runTimeCommand
+	-annotation "Selects all of the current component type in the current shell"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("OMT_to_selectElement")
+	selectAll;
+
+runTimeCommand
+	-annotation "Clears the selection"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("select -clear;")
+	deselectAll;
+
+runTimeCommand
+	-annotation "Toggles wether the cps proxy shape is editable"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("cpsc_control toggleEditable")
+	cpsToggleProxyEditable;
+
+runTimeCommand
+	-annotation "Creates a Bonus Tools Component Transform Manipulator"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("bgComponentTransformManip")
+	componentTransformManipulator;
+
+runTimeCommand
+	-annotation "Transform Objects/Components around a user-defined local pivot"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("HKLocalToolsAction();")
+	localTools;
+
+runTimeCommand
+	-annotation "Convert the selection to vertices and change the selection filter to vertices"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PolySelectConvert 3;\r\nsetSelectMode components Components;\r\nselectType -smp 1 -sme 0 -smf 0 -smu 0 -pv 1 -pe 0 -pf 0 -puv 0;\r\nhilite `ls -sl -objectsOnly`;")
+	convertToVertsAndChangeSelectionMode;
+
+runTimeCommand
+	-annotation "Convert the selection to edges and change the selection filter to edges"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PolySelectConvert 2;\r\nsetSelectMode components Components;\r\nselectType -smp 0 -sme 1 -smf 0 -smu 0 -pv 0 -pe 1 -pf 0 -puv 0;\r\nhilite `ls -sl -objectsOnly`;")
+	convertToEdgesAndChangeSelectionMode;
+
+runTimeCommand
+	-annotation "Convert the selection to faces and change the selection filter to faces"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PolySelectConvert 1;\r\nsetSelectMode components Components;\r\nselectType -smp 0 -sme 0 -smf 1 -smu 0 -pv 0 -pe 0 -pf 1 -puv 0;\r\nhilite `ls -sl -objectsOnly`;")
+	convertToFacesAndChangeSelectionMode;
+
+runTimeCommand
+	-annotation "Convert the selection to contained edges and change the selection filter to edges"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PolySelectConvert 20;\r\nsetSelectMode components Components;\r\nselectType -smp 0 -sme 1 -smf 0 -smu 0 -pv 0 -pe 1 -pf 0 -puv 0;\r\nhilite `ls -sl -objectsOnly`;")
+	convertToContainedEdgesAndChangeSelectionMode;
+
+runTimeCommand
+	-annotation "Convert the selection to contained faces and change the selection filter to faces"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PolySelectConvert 10;\r\nsetSelectMode components Components;\r\nselectType -smp 0 -sme 0 -smf 1 -smu 0 -pv 0 -pe 0 -pf 1 -puv 0;\r\nhilite `ls -sl -objectsOnly`;")
+	convertToContainedFacesAndChangeSelectionMode;
+
+runTimeCommand
+	-annotation "Connect Poly Shape"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsLib.mel; cpsl_connectPolyShape")
+	cps;
+
+runTimeCommand
+	-annotation "Connect Poly Shape Options"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsLib.mel; cpsl_showOptionWindow")
+	cpsOptions;
+
+runTimeCommand
+	-annotation "CPS Control Window"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsLib.mel; cpsl_showControlWindow")
+	cpsControlWindow;
+
+runTimeCommand
+	-annotation "CPS Toolbox Window"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsLib.mel; cpsl_showToolboxWindow")
+	cpsToolboxWindow;
+
+runTimeCommand
+	-annotation "CPS Attribute Window"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsLib.mel; cpsl_showAttributeWindow")
+	cpsAttributeWindow;
+
+runTimeCommand
+	-annotation "CPS Add Shell"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_shell addShell")
+	cpsAddShell;
+
+runTimeCommand
+	-annotation "CPS Remove Shell"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_shell removeShell")
+	cpsRemoveShell;
+
+runTimeCommand
+	-annotation "CPS Delete Shell"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_shell deleteShell")
+	cpsDeleteShell;
+
+runTimeCommand
+	-annotation "CPS Merge Shells"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_shell mergeShells")
+	cpsMergeShells;
+
+runTimeCommand
+	-annotation "CPS Split Shell"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_shell splitShell")
+	cpsSplitShell;
+
+runTimeCommand
+	-annotation "CPS Toggle Shell Evaluation"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_shell toggleShellEvaluation")
+	cpsToggleShellEvaluation;
+
+runTimeCommand
+	-annotation "CPS Increase Subdivisions"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_geometry increaseSubdivisions")
+	cpsIncSubd;
+
+runTimeCommand
+	-annotation "CPS Decrease Subdivisions"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_geometry decreaseSubdivisions")
+	cpsDecSubd;
+
+runTimeCommand
+	-annotation "CPS Toggle Subdivision"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_geometry toggleSmoothNode")
+	cpsToggleSubdivision;
+
+runTimeCommand
+	-annotation "CPS Toggle Triangulation"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_geometry toggleTriangulationNode")
+	cpsToggleTriangulation;
+
+runTimeCommand
+	-annotation "CPS Toggle Mirror and Stitch"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_geometry toggleMirrorAndStitchNode")
+	cpsToggleMirrorAndStitch;
+
+runTimeCommand
+	-annotation "CPS Toggle Soften Edge"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_geometry toggleSoftEdgeNode")
+	cpsToggleSoftenEdge;
+
+runTimeCommand
+	-annotation "CPS Disconnect Poly Shape"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_geometry disconnectPolyShape")
+	cpsDisconnectPolyShape;
+
+runTimeCommand
+	-annotation "CPS Delete Proxy"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_geometry deleteResult")
+	cpsDeleteProxy;
+
+runTimeCommand
+	-annotation "CPS Delete History"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_geometry deleteHistory")
+	cpsDeleteHistory;
+
+runTimeCommand
+	-annotation "CPS Snap Border Vertices"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control_geometry snapVertices")
+	cpsSnapBorderVertices;
+
+runTimeCommand
+	-annotation "CPS Toggle Base Visibility"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control toggleBaseVisibility")
+	cpsToggleBaseVisibility;
+
+runTimeCommand
+	-annotation "CPS Toggle Proxy Visibility"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control toggleProxyVisibility")
+	cpsToggleProxyVisibility;
+
+runTimeCommand
+	-annotation "CPS Switch Base/Proxy Visibility"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control switchBaseProxy")
+	cpsSwitchBaseProxy;
+
+runTimeCommand
+	-annotation "CPS Toggle HUD"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control toggleHeadUpDisplay")
+	cpsToggleHUD;
+
+runTimeCommand
+	-annotation "CPS Toggle Display Affected"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control toggleDisplayAffected")
+	cpsToggleDisplayAffected;
+
+runTimeCommand
+	-annotation "CPS Toggle Isolate Select"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control toggleIsolateSelect")
+	cpsToggleIsolateSelect;
+
+runTimeCommand
+	-annotation "CPS Select Base"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control selectBase")
+	cpsSelectBase;
+
+runTimeCommand
+	-annotation "CPS Select Proxy"
+	-category "CPS"
+	-commandLanguage "mel"
+	-command ("source cpsControl.mel; cpsc_createUI none; cpsc_control selectProxy")
+	cpsSelectProxy;
+
+runTimeCommand
+	-annotation "Replace the standard undo with this, so that it uses the HKMagnetTool native undo when active"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("$CurTool = `currentCtx `;\r\n    if($CurTool == \"HKMagnetTool\")\r\n    {\r\n    $Obj = `ls -hl`;\r\n    if(`size $Obj` > 0)\r\n    {\r\n     string $Shape[];\r\n    \t\t  $Shape = `listRelatives -s -ni $Obj[0]`;\r\n    \t\t string $DNode[];\r\n    \t\t  $DNode = `listConnections -s 1 -d 0 ($Shape[0]+\".inMesh\")`;\r\n    \t\t if( `nodeType $DNode[0]` == \"softMod\")\r\n    \t\t  delete $DNode;\r\n    }\r\n    }\r\n    else \r\n    undo;")
+	HKMagnetToolsUndo;
+
+runTimeCommand
+	-annotation "Creates a default 1x1x1 cube"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("polyCube -ch on -o on -w 1.0 -h 1.0 -d 1.0 -cuv 4 ;")
+	CreateUnitCube;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("animCurveConvergeTowardCenter2(0);\r\nautoTangent ;")
+	AnimConv_AutoTangent;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("animCurveConvergeTowardCenter2(0);")
+	AnimConverge;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("toggleUIComponentVisibility(\"Channel Box / Layer Editor\");")
+	ChannelBox_Toggle;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("manipRotateContext -e -mode 0 Rotate;\r\nprint \"Rotate Mode: Local Space\"")
+	LocalRotate;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("manipRotateContext -e -mode 2 Rotate;\r\nprint \"Rotate Mode: Gimbal\"")
+	GimbalRotate;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("manipMoveContext -e -mode 2 Move;\r\nprint \"Move Mode: World Space\"")
+	Translate_World;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("lpFilterCurves ;")
+	FilterCurves;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("zooKeymaster \"-dir right -nudge 1 -factor 0 -pivot mid -abs 1 -curvePivot 0\";\r\n")
+	Nudge_Fwd;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("zooKeymaster \"-dir left -nudge 1 -factor 0 -pivot mid -abs 1 -curvePivot 0\";")
+	Nudge_Bkwd;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("zooKeymaster \"-dir down -nudge 1 -factor 0.02 -pivot mid -abs 1 -curvePivot 0\";")
+	Nudge_Dn;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("zooKeymaster \"-dir up -nudge 1 -factor 0.02 -pivot mid -abs 1 -curvePivot 0\";\r\n")
+	Nudge_Up;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("{\r\n    string $currentPanel = `getPanel -underPointer`;\r\n    if (\"\" == $currentPanel) \r\n        {\r\n        $currentPanel = `getPanel -withFocus`;\r\n        }\r\n    if (\"\" != $currentPanel) \r\n       {\r\n        string $panelType = `getPanel -typeOf $currentPanel`;\r\n        if ($panelType ==  \"modelPanel\") \r\n            {\r\n            int $state = `modelEditor -q -xray $currentPanel`;\r\n            modelEditor -e -xray (!$state) $currentPanel;\r\n            }\r\n       }\r\n}\r\n\r\n")
+	Xray;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("keyTangent -edit -weightedTangents true;\r\nkeyTangent -weightLock off;")
+	WeightedFreeTangents;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("cMotionTrailUI ;")
+	MotionTrail;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("manipMoveContext -e -mode 1 Move;\r\nprint \"Move Mode: Local Space\"")
+	Translate_Local;
+
+runTimeCommand
+	-annotation ""
+	-category "Thierry"
+	-commandLanguage "mel"
+	-command ("timeSliderClearKey;")
+	DeleteTimeSlideKey;
+
+runTimeCommand
+	-annotation "Toggles whether the selected keys have unified or broken tangents"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("if(`keyframe -animation keys -q -kc`)\r\n{\r\n\tint $tangentsLockedArray[] = `keyTangent -q -l`;\r\n\tint $locked;\r\n\tint $sum = 0;\r\n\tfor($locked in $tangentsLockedArray)\r\n\t{\r\n\t\t$sum += $locked;\r\n\t}\r\n        if($sum / float(size($tangentsLockedArray)) >= .5)\r\n        {\r\n                doKeyTangent \"-lock off\" graphEditor1GraphEd noOptions;\r\n        }\r\n        else\r\n        {\r\n                doKeyTangent \"-lock on\" graphEditor1GraphEd noOptions;\r\n        }\r\n}")
+	ToggleUnifyBreakKeyTangents;
+
+runTimeCommand
+	-annotation "AutoTangent"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("source autoTangent.mel;\r\naTan_smoothKeys(0.0, false);")
+	AutoTangentCommand;
+
+runTimeCommand
+	-annotation ""
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("animView -startTime (`playbackOptions -query -minTime` - 1) -endTime (`playbackOptions -query -maxTime` + 1) graphEditor1GraphEd;\r\n")
+	FramePlaybackRangeInGraphEditor;
+
+runTimeCommand
+	-annotation ""
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PMP_hotkeyManager; PMP_SaveHotkeys(\"Animation\");")
+	SaveAnimationHotkeys;
+
+runTimeCommand
+	-annotation ""
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PMP_hotkeyManager; PMP_SaveHotkeys(\"Modeling\");")
+	SaveModelingHotkeys;
+
+runTimeCommand
+	-annotation "Sets the default in/out tangent type to Spline"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("keyTangent -global -itt spline;\r\nkeyTangent -global -ott spline;\r\nprint(\"Default tangents changed to SPLINE\\n\");")
+	defaultTangentsSpline;
+
+runTimeCommand
+	-annotation "Sets the default in/out tangent type to Linear"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("keyTangent -global -itt linear;\r\nkeyTangent -global -ott linear;\r\nprint(\"Default tangents changed to LINEAR\\n\");")
+	defaultTangentsLinear;
+
+runTimeCommand
+	-annotation "Sets the default out tangent type to Stepped (and in type to Linear)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("keyTangent -global -itt linear;\r\nkeyTangent -global -ott step;\r\nprint(\"Default tangents changed to STEPPED\\n\");")
+	defaultTangentsStepped;
+
+runTimeCommand
+	-annotation "Sets the default in/out tangent type to Linear"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("keyTangent -global -itt flat;\r\nkeyTangent -global -ott flat;\r\nprint(\"Default tangents changed to FLAT\\n\");")
+	defaultTangentsFlat;
+
+runTimeCommand
+	-annotation "Loads Thierry's default hotkey set"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PMP_hotkeyManager; PMP_loadHotkeys(\"Thierry\");")
+	LoadThierryHotkeys;
+
+runTimeCommand
+	-annotation "Sets the default in/out tangent type to Clamped"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("keyTangent -global -itt clamped;\r\nkeyTangent -global -ott clamped;\r\nprint(\"Default tangents changed to CLAMPED\\n\");")
+	defaultTangentsClamped;
+
+runTimeCommand
+	-annotation "Sets the default in/out tangent type to Clamped"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("keyTangent -global -itt plateau;\r\nkeyTangent -global -ott plateau;\r\nprint(\"Default tangents changed to PLATEAU\\n\");")
+	defaultTangentsPlateau;
+
+runTimeCommand
+	-annotation "Set the time to the previous keyframe on the timeline, without updating the scene"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("currentTime -update false (`findKeyframe -timeSlider  -which previous`);")
+	PreviousKeyframeNoUpdate;
+
+runTimeCommand
+	-annotation "Set the time to the next keyframe on the timeline, without updating the scene"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("currentTime -update false (`findKeyframe -timeSlider  -which next`);")
+	NextKeyframeNoUpdate;
+
+runTimeCommand
+	-annotation "Toggles the locked/unlocked status of keyframe weights (all keys set to the same locked/unlocked state) (also sets tangents to weighted if not already)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("python(\"import PMP.maya.animation;PMP.maya.animation.toggleLockedKeyTangentWeights()\")")
+	ToggleLockedKeyTangentWeights;
+
+runTimeCommand
+	-annotation "AutoTangent, with 100 softness"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("source autoTangent.mel;\r\naTan_smoothKeys(100.0, false);")
+	AutoTangentSoftCommand;
+
+runTimeCommand
+	-annotation "Extrudes Vertex, Edge, or Face"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("extras_to_extrudeComponent")
+	extrudeComponent;
+
+runTimeCommand
+	-annotation ""
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PMP_hotkeyManager; PMP_SaveHotkeys(\"Thierry\");")
+	SaveThierryHotkeys;
+
+runTimeCommand
+	-annotation "Doesn't save anything - used to make sure pressing CTRL+ALT+SHIFT+S with default keys doesn't save another keyset"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{}")
+	SaveHotkeysDummy;
+
+runTimeCommand
+	-annotation "Convert the selection to UVs and change the selection filter to UVs"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("ConvertSelectionToUVs;\r\nsetSelectMode components Components;\r\nselectType -pv 0 -pe 0 -pf 0 -puv 1 -smp 0 -sme 0 -smf 0 -smu 1;\r\nhilite `ls -sl -objectsOnly`;")
+	convertToUVsAndChangeSelectionMode;
+
+runTimeCommand
+	-annotation "Hides Unselected objects, but not hilited objects!"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PMP_hideUnselected")
+	PMP_hideUnselectedCommand;
+
+runTimeCommand
+	-annotation "Bridges the selected faces"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PMP_bridgeFaces")
+	bridgeFacesCommand;
+
+runTimeCommand
+	-annotation "Convert the selection to the UV shell and change the selection filter to UVs"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("ConvertSelectionToUVs;\r\npolySelectBorderShell 0;\r\nsetSelectMode components Components;\r\nselectType -pv 0 -pe 0 -pf 0 -puv 1 -smp 0 -sme 0 -smf 0 -smu 1;\r\nhilite `ls -sl -objectsOnly`;")
+	convertToUVShellAndChangeSelectionMode;
+
+runTimeCommand
+	-annotation "Makes an instance... duh"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("instance;\r\nprint \"Made instance...\"")
+	Instance;
+
+runTimeCommand
+	-annotation "Update PSD Textures"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("psdUpdateTextures;\r\nprint \"Updated PSD Textures\";")
+	UpdatePSDTextures;
+
+runTimeCommand
+	-annotation "Toggles the display of polygon smoothing (ie, subdiv surfaces in 2008)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{\r\n    int $oldSmoothness[] = `displaySmoothness -q -polygonObject`;\r\n    if( $oldSmoothness[0] == 3) displaySmoothness -polygonObject 1;\r\n    else displaySmoothness -polygonObject 3;\r\n}")
+	toggleMayaDisplaySmoothing;
+
+runTimeCommand
+	-annotation "Toggles the display of polygon smoothing cage (for subdiv surfaces in 2008)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{\r\n    int $oldSmoothness[] = `displaySmoothness -q -polygonObject`;\r\n    if( $oldSmoothness[0] == 2) displaySmoothness -polygonObject 1;\r\n    else displaySmoothness -polygonObject 2;\r\n}")
+	toggleMayaDisplaySmoothingCage;
+
+runTimeCommand
+	-annotation "Add items to 'Left' of selection"
+	-category "User"
+	-commandLanguage "mel"
+	-command ("PMP_pickWalkAddSelection(\"Left\")")
+	PMP_pickWalkAddSelection_Left_RTC;
+
+runTimeCommand
+	-annotation "Add items to 'Right' of selection"
+	-category "User"
+	-commandLanguage "mel"
+	-command ("PMP_pickWalkAddSelection(\"Right\")")
+	PMP_pickWalkAddSelection_Right_RTC;
+
+runTimeCommand
+	-annotation "Add items to 'Up' of selection"
+	-category "User"
+	-commandLanguage "mel"
+	-command ("PMP_pickWalkAddSelection(\"Up\")")
+	PMP_pickWalkAddSelection_Up_RTC;
+
+runTimeCommand
+	-annotation "Add items to 'Down' of selection"
+	-category "User"
+	-commandLanguage "mel"
+	-command ("PMP_pickWalkAddSelection(\"Down\")")
+	PMP_pickWalkAddSelection_Down_RTC;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("startWalkCam 1;")
+	walkCamForward;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("startWalkCam 0;")
+	walkCamBackward;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("startWalkCam 3;")
+	walkCamLeft;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("startWalkCam 2;")
+	walkCamRight;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("stopWalkCam;")
+	walkCamStop;
+
+runTimeCommand
+	-annotation "Parent the selected object(s) to the last selected object (but maintain local transform)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("parent -r;")
+	ParentRelative;
+
+runTimeCommand
+	-annotation "Toggle symmetric modeling on / off"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{\r\n\tint $state = `symmetricModelling -q -symmetry`;\r\n\tsymmetricModelling -e -symmetry (!$state);\r\n}")
+	toggleSymmetricModeling;
+
+runTimeCommand
+	-annotation "Toggle soft selection on and off"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{\r\n\tint $state = `softSelect -q -softSelectEnabled`;\r\n\tsoftSelect -e -softSelectEnabled (!$state);\r\n}")
+	toggleSoftSelection;
+
+runTimeCommand
+	-annotation ""
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("\r\n{\r\n    string $currentPanel = `getPanel -withFocus`;\r\n    string $panelType = `getPanel -to $currentPanel`;\r\n    if ($panelType ==  \"modelPanel\") \r\n    {\r\n        modelEditor -edit -da \"smoothShaded\" -displayTextures off        -dl \"default\" $currentPanel;\r\n    }\r\n    else if (`isTrue \"MayaCreatorExists\"` && `scriptedPanel -ex $currentPanel` && `scriptedPanel -q -type $currentPanel` == \"dynPaintScriptedPanelType\") \r\n    {\r\n        dynPaintEditor -e -dtx off -dsa \"smoothShaded\" -dsl \"default\" $gDynPaintEditorName;\r\n    }\r\n    else if ($panelType ==  \"scriptedPanel\") \r\n    {\r\n        string $scriptedType = `scriptedPanel -q -type $currentPanel`;\r\n        if ($scriptedType == \"referenceEditorPanel\") \r\n        {\r\n            global string $gReferenceEditorModelEditor;\r\n            modelEditor -edit -da \"smoothShaded\" -displayTextures off        -dl \"default\" $gReferenceEditorModelEditor;\r\n        }\r\n    }\r\n}\r\n")
+	displaySmoothShadedNoTexture;
+
+runTimeCommand
+	-annotation "Sets the current view to display objects in flat shading with no textures"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{\r\n    string $currentPanel = `getPanel -underPointer`;\r\n    if (\"\" == $currentPanel) {\r\n        $currentPanel = `getPanel -withFocus`;\r\n    }\r\n    if (\"\" != $currentPanel) {\r\n        string $panelType = `getPanel -typeOf $currentPanel`;\r\n        if ($panelType ==  \"modelPanel\") {\r\n            modelEditor -edit -displayAppearance \"flatShaded\" -displayTextures off \r\n                -displayLights \"default\" $currentPanel;\r\n        } else if (`isTrue \"MayaCreatorExists\"` && `scriptedPanel -exists $currentPanel` \r\n            && `scriptedPanel -query -type $currentPanel` == \"dynPaintScriptedPanelType\") {\r\n            dynPaintEditor -edit -displayTextures 0 -displayAppearance \"flatShaded\"\r\n                -displayLights \"default\" $gDynPaintEditorName;\r\n        } else if ($panelType ==  \"scriptedPanel\") {\r\n             string $scriptedType = `scriptedPanel -q -type $currentPanel`;\r\n            if ($scriptedType == \"referenceEditorPanel\") {\r\n               global string $gReferenceEditorModelEditor;\r\n              modelEditor -edit -displayAppearance \"flatShaded\"                 -displayTextures off -displayLights \"default\"                 $gReferenceEditorModelEditor;\r\n            }\r\n        }\r\n    }\r\n}")
+	displayFlatShadedNoTexture;
+
+runTimeCommand
+	-annotation "When held, play in reverse; when pressed, go back one frame"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{\r\n    // Signal that the key is pressed\r\n    global int $PMP_stickyPreviousFrame_keyPressed;\r\n    $PMP_stickyPreviousFrame_keyPressed = true;\r\n\r\n    // Frame at which we started\r\n    global float $PMP_stickyPreviousFrame_startFrame;\r\n    $PMP_stickyPreviousFrame_startFrame = `currentTime -q`;\r\n    \r\n    // Time at which we started\r\n    global float $PMP_stickyPreviousFrame_startTime;\r\n    $PMP_stickyPreviousFrame_startTime = `timerX`;\r\n\r\n    scriptJob -idleEvent \"PMP_stickyPreviousFrame_whilePressed()\" -runOnce true;\r\n}\r\n\r\n// This must be set to a script job with the -runOnce flag!\r\nglobal proc PMP_stickyPreviousFrame_whilePressed()\r\n{\r\n    // Time to delay before playback starts\r\n    float $delayTime = .2 ;\r\n\r\n    global float $PMP_stickyPreviousFrame_startTime;\r\n    global int $PMP_stickyPreviousFrame_keyPressed;\r\n\r\n    //print(\"PMP_stickyPreviousFrame_whilePressed - elapsedTime: \" + `timerX -startTime $PMP_stickyPreviousFrame_startTime` + \"\\n\");\r\n    \r\n    if(`timerX -startTime $PMP_stickyPreviousFrame_startTime` > $delayTime && \r\n       $PMP_stickyPreviousFrame_keyPressed)\r\n    {\r\n        //print \"playing...\\n\";\r\n        play -forward false;\r\n    }\r\n    else if($PMP_stickyPreviousFrame_keyPressed)\r\n    {\r\n        //print \"starting script again...\\n\";\r\n        scriptJob -idleEvent \"PMP_stickyPreviousFrame_whilePressed()\" -runOnce true;\r\n    }\r\n}\r\n")
+	Thierry_stickyPreviousFrame_press;
+
+runTimeCommand
+	-annotation "When held, play in reverse; when pressed, go back one frame"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{\r\n    // Signal that the key is released\r\n    global int $PMP_stickyPreviousFrame_keyPressed;\r\n    $PMP_stickyPreviousFrame_keyPressed = false;\r\n\r\n    // Stop playback\r\n    play -state off;\r\n\r\n    // Check if frame has changed - if not, go back one\r\n    global float $PMP_stickyPreviousFrame_startFrame;\r\n    if($PMP_stickyPreviousFrame_startFrame == `currentTime -q`)\r\n    {\r\n        print \"Previous frame\\n\";\r\n        currentTime($PMP_stickyPreviousFrame_startFrame - 1);\r\n    }\r\n}\r\n")
+	Thierry_stickyPreviousFrame_release;
+
+runTimeCommand
+	-annotation "When held, play forward; when pressed, go forward one frame"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{\r\n    // Signal that the key is pressed\r\n    global int $PMP_stickyNextFrame_keyPressed;\r\n    $PMP_stickyNextFrame_keyPressed = true;\r\n\r\n    // Frame at which we started\r\n    global float $PMP_stickyNextFrame_startFrame;\r\n    $PMP_stickyNextFrame_startFrame = `currentTime -q`;\r\n    \r\n    // Time at which we started\r\n    global float $PMP_stickyNextFrame_startTime;\r\n    $PMP_stickyNextFrame_startTime = `timerX`;\r\n\r\n    scriptJob -idleEvent \"PMP_stickyNextFrame_whilePressed()\" -runOnce true;\r\n}\r\n\r\n// This must be set to a script job with the -runOnce flag!\r\nglobal proc PMP_stickyNextFrame_whilePressed()\r\n{\r\n    // Time to delay before playback starts\r\n    float $delayTime = .2 ;\r\n\r\n    global float $PMP_stickyNextFrame_startTime;\r\n    global int $PMP_stickyNextFrame_keyPressed;\r\n\r\n    //print(\"PMP_stickyNextFrame_whilePressed - elapsedTime: \" + `timerX -startTime $PMP_stickyNextFrame_startTime` + \"\\n\");\r\n    \r\n    if(`timerX -startTime $PMP_stickyNextFrame_startTime` > $delayTime && \r\n       $PMP_stickyNextFrame_keyPressed)\r\n    {\r\n        //print \"playing...\\n\";\r\n        play;\r\n    }\r\n    else if($PMP_stickyNextFrame_keyPressed)\r\n    {\r\n        //print \"starting script again...\\n\";\r\n        scriptJob -idleEvent \"PMP_stickyNextFrame_whilePressed()\" -runOnce true;\r\n    }\r\n}")
+	Thierry_stickyNextFrame_press;
+
+runTimeCommand
+	-annotation "When held, play forward; when pressed, go forward one frame"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{\r\n    // Signal that the key is released\r\n    global int $PMP_stickyNextFrame_keyPressed;\r\n    $PMP_stickyNextFrame_keyPressed = false;\r\n\r\n    // Stop playback\r\n    play -state off;\r\n\r\n    // Check if frame has changed - if not, go forward one\r\n    global float $PMP_stickyNextFrame_startFrame;\r\n    if($PMP_stickyNextFrame_startFrame == `currentTime -q`)\r\n    {\r\n        print \"Next frame\\n\";\r\n        currentTime($PMP_stickyNextFrame_startFrame + 1);\r\n    }\r\n}")
+	Thierry_stickyNextFrame_release;
+
+runTimeCommand
+	-annotation "Set the rotate manipulator to world space"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("manipRotateContext -e -mode 1 Rotate;\r\nprint \"Rotate Mode: Local Space\"")
+	WorldRotate;
+
+runTimeCommand
+	-annotation "Toggles \"Isolate Selected\" mode on/off for current modeling view"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{  \r\n\tstring $currentPanel = `getPanel -withFocus`;\r\n    string $panelType = `getPanel -to $currentPanel`;\r\n    if ($panelType ==  \"modelPanel\")\r\n    {\r\n        if(`isolateSelect -q -state $currentPanel`)\r\n        {\r\n            enableIsolateSelect $currentPanel false;\r\n        }\r\n        else\r\n        {\r\n            enableIsolateSelect $currentPanel true;\r\n        }\r\n    }\r\n}\r\n")
+	ToggleIsolateSelect;
+
+runTimeCommand
+	-annotation "Insert a key on the selected curves"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("{\r\n    $editor = \"graphEditor1OutlineEd\";\r\n    // First try to find highlighted curves in graphEditor...\r\n    // (curves which are selected in the 'graph' window portion of the graphEditor)\r\n\tstring $curves[] = `findActiveAnimCurves $editor`;\r\n\r\n    // ...then try to find displayed curves in graphEditor...\r\n    // (curves which are selected in the 'outliner' window portion of the graphEditor)\r\n    if(size($curves) < 1)\r\n    {\r\n        string $selConnection = `editor -query -selectionConnection $editor`;\r\n        $curves = `findAnimCurves $selConnection`;\r\n    }\r\n    if(size($curves) > 0)\r\n    {\r\n        setKeyframe -insert $curves ;\r\n    }\r\n    else\r\n    {\r\n        print \"No curves selected or displayed in graph editor...\";\r\n    }\r\n}\r\n")
+	InsertKey;
+
+runTimeCommand
+	-annotation "Set selection mode to objects (and decrease click box size)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("//selectPref -clickBoxSize 5;\r\nsetSelectMode(\"objects\", \"Objects\");\r\n")
+	pmp_selectionModeObject;
+
+runTimeCommand
+	-annotation "Set selection mode to vertex (and increase click box size)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("//selectPref -clickBoxSize 125;\r\nsetSelectMode components Components; selectType -smp 1 -sme 0 -smf 0 -smu 0 -pv 1 -pe 0 -pf 0 -puv 0; select -cl;")
+	pmp_selectionModeVertex;
+
+runTimeCommand
+	-annotation "Set selection mode to edge (and increase click box size)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("//selectPref -clickBoxSize 125;\r\nsetSelectMode components Components; selectType -smp 0 -sme 1 -smf 0 -smu 0 -pv 0 -pe 1 -pf 0 -puv 0; select -cl;")
+	pmp_selectionModeEdge;
+
+runTimeCommand
+	-annotation "Set selection mode to face (and increase click box size)"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("//selectPref -clickBoxSize 125;\r\nsetSelectMode components Components; selectType -smp 0 -sme 0 -smf 1 -smu 0 -pv 0 -pe 0 -pf 1 -puv 0; select -cl;")
+	pmp_selectionModeFace;
+
+runTimeCommand
+	-annotation "Enables selection of surfaces"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("setObjectPickMask \"Surface\" true;")
+	selectSurfacesOn;
+
+runTimeCommand
+	-annotation "Disables selection of surfaces"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("setObjectPickMask \"Surface\" false;")
+	selectSurfacesOff;
+
+runTimeCommand
+	-annotation "Loads the 'Default' hotkey set"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PMP_hotkeyManager;PMP_loadHotkeys(\"Default\");")
+	LoadDefaultHotkeys;
+
+runTimeCommand
+	-annotation "Loads the 'Animation' hotkey set"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PMP_hotkeyManager;PMP_loadHotkeys(\"Animation\");")
+	LoadAnimationHotkeys;
+
+runTimeCommand
+	-annotation "Loads the 'Modeling' hotkey set"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PMP_hotkeyManager;PMP_loadHotkeys(\"Modeling\");")
+	LoadModelingHotkeys;
+
+runTimeCommand
+	-annotation "Saves the current hotkey set"
+	-category "Paul"
+	-commandLanguage "mel"
+	-command ("PMP_hotkeyManager;PMP_saveHotkeys();")
+	SaveCurrentHotkeys;
+

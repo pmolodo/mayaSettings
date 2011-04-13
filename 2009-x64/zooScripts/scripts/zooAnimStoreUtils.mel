@@ -1,0 +1,222 @@
+zooAnimFile;
+zooArrays_str;
+zooPresetManager;
+zooUtils;
+zooXferAnimUtils;
+
+
+global proc zooAnimStoreUtils() {
+	return;
+	}
+
+
+//*******************
+//CLIP FUNCTIONS
+//*******************
+
+
+//use zooXferAnim as a base to write, and also read.  this proc is basically a
+//wrapper for the write process, as it also deals with generating icons
+global proc zooWriteAnimClip( string $name, string $store, string $locale, string $optionStr ) {
+	string $location = `zooGetPresetDirectory $locale zooAnimStore` + $store +"/";
+	if( !`filetest -d $location` ) sysFile -makeDir $location;
+	$name += ".anim";
+	zooAnimFileWrite ( $location + $name +".znm" ) $optionStr {};
+	string $icon = `zooWriteIcon $name $location ""`;
+	print( "writing anim clip to: "+ $location +"/\n" );
+	}
+
+
+global proc zooWritePoseClip( string $name, string $store, string $locale, string $optionStr ) {
+	string $location = `zooGetPresetDirectory $locale zooAnimStore` + $store +"/";
+	if( !`filetest -d $location` ) sysFile -makeDir $location;
+	$name += ".pose";
+	zooAnimFileWritePose ( $location + $name +".znm" ) $optionStr {};
+	string $icon = `zooWriteIcon $name $location  ""`;
+	print( "writing pose clip to: "+ $location +"/\n" );
+	}
+
+
+global proc zooRenameClip( string $name, string $store, string $locale, string $newName ) {
+	string $location = `zooGetPresetDirectory $locale zooAnimStore` + $store +"/";
+	print ( "renamed \""+ $location + $newName +"\"   \""+ $location + $name +"\"\n" );
+	sysFile -rename ( $location + $newName +".znm" ) ( $location + $name +".znm" );
+	sysFile -rename ( $location + $newName +".bmp" ) ( $location + $name +".bmp" );
+	}
+
+
+global proc zooMoveClip( string $name, string $store, string $locale ) {
+	string $curLoc = `zooGetPresetDirectory $locale zooAnimStore` + $store +"/";
+	string $otherLoc = `zooGetPresetDirectory "global" zooAnimStore`;
+
+	if( $locale == "global" ) $otherLoc = `zooGetPresetDirectory "local" zooAnimStore`;
+	$otherLoc = $otherLoc + $store +"/";
+	if( !`filetest -d $otherLoc` ) sysFile -makeDir $otherLoc;
+	sysFile -move ( $otherLoc + $name +".znm" ) ( $curLoc + $name +".znm" );
+	sysFile -move ( $otherLoc + $name +".bmp" ) ( $curLoc + $name +".bmp" );
+	}
+
+
+global proc zooCopyClip( string $name, string $store, string $locale ) {
+	string $curLoc = `zooGetPresetDirectory $locale zooAnimStore` + $store +"/";
+	string $otherLoc = `zooGetPresetDirectory "global" zooAnimStore`;
+
+	if( $locale == "global" ) $otherLoc = `zooGetPresetDirectory "local" zooAnimStore`;
+	$otherLoc = $otherLoc + $store +"/";
+	if( !`filetest -d $otherLoc` ) sysFile -makeDir $otherLoc;
+	sysFile -copy ( $otherLoc + $name +".znm" ) ( $curLoc + $name +".znm" );
+	sysFile -copy ( $otherLoc + $name +".bmp" ) ( $curLoc + $name +".bmp" );
+	}
+
+
+global proc zooDeleteClip( string $name, string $store, string $locale ) {
+	string $location = `zooGetPresetDirectory $locale zooAnimStore`;
+	print( "deleted \""+ $location + $store +"/"+ $name +"\"\n" );
+	sysFile -delete ( $location + $store +"/"+ $name +".znm" );
+	sysFile -delete ( $location + $store +"/"+ $name +".bmp" );
+	}
+
+
+global proc string[] zooListClips( string $store, string $locale, string $type ) {
+	string $loc = `zooGetPresetDirectory $locale zooAnimStore`;
+	string $clips[] = `zooGetFiles ( $loc + $store +"/" ) ( "*."+ $type +".znm" )`;
+	int $num = `size $clips`;
+
+	for( $n=0; $n<$num; $n++ ) $clips[$n] = `match "^[^.]+" $clips[$n]`;
+
+	return $clips;
+	}
+
+
+proc string[] zooListClips_adv( string $store, string $locale, string $type ) {
+	string $loc = `zooGetPresetDirectory $locale zooAnimStore`;
+	string $clips[] = `zooGetFiles ( $loc + $store +"/" ) ( "*.znm" )`;
+	string $clipsOfType[] = {};
+	int $num = `size $clips`;
+
+	for( $n=0; $n<$num; $n++ ) {
+		string $header[] = `zooReadAnimFileHeader ( $loc + $store +"/"+ $clips[$n] )`;
+		string $optionStr = $header[3];
+		string $temp[] = {};
+		int $typeAns = 0;
+
+		$temp = `zooGetFlagArguments $optionStr $type`; if( `size $temp` ) $typeAns = $temp[0];
+		if( $typeAns ) $clipsOfType[`size $clipsOfType`] = `substitute ".znm$" $clips[$n] ""`;
+		}
+
+	return $clipsOfType;
+	}
+
+
+global proc string[] zooGetCtrlsFromQss( int $parent ) {
+	string $sel[] = `ls -sl`;
+	if( !`size $sel` ) return {};
+	string $sets[] = `listConnections -type objectSet`;
+	if( $parent ) if( `size $sets` ) $sets = `listConnections -type objectSet $sets`;
+	if( !`size $sets` ) return {};
+	select $sets;  //distinctly non-elegant, but there is no easy way to recurively query members of a set (ie members of all subsets).  selecting the set and listing selection is the easiest way - but ugly
+	string $objs[] = `ls -sl`;
+	return $objs;
+	}
+
+
+//creates the icon for a clip.  the $panel arg enables forcing of the panel from
+//which to capture from.  if blank, uses panel with focus
+//NOTE - panel variable isn't implemented - so...  just leave it blank always
+//the playblast command doesn't support panel specification - it always uses the
+//panel with focus
+global proc string zooWriteIcon( string $name, string $location, string $panel ) {
+	if( $panel == "" ) $panel = `zooGetMostLikelyModelView`;
+	if( $panel == "" ) return "";
+
+	//store some initial settings, change them to what is required, and then restored at the very end
+	string $settings[] = { "-df","-cv","-ca","-lt","-ha","-dim","-pv","-ikh","-j","-dy" };
+	int $imgFormat = `getAttr "defaultRenderGlobals.imageFormat"` ;		// Store for reset later
+	int $states[] = {};
+
+	setAttr "defaultRenderGlobals.imageFormat" 20;
+	for( $n=0; $n<`size $settings`; $n++ ) $states[$n] = eval("modelEditor -q "+ $settings[$n] +" "+ $panel +";");
+	for( $n=0; $n<`size $settings`; $n++ ) eval("modelEditor -e "+ $settings[$n] +" 0 "+ $panel +";");
+
+	float $time = `currentTime -q`;
+	string $icon = `playblast -st $time -et $time -w 60 -h 60 -fo -fmt "image" -v 0 -p 100 -orn 0 -cf ( $location + $name +".bmp" )`;  //-os offscreen capture - doesn't work on all video cards
+
+	if( `filetest -r $icon` ) sysFile -rename ( $location +"/"+ $name +".bmp" ) $icon;
+	setAttr "defaultRenderGlobals.imageFormat" $imgFormat;
+
+	//restore viewport settings
+	for( $n=0; $n<`size $settings`; $n++ ) eval("modelEditor -e "+ $settings[$n] +" "+ $states[$n] +" "+ $panel +";");
+
+	return $icon;
+	}
+
+
+global proc string zooGetMostLikelyModelView() {
+	string $cur = `getPanel -wf`;
+	string $curType = `getPanel -to $cur`;
+
+	if( $curType == "modelPanel" ) return $cur;
+	string $visPanels[] = `getPanel -vis`;
+	for( $p in $visPanels ) if( `getPanel -to $p` == "modelPanel" ) return $p;
+
+	return "";
+	}
+
+
+//*******************
+//STORE FUNCTIONS
+//*******************
+
+
+//stores exist in both the local and global repository - in order to make clips a little easier to use and share
+//a clip exists in a store, and can be in either the local repository, or the global one.  by default a clip is
+//created locally.  a user can easily move a clip to the global repository for that store.  by having stores exist
+//in both the local and global spaces, users simply need to remember the clip name, and the store they saved it in
+//and it should be very easy to then find that clip, whether it be local or global
+global proc string[] zooCreateStore( string $name ) {
+	string $locL = `zooGetPresetDirectory "local" zooAnimStore`;
+	string $locG = `zooGetPresetDirectory "global" zooAnimStore`;
+
+	sysFile -makeDir ( $locL + $name );
+	sysFile -makeDir ( $locG + $name );
+	return {( $locL + $name ), ( $locG + $name )};
+	}
+
+
+global proc string[] zooListStores( string $locale ) {
+	string $loc = `zooGetPresetDirectory $locale zooAnimStore`;
+	string $stores[] = `zooGetSubDirs $loc 0`;
+
+	return $stores;
+	}
+
+
+global proc zooRenameStore( string $name, string $newName ) {
+	string $locL = `zooGetPresetDirectory "local" zooAnimStore`;
+	string $locG = `zooGetPresetDirectory "global" zooAnimStore`;
+
+	sysFile -rename ( $locL + $newName ) ( $locL + $name );
+	sysFile -rename ( $locG + $newName ) ( $locG + $name );
+	print( $name +" store renamed to "+ $newName +"\n" );
+	}
+
+
+global proc zooDeleteStore( string $name ) {
+	string $locL = `zooGetPresetDirectory "local" zooAnimStore` + $name +"/";
+	string $locG = `zooGetPresetDirectory "global" zooAnimStore` + $name +"/";
+
+	//sysFile doesn't delete directories, so we must resort to system commands - hence we need an NT path and a *nix path
+	if( `about -nt` ) {
+		//the windows directory deletion commands
+		print(system( "rd /s/q \""+ `toNativePath $locL` +"\"" ) +"\n");
+		print(system( "rd /s/q \""+ `toNativePath $locG` +"\"" ) +"\n");
+		}
+	else {
+		print(system("rm -fdr "+ $locL + $name) +"\n");
+		}
+	print( $name +" store deleted\n" );
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

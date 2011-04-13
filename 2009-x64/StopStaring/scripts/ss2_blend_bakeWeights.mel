@@ -1,0 +1,83 @@
+global proc ss2_blend_bakeWeights  (){
+	print"";
+}
+print "ss2_blend_bakeWeights : sourced\n";
+
+global proc string[] ss2_blend_bakeWeights_run (string $base, string $toDupe, string $blendShape, string $blendShapeWeight[], int $includeLast){
+
+	string $output[];
+
+	int $counter = size($blendShapeWeight);
+
+	if ($includeLast){
+
+		$counter--;
+
+		ss2_clearAttr $blendShape $blendShapeWeight[$counter];
+
+		setAttr -k 1 -l 0 ($blendShape+"."+$blendShapeWeight[$counter]);
+
+		setAttr ($blendShape+"."+$blendShapeWeight[$counter]) 1;
+
+	}
+
+	int $i = 0;
+
+	while( $i < $counter ){
+
+		ss2_clearAttr $blendShape $blendShapeWeight[$i];
+
+		catch(`setAttr -k 1 -l 0 ($blendShape+"."+$blendShapeWeight[$i])`);
+
+		catch(`setAttr ($blendShape+"."+$blendShapeWeight[$i]) 0`);
+
+		$i++;
+
+	}
+
+	int $i = 0;
+
+	while( $i < $counter ){
+
+		catch(`setAttr ($blendShape+"."+$blendShapeWeight[$i]) 1`);
+	
+		if (`objExists $blendShapeWeight[$i]` && $base == $toDupe)
+
+			delete `ls $blendShapeWeight[$i]`;
+
+			$output[size($output)] = `ss2_cleanDupe $toDupe $blendShapeWeight[$i]`;
+
+		catch(`setAttr ($blendShape+"."+$blendShapeWeight[$i]) 0`);
+
+		$i++;
+
+	}
+
+	if ($includeLast)
+
+		catch(`setAttr ($blendShape+"."+$blendShapeWeight[$counter]) 0`);
+
+	return $output;
+}
+
+global proc ss2_blend_bakeWeights_fromButton (int $includeLast){
+	string $sel[] = `ls -sl`;
+	string $blendShape = `ss2_search_byType blendShape $sel`;
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 1`;
+	ss2_blend_bakeWeights_run $sel[0] $sel[0] $blendShape $blendShapeWeight $includeLast;
+}
+
+global proc ss2_blend_bakeWeights_shelf (){
+
+	if (`window -exists "ss2_blend_bakeWeightsWin"`) deleteUI ss2_blend_bakeWeightsWin;
+	string $window = `window -title "ss2_blend_bakeWeights" -resizeToFitChildren 1 ss2_blend_bakeWeightsWin`;
+
+	rowColumnLayout -nc 2;
+
+	button -label "bake" -command "ss2_blend_bakeWeights_fromButton 0";
+	button -label "bake (incl. last)" -command "ss2_blend_bakeWeights_fromButton 1";
+
+	window -e -widthHeight 210 50 $window;
+	showWindow $window;
+
+}

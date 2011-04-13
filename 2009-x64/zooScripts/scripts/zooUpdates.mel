@@ -1,0 +1,81 @@
+global proc string zooUpdates( string $updateLocation ) {
+	string $updateDates[] = `zooUpdatesGetUpdates $updateLocation`;
+	string $printString = "";
+
+	//source all dependencies
+	string $deps[] = `zooUpdatesDependencies -scripts`;
+	for( $script in $deps ) if( `exists $script` ) eval( "source " + $script );
+
+	for( $date in $updateDates ) {
+		if( $date != "" ) {
+			int $fileId = `fopen ( $updateLocation + $date + ".upd" ) "r"`;
+			if( `size $printString` != 0 ) $printString = $printString + "\n\n";
+			$printString = $printString + "--- " + `zooUpdatesGetDate $date` + " ---\n";
+			$printString = $printString + `fread $fileId $printString`;
+			fclose $fileId;
+			}
+		}
+
+	return $printString;
+	}
+
+
+global proc string[] zooUpdatesGetUpdates( string $updateLocation ) {
+	string $updateFiles[] = `getFileList -folder $updateLocation -filespec "*.upd"`;
+	string $updateDates[] = {};
+
+	for( $file in $updateFiles ) {
+		string $buffer[] = {};
+		tokenize $file "." $buffer;
+		$updateDates[( `size $updateDates` )] = $buffer[0];
+		}
+
+	$updateDates = `sort $updateDates`;
+	$updateDates = `zooReverseArray_str $updateDates`;
+
+	return $updateDates;
+	}
+
+
+global proc string zooUpdatesGetDate( string $date ) {
+	string $dateString = "";
+	string $monthNames[] = { "", "January","February","March","April","May","June","July","August","September","October","November","December" };
+	string $year = "200" + `substring $date 1 1`;;
+	string $month = `substring $date 2 3`;
+	string $day = `substring $date 4 5`;
+	int $monthIndex = `substring $date 2 3`;
+
+	$month = $monthNames[$monthIndex];
+	$dateString = $day + " " + $month + " " + $year;
+	return $dateString;
+	}
+
+
+//not used currently
+global proc zooUpdatesAutoArchive( string $updateLocation ) {
+	string $currentDate = "30724";
+	string $compareDate = "30420";
+	int $currentYear = `substring $currentDate 1 1`;
+	int $currentMonth = `substring $currentDate 2 3`;
+	int $compareYear = `substring $compareDate 1 1`;
+	int $compareMonth = `substring $compareDate 2 3`;
+	int $age = 2;
+
+	if( $compareYear < $currentYear ) print "archived!";
+	else if( $compareYear == $currentYear ) if( $compareMonth < $currentMonth - $age ) print "archived!";
+	}
+
+
+//these dependencies allow the zooZipScript to package this script easily for distribution
+global proc string[] zooUpdatesDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $iconDependencies[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+
+	if( $mode == "-scripts" ) return $melDependencies;
+	if( $mode == "-icons" ) return $iconDependencies;
+	}
+
+
+//zoo.end

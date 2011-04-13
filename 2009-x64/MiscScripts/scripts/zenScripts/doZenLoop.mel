@@ -1,0 +1,45 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc doZenLoop()
+{
+	global 	string	$zenChordLengthObj;
+	
+	global 	int	$zenOptions_curveType,
+			$zenOptions_loopDistributionType,
+			$zenOptions_keepCurve;
+	
+	string	$command=
+		(
+				"zenLoop "+
+				(string($zenOptions_curveType))+" "+
+				(string($zenOptions_loopDistributionType))+" "+
+				(string($zenOptions_keepCurve))+" "+
+				("\""+string($zenChordLengthObj)+"\"")+";"
+		);
+		
+	int	$err;
+	string	$unit=`currentUnit -q -l`;
+		currentUnit -l cm;
+
+		$err=catch(`evalEcho($command)`);
+
+		if($err)
+		{
+			progressWindow -ep;
+			undoInfo -swf 1;
+		}
+
+		currentUnit -l $unit;
+}	

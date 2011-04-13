@@ -1,0 +1,481 @@
+global proc shelf_Anim2Tools () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Curve Filter" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "_filter" 
+        -image "curveFilter.BMP" 
+        -image1 "curveFilter.BMP" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "lpFilterCurves ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "autoTangent" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "autoTangnt.bmp" 
+        -image1 "autoTangnt.bmp" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "autoTangent ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "selectFromCurve" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "sel" 
+        -image "zooGraphFilter.xpm" 
+        -image1 "zooGraphFilter.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "selectFromCurve ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "XRay" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "toggleXRay.bmp" 
+        -image1 "toggleXRay.bmp" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "{\r\n    string $currentPanel = `getPanel -underPointer`;\r\n    if (\"\" == $currentPanel) \r\n        {\r\n        $currentPanel = `getPanel -withFocus`;\r\n        }\r\n    if (\"\" != $currentPanel) \r\n       {\r\n        string $panelType = `getPanel -typeOf $currentPanel`;\r\n        if ($panelType ==  \"modelPanel\") \r\n            {\r\n            int $state = `modelEditor -q -xray $currentPanel`;\r\n            modelEditor -e -xray (!$state) $currentPanel;\r\n            }\r\n       }\r\n}\r\n\r\n" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Pose Library" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "poses" 
+        -image "poseLib.BMP" 
+        -image1 "poseLib.BMP" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "poseLib ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Maya MotionTrail" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "maya" 
+        -image "USERMENUICONEDITCURVES.BMP" 
+        -image1 "USERMENUICONEDITCURVES.BMP" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doMotionTrail 1 { \"snapshot  -motionTrail 1  -increment 1 -constructionHistory 1 -startTime `playbackOptions -query -min` -endTime `playbackOptions -query -max`\", \"point\", \"0\", \"force\"};\r\ndoMotionTrail 1 { \"snapshot  -motionTrail 1  -increment 1 -constructionHistory 1 -startTime `playbackOptions -query -min` -endTime `playbackOptions -query -max`\", \"line\", \"0\", \"force\"};\r\n" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "cMotionTrail" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "motion" 
+        -image "cMotion.BMP" 
+        -image1 "cMotion.BMP" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "cMotionTrailUI ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "zoomerate" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "zoomerate.bmp" 
+        -image1 "zoomerate.bmp" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "zoomerate ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Tween Machine" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "tween" 
+        -image "tweenMachine.xpm" 
+        -image1 "tweenMachine.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "tweenMachine ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Icon2Shelf" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "Icon" 
+        -image "icon2shelf.BMP" 
+        -image1 "icon2shelf.BMP" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "oaIcon2Shelf ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "load the zooShots UI - right click for additional options" 
+        -docTag "zooToolBox" 
+        -align "center" 
+        -label "zooToolBox ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "zooToolBox.xpm" 
+        -image1 "zooToolBox.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "zooToolBox;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "keyScaler;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "Scale" 
+        -image "USERSUBMENUCELL.BMP" 
+        -image1 "USERSUBMENUCELL.BMP" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "keyScalerButtons;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "abxPicker ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "abxPicker.bmp" 
+        -image1 "abxPicker.bmp" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "abxPicker ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "chinaMarker_GUI;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "chinaMarker.xpm" 
+        -image1 "chinaMarker.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "source chinaMarker;\r\nchinaMarker_GUI;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "jsMakePickWalkUI ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "jsPickWalkUI.BMP" 
+        -image1 "jsPickWalkUI.BMP" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "source jsPickWalk.mel ;\r\njsMakePickWalkUI ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "zooTransfer ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "zooXferAnim.xpm" 
+        -image1 "zooXferAnim.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "zooXferAnim" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "zooShots.xpm" 
+        -image1 "zooShots.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "zooShots" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "sds_mocap_cleaner ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "clean" 
+        -image "zooKeyCommands.xpm" 
+        -image1 "zooKeyCommands.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "sds_mocap_cleaner ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "hotkeyman ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "zooHotkeyer.xpm" 
+        -image1 "zooHotkeyer.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "hotkeyman ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "rivet ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "rivet.bmp" 
+        -image1 "rivet.bmp" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "rivet ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "animFood ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "Food" 
+        -image "mouth.bmp" 
+        -image1 "mouth.bmp" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "animFood ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+
+} 

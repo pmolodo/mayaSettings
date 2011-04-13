@@ -1,0 +1,528 @@
+// Copyright (C) 1997-2003 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+// Alias|Wavefront Script File
+// MODIFY THIS AT YOUR OWN RISK
+//
+//
+// LT_generalProcs.mel
+//
+// Contains general procs used by LT_UI.mel for LevelToolsUI
+//
+// Author:             Steven T. L. Roselle
+//                     
+//
+// Creation Date:      ( 04/04/03 )
+// Last Update:        ( 11/29/04 )
+//
+// Version:		LevelTools 2.0
+
+
+
+global proc LT_generalProcs()
+{
+	// Force loading of all LevelTools general procs
+}
+
+
+
+//////////////////////////////////////////////
+//	Misc Procs
+//////////////////////////////////////////////
+
+global proc LT_help()
+{
+	string $LT_help6_5 = (`getenv HOME` + "/maya/6.5/LT_docs/LevelTools_2.0.htm");
+	string $LT_help6 = (`getenv HOME` + "/maya/6.0/LT_docs/LevelTools_2.0.htm");
+	string $LT_help5 = (`getenv HOME` + "/maya/5.0/LT_docs/LevelTools_2.0.htm");
+	string $LT_help4_5 = (`getenv HOME` + "/maya/4.5/LT_docs/LevelTools_2.0.htm");
+	string $LT_help4 = (`getenv HOME` + "/maya/4.0/LT_docs/LevelTools_2.0.htm");
+
+	if (`filetest -r $LT_help6_5`)
+		{
+		print ("Opening " + $LT_help6_5 + "\n");
+		showHelp -absolute $LT_help6_5;
+		}
+	else if (`filetest -r $LT_help6`)
+		{
+		print ("Opening " + $LT_help6 + "\n");
+		showHelp -absolute $LT_help6;
+		}
+	else if (`filetest -r $LT_help5`)
+		{
+		print ("Opening " + $LT_help5 + "\n");
+		showHelp -absolute $LT_help5;
+		}
+	else if (`filetest -r $LT_help4_5`)
+		{
+		print ("Opening " + $LT_help4_5 + "\n");
+		showHelp -absolute $LT_help4_5;
+		}
+	else if (`filetest -r $LT_help4`)
+		{
+		print ("Opening " + $LT_help4 + "\n");
+		showHelp -absolute $LT_help4;
+		}
+	else
+		{
+		print ($LT_help6_5 + " does not exist.\n");
+		print ($LT_help6 + " does not exist.\n");
+		print ($LT_help5 + " does not exist.\n");
+		print ($LT_help4_5 + " does not exist.\n");
+		print ($LT_help4 + " does not exist.\n");
+		warning ("LT_docs could not be found.");
+		}
+}
+
+
+global proc string swFloatToNiceString(float $swFloat)
+{
+    //Convert long float value to shorter string
+    //
+
+    string $swReturn;
+    string $swPrintData[];
+
+    if (($swFloat < 0.000001) && ( $swFloat > -0.000001)) $swReturn = "0.000000";
+    else
+
+    		{
+        string $swTmp = $swFloat;
+        tokenize $swTmp "." $swPrintData;
+        if (size ($swPrintData) == 2)
+	{
+
+                $swPrintData[1] = $swPrintData[1] + "000";
+                $swReturn = $swPrintData[0] + "." + `substring $swPrintData[1] 1 3`;
+        }
+        else 
+		$swReturn = $swPrintData[0] + ".000";
+    }
+    return $swReturn;
+}
+
+
+//////////////////////////////////////////////
+//	File I/O Procs
+//////////////////////////////////////////////
+
+global proc string getProp(string $path, string $name, string $ext)
+{
+	//Import or reference object into current scene
+	//
+	
+	//get related optionVars
+	string $autoCleanHyperShade = `optionVar -q removeDuplicateShadingNetworksOnImport`;
+	string $referenceObject = `optionVar -q LT_reference`;  // 1=reference : 0=import
+	string $createRefLocator = `optionVar -q LT_createRefLocator`;
+	
+	string $allXformsBefore[] = `ls -type transform`;
+	string $objName[];
+	
+	//get cut code and extract date
+	string $cutCode = `about -c`;
+	int $dateCheck = `substring $cutCode 1 8`;
+
+	//Set filetype and add extension to name
+	string $type;
+	if ($ext == "mb")
+		$type = "mayaBinary";
+	else if ($ext == "ma")
+		$type = "mayaAscii";
+	else 
+		error ("File extension not recognized.");
+	string $file = $name+"."+$ext;
+	
+
+	if ($referenceObject == 1)
+		{
+		//Reference the file
+		if ($createRefLocator == 1)
+			{
+			if ($dateCheck < 20040204) //if cut date preceeds 6.0 beta3 cut date
+				{
+				file -r -type $type -namespace $name -options "v=0" ($path+ "/" + $file);
+				//Select all dagNodes and then isolate last imported object
+				select -r -allDagObjects;
+				string $objName[] = `ls -selection -tail 1`;
+				select -r ("|"+$objName[0]);		
+				//Move to user defined ground plane
+				setAttr ("|"+$objName[0]+".ty") `optionVar -q LT_groundValue`;
+				warning ("Reference locators only available in 6.0 and later\n");
+				}
+			else
+				{
+				file -r -type $type -gr -gl -namespace $name -options "v=0" ($path+ "/" + $file);
+				string $objName[] = `ls -sl`;
+				//Move to user defined ground plane
+				setAttr ("|"+$objName[0]+".ty") `optionVar -q LT_groundValue`;
+				}
+			}
+		else 
+			{
+			file -r -type $type -namespace $name -options "v=0" ($path+ "/" + $file);
+			//Select all dagNodes and then isolate last imported object
+			select -r -allDagObjects;
+			string $objName[] = `ls -selection -tail 1`;
+			select -r ("|"+$objName[0]);
+			//Move to user defined ground plane
+			setAttr ("|"+$objName[0]+".ty") `optionVar -q LT_groundValue`;
+			}
+		}
+		
+	else
+		{
+		//Import the file
+		if ($autoCleanHyperShade == 0)
+			file -import -type $type -rpr $name ($path+ "/" + $file);
+		else
+			{
+			if ($dateCheck < 20030718) //if cut date preceeds 5.0.1 early cut date
+				{
+				print ("\n");
+				file -import -type $type -rpr $name ($path+ "/" + $file);
+				print ("Using pre-5.0.1 script to cleanup redundant shader networks\n");
+				cleanUpAfterImport "" ($name+"_") 0 0;
+				}
+			else
+				{
+				print ("\n");
+				file -import -type $type -rdn -rpr $name ($path+ "/" + $file);			
+				print ("Using file option -rdn to cleanup redundant shader networks : available in version 5.0.1 or later\n");
+				}
+			}
+
+		print ($file + " imported from : " + $path + "\n");
+
+		//Select all dagNodes and then isolate last imported object
+		select -r -allDagObjects;
+		string $objName[] = `ls -selection -tail 1`;
+		select -r ("|"+$objName[0]);
+		//Move to user defined ground plane
+		setAttr ("|"+$objName[0]+".ty") `optionVar -q LT_groundValue`;
+		}
+
+
+	return $objName[0];
+		
+}
+
+
+global proc string[] listFilesAtPath(string $currentPath)
+{
+
+	//Get list of files in props folder
+	//
+	string $currentPath;
+	string $fileList[] =`getFileList -folder $currentPath`;
+	return $fileList;
+}
+
+
+global proc getPropFolderList(string $startingPoint, int $recursive)
+
+{
+	global string $LT_propFolderList[];		
+
+	string $importPrefix = `optionVar -q LT_importPrefix`;
+	string $subFolders[] = `getFileList -fld $startingPoint`;
+	int $maxFolderCount = size($subFolders);
+	int $pathListSize;
+
+	//step through list of files
+	for($folderCount=0 ; $folderCount<$maxFolderCount ; $folderCount++)
+	{
+		int $folder = `filetest -d ($startingPoint + $subFolders[$folderCount])`;
+		//if file is a folder
+		if($folder)
+			{
+			//check for prefix match
+			if (`gmatch $subFolders[$folderCount] ($importPrefix + "*")`)
+				{
+				//add matching folder to the list
+				print ("Adding : " + $startingPoint + $subFolders[$folderCount] + " to import tab.\n");
+				$pathListSize = (`size $LT_propFolderList`);
+				$LT_propFolderList[$pathListSize] = ($startingPoint + $subFolders[$folderCount]);
+				}
+			//recursively check subfolders also
+			if ($recursive == 1)
+				getPropFolderList ($startingPoint + $subFolders[$folderCount] + "/", 1);
+			}
+
+	}
+}
+
+
+//////////////////////////////////////////////
+//	Clean-Up Procs
+//////////////////////////////////////////////
+
+//  Descriptions: 
+//  Similar idea to layerCleanup.  That is we take all shaders from 
+//  one namespace and move the relate them to another namespace. Those 
+//  objects that are assigned to shaders in one namespace will move assignment
+//  to the other objects in the other namespace (with identical names). 
+// 
+//  NOTE: The command requires that the target namespace exist. 
+// 
+
+global proc deleteNodesFromList( string $elem[] )
+//
+// Description: 
+//   Deletes a list of elements, if the element exists. 
+// 
+// Input: 
+//   string $elem[] - a list of objects. 
+//
+{
+    string $item ;
+    for ( $item in $elem ) { 
+	if ( objExists( $item ) ) { 
+	    delete $item; 
+	}
+    }
+}
+
+global proc string[] switchShaders( string $elem[], string $tons, string $frns )
+// 
+// Description: 
+//   Takes a list of shaders and moves the shaders into another 
+//   namespace with identical shader names. If the destination shader
+//   does not exists.  It is renamed to fit the destination namespace. 
+//   Note, it is important that the namespace be already created.  
+//   
+// Input: 
+//   string []    ==>  The shader elements to 'swap'
+//   string $tons ==>  Target namespace 
+//   string $frns ==>  The namespace that we are moving from. 
+// Return:
+//   string []   ==> List of redundant shaders
+//
+{
+    string $dest; 
+    string $item;
+    
+    string $selList[] = `ls -sl`; 
+    string $oldShaderList[];
+    int $count = 0;
+
+    for ( $item in $elem ) { 
+	$dest = `substitute $frns $item $tons`; 
+	
+	if ( objExists( $item ) ) { 
+	    hyperShade -objects $item; 
+	    if ( objExists( $dest ) ) { 
+		hyperShade -assign $dest; 
+		$oldShaderList[$count] = $item;
+		$count++;
+	    } else { 
+		rename $item $dest; 
+	    }
+	}
+    }
+
+    select -r $selList; 
+
+    //print ($oldShaderList);
+    //print ("  OLD \n");
+    return $oldShaderList;
+
+}
+
+
+global proc string[] listRedundancies( string $obj[], string $filt )
+{
+    string $matches[];
+    string $item; 
+    string $connection;
+    int $match = 0;
+
+    for ( $item in $obj ) { 
+
+	// add redundant items to list
+	if ( gmatch( $item, ($filt + "*") ) ) { 
+		$matches[ $match ] = $item; 
+		$match ++; 
+	}
+
+	// add redundant connections to list
+	string $connect[] = `listConnections $item`;
+	for ( $connection in $connect ) { 
+	    if ( gmatch( $connection, ($filt + "*") ) ) { 
+		$matches[ $match ] = $connection; 
+		$match ++; 
+	    }
+	}
+    }
+    //print $matches;
+    return $matches; 
+}
+
+
+global proc removeShadingGroups( string $shaders[])
+{
+
+	string $shadingGroups[];
+	int $count = 0;
+
+	for ($item in $shaders)
+		{
+		delete `listConnections -d 1 ($item+".outColor")`;
+		}
+	
+}
+
+
+
+global proc cleanUpAfterImport( string $tons, string $frns, int $cam, int $lite)
+{
+
+    string $shadingNetwork[];
+    string $shadingGroups[];
+    string $oldShaders[];
+
+    // Get and delete redundant nodes : lights, cameras, shading networks
+
+    if ($cam == 1)
+	{
+	string $cameras[] = listRedundancies(`ls -type camera -type imagePlane`, $frns);
+	deleteNodesFromList( $cameras );
+	}
+
+    if ($lite == 1)
+	{
+	string $lights[] = listRedundancies(`ls -type light`, $frns); 
+	deleteNodesFromList( $lights );
+	}
+
+    string $shaders[] = listRedundancies(`ls -type defaultShaderList`, $frns);
+    $oldShaders = `switchShaders $shaders $tons $frns`;
+
+    // Get rid of upstream and downstream
+    if (`size $oldShaders ` > 0)
+	{
+	    removeShadingGroups($oldShaders);
+	    $textureNetwork = `listHistory $oldShaders `;
+	    deleteNodesFromList($textureNetwork);
+	    deleteNodesFromList($oldShaders);
+	}
+}    
+
+
+///////////////
+// Setup
+
+
+global proc setupWalkCam()
+{
+	// The following Hotkeys will be automatically created with setupWalkCam proc
+	//
+	/*
+	Forward: map to Alt w press:
+		startWalkCam 1
+
+	Backward: map to Alt s press:
+		startWalkCam 0
+	
+	Right: map to Alt d press:
+		startWalkCam 2
+	
+	Left: map to Alt a press:
+		startWalkCam 3
+
+	Stop: map to Alt w,s,d,a release:
+		stopWalkCam;
+	*/
+	/////////////////////
+	//Named Commands
+	//
+	nameCommand
+		-annotation "walkCamForwardNameCommand"
+		-command ("walkCamForward")
+		walkCamForwardNameCommand;
+
+	nameCommand
+		-annotation "walkCamBackwardNameCommand"
+		-command ("walkCamBackward")
+		walkCamBackwardNameCommand;
+
+	nameCommand
+		-annotation "walkCamLeftNameCommand"
+		-command ("walkCamLeft")
+		walkCamLeftNameCommand;
+
+	nameCommand
+		-annotation "walkCamRightNameCommand"
+		-command ("walkCamRight")
+		walkCamRightNameCommand;
+
+	nameCommand
+		-annotation "walkCamStopNameCommand"
+		-command ("walkCamStop")
+		walkCamStopNameCommand;
+
+	/////////////////////
+	//Run-Time Commands
+	//
+	
+	if (`runTimeCommand -exists walkCamForward` == 0)
+		runTimeCommand
+			-annotation ""
+			-category "User"
+			-command ("startWalkCam 1;")
+			walkCamForward;
+
+	if (`runTimeCommand -exists walkCamBackward` == 0)
+		runTimeCommand
+			-annotation ""
+			-category "User"
+			-command ("startWalkCam 0;")
+			walkCamBackward;
+
+	if (`runTimeCommand -exists walkCamLeft` == 0)
+		runTimeCommand
+			-annotation ""
+			-category "User"
+			-command ("startWalkCam 3;")
+			walkCamLeft;
+
+	if (`runTimeCommand -exists walkCamRight` == 0)
+		runTimeCommand
+			-annotation ""
+			-category "User"
+			-command ("startWalkCam 2;")
+			walkCamRight;
+
+	if (`runTimeCommand -exists walkCamStop` == 0)
+		runTimeCommand
+			-annotation ""
+			-category "User"
+			-command ("stopWalkCam;")
+			walkCamStop;
+
+	/////////////////////
+	//Hotkeys
+	//
+	hotkey -keyShortcut "w" -alt -name ("walkCamForwardNameCommand");
+	hotkey -keyShortcut "w" -alt -releaseName ("walkCamStopNameCommand");
+	hotkey -keyShortcut "s" -alt -name ("walkCamBackwardNameCommand");
+	hotkey -keyShortcut "s" -alt -releaseName ("walkCamStopNameCommand");
+	hotkey -keyShortcut "a" -alt -name ("walkCamLeftNameCommand");
+	hotkey -keyShortcut "a" -alt -releaseName ("walkCamStopNameCommand");
+	hotkey -keyShortcut "d" -alt -name ("walkCamRightNameCommand");
+	hotkey -keyShortcut "d" -alt -releaseName ("walkCamStopNameCommand");
+
+}

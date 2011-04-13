@@ -1,0 +1,22 @@
+global proc string[] zooPickwalkDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $helpDependencies[] = {};
+	string $return[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_str";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooPickwalkAuthor";
+	$melDependencies[( `size $melDependencies` )] = "zooPickwalkPresets";
+	$melDependencies[( `size $melDependencies` )] = "zooPresetManager";
+	$melDependencies[( `size $melDependencies` )] = "zooTips";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$helpDependencies[( `size $helpDependencies` )] = "zooPickwalk_help";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+	$iconDependencies[( `size $iconDependencies` )] = "zooPickwalk.xpm";
+
+	if( $mode == "-scripts" ) $return = $melDependencies;
+	if( $mode == "-docs" ) $return = $helpDependencies;
+	if( $mode == "-icons" ) $return = $iconDependencies;
+	return $return;
+	}

@@ -1,0 +1,139 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//return an organized list of edge loops from selected edges
+global proc string[] zenLoopRing(string $sel[])
+{
+	global	string $zenLastEndLoops[];// stores variable for zenLoft
+
+		$sel=`ls -fl $sel`;
+		
+	string	$obj=zenReturnFirstStringItem(`stringToStringArray $sel[0] "."`);
+	string 	$endLoops[]=`zenIsolateAllignedLoops $sel`; 
+		
+		$endLoops=`stringArrayRemove {""," "} $endLoops`;
+		$endLoops=`stringArrayRemoveDuplicates $endLoops`;
+	string	$allLoopRings[];
+	int 	$multiLoop=0;
+		if(size($endLoops)>1)
+		{
+			$endLoops=`zenOrderLoopRings $endLoops`;
+			$multiLoop=1;
+		}
+		
+		$zenLastEndLoops=$endLoops;
+		
+		print $endLoops;
+		
+	string	$loopRings[];
+	string	$ring[];
+	string	$loopA[]=`stringToStringArray $endLoops[0] ","`;
+	string	$loopB[];
+	string	$tempArray[];
+	int	$rpSize=(size($loopA));
+		
+		if($multiLoop)
+		{
+			for($i=1;$i<size($endLoops);$i++)
+			{
+				$loopRings={};
+				$loopB=`stringToStringArray $endLoops[$i] ","`;
+				for($e=0;$e<$rpSize;$e++)
+				{
+					$ring=`zenOrderedEdgeRingPath {$loopA[$e],$loopB[$e]}`;
+					if(size($ring)) 
+					{
+						for($n=0;$n<size($ring);$n++)
+							$loopRings[$n]=$loopRings[$n]+$ring[$n]+",";
+					}
+					else
+					{
+						error -sl 1 "Invalid selection.";
+					}
+				}
+				$loopA=$loopB;
+				$allLoopRings=`stringArrayCatenate $allLoopRings $loopRings`;
+				$allLoopRings=`stringArrayRemoveDuplicates $allLoopRings`;
+			}
+		}
+		else
+		{
+			//get entire edge ring
+			int	$sizeRing;
+			int	$sameSize=1;
+			string	$allRings[];
+			
+				for($i=0;$i<size($loopA);$i++)
+				{
+					$tempArray=`zenOrderedEdgeRingPath {$loopA[$i]}`;
+					$allRings[$i]=`stringArrayToString $tempArray ","`;
+				}
+				
+			string	$loops[];
+			int	$edgeIndex;
+			string	$startRing[]=`stringToStringArray $allRings[0] ","`;
+				$edgeIndex=`zenCompID ($startRing[1])`;
+			string	$loop[]=zenCompFromID($obj,"e",`polySelect -ns -el $edgeIndex $obj`);
+			
+				for($i=1;$i<size($allRings);$i++)
+				{
+					$ring=`stringToStringArray $allRings[$i] ","`;
+					$edgeIndex=`zenCompID $ring[1]`;
+					if(`stringArrayContains ($ring[1]) $loop`==0)
+					{
+						$ring=`zenReverseStringArray $ring`;
+						if(`stringArrayContains $ring[1] $loop`==0)
+						{
+							error -sl 1 "Invalid selection.";
+						}
+						else
+						{
+							$allRings[$i]=`stringArrayToString $ring ","`;
+						}
+					}				
+				}
+				
+				for($e=0;$e<size($allRings);$e++)
+				{
+					$ring=`stringToStringArray ($allRings[$e]) ","`;	
+					for($n=0;$n<size($ring);$n++)
+					{
+						$loopRings[$n]=$loopRings[$n]+$ring[$n]+",";
+					}
+					
+				}
+
+				$allLoopRings=$loopRings;
+				
+		}
+		
+		if(size($allLoopRings)==0)
+		{
+			error -sl 1 "This procedure requires edge loops containing at least 2 edges per loop";
+		}
+		
+		//cleanup
+		for($i=0;$i<size($allLoopRings);$i++)
+		{
+			$allLoopRings[$i]=strip($allLoopRings[$i]);
+			if(`substring $allLoopRings[$i] (size($allLoopRings[$i])) (size($allLoopRings[$i]))`==",")
+			{
+				$allLoopRings[$i]=`substring $allLoopRings[$i] 1 (size($allLoopRings[$i])-1)`;
+			}
+			$allLoopRings[$i]=strip($allLoopRings[$i]);
+		}
+		
+		
+	return 	$allLoopRings;
+}

@@ -1,0 +1,21 @@
+global proc string[] zooHeavyDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $helpDependencies[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooHeavyUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooHeavyMenu";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_float";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_str";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooTips";
+	$melDependencies[( `size $melDependencies` )] = "zooVectors";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+	$iconDependencies[( `size $iconDependencies` )] = "zooHeavy.xpm";
+
+	if( $mode == "-scripts" ) return $melDependencies;
+	if( $mode == "-icons" ) return $iconDependencies;
+	if( $mode == "-docs" ) return $helpDependencies;
+	return {};
+	}

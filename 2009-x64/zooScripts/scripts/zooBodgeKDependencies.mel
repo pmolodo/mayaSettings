@@ -1,0 +1,28 @@
+global proc string[] zooBodgeKDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $helpDependencies[] = {};
+	string $return[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooAlign";
+	$melDependencies[( `size $melDependencies` )] = "zooAttrUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_str";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_int";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_float";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooHelp";
+	$melDependencies[( `size $melDependencies` )] = "zooKeyCommands";
+	$melDependencies[( `size $melDependencies` )] = "zooObjMenu";
+	$melDependencies[( `size $melDependencies` )] = "zooSortToHeirarchy";
+	$melDependencies[( `size $melDependencies` )] = "zooTriggeredUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooVectors";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$helpDependencies[( `size $helpDependencies` )] = "zooBodgeK_help";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+	$iconDependencies[( `size $iconDependencies` )] = "zooBodgeK.xpm";
+
+	if( $mode == "-scripts" ) $return = $melDependencies;
+	if( $mode == "-icons" ) $return = $iconDependencies;
+	if( $mode == "-docs" ) $return = $helpDependencies;
+	return $return;
+	}

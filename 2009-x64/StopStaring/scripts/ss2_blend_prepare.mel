@@ -1,0 +1,479 @@
+global proc ss2_blend_prepare  (){
+	print"";
+}
+print "ss2_blend_prepare : sourced\n";
+
+global proc ss2_blend_prepare_shelf (){
+
+	if (`window -exists "ss2_blend_prepareWin"`) deleteUI ss2_blend_prepareWin;
+	window -title "ss2_blend_prepareWin" -widthHeight 210 105 ss2_blend_prepareWin;
+
+	columnLayout;
+	string $opGrp = `checkBoxGrp -numberOfCheckBoxes 4 -valueArray4 1 1 1 1 -columnWidth4 50 50 50 100 -labelArray4 "fix" "half" "xyz" "network"`;
+	string $command;
+	$command += ("if (`checkBoxGrp -q -v1 "+$opGrp+"`) ss2_blend_prepare_fix_connect;");
+	$command += ("if (`checkBoxGrp -q -v2 "+$opGrp+"`) ss2_blend_prepare_half_connect;");
+	$command += ("if (`checkBoxGrp -q -v3 "+$opGrp+"`) ss2_blend_prepare_XYZ_connect;");
+	$command += ("if (`checkBoxGrp -q -v4 "+$opGrp+"`) ss2_blend_prepare_generateNetwork;");
+	button -w 250 -label "prepare blend" -command $command;
+
+	showWindow ss2_blend_prepareWin;
+
+}
+
+
+
+global proc ss2_blend_prepare_fix_connect_run (string $blendShape, string $shape){
+
+	string $tokens[];
+	tokenize $shape "_" $tokens;
+	int $size = size($tokens);
+	string $mult[];clear $mult;	
+
+	for ($i = 1; $i < $size; $i++){
+		$mult[$i-1] = `createNode multiplyDivide -name ($shape+"_Mult"+$i)`;
+		evalEcho("connectAttr -f "+$blendShape+"."+$tokens[$i]+" "+$mult[$i-1]+".input1X");
+	}
+
+	for ($i = 0; $i < ($size-2); $i++)
+		evalEcho("connectAttr -f "+$mult[$i]+".outputX "+$mult[$i+1]+".input2X");
+
+	evalEcho("connectAttr -f "+$mult[size($mult)-1]+".outputX "+$blendShape+"."+$shape);
+
+}
+
+global proc ss2_blend_prepare_fix_connect (){
+
+	string $sel[] = `ls -sl`;
+	string $blendShape = `ss2_search_byType blendShape $sel`;
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 1 `;
+
+	for ($b in $blendShapeWeight){
+
+		string $tokens[];
+		tokenize $b "_" $tokens;
+		int $size = size($tokens);
+
+		if ($tokens[0] == "FIX"){
+
+			if (size($tokens)>2){
+
+				int $match = 0;
+
+				for ($fix in $tokens)
+					for ($compare in $blendShapeWeight)
+						if ($fix == $compare) $match++;
+
+				if ($match == ($size-1))
+					ss2_blend_prepare_fix_connect_run $blendShape $b;
+
+			}else{
+
+				warning ($b+" does not have enough info to make a fix shape setup, the name should refer to at least two other shapes");
+			}
+		}
+	}
+	select $sel;
+}
+
+global proc ss2_blend_prepare_half_connect (){
+
+	string $sel[] = `ls -sl`;
+	string $blendShape = `ss2_search_byType blendShape $sel`;
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 1 `;
+
+	for ($b in $blendShapeWeight){
+
+		string $tokens[];
+		tokenize $b "_" $tokens;
+		int $size = size($tokens);
+
+		if ( $size > 1 && $size < 3 && $tokens[0] == "HALF"){
+
+			setDrivenKeyframe -dv 0.0 -v 0.0 -cd ($blendShape+"."+$tokens[1]) ($blendShape+"."+$b);
+			setDrivenKeyframe -dv 0.5 -v 1.0 -cd ($blendShape+"."+$tokens[1]) ($blendShape+"."+$b);
+			setDrivenKeyframe -dv 1.0 -v 0.0 -cd ($blendShape+"."+$tokens[1]) ($blendShape+"."+$b);
+
+			string $animCurve[] = `listConnections -destination 0 -source 1 -type animCurveUU ($blendShape+"."+$b)`;
+			keyTangent -itt flat -ott flat $animCurve;
+
+		}
+	}
+	select $sel;
+}
+
+global proc ss2_blend_prepare_XYZ_connect (){
+
+	string $sel[] = `ls -sl`;
+	string $blendShape = `ss2_search_byType blendShape $sel`;
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 1 `;
+
+	string $prefix[] = {"X","Y","Z"};
+
+	for ($p in $prefix){
+	
+		for ($b in $blendShapeWeight){
+	
+			string $tokens[];
+			tokenize $b "_" $tokens;
+			int $size = size($tokens);
+	
+			if ( $size > 1 && $size < 3 && $tokens[0] == $p){
+	
+				setDrivenKeyframe -dv 0.0 -v 0.0 -cd ($blendShape+"."+$tokens[1]) ($blendShape+"."+$b);
+				setDrivenKeyframe -dv 1.0 -v 1.0 -cd ($blendShape+"."+$tokens[1]) ($blendShape+"."+$b);
+	
+				string $animCurve[] = `listConnections -destination 0 -source 1 -type animCurveUU ($blendShape+"."+$b)`;
+				keyTangent -itt spline -ott spline $animCurve;
+	
+			}
+		}
+	}
+	select $sel;
+}
+
+
+
+
+global proc ss2_blend_prepare_generateNetwork (){
+
+	string $sel[] = `ls -sl`;
+
+	string $blendShape = `ss2_search_byType "blendShape" $sel`;
+
+	string $limited = `createNode network -name ($blendShape+"_Limited")`;
+	string $unlimited = `createNode network -name ($blendShape+"_Unlimited")`;
+	string $direct = `createNode network -name ($blendShape+"_Direct")`;
+	string $weightClamp = `createNode network -name ($blendShape+"_WeightClamp")`;
+	string $buffer = `createNode network -name ($blendShape+"_Buffer")`;
+
+	//Connect all the nodes together
+	addAttr -at message -ln "ss2_blend_limited" $buffer;
+		connectAttr -f ($limited+".message") ($buffer+".ss2_blend_limited");
+	addAttr -at message -ln "ss2_blend_unlimited" $buffer;
+		connectAttr -f ($unlimited+".message") ($buffer+".ss2_blend_unlimited");
+	addAttr -at message -ln "ss2_blend_direct" $buffer;
+		connectAttr -f ($direct+".message") ($buffer+".ss2_blend_direct");
+	addAttr -at message -ln "ss2_blend_weightClamp" $buffer;
+		connectAttr -f ($weightClamp+".message") ($buffer+".ss2_blend_weightClamp");
+
+	//Add weighting control attributes
+	addAttr -at double -dv 1.0 -k 1 -ln "controlWeight" $weightClamp;
+	addAttr -at double -dv 1.0 -k 1 -ln "directWeight" $weightClamp;
+
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 0 `;
+	int $size = size($blendShapeWeight);
+
+	for ($i = 0; $i < $size; $i++){
+
+		addAttr -k 1 -at double -ln $blendShapeWeight[$i] $limited;
+		addAttr -k 1 -at double -ln $blendShapeWeight[$i] $unlimited;
+		addAttr -k 1 -at double -ln $blendShapeWeight[$i] $direct;
+		addAttr -k 1 -at double -ln $blendShapeWeight[$i] $buffer;
+
+		addAttr -at double -dv -10.0 -k 1 -ln ($blendShapeWeight[$i]+"_min") $weightClamp;
+		addAttr -at double -dv 10.0 -k 1 -ln ($blendShapeWeight[$i]+"_max") $weightClamp;
+
+		string $addLimited = `createNode blendWeighted -name ($blendShapeWeight[$i]+"_Limited")`;
+		string $addUnlimited = `createNode blendWeighted -name ($blendShapeWeight[$i]+"_Unlimited")`;
+		string $addFinal = `createNode blendWeighted -name ($blendShapeWeight[$i]+"_AddFinal")`;
+
+		string $limitedClamp = `createNode clamp -name ($blendShapeWeight[$i]+"_LimitClamp")`;
+		string $finalClamp = `createNode clamp -name ($blendShapeWeight[$i]+"_FinalClamp")`;
+
+		setAttr ($limitedClamp+".minR") 0;
+		setAttr ($limitedClamp+".maxR") 1;
+
+	//****
+		string $limitClampInMin = `createNode blendWeighted -name ($blendShapeWeight[$i]+"_LimitedClampInMin")`;
+		string $limitClampInMax = `createNode blendWeighted -name ($blendShapeWeight[$i]+"_LimitedClampInMax")`;
+		string $finalClampInMin = `createNode blendWeighted -name ($blendShapeWeight[$i]+"_FinalClampInMin")`;
+		string $finalClampInMax = `createNode blendWeighted -name ($blendShapeWeight[$i]+"_FinalClampInMax")`;
+
+		string $limitClampInMaxRev = `createNode reverse -name ($blendShapeWeight[$i]+"_LimitedClampInMaxReverse")`;
+		string $finalClampInMaxRev = `createNode reverse -name ($blendShapeWeight[$i]+"_FinalClampInMaxReverse")`;
+	//****
+
+		//Basic network
+		connectAttr -f ($addLimited+".output") ($limitedClamp+".inputR");
+		connectAttr -f ($limitedClamp+".outputR") ($limited+"."+$blendShapeWeight[$i]);
+		connectAttr -f ($addUnlimited+".output") ($unlimited+"."+$blendShapeWeight[$i]);
+
+		connectAttr -f ($limited+"."+$blendShapeWeight[$i]) ($addFinal+".input[0]");
+		connectAttr -f ($unlimited+"."+$blendShapeWeight[$i]) ($addFinal+".input[1]");
+		connectAttr -f ($direct+"."+$blendShapeWeight[$i]) ($addFinal+".input[2]");
+		connectAttr -f ($addFinal+".output") ($finalClamp+".inputR");
+		connectAttr -f ($finalClamp+".outputR") ($buffer+"."+$blendShapeWeight[$i]);
+
+		//Weights and clamps
+		connectAttr -f ($weightClamp+".controlWeight") ($addFinal+".weight[0]");
+		connectAttr -f ($weightClamp+".controlWeight") ($addFinal+".weight[1]");
+		connectAttr -f ($weightClamp+".directWeight") ($addFinal+".weight[2]");
+		connectAttr -f ($weightClamp+"."+$blendShapeWeight[$i]+"_min") ($finalClamp+".minR");
+
+	//****
+		connectAttr -f ($weightClamp+"."+$blendShapeWeight[$i]+"_max") ($finalClamp+".inputG");
+		connectAttr -f ($finalClamp+".outputG") ($finalClamp+".maxR");
+
+		setAttr ($finalClampInMax+".input[0]") -9;
+		setAttr ($limitedClamp+".maxG") 100;
+		setAttr ($finalClamp+".maxG") 100;
+
+		connectAttr -f ($limitClampInMax+".output") ($limitClampInMaxRev+".inputX");
+		connectAttr -f ($finalClampInMax+".output") ($finalClampInMaxRev+".inputX");
+
+		connectAttr -f ($limitClampInMaxRev+".outputX") ($limitedClamp+".inputG");
+		connectAttr -f ($limitedClamp+".outputG") ($limitedClamp+".maxR");
+
+
+		//connectAttr -f ($limitClampInMaxRev+".outputX") ($limitedClamp+".maxR");
+		connectAttr -f ($finalClampInMaxRev+".outputX") ($weightClamp+"."+$blendShapeWeight[$i]+"_max");
+	//****
+
+		//Connect back to blendshape
+		connectAttr -f ($buffer+"."+$blendShapeWeight[$i]) ($blendShape+"."+$blendShapeWeight[$i]);
+
+	}
+
+	select $sel;
+
+}
+
+
+global proc ss2_blend_prepare_XYZ (){
+
+	string $output[];
+	vector $basePos[];
+
+	string $sel[] = `ls -sl`;
+
+	string $base = $sel[0];
+
+	int $vertCount[] = `polyEvaluate -vertex $base`;
+
+	string $blendShape = `ss2_search_byType blendShape $sel`;
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape  0 `;
+	string $allBlendShapeWeight[] = `ss2_search_blendWeights $blendShape  1 `;
+	string $involved[] = `ss2_search_blendTargetsAbove $blendShape $blendShapeWeight 0.9 1 0`;
+
+	for ($b in $allBlendShapeWeight)
+		catch(`setAttr ($blendShape+"."+$b) 0`);
+
+	for ($v = 0; $v < $vertCount[0]; $v++){
+		float $temp[] = `pointPosition -l ($base+".vtx["+$v+"]")`;
+		$basePos[$v] = <<$temp[0],$temp[1],$temp[2]>>;
+	}
+
+	for ($i in $involved){
+
+		string $XYZ[];
+
+		if (`objExists $i`) delete $i;
+
+		$XYZ[3] = `ss2_cleanDupe $base $i`;
+
+		catch(`setAttr ($blendShape+"."+$i) 1`);
+
+		$XYZ[0] = `ss2_cleanDupe $base ("X_"+$i)`;
+		$XYZ[1] = `ss2_cleanDupe $base ("Y_"+$i)`;
+		$XYZ[2] = `ss2_cleanDupe $base ("Z_"+$i)`;
+
+		catch(`setAttr ($blendShape+"."+$i) 0`);
+
+		vector $shapePos[];
+
+		for ($v = 0; $v < $vertCount[0]; $v++){
+			float $temp[] = `pointPosition -l ($XYZ[0]+".vtx["+$v+"]")`;
+			$shapePos[$v] = <<$temp[0],$temp[1],$temp[2]>>;
+		}
+
+		for ($v = 0; $v < $vertCount[0]; $v++){
+
+			vector $thisBase = $basePos[$v];
+			vector $thisShape = $shapePos[$v];
+			float $thisBaseFloat[] = {$thisBase.x, $thisBase.y, $thisBase.z};
+			float $thisShapeFloat[] = {$thisShape.x, $thisShape.y, $thisShape.z};
+
+			for ($n = 0; $n < 3; $n++){
+
+				float $doThis[3] = $thisBaseFloat;
+				$doThis[$n] = $thisShapeFloat[$n];
+				xform -t $doThis[0] $doThis[1] $doThis[2] ($XYZ[$n]+".vtx["+$v+"]");
+			}
+		}
+	$output = `stringArrayCatenate $output {$XYZ[3],$XYZ[0],$XYZ[1],$XYZ[2]}`;
+	}
+	select $output $base;
+	ss2_blend_prepare_fixHalf_in;
+	
+	delete $output;
+
+}
+
+
+global proc string[] ss2_blend_prepare_fixHalf_out (string $type, float $threshold, int $minShapes, int $maxShapes){
+
+	string $sel[] = `ls -sl`;
+	string $output[];
+
+	float $fixHalfVal = 1.0;
+	if ($type == "HALF") $fixHalfVal = 0.5;
+
+	string $base = $sel[0];
+
+	string $blendShape = `ss2_search_byType blendShape $sel`;
+
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape  0 `;
+	string $allBlendShapeWeight[] = `ss2_search_blendWeights $blendShape  1 `;
+
+	string $involved[] = `ss2_search_blendTargetsAbove $blendShape $blendShapeWeight $threshold $minShapes $maxShapes`;
+	string $alsoInvolved[] = `ss2_search_blendTargetsAbove $blendShape $allBlendShapeWeight $threshold $minShapes $maxShapes`;
+
+	if (size($alsoInvolved) != size($involved)) confirmDialog -title "Stop Staring 2" -message "You have a name with underscores that will be included" -button "OK";
+
+	for ($b in $allBlendShapeWeight)
+		catch(`setAttr ($blendShape+"."+$b) 0`);
+
+	string $name = $type;
+
+	for ($i in $involved)
+		$name += ("_"+$i);
+
+	string $fix = `ss2_cleanDupe $base $name`;
+
+	for ($i in $alsoInvolved)
+		catch (`setAttr ($blendShape+"."+$i) $fixHalfVal`);
+
+	string $sculptMe = `ss2_cleanDupe $base ("sculptMe_"+$name)`;
+	string $subtractMe = `ss2_cleanDupe $base ("subtractMe_"+$name)`;
+
+	string $fixBlend[] = `blendShape $subtractMe $sculptMe $fix`;
+	setAttr -k 0 -l 1 ($fixBlend[0]+"."+$subtractMe) -1;
+	setAttr -k 0 -l 1  ($fixBlend[0]+"."+$sculptMe) 1;
+
+	string $unlockAttrs[] = {"t","tx","ty","tz"};
+	string $unlocks[] = {$fix, $sculptMe};
+	for ($u in $unlocks)
+		for ($a in $unlockAttrs)
+			setAttr -k 1 -l 0 ($u+"."+$a);
+
+	float $bBoxSize[] = `getAttr ($fix+".boundingBoxSize")`;
+	move -r 0 ( -1.5 * $bBoxSize[1] ) 0 $sculptMe $subtractMe $fix;
+	move -r ( 1.5 * $bBoxSize[0]  ) 0 0 $subtractMe;
+	move -r ( 3.0 * $bBoxSize[0]  ) 0 0 $sculptMe;
+
+	select $sculptMe;
+
+	return {$fix,$sculptMe,$subtractMe};
+
+}
+
+
+
+global proc string ss2_blend_prepare_fixHalf_in (){
+
+	string $sel[] = `ls -sl`;
+	string $base = $sel[size($sel)-1];
+	string $newShapes[] = `stringArrayRemove {$base} $sel`;
+	string $blendShape = `ss2_search_byType blendShape {$base}`;
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 1 `;
+	float $values[];
+	string $parents[];
+	vector $position[];
+	int $skipIt[];
+	int $vis[];
+	int $size = size($blendShapeWeight);
+
+	for ($i = 0; $i < $size; $i++){
+		
+		for ($ns in $newShapes){
+			if ($ns == $blendShapeWeight[$i]){
+				$skipIt[$i] = 1;
+				continue;
+			}
+		}
+
+		$values[$i] = `getAttr ($blendShape+"."+$blendShapeWeight[$i])`;
+
+		catch(`setAttr ($blendShape+"."+$blendShapeWeight[$i]) 0`);
+
+		if (`objExists $blendShapeWeight[$i]`){
+
+			float $temp[3] = `xform -q -ws -t $blendShapeWeight[$i]`;
+
+			$position[$i] = <<$temp[0], $temp[1], $temp[2]>>;
+
+			$vis[$i] = `getAttr ($blendShapeWeight[$i]+".v")`;
+			
+			string $prnt[] = `listRelatives -parent $blendShapeWeight[$i]`;
+
+			$parents[$i] = $prnt[0];
+
+		}else{
+
+			$skipIt[$i] = 1;
+
+		}
+
+	}
+
+	string $bakers[] = `stringArrayRemove $newShapes $blendShapeWeight`;
+
+	//Bake
+	for ($b in $bakers){
+		if (`objExists $b`)
+			delete $b;
+		catch(`setAttr ($blendShape+"."+$b) 1`);
+		ss2_cleanDupe $base $b;
+		catch(`setAttr ($blendShape+"."+$b) 0`);
+	}
+
+	delete -ch $base;
+
+	for ($i = 0; $i < $size; $i++){
+
+		if (!$skipIt[$i]){
+
+			if (`objExists $blendShapeWeight[$i]`){
+				vector $tempVec = $position[$i];
+
+				xform -ws -t ($tempVec.x) ($tempVec.y) ($tempVec.z) $blendShapeWeight[$i];
+
+				catch(`setAttr ($blendShapeWeight[$i]+".v") $vis[$i]`);
+
+				if (`objExists $parents[$i]`)
+					catch(`parent $blendShapeWeight[$i] $parents[$i]`);
+			}
+		}else{
+			catch(`setAttr ($blendShapeWeight[$i]+".v") 0`);
+		}
+	}
+
+	string $pre[] = {"subtractMe_", "sculptMe_"};
+
+	for ($n in $newShapes)
+		for ($p in $pre)
+			if (`objExists ($p+$n)`)
+				delete ($p+$n);
+
+	string $blend[] = `blendShape -name $blendShape $blendShapeWeight $newShapes $base`;
+
+	for ($i = 0; $i < $size; $i++)
+		setAttr ($blendShape+"."+$blendShapeWeight[$i]) $values[$i];
+
+	select -cl;
+
+	for ($s in $sel)
+		if (`objExists $s`) select -add $s;
+
+	return $blend[0];
+
+}
+
+global proc ss2_blend_prepare_fix_out (){
+	ss2_blend_prepare_fixHalf_out "FIX" 0.9 2 0;
+}
+
+global proc ss2_blend_prepare_half_out (){
+	ss2_blend_prepare_fixHalf_out "HALF" 0.1 1 1;
+}

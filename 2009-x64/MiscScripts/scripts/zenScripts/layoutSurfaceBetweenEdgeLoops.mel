@@ -1,0 +1,61 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+global proc string layoutSurfaceBetweenEdgeLoops()
+{
+	global 	int 	$zenMinimumWindowWidth,
+			$zenOptions_attachSurfaceDegree,
+			$zenOptions_attachSurfaceShave;
+			
+	global 	string $zenToolsWindow;
+	
+	string 	$parentLayout=`zenClearToolColumn`;
+
+	string	$zenAttachColumn=`columnLayout -adj 1 -p $parentLayout`;
+	
+		window -e -w $zenMinimumWindowWidth -title "ZenTools : Surface Between Edge Loops" $zenToolsWindow;
+				
+			intFieldGrp
+				-co2 2 2
+				-p $zenAttachColumn
+				-l "Degree"
+				-adj 2
+				-cw 1 50
+				-v1 $zenOptions_attachSurfaceDegree
+				-cc "$zenOptions_attachSurfaceDegree=`intFieldGrp -q -v1 zenOptions_attachSurfaceDegree`"
+				zenOptions_attachSurfaceDegree;
+					
+			separator -p $zenAttachColumn;
+					
+			checkBox
+				-p $zenAttachColumn
+				-en `pluginInfo -q -l "shaveNode"`
+				-w 20
+				-v $zenOptions_attachSurfaceShave
+				-al left
+				-l " Create Shave Hairs "
+				-cc "$zenOptions_attachSurfaceShave=`checkBox -q -v zenOptions_attachSurfaceShave`"
+				zenOptions_attachSurfaceShave;
+
+			separator -p $zenAttachColumn;
+
+			button
+				-h 20
+				-p $zenAttachColumn
+				-label Apply
+				-command "doZenCommand doZenAttachSurface";
+				
+	return	$zenAttachColumn;
+}

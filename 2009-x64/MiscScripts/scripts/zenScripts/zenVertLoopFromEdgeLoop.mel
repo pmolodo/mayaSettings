@@ -1,0 +1,50 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//given an ordered edge loop, return an ordered vert loop
+global proc string[] zenVertLoopFromEdgeLoop(string $edges[])
+{
+	global	int $zenOptions_debugging;
+	
+		if($zenOptions_debugging)
+		{
+			print("\n//zenVertLoopFromEdgeLoop");
+			print("\n//string $edges[]: "+zenReturnStringArrayFormat($edges));
+		}
+	
+		if(size($edges)<2)
+		{
+			return(ls("-fl",polyListComponentConversion("-tv",$edges[0])));
+			//progressWindow -endProgress;
+		}
+
+	string	$verts[];
+	string 	$v0[]=`polyListComponentConversion -tv $edges[0]`;
+		$v0=`ls -fl $v0`;
+	string 	$v1[]=`polyListComponentConversion -tv $edges[1]`;
+		$v1=`ls -fl $v1`;
+		$v0=`stringArrayRemove $v1 $v0`;
+		$verts[0]=$v0[0];
+		
+		for($i=0;$i<size($edges);$i++)
+		{
+			string 	$v0[]=`polyListComponentConversion -tv $edges[$i]`;
+			
+				$v0=`ls -fl $v0`;
+				$v0=`stringArrayRemove $verts $v0`;
+				$verts[size($verts)]=$v0[0];
+		}
+		
+	return	$verts;
+}

@@ -1,0 +1,67 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc string[] rigZenReturnLabelOrderedJoints(string $root)
+{
+	string	$joints[]=stringArrayCatenate({$root},`listRelatives -path -ad -type "joint" $root`);
+	string	$returnVal[];
+	int	$type;
+	
+		for($j in $joints)
+		{
+			$type=`getAttr ($j+".type")`;
+			
+			if(size($returnVal[$type]))
+				$returnVal[$type]=$returnVal[$type]+","+$j;
+			else
+				$returnVal[$type]=$j;
+		}
+		
+	return	$returnVal;
+}
+
+/*
+//template for usage
+
+	string	$joints[]=`zenReturnLabelOrderedJoints root`;
+
+	string	$root=$joints[1];
+	string	$hips[]=stringToStringArray($joints[2],",");
+	string	$knees[]=stringToStringArray($joints[3],",");
+	string	$feet[]=stringToStringArray($joints[4],",");
+	string	$toes[]=stringToStringArray($joints[5],",");
+	string	$spine[]=stringToStringArray($joints[6],",");
+	string	$neck[]=stringToStringArray($joints[7],",");
+	string	$head=$joints[8];
+	string	$clavicle[]=stringToStringArray($joints[9],",");
+	string	$shoulders[]=stringToStringArray($joints[10],",");
+	string	$elbows[]=stringToStringArray($joints[11],",");
+	string	$hands[]=stringToStringArray($joints[12],",");
+
+	string	$fingerBases[]=stringToStringArray($joints[13],",");
+	string	$thumbs[]=stringToStringArray($joints[14],",");
+	string	$indexFingers[]=stringToStringArray($joints[19],",");
+	string	$middleFingers[]=stringToStringArray($joints[20],",");
+	string	$ringFingers[]=stringToStringArray($joints[21],",");
+	string	$pinkyFingers[]=stringToStringArray($joints[22],",");
+	string	$middleFingers[]=stringToStringArray($joints[23],",");
+
+	string	$bigToes[]=stringToStringArray($joints[24],",");
+	string	$indexToes[]=stringToStringArray($joints[25],",");
+	string	$middleToes[]=stringToStringArray($joints[26],",");
+	string	$ringToes[]=stringToStringArray($joints[27],",");
+	string	$pinkyToes[]=stringToStringArray($joints[28],",");
+	string	$middleToes[]=stringToStringArray($joints[29],",");
+
+*/

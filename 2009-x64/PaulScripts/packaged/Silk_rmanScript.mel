@@ -1,0 +1,36 @@
+proc _addAttrIfNotExist(string $nodeName, string $attrName, string $attributeType)
+{
+    if(!attributeExists($attrName, $nodeName))
+    {
+        addAttr -at $attributeType -longName $attrName $nodeName;
+    }
+}
+
+proc _addAndSetAttr(string $nodeName, string $attrName, string $attributeType, string $value)
+{
+    _addAttrIfNotExist($nodeName, $attrName, $attributeType);
+    eval("setAttr \"" + $nodeName + "." + $attrName + "\" " + $value);
+}
+
+global proc Silk_rmanScript()
+{
+    string $biasAttr = "rman__riattr__trace_bias";
+    string $dispAttr = "rman__riattr__trace_displacements";
+        
+    string $selection[] = `ls -long -sl`;
+    if(size($selection) > 0)
+    {
+        for($currentTransform in $selection)
+        {
+            string $allShapes[] = `listRelatives -fullPath -shapes -noIntermediate $currentTransform`;
+            if(size($allShapes) > 0)
+            {
+                for($currentShape in $allShapes)
+                {
+                    _addAndSetAttr($currentShape, $biasAttr, "float", .1);
+                    _addAndSetAttr($currentShape, $dispAttr, "bool", 1);
+                }
+            }
+        }
+    }
+}

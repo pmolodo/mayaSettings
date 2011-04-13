@@ -1,0 +1,60 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc zenSaveOptions()
+{
+	string	$vars[]=`env`;
+	string	$zenIntVars[];
+	string	$zenStringVars[];
+	string	$tempArray[];
+	string	$prefix;
+	
+		for($v in $vars)
+		{
+			$prefix=zenReturnFirstStringItem(`stringToStringArray $v "_"`);
+		
+			if($prefix=="$zenOptions")
+				$zenIntVars=`stringArrayCatenate $zenIntVars {$v}`;
+				
+			if($prefix=="$zenOptionString")
+				$zenStringVars=`stringArrayCatenate $zenStringVars {$v}`;
+		}
+		
+	string	$userScriptsDirectory=`internalVar -usd`;
+	string	$userOptions=$userScriptsDirectory+"zenTools_userOptions.mel";
+	
+	string	$writeCmd;
+	
+	global	string	$zenCurrentOption;
+	
+		for($z in $zenIntVars)
+		{
+			eval("$zenCurrentOption=string("+$z+")");
+			$writeCmd=$writeCmd+($z+"="+$zenCurrentOption+";\n");
+		}
+		
+		for($z in $zenStringVars)
+		{
+			eval("$zenCurrentOption="+$z);
+			$writeCmd=$writeCmd+($z+"=\""+$zenCurrentOption+"\";\n");
+		}
+		
+		$writeCmd=$writeCmd+"global proc zenTools_userOptions(){}\n";
+		
+	int	$fileID=`fopen $userOptions "w"`;
+		
+		fprint $fileID $writeCmd;
+				
+		fclose 	$fileID;
+}

@@ -1,0 +1,211 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: ntMirrorBlendShape
+''    Author: nelsonteixeira 
+''    Last Updated: Sep 29, 2006
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/animation/813.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------//
+//	SCRIPT:	ntMBS.mel
+//	AUTHOR:	Nelson Teixeira
+//			MSN: nelson_atwork@hotmail.com
+//			e-mail: nelson3d@gmail.com
+//	
+//	CREATION DATE: FEB 17, 2005	
+//	LAST UPDATE: 	SEP 22, 2006	
+//
+//
+//	DESCRIPTION:	This script can be used to create
+//			mirrored blendshapes. So you don´t have to
+//			make the job twice.	
+//
+//-----------------------------------------------------------------//
+//-----------------------------------------------------------------////
+
+global proc ntMBS()
+{
+	// create the window
+
+	$sel = `ls -sl`;
+	
+	$win = "nt_MirrorBlendShape";
+
+	if (`window -exists $win`)
+		deleteUI $win;
+	
+	window -t "ntMirrorBlendShape v2.0" $win;
+	
+	 	columnLayout -adjustableColumn true -rowSpacing 10;
+	
+			iconTextButton  -style "iconOnly" -height 80
+			-image "Nelson3DHor.bmp";
+	
+	columnLayout -cat both 5 -adj true cLayout;
+	
+	//text -label "1 - Pick base geometry";
+	textFieldButtonGrp 	-l "Base geometry:" 
+						-bl "sel" 
+						-bc "PickBase" 
+						-adj 2 
+						//-tx $sel[0]	
+						TFBG1;
+	//button -w 60 -l "STEP1" -c STEP1 button1;
+	
+	//text -label "2 - Pick geometry to create mirror";
+	textFieldButtonGrp 	-l "Geometry to mirror:" 
+						-bl "sel" 
+						-bc "PickMirrorFrom" 
+						-adj 2 
+						//-tx $sel[1]
+						TFBG2;
+	
+	if (size($sel) == 0)
+		{	
+		warning "You have nothing selected, try again.";
+		textFieldButtonGrp -e -tx "" TFBG1;
+		textFieldButtonGrp -e -tx "" TFBG2;
+		}
+		
+	else if (size($sel) == 2)
+		{
+		textFieldButtonGrp -e -tx $sel[0] TFBG1;
+		textFieldButtonGrp -e -tx $sel[1] TFBG2;
+		}	
+			
+	//button -w 60 -l "STEP2" -c STEP2 button2;
+	text -label "";
+	
+	button -w 60 -l "MirrorBlendShape" -c "MirrorBlendShape" buttonMBS;
+	
+	text -label "";
+	text -label "Nelson Teixeira";
+	text -label "MSN & e-mail: nelson3d@gmail.com";
+	text -label "";
+
+	button -w 60 -l "Done!" -c "deleteUI nt_MirrorBlendShape";
+
+
+	showWindow $win;
+
+window -e -w 320 -h 310 $win;
+
+//Query WindowSize
+//$w =  `window -q -w nt_MirrorBlendShape`;
+//$h =  `window -q -h nt_MirrorBlendShape`;
+//print ($w + " X " + $h);
+}
+
+//================================================
+
+global proc MirrorBlendShape()
+	{
+	$base = `textFieldButtonGrp -q -tx TFBG1`;
+	$shapeToMirror = `textFieldButtonGrp -q -tx TFBG2`;
+
+	$tx = `getAttr ($shapeToMirror + ".translateX")`;
+	$ty = `getAttr ($shapeToMirror + ".translateY")`;
+	$tz = `getAttr ($shapeToMirror + ".translateZ")`;
+
+	select -r $base;
+	$baseDup = `duplicate -rr -name baseDup`; 
+	DeleteHistory;
+	//FreezeTransformations;
+	$dup =  `duplicate -rr -n "ntNBS_rest_neg"`;
+	setAttr ($dup[0] + ".scaleX") -1;
+	
+	select -r $shapeToMirror;
+
+	$absShapePosition  = `xform -q -a -t $shapeToMirror`;	
+
+	select -r $baseDup $shapeToMirror; 
+	delete `pointConstraint -offset 0 0 0 -weight 1`; 	
+
+	DeleteHistory; 
+
+	select -r $shapeToMirror;
+
+	$dupTempNeg = `duplicate -rr -n "ntMBS_temp_neg"`;
+	setAttr ($dupTempNeg[0] + ".scaleX") -1;
+	
+	
+	select -r $dup ;
+	select -tgl $dupTempNeg ;
+	
+	$blend = `blendShape -parallel`;
+	
+	setAttr ($blend[0] + "." + $dup[0]) 1;
+
+	//======================================
+
+	select -r $baseDup ;
+	$dupNeg = `duplicate -rr -n "ntMBS_neg"`;
+
+	select -r $dupNeg ;
+	select -add $dupTempNeg ;
+
+	
+	CreateWrap;
+
+	setAttr ($blend[0] + "." + $dup[0]) 0;
+	select -r $dupNeg;
+			//ntMBS_neg ;
+	DeleteHistory;
+
+	// Clean-up
+
+	delete $dup[0]
+	       $dupTempNeg
+	       ($dupTempNeg[0] + "Base") ;
+
+
+	setAttr ($dupNeg[0] + ".translateX") (-$tx);
+	setAttr ($dupNeg[0] + ".translateY") ($ty);
+	setAttr ($dupNeg[0] + ".translateZ") ($tz);
+			
+	setAttr ($shapeToMirror + ".translateX") $tx;
+	setAttr ($shapeToMirror + ".translateY") $ty;
+	setAttr ($shapeToMirror + ".translateZ") $tz;
+	
+	rename $dupNeg[0] ("ntMBS_" + $shapeToMirror);
+	
+	delete $baseDup;
+
+	}
+
+//=======================================
+
+global proc PickBase()
+	{
+	string $objs[0];
+	$objs = `ls -sl`;
+	
+	// check and see if $objs[0] is a polygon object
+	if (size($objs) == 0)
+		error "You have nothing selected, try again.";
+	$shape = `listRelatives -f -c $objs[0]`;
+	if (`nodeType $shape[0]` != "mesh")
+		error "You don't have a polygon object selected.\n";
+	textFieldButtonGrp -e -tx $objs[0] TFBG1;
+	}
+
+global proc PickMirrorFrom()
+	{
+	string $objs[0];
+	$objs = `ls -sl`;
+	
+	// check and see if $objs[0] is a polygon object
+	if (size($objs) == 0)
+		error "You have nothing selected, try again.";
+	$shape = `listRelatives -f -c $objs[0]`;
+	if (`nodeType $shape[0]` != "mesh")
+		error "You don't have a polygon object selected.\n";
+	textFieldButtonGrp -e -tx $objs[0] TFBG2;
+	}

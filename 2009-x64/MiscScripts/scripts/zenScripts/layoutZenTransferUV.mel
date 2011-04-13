@@ -1,0 +1,69 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+global proc string layoutZenTransferUV()
+{
+	global 	int 	$zenMinimumWindowWidth,
+			$zenOptions_transferUVSpace,
+			$zenOptions_transferUVaccurateEval;
+	
+	string 	$parentLayout=`zenClearToolColumn`;
+	
+	string	$mainColumn=`columnLayout -adj 1 -p $parentLayout`;
+	
+	global 	string $zenToolsWindow;
+	
+		window -e -w $zenMinimumWindowWidth -title "ZenTools : UV Transfer" $zenToolsWindow;
+		
+		if($zenOptions_transferUVSpace==1) $s=1; else $s=2;			
+			
+			radioButtonGrp
+				-p $mainColumn
+				-numberOfRadioButtons 2 
+				-l1 "Object Space" 
+				-l2 "World Space"
+				-cc 
+				(
+					"if(`radioButtonGrp -q -sl zenOptions_transferUVSpace`==2)\n"+
+					"$zenOptions_transferUVSpace=0;\n"+
+					"else\n"+
+					"$zenOptions_transferUVSpace=1;"
+				)
+				-select $s
+				-columnWidth2 100 100
+				zenOptions_transferUVSpace;
+
+			separator -p $mainColumn -w $zenMinimumWindowWidth;
+			
+			/*
+			checkBox 
+				-al left
+				-p $mainColumn
+				-v $zenOptions_transferUVaccurateEval
+				-cc "$zenOptions_transferUVaccurateEval=`checkBox -q -v zenOptions_transferUVaccurateEval`"
+				-label "Accurate" 
+				zenOptions_transferUVaccurateEval;
+			
+			separator -p $mainColumn -w $zenMinimumWindowWidth;
+			*/
+
+			button
+				-h 20
+				-p $mainColumn
+				-label Apply
+				-command "doZenCommand doZenTransferUV";
+				
+	return	$mainColumn;
+}

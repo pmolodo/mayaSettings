@@ -1,0 +1,521 @@
+/*
+THIS IS THE RELEASE LIST:
+
+source ss2_zip;
+source ss2_blend_bakeWeights;
+source ss2_blend_prepare;
+source ss2_blend_taper;
+source ss2_blend_targetWeights;
+source ss2_controls;
+source ss2_eyes;
+source ss2_limitShape;
+source ss2_revLimScale;
+*/
+
+
+global proc ss2_utils (){
+	print"";
+}
+print "ss2_utils : sourced\n";
+
+
+global proc ss2_formLayer (string $form, string $object, int $space[]){
+
+	formLayout -e
+
+		-attachPosition $object "top"			0 $space[0]
+		-attachPosition $object "bottom"	0 $space[1]
+		-attachPosition $object "left"		0 $space[2]
+		-attachPosition $object "right"		0 $space[3]
+
+	$form;
+
+}
+
+
+global proc ss2_clearAttr ( string $object, string $attr ){
+
+	if (`objExists $object`){
+
+		string $alias = `aliasAttr -q ($object+"."+$attr)`;
+
+		if (`attributeExists $attr $object` || size($alias)>1){
+
+			if ( `connectionInfo -isDestination ($object+"."+$attr)` ){
+
+				string $clearFromMe[] = `listConnections -plugs 1 -source 1 -destination 0 ($object+"."+$attr)`;
+				string $clearMe = `connectionInfo -getExactDestination ($object+"."+$attr)`;
+				disconnectAttr $clearFromMe[0] $clearMe;
+
+			}
+		}
+	}
+}
+
+global proc ss2_killAllIncoming(string $node){
+
+	int $size = `getAttr -size ($node+".input")`;
+
+	string $inConnect[] = `listConnections -plugs 1 ($node+".input")`;
+
+	int $gotIt = 0;
+
+	for($i = 0; $i < 100; $i++){
+
+		string $con = `connectionInfo -sourceFromDestination ($node+".input["+$i+"]")`;
+
+		if (size($con)){
+
+			string $worked = `disconnectAttr $con ($node+".input["+$i+"]")`;
+
+				if (size($worked))	$gotIt++;
+
+			}
+
+			if ($gotIt == $size)break;
+
+		}
+
+}
+
+global proc string ss2_cleanDupe (string $node, string $name){
+
+	string $dupe[] = `duplicate -rc $node`;
+	string $deleteList[];
+
+	for ($d in $dupe){
+		string $relatives[] = `listRelatives -type shape $d`;
+		for ($r in $relatives){
+			if (`getAttr ($r+".intermediateObject")`){
+				$deleteList[size($deleteList)] = $r;
+			}
+		}
+	}
+
+	string $xforms[] = `ls -type transform $dupe`;
+
+	$deleteList = `stringArrayCatenate $deleteList $xforms`;
+	$deleteList = `stringArrayRemoveDuplicates $deleteList`;
+	$deleteList = `stringArrayRemove {$dupe[0]} $deleteList`;
+
+	if (size($deleteList))	delete $deleteList;
+
+	return `rename $dupe[0] $name`;
+
+}
+
+//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+											//BEGIN SEARCH TOOLS//
+//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+
+global proc string[] ss2_search_blendTargetsAbove (string $blendShape, string $blendShapeWeight[], float $val ,int $minSize, int $maxSize){
+
+	string $involved[];
+
+	for ( $b in $blendShapeWeight ){
+		if ( `getAttr ( $blendShape + "." + $b )` >= $val )
+			$involved[ size ( $involved ) ]= $b;
+	}
+
+	int $size = size($involved);
+
+	if ( $maxSize == 0 )
+		$maxSize = $size;
+
+	if ( $size < $minSize)
+		error ("ss2_search_blendTargetsAbove : Not enough sliders above "+$val+" to perform the operation");
+
+	if ($size > $maxSize){
+		warning ("ss2_search_blendTargetsAbove : Too many sliders above "+$val+"; picking the first, "+$involved[0]);
+		$involved = {$involved[0]};
+	}
+
+	return $involved;
+}
+
+global proc int ss2_search_firstMulti (string $node, string $attr){
+
+	int $size = size(`listAttr -multi ($node+"."+$attr)`) + 1;
+
+	for ($i = 0; $i < $size; $i++){
+		int $connected = size(`listConnections -source 1 -destination 0 ($node+"."+$attr+"["+$i+"]")`);
+		if (!$connected)
+			return $i;
+	}
+
+	return 0;
+
+}
+
+global proc string[] ss2_search_blendWeights (string $blendShape, int $underscores){
+
+	if (!`objExists $blendShape`) error ("ss2_search_blendWeights : Cannot return weights on non-existent blend shape");
+
+	string $alias[];
+	string $output[];
+	int $i = 0;
+	int $weightCount = `blendShape -q -weightCount $blendShape`;
+
+	while (size($alias) < $weightCount){
+		string $temp = `aliasAttr -q ($blendShape+".weight["+$i+"]")`;
+		if (size($temp))
+			$alias[size($alias)] = $temp;
+		$i++;
+	}
+
+	if (!$underscores){
+		for ($a in $alias)
+			if (!`gmatch $a "*_*"`)
+				$output[size($output)] = $a;
+	}else{
+			$output = $alias;
+	}
+
+	return $output;
+}
+
+global proc string ss2_search (string $type, string $before, string $after, string $sel[], int $secondRound){
+
+	string $testList[] = {"ls -sl ","listHistory -leaf 0 ","listHistory -future 1 -leaf 0 ","listRelatives -allDescendents ","listRelatives -allParents ","listHistory ","listHistory -future 1 ","listConnections -scn 1 "};
+
+	int $noSel = 0;
+	int $verbose = 0;
+
+
+	if (size($sel) < 1){
+		$sel = `ls -type camera`;
+		$noSel = 1;
+	}
+
+	for ($s in $sel){
+
+		for ($t in $testList){
+
+			if ($verbose) print ("eval `"+$t+$s+"`\n");
+
+			string $found[] = `eval ($t+$s)`;
+
+			$found = `stringArrayRemoveDuplicates $found`;
+
+			for ($f in $found){
+
+				if ($verbose) print ("eval succeeded on `"+$t+$s+"` : "+$f+"\n");
+
+				if (`eval ($before+$f+$after)`){
+
+					if ($verbose) print ("eval succeeded on `"+$before+$f+$after+"`\n");
+
+					if (`attributeExists "intermediateObject" $f`){
+
+						if (!`getAttr ($f+".intermediateObject")`){
+
+							if ($verbose) print ("returning success on "+$f+"\n");
+
+							return $f;
+
+						}
+
+					}else{
+
+						return $f;
+
+					}
+
+				}
+
+			}
+			if ($verbose) print ("Did not find match for "+$s+"\n");
+
+		}
+
+	}
+
+	if ($verbose&&size($type)) print ("Got out of direct search, going to type\n");
+
+	if (size($type)){
+		string $all[] = `ls -type $type`;
+		if (size($all))
+			return $all[0];
+	}else{
+		if (!$secondRound){
+			string $all[] = `ls`;
+			return `ss2_search $type $before $after $all 1`;
+		}
+	}
+
+	if ($noSel)
+		select -cl;
+
+	warning "ss2_Search : did not find search target";
+	return "";
+}
+
+global proc string ss2_search_byType (string $type, string $sel[]){
+	return `ss2_search $type ("size(`ls -type "+$type+" ") "`)" $sel 0`;
+}
+
+global proc string ss2_search_byAttr (string $attr, string $sel[]){
+	return `ss2_search "" ("attributeExists "+$attr+" ") "" $sel 0`;
+}
+
+global proc string ss2_search_blendWeighted (string $type, string $blendShape, string $attr){
+
+	string $buffer = `ss2_search_byAttr "ss2_blend_direct" {$blendShape}`;
+	string $connect[] = `listConnections ($buffer+".ss2_blend_"+$type)`;
+	string $intoType[] = `listConnections -source 1 -destination 1 ($connect[0]+"."+$attr)`;
+	string $history[] = `listHistory ($intoType[0]+".input")`;
+	string $bWeighted[] = `ls -type blendWeighted $history`;
+	int $index = `ss2_search_firstMulti $bWeighted[0] "input"`;
+
+	return ($bWeighted[0]+".input["+$index+"]");
+	
+}
+
+global proc string ss2_search_clamp (string $type, string $blendShape, string $attr){
+
+	string $buffer = `ss2_search_byAttr "ss2_blend_direct" {$blendShape}`;
+
+	if (size($buffer)){
+
+		if ($type == "final"){
+			string $weightClampNode[] = `listConnections ($buffer+".ss2_blend_weightClamp")`;
+			string $reverse[] = `listConnections -type reverse -destination 0 ($weightClampNode[0]+"."+$attr+"_max")`;
+			string $bWeights[] = `listConnections -type blendWeighted -destination 0 ($reverse[0]+".inputX")`;
+			return ($bWeights[0]);
+		}
+
+		if ($type == "limited"){
+			string $limited[] = `listConnections ($buffer+".ss2_blend_limited")`;
+			string $clamp[] = `listConnections -type clamp -destination 0 ($limited[0]+"."+$attr)`;
+			string $reverse[] = `listConnections -type reverse -destination 0 ($clamp[0]+".inputG")`;
+			string $bWeights[] = `listConnections -type blendWeighted -destination 0 ($reverse[0]+".inputX")`;
+			return ($bWeights[0]);
+		}
+	}else{
+		warning "ss2_search_clamp : no buffer node found; blendshape probably not prepped";
+	}
+
+	warning "ss2_search_clamp : did not find search target";
+
+	return "";
+
+}
+
+global proc string[] ss2_search_setups (){
+
+	string $setups[];
+
+	string $nets[] = `ls -type network`;
+
+	for ($n in $nets){
+
+		if (`attributeExists ss2_blend_direct $n`){
+
+			$setups[size($setups)] = $n;
+
+		}
+
+	}
+	return $setups;
+
+}
+
+//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+											//END SEARCH TOOLS//
+//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+
+
+
+//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+							//BEGIN SAVE/LOAD/ATTACH/DETACH TOOLS//
+//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+
+
+global proc ss2_detach_run (string $blendShape){
+
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 0 `;
+
+	print ("ss2_detach : Detaching "+$blendShape+"\n");
+
+	for ($b in $blendShapeWeight)
+		ss2_clearAttr $blendShape $b;
+
+}
+
+
+global proc ss2_detach (){
+
+	source generateChannelMenu;
+
+	string $sel[] = `ls -sl`;
+	string $blendShape = `ss2_search_byType blendShape $sel`;
+	ss2_detach_run $blendShape;
+
+}
+
+global proc ss2_attach_run (string $blendShape, string $buffer){
+
+	print ("ss2_attach : Attaching "+$blendShape+" to "+$buffer+"\n");
+
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 0 `;
+
+	for ($b in $blendShapeWeight){
+		string $alias = `aliasAttr -q ($blendShape+"."+$b)`;
+		if (`attributeExists $b $buffer` || size($alias)>1)
+			catch (`connectAttr -f ($buffer+"."+$b) ($blendShape+"."+$b)`);
+	}
+}
+
+global proc ss2_attach (){
+
+	string $sel[] = `ls -sl`;
+
+	string $setups[] = `ss2_search_setups`;
+	string $blendShapes[] = `ls -type blendShape`;
+
+	//Die if no setups
+	if (!size($setups)) error "ss2_save : no prepped blend found";
+
+	//Run regular/easy if there is only one
+	if (size($setups) == 1){
+
+		string $blendShape = `ss2_search_byType blendShape $sel`;
+		string $buffer = `ss2_search_byAttr ss2_blend_direct $sel`;
+
+		ss2_attach_run $blendShape $buffer;
+
+	//Run fancy when there may be issues
+	}else{
+
+		if (`window -exists ss2_attachWin`) deleteUI ss2_attachWin;
+		window -title ss2_attachWin -widthHeight 210 105 ss2_attachWin;
+
+		string $form = `formLayout -numberOfDivisions 6`;
+
+		string $message = `text -label "More than one setup to connect.\nChoose a pair"`;
+
+		string $source = `textScrollList`;
+		string $destination = `textScrollList`;
+		string $connect = `button -label "connect"`;
+
+		ss2_formLayer $form $source {0,1,0,5};
+		ss2_formLayer $form $source {1,5,0,3};
+		ss2_formLayer $form $destination {1,5,3,6};
+		ss2_formLayer $form $connect {5,6,0,6};
+
+		for ($s in $setups)
+			textScrollList -e -append $s $source;
+		textScrollList -e -sii 1 $source;
+
+		for ($b in $blendShapes)
+			textScrollList -e -append $b $destination;
+		textScrollList -e -sii 1 $destination;
+
+		string $command = "";
+		$command += ("string $buffy[] = `textScrollList -q -si "+$source+"`;");
+		$command += ("string $blendy[] = `textScrollList -q -si "+$destination+"`;");
+		$command += ("ss2_attach_run $blendy[0] $buffy[0];");
+		$command += ("textScrollList -e -ri $buffy[0] "+$source+";");
+		$command += ("textScrollList -e -ri $blendy[0] "+$destination+";");
+		$command += ("int $sourceItems = `textScrollList -q -ni "+$source+"`;");
+		$command += ("int $destinationItems = `textScrollList -q -ni "+$destination+"`;");
+		$command += ("if ($sourceItems == 0  || $destinationItems == 0 ){ deleteUI ss2_attachWin;}else{");
+		$command += ("textScrollList -e -sii 1 "+$source+";");
+		$command += ("textScrollList -e -sii 1 "+$destination+";}");
+
+
+
+		button -e -command $command $connect;
+
+		showWindow ss2_attachWin;
+	}
+}
+
+global proc int ss2_save_run ( string $filename, string $fileType ){
+	file -exportSelected -constructionHistory 1 -channels 1 -expressions 1 -constraints 1 -type "mayaAscii" $filename;
+	return 1;
+}
+
+global proc int ss2_load_run ( string $filename, string $fileType ){
+
+	string $sel[] = `ls -sl`;
+	string $networksBefore[] = `ls -type network`;
+	string $blendShape = `ss2_search_byType blendShape $sel`;
+
+	file -import $filename;
+
+	string $networksAfter[] = `ls -type network`;
+	string $newNetworks[] = `stringArrayRemove $networksBefore $networksAfter`;
+	string $newBuffer = `ss2_search_byAttr ss2_blend_direct $newNetworks`;
+
+	select $newBuffer $blendShape;
+	ss2_attach;
+
+	return 1;
+}
+
+global proc ss2_save(){
+
+	string $sel[] = `ls -sl`;
+	select -cl;
+	
+	string $setups[] = `ss2_search_setups`;
+
+	if (!size($setups)) error "ss2_save : no prepped blend found";
+	
+	string $detachPair[];
+	string $setupString = "";
+
+	//Detach
+	for ($s in $setups){
+
+		string $history[] = `listHistory $s`;
+		string $blendsInHistory[] = `ls -type blendShape $history`;
+		string $networksInHistory[] = `ls -type network $history`;
+		string $nets[]; clear $nets;
+
+		if (size($blendsInHistory)) confirmDialog -title "Stop Staring 2" -message "There are blendShapes in the history of this buffer.  Resulting saves may be contain more than just the setup" -button "OK";
+
+		string $cons[] = `listConnections -type blendShape -source 0 $s`;
+		string $blendShape = $cons[0];
+		$detachPair[size($detachPair)] = ($blendShape+" "+$s);
+
+		ss2_detach_run $blendShape;
+		$setupString = ($setupString+" "+$s);
+
+	}
+
+	//Save
+	print ("Exporting "+$setupString+"\n");
+	select $setups;
+
+	fileBrowserDialog -mode 1 -fileCommand "ss2_save_run" -fileType "mayaAscii" -actionName "Save" -operationMode "ExportActive";
+
+	//ReAttach
+	for ($p in $detachPair)
+		evalEcho ("ss2_attach_run "+$p);
+
+	//Restore selection
+	select $sel;
+}
+
+global proc ss2_load(){
+
+	fileBrowserDialog -mode 0 -fileCommand "ss2_load_run" -fileType "mayaAscii" -actionName "Load" -operationMode "Import";
+
+}
+
+global proc ss2_delete (){
+
+	string $sel[] = `ls -sl`;
+	string $buffer = `ss2_search_byAttr ss2_blend_direct $sel`;
+	ss2_detach;
+	string $history[] = `listHistory $buffer`;
+	delete $buffer $history;
+
+}
+
+
+//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+							//END SAVE/LOAD/ATTACH/DETACH TOOLS//
+//- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //

@@ -1,0 +1,39 @@
+//Maya Preference 2009 (Release 1)
+//
+//
+windowPref -topLeftCorner 225 150 -widthHeight 250 400 -parentMain true outlinerPanel1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 700 400 -parentMain true hyperGraphPanel1Window;
+windowPref -topLeftCorner 358 850 -widthHeight 1005 631 -parentMain true graphEditor1Window;
+windowPref -topLeftCorner 121 370 -widthHeight 1184 733 -parentMain true dopeSheetPanel1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 660 400 -parentMain true clipEditorPanel1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 560 430 -parentMain true multiListerPanel1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 524 470 -parentMain true devicePanel1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 700 400 -parentMain true hyperShadePanel1Window;
+windowPref -topLeftCorner 250 200 -widthHeight 700 400 -parentMain true dynPaintScriptedPanelWindow;
+windowPref -topLeftCorner 250 200 -widthHeight 550 562 -parentMain true blindDataEditor1Window;
+windowPref -topLeftCorner 191 551 -widthHeight 594 655 -parentMain true pluginManagerWindow;
+windowPref -topLeftCorner 0 0 -widthHeight 680 600 -parentMain true renderViewWindow;
+windowPref -topLeftCorner 896 1070 -widthHeight 530 276 -parentMain true CommandWindow;
+windowPref -topLeftCorner -1 7 -widthHeight 1518 1145 -parentMain false MayaWindow;
+windowPref -topLeftCorner 200 220 -widthHeight 422 670 -parentMain true unifiedRenderGlobalsWindow;
+windowPref -topLeftCorner 400 640 -widthHeight 450 200 -parentMain true hyperShadePanelCreateNewTabWindow;
+windowPref -topLeftCorner 400 640 -widthHeight 425 110 -parentMain true hyperShadePanelRenameTabWindow;
+windowPref -topLeftCorner 400 640 -widthHeight 450 510 -parentMain true newProjectWindow;
+windowPref -topLeftCorner 0 0 -widthHeight 475 325 -parentMain true referenceEditorPanel1Window;
+windowPref -topLeftCorner 210 390 -widthHeight 630 450 -parentMain true PreferencesWindow;
+windowPref -topLeftCorner 400 640 -widthHeight 530 300 -parentMain true cmdShellWnd;
+windowPref -topLeftCorner 400 640 -widthHeight 450 200 -parentMain true visorPanelCreateNewTabWindow;
+windowPref -topLeftCorner 240 287 -widthHeight 1248 391 -parentMain true visorPanel1Window;
+windowPref -topLeftCorner 400 533 -widthHeight 562 290 -parentMain true cMTrailWin;
+windowPref -topLeftCorner 400 533 -widthHeight 376 349 -parentMain true shelfEditorWin;
+windowPref -topLeftCorner 400 533 -widthHeight 300 200 -parentMain true zooToolBoxTipsWindow;
+windowPref -topLeftCorner 400 533 -widthHeight 350 250 -parentMain true zooToolBoxWindow;
+windowPref -topLeftCorner 96 272 -widthHeight 819 993 -parentMain true HotkeyEditor;
+windowPref -topLeftCorner 400 533 -widthHeight 398 178 -parentMain true zoomerWin2;
+windowPref -topLeftCorner 373 945 -widthHeight 354 333 -parentMain true animFodod;
+windowPref -topLeftCorner 444 363 -widthHeight 1323 826 -parentMain true scriptEditorPanel1Window;
+windowPref -topLeftCorner 191 525 -widthHeight 659 651 -parentMain true SearchForRunTimeCommandWindow;
+windowPref -topLeftCorner 210 1675 -widthHeight 200 125 -parentMain true autoTangentWin;
+windowPref -topLeftCorner 400 640 -widthHeight 525 350 -parentMain true OptionBoxWindow;
+windowPref -topLeftCorner 400 640 -widthHeight 136 119 -parentMain true icon2shelfWin;
+windowPref -topLeftCorner 400 640 -widthHeight 540 545 -parentMain true learningMoviesLaunchWnd;

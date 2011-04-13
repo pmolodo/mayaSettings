@@ -1,0 +1,35 @@
+
+
+
+declare shader
+	color "sphericalLight" (
+		integer	"type",					#: default 0
+		scalar	"radius",				#: default 100
+		color   "tint",					#: default 1 1 1
+		scalar	"intensity",			#: default 1.0
+		
+		string	"lightMapFile",
+		integer "shadows",					#: default 1
+		#boolean "calculateShadows",			#: default 0		
+		#boolean "occlusionShadows",			#: default 1
+		integer "occlusionShadowSamples",	#: default 128
+		scalar	"occlusionMinSoftness",		#: default 0.025
+		
+		string  "lightMapFileLow",
+		integer "level",					#: default 0
+		boolean "lowForFinalGather",		#: default 1
+		integer "shadowsLow",				#: default 1
+		#boolean "calculateShadowsLow",		#: default 0
+		#boolean "occlusionShadowsLow",		#: default 0
+		integer "occlusionShadowSamplesLow", #: default 32
+		scalar	"occlusionMinSoftnessLow",	#: default 0.025
+		
+		integer	"maxInterleavedShadowSamples", #: default 64
+		integer	"interleavedShadowSamplingType", #: default 1
+		
+		boolean "diagnostic"			#: default 0
+	)
+	version 6
+	apply light
+	#: nodeid 1091087
+end declare

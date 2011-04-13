@@ -1,0 +1,63 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+
+//returns each uv shell in $sel as a comma separated list
+global proc string[] zenReturnUVShellFaces(string $sel[])
+{
+		$sel=`polyListComponentConversion -tf $sel`;	
+		$sel=`ls -fl $sel`;
+		
+	string	$uvShells[];
+	string	$uvs[];
+	string	$allUVs[];
+	string	$shell[];
+	string	$shellFaces[];
+	int	$n;
+	int	$origSelSize=size($sel);
+	string	$origSel[]=$sel;
+
+		progressWindow -ii 1 -title "Working" -status "Finding UV Shells" -max (size($sel)) -progress 0;
+					
+		for($s in $origSel)
+		{
+			if(!size($sel)) break;
+			
+			if(`stringArrayContains $s $sel`)
+			{
+				select `polyListComponentConversion -tuv $s`;
+				polySelectBorderShell 0;
+				$shell=`polyListComponentConversion -tf`;
+				$shell=`ls -fl $shell`;
+				$sel=`stringArrayRemove $shell $sel`;
+				$allUVs=`stringArrayCatenate $allUVs $shell`;
+				$shell=`polyListComponentConversion -tf $shell`;
+				$uvShells[$n++]=stringArrayToString($shell,",");
+			}
+			
+			progressWindow -e -progress ($origSelSize-size($sel));
+			if(`progressWindow -q -ic`)
+			{
+				progressWindow -ep;
+				error "User Intrupt.";
+			}
+		}
+		
+		progressWindow -ep;
+		
+		select $allUVs;
+		
+	return	$uvShells;
+}

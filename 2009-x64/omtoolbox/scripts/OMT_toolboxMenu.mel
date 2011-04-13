@@ -1,0 +1,779 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	OMT_toolboxMenu.mel						///
+///  AUTHOR: 	Jakob Welner (jakob@welner.dk)					///
+///										///
+///  UDTATE LOG:	
+///	9th of june: 1.5 by Jakob Welner
+///	- Updated settings window
+///	- Enabled optional auto-activate through settings window
+///
+///	29th of may: 1.4 by Jakob Welner
+///	- Added support for custom mayaModes
+///
+///	4th of february: 1.31 by Jakob Welner					///
+///	- added Alias endString procedure					///
+///										///
+///	16th of november: 1.30 by Jakob Welner					///
+///	- Fixed GUI issues on Linux						///
+///	- Removed Marking Menu feature						///
+///	- Made set defaults automatic						///
+///										///
+///	27th og july: 1.20 by Jakob Welner					///
+///	- Included MarkingMenu feature						///
+///										///
+///	18th og april: 1.10 by Jakob Welner					///
+///	- Made it load all native tools as default				///
+///										///
+///	16th og april: 1.01 by Jakob Welner					///
+///	- Bugfixing and some features added I cant remember			///
+///										///
+///  DEPENDENCIES:								///
+///   	None									///
+///										///
+///  PURPOSE & USE:								///
+///	Creation procedure for the OMToolbox menu				///
+///										///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Alias Maya toolbox			///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+proc string getLabel(string $fileName)
+{
+	switch( $fileName ) {
+		case "OMT_to_splitLoop":		return "Split Loop"; break;
+		case "OMT_to_spinEdge":			return "Spin Edge"; break;
+		case "OMT_to_selectElement":		return "Select Element"; break;
+		case "OMT_to_extrudeComponent":		return "Extrude Component"; break;
+		case "OMT_to_selectLoop":		return "Select Loop"; break;
+		case "OMT_to_scalePosition":		return "Scale Position"; break;
+		case "OMT_to_selectOutline":		return "Select Outline"; break;
+		case "OMT_to_selectRing":		return "Select Ring"; break;
+		case "OMT_to_splitAroundSelection":	return "Split Around Selected"; break; 
+		case "OMT_to_connectComponents":	return "Connect Components"; break;
+		case "OMT_to_selectionDragger":		return "Selection Dragger"; break;
+		case "OMT_to_toggleSaveSelection":	return "Toggle Save Selection"; break;
+		case "OMT_to_xrayToggle":		return "Toggle X-Ray"; break;
+		case "OMT_to_overshoot":		return "Overshoot"; break;
+		default:				return $fileName; break;
+	}	
+}
+
+
+
+
+
+// Alias endString procedure
+global proc string endString(string $s, int $count)
+{
+	string $out;
+
+	int $sLength = size($s);
+	if (($count > 0) && ($sLength > 0))
+	{
+		if ($count > $sLength)
+		{
+			$count = $sLength;
+		}
+
+		$out = substring($s, $sLength - $count + 1, $sLength);
+	}
+
+	return $out;
+}
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Function:	Opens Open Maya Toolboxs homepage in the default browser///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OMT_homepageLink()
+{
+	string $win = "OM_homeWin";
+    	if (`window -exists $win`) 
+		{ deleteUI -window $win; }
+
+	window -title "Open Maya Toolbox Home" 
+		-width 1024
+		-height 786
+		$win;
+		
+	columnLayout;
+	webBrowser 
+		-width 1024
+		-height 786
+		-url "http://www.jakob.welner.dk/omtwiki"
+		btHomeBrowser;
+
+	window  -edit 
+		-width 1033
+		-height 819
+		$win;
+
+	showWindow $win;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+/*
+///////////////////////////////////////////////////////////////////////////////////
+///					TOOL					///
+///	Function:	Opens the help doc in browser				///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OMT_help()
+{
+	
+	string $omtbPath = `whatIs OMT_toolboxMenu`;
+
+	//string $buffer[];
+	//subtract magic number of 24: "Mel procedure found in: "
+	int $numCharacters = `size($omtbPath)`;
+
+	$omtbPath = `endString $omtbPath ($numCharacters-24)`;
+
+	//subtract magic number of 27: "scripts/OMT_toolboxMenu.mel"
+	$numCharacters = `size($omtbPath)`;
+
+	$omtbPath = `substring $omtbPath 1 ($numCharacters-27)`;
+
+	//add new docs path
+	$omtbPath = $omtbPath + "docs/index.html";
+	$omtbPath = "file://" + $omtbPath;
+
+	//print "\npath "; print $omtbPath;
+
+	//build window
+	string $win = "OM_toolboxHelpWindow";
+
+    	if (`window -exists $win`) 
+		{ deleteUI -window $win; }
+
+	window -title "OMToolbox Help" 
+		-width 900
+		-height 800
+		$win;
+	columnLayout;
+	webBrowser -width 900
+		-height 800
+		-url $omtbPath
+		omtbHelpBrowser;
+
+	window  -edit 
+		-width 909
+		-height 833
+		$win;
+
+	showWindow $win;
+
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+*/
+
+
+
+
+
+
+
+
+
+///	Takes input "fullNames" and "labels"
+proc string[] listMenuSets(string $type)
+{
+	string $menuSets[] = `menuSet -allMenuSets`;
+	string $cleanMenuSets[];
+	
+	
+	///	Removing commonMenuSet from list
+	for ($set in $menuSets)
+	{
+		if ($set != "commonMenuSet") $cleanMenuSets[size($cleanMenuSets)] = $set;
+	}
+	
+	
+	if ($type == "fullNames") return $cleanMenuSets;
+	
+	else if ($type == "labels")
+	{
+		string $labels[];
+		
+		for ($i =  0 ; $i < size($cleanMenuSets) ; $i++)
+		{
+		     $labels[$i] = `menuSet -q -label $cleanMenuSets[$i]`;
+		}
+		return $labels;
+	}
+	else print "listMenuSets >> Wrong input";
+}
+
+
+
+
+
+
+
+
+////////////////////////////////////
+// get OMtoolbox FileList names without ".mel"
+////////////////////////////////////
+proc string[] listFiles(string $fileSpec)
+{
+
+    // Get the absolute path to the OMToolbox directory
+	string $omtPath = `whatIs OMT_toolboxMenu`;
+
+	//string $buffer[];
+	//subtract magic number of 24: "Mel procedure found in: "
+	int $numCharacters = `size($omtPath)`;
+
+	$omtPath = `endString $omtPath ($numCharacters-24)`;
+
+	//subtract magic number of 19: "OMT_toolboxMenu.mel"
+	$numCharacters = `size($omtPath)`;
+
+	$omtPath = `substring $omtPath 1 ($numCharacters-19)`;
+	
+
+    // Fetch a list of all OMT toolfiles
+	string $toolFileList[] = `getFileList -folder $omtPath -filespec $fileSpec`;
+	
+	
+    // Edit names to remove ".mel" at the end
+	string 	$toolName[];
+	int	$charCount;
+	int	$i;
+	
+	for ($i = 0 ; $i < size($toolFileList) ; $i++)
+	{
+	    $charCount = `size($toolFileList[$i])`;
+	    $toolName[$i] = `substring $toolFileList[$i] 1 ($charCount-4)`;
+	}
+	
+	string $toolNamesSorted[] = sort($toolName);
+	
+	return $toolNamesSorted;
+}
+
+
+
+
+////////////////////////////////////
+// get OMtoolbox FileList names without ".mel"
+////////////////////////////////////
+proc string[] isolateIDs(string $toolFileList[])
+{
+
+    // Edit names to remove "OMT_to_" in the front of each name
+	string 	$toolName[];
+	int	$charCount;
+	int	$i;
+	
+	for ($i = 0 ; $i < size($toolFileList) ; $i++)
+	{
+	    $charCount = `size($toolFileList[$i])`;
+	    $toolName[$i] = `endString $toolFileList[$i] ($charCount - 7)`;
+	}
+	
+	return $toolName;
+}
+
+
+
+
+
+
+
+///////////////////////////////////////
+// Returns 1 if the optionVar value is = "Load", else it returns 0
+///////////////////////////////////////
+
+proc int getLoadValue(string $optionVarName)
+{
+	int	$return = 0;
+	
+	if ( `optionVar -q $optionVarName` == "Load") $return = 1;
+
+	return $return;	
+}
+
+
+
+
+
+
+
+
+proc makeMenuItem(string $sectionName, string $OMToolList[], string $customToolList[], string $os)
+{
+	
+	string 	$toolIDList[] = isolateIDs($OMToolList);
+	
+	int	$itemCount = 0;
+	int	$i;
+
+	// Native Tools
+	for ($i = 0; $i < size($toolIDList); $i++)
+	{
+	    if ((`optionVar -q ("OMTSection_" + $toolIDList[$i])`) == 0) 
+	    {
+		optionVar -sv ("OMTSection_" + $toolIDList[$i]) "General";
+		optionVar -sv ("OMTLoad_" + $toolIDList[$i]) "Load";
+	    }
+	    if ((`optionVar -q ("OMTLoad_" + $toolIDList[$i])`) == "Load" && (`optionVar -q ("OMTSection_" + $toolIDList[$i])`) == $sectionName)		
+	    {	
+	    	
+	    	
+	    	$itemCount++;
+	    	
+	    	menuItem -l `getLabel($OMToolList[$i])`
+	    	-echoCommand true
+	    	-c $OMToolList[$i]
+	    	-i ($toolIDList[$i] + ".bmp")
+	    	($toolIDList[$i] + "Item");
+	    	
+	    	eval("source " + $OMToolList[$i]);
+	    	if (`exists ($OMToolList[$i] + "OptWin")`)
+	    	{
+			menuItem -optionBox true
+			-label (getLabel($OMToolList[$i]) + " Option Box") 
+			-command ($OMToolList[$i] + "OptWin") 
+			($toolIDList[$i] + "OptWinItem");
+		}
+	    }
+
+	}
+	
+
+	// Custom Tools
+	for ($i = 0; $i < size($customToolList); $i++)
+	{
+	    if ((`optionVar -q ("OMTLoad_" + $customToolList[$i])`) == "Load" && (`optionVar -q ("OMTSection_" + $customToolList[$i])`) == $sectionName)		
+	    {	
+	    	
+	    	$itemCount++;
+	    	
+	    	menuItem -l $customToolList[$i]
+	    	-echoCommand true
+	    	-c $customToolList[$i]
+	    	-i ($customToolList[$i] + ".bmp")
+	    	($customToolList[$i] + "Item");
+	    }
+	}
+
+
+	
+	if ($itemCount == 0)
+	{
+	    menuItem -l ($sectionName + ": Nothing here")
+		-ann ("No tool set for this section")
+		-en 0
+		("no" + $sectionName + "Item");		
+	}
+
+	
+	menuItem -divider true;
+	
+}
+
+
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+proc makeOMToolList(string $parent)
+{
+	
+   int 	  $i;
+   string $OMToolNames[] = `listFiles("OMT_to_*.mel")`;
+   
+   string $OMToolIDList[] = isolateIDs($OMToolNames);
+	
+	
+	  separator -parent $parent -width 380 -style "in";
+	  
+	  
+	  for ($i = 0; $i < size($OMToolIDList) ; $i++)
+	  {
+
+  
+	     string 	$optVarLoadName = ("OMTLoad_" + $OMToolIDList[$i]);
+	     if (`optionVar -q $optVarLoadName` == 0) optionVar -sv $optVarLoadName "Load";		     
+				     
+	     string 	$optVarSectionName = ("OMTSection_" + $OMToolIDList[$i]);
+	     if (`optionVar -q $optVarSectionName` == 0) optionVar -sv $optVarSectionName "General";
+
+
+	     rowLayout -numberOfColumns 3 -columnWidth3 180 100 100 -columnAttach 1 "both" 5;
+		
+		text 
+		-label `getLabel(("OMT_to_" + $OMToolIDList[$i]))`
+		-annotation $OMToolNames[$i];
+
+		checkBox
+		-label "Auto load"
+		-value `getLoadValue($optVarLoadName)`
+		-onc ("optionVar -sv " + $optVarLoadName + " \"Load\"")
+		-ofc ("optionVar -sv " + $optVarLoadName + " \"Unload\"");
+
+		optionMenuGrp -changeCommand ("optionVar -sv " + $optVarSectionName + "`optionMenuGrp -q -v optionMenu_" + $OMToolIDList[$i] + "`") ("optionMenu_" + $OMToolIDList[$i]);	
+		
+		menuItem -label "General";
+		string $labels[] = listMenuSets("labels");
+		for ($label in $labels)
+		{
+			menuItem -label $label;
+		}			  
+
+
+
+		string $optVarSectionVal = `optionVar -q $optVarSectionName`;
+		
+		///	Reverts unknown optionVars to default
+		int $check = 0;
+		for ($label in $labels)
+		{
+			if ($optVarSectionVal == $label) $check = 1; 
+		}
+		if ($check == 0) $optVarSectionVal = "General";
+		
+		
+		optionMenuGrp -e -v $optVarSectionVal ("optionMenu_" + $OMToolIDList[$i]); // Set the default here.
+		
+		
+		setParent $parent; 
+	  }		  
+		  
+}
+
+
+
+
+
+
+
+
+proc makeCustomToolList(string $parent)
+{
+	
+   int 	  $i;
+   string $melFilenameList[] = `listFiles("*.mel")`;
+   
+   string $customToolList[];
+	
+	
+	///	CustomTools content
+	  separator -parent $parent -width 380 -height 30 -style "doubleDash";
+	  
+	  
+	  ///	Remove OMT related files which are not tools
+	  for ($tool in $melFilenameList)
+	  {
+		  if (!`gmatch $tool "OMT_*"` && !`gmatch $tool "userSetup"`) $customToolList[size($customToolList)] = $tool;
+	  }
+	  
+	  
+	  for ($i = 0; $i < size($customToolList) ; $i++)
+	  {
+
+  
+	     string 	$optVarLoadName = ("OMTLoad_" + $customToolList[$i]);
+	     if (`optionVar -q $optVarLoadName` == 0) optionVar -sv $optVarLoadName "UnLoad";		     
+				     
+	     string 	$optVarSectionName = ("OMTSection_" + $customToolList[$i]);
+	     if (`optionVar -q $optVarSectionName` == 0) optionVar -sv $optVarSectionName "General";
+
+
+	     rowLayout -numberOfColumns 3 -columnWidth3 180 100 100 -columnAttach 1 "both" 5;
+		
+		text 
+		-label `getLabel(($customToolList[$i]))`
+		-annotation $customToolList[$i];
+
+		checkBox
+		-label "Auto load"
+		-value `getLoadValue($optVarLoadName)`
+		-onc ("optionVar -sv " + $optVarLoadName + " \"Load\"")
+		-ofc ("optionVar -sv " + $optVarLoadName + " \"Unload\"");
+
+		optionMenuGrp -changeCommand ("optionVar -sv " + $optVarSectionName + "`optionMenuGrp -q -v optionMenu_" + $customToolList[$i] + "`") ("optionMenu_" + $customToolList[$i]);	
+		  
+		menuItem -label "General";
+		string $labels[] = listMenuSets("labels");
+		for ($label in $labels)
+		{
+			menuItem -label $label;
+		}			  
+
+
+
+		string $optVarSectionVal = `optionVar -q $optVarSectionName`;
+		
+		///	Reverts unknown optionVars to default
+		int $check = 0;
+		for ($label in $labels)
+		{
+			if ($optVarSectionVal == $label) $check = 1; 
+		}
+		if ($check == 0) $optVarSectionVal = "General";
+		
+		
+		optionMenuGrp -e -v $optVarSectionVal ("optionMenu_" + $customToolList[$i]); // Set the default here.
+		
+		
+		setParent $parent; 
+	  }		  
+		  
+		  
+}
+
+
+
+
+
+
+
+
+proc string makeSettingsTab()
+{
+	string $layoutName = `columnLayout -adj 1 -p listTabs`;
+	
+	checkBox -label "Auto-activate slide on split"   
+		-align "left"
+		-annotation "Auto-activate selectionDragger after split commands"
+		-value `optionVar -q "OMTSettings_autoActivateDrag"`
+		-onCommand "optionVar -iv \"OMTSettings_autoActivateDrag\" 1"
+		-offCommand "optionVar -iv \"OMTSettings_autoActivateDrag\" 0"
+		-parent $layoutName;
+
+	
+	return $layoutName;
+}
+
+
+
+
+
+
+global proc OMT_toolManageInterface()
+{
+   
+	if (`window -ex omtSettingsWin`)
+		deleteUI omtSettingsWin;
+	
+	window 
+		-title "OMToolbox settings" 
+		omtSettingsWin;
+	
+	formLayout mainForm;
+	
+	tabLayout -p mainForm -h 330 listTabs;
+	
+	
+	///	OMTools content
+	string $scrollLayout = `scrollLayout -p listTabs
+		-childResizable 1`;
+		
+	string $columnLayout = `columnLayout -width 380 -p $scrollLayout`;
+	  rowLayout -numberOfColumns 3 -columnWidth3 180 100 100 -columnAttach 1 "both" 5;
+		text -label "Tool name" -annotation "Open Maya standard toolnames";
+		text -label "Menu Item" -annotation "Places this tool in the menu";
+		text -label "Sections" -annotation "Specify the Maya section you want this tool to appear in";
+	  setParent $columnLayout;
+	  
+	
+	makeOMToolList($columnLayout);
+	makeCustomToolList($columnLayout);
+	
+	
+	string $settingsLayout = `makeSettingsTab`;
+		  
+
+	tabLayout -e -tabLabel $scrollLayout "Menu Tools" -tabLabel $settingsLayout "Settings" listTabs;
+	setParent mainForm;
+	
+	button 	-label "Update Menu" 
+			-command OMT_toolboxMenu
+			deleteFileButton;
+			
+	button 	-label "Close" 
+			-command "deleteUI omtSettingsWin"
+			closeButton;
+	
+	
+	formLayout -e 
+		-attachForm listTabs "left" 5
+		-attachForm listTabs "right" 5
+		-attachForm listTabs "bottom" 40
+		-attachForm listTabs "top" 5
+		-attachPosition deleteFileButton "left" 5 0
+		-attachPosition deleteFileButton "right" 5 50
+		-attachPosition closeButton "left" 5 50
+		-attachPosition closeButton "right" 5 100
+		-attachForm deleteFileButton "bottom" 5
+		-attachForm closeButton "bottom" 5
+	mainForm;
+	
+	showWindow;
+}
+
+
+
+
+
+
+///////////////////////////////
+// BUTTOM TOOLS//
+///////////////////////////////
+proc OM_toolboxMenuButtom(string $os)
+{
+
+	menuItem -l "Project Home and Documentation"
+	    -ann "Link to OMToolbox Wiki"
+	    -echoCommand true
+	    -c "OMT_homepageLink"
+		-image "projectHome.bmp"
+	    OM_homepageLinkItem;
+	    
+	menuItem -l "Settings"
+	    -ann "Configure OMToolbox"
+	    -echoCommand true
+	    -c "OMT_toolManageInterface"
+		-image "settings.bmp"
+	    OMT_toolManageInterfaceItem;	 
+
+}	
+
+
+
+
+
+
+
+
+proc int OM_toolboxModeMenuStyle(string $os, string $mayaMode, string $toolNameList[], string $customToolList[])
+{
+
+	string $menuSets[] = listMenuSets("fullNames");
+	
+	for ($i = 0; $i < size($menuSets); $i++)
+	{
+		if ($mayaMode == $menuSets[$i])
+		{
+			makeMenuItem (`menuSet -q -label $menuSets[$i]`) $toolNameList $customToolList $os;
+			return 1;
+		}
+	}
+	
+	return 0;
+/*	
+	switch( $mayaMode ) {
+		case "Animation":	makeMenuItem "Animation" $toolNameList $customToolList $os; break;
+		case "Modeling":	makeMenuItem "Modeling" $toolNameList $customToolList $os; break;
+		case "Rendering":	makeMenuItem "Rendering" $toolNameList $customToolList $os; break;
+		case "Dynamics":	makeMenuItem "Dynamics" $toolNameList $customToolList $os; break;
+		case "Cloth":		makeMenuItem "Cloth" $toolNameList $customToolList $os; break;
+		case "Live":		makeMenuItem "Live" $toolNameList $customToolList $os; break;
+		default:		makeMenuItem "Modeling" $toolNameList $customToolList $os; break;
+	}
+*/	
+}
+
+
+
+
+
+
+
+global proc OMT_toolboxMenu()
+{
+
+	global string $gMainWindow;
+	global string $gMenuModeButton;
+	string $mayaMode = `setMenuMode`;
+	string $os = `about -operatingSystem`;
+
+	if(`menu -exists OM_toolboxMenu`)
+		deleteUI -menu OM_toolboxMenu;
+
+	setParent $gMainWindow;
+
+	menu -label "OMToolbox"
+		-parent $gMainWindow
+		-tearOff 1
+		-allowOptionBoxes true
+		-familyImage "default.bmp"
+		OM_toolboxMenu;
+
+	string $toolNameList[] = `listFiles("OMT_to_*.mel")`;
+   	string $melFileNameList[] = `listFiles("*.mel")`;
+   	
+   	string $customToolList[];
+   
+   	for ($tool in $melFileNameList)
+   	{
+            if (!`gmatch $tool "OMT_*"` && !`gmatch $tool "userSetup"`) $customToolList[size($customToolList)] = $tool;
+   	}
+
+
+	makeMenuItem("General", $toolNameList, $customToolList, $os);
+	OM_toolboxModeMenuStyle $os $mayaMode $toolNameList $customToolList;
+	//menuItem -divider true;
+	OM_toolboxMenuButtom $os;
+
+	hotBox -updateMenus;
+	
+}

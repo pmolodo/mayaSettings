@@ -1,0 +1,37 @@
+/* XPM */
+static char *zOff[] = {
+/* columns rows colors chars-per-pixel */
+"22 20 11 1",
+"  c gray100",
+". c yellow",
+"X s bg c magenta",
+"o c red",
+"O c cyan",
+"+ c green",
+"@ c blue",
+"# c black",
+"$ c #69696D",
+"% c #CECED2",
+"& c gray100",
+/* pixels */
+"XX%%%%%%%%%%%%%%%%%%%%",
+"X%XXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXX########XXXXXXX",
+"%XXXXXXXXXXXX##XXXXXXX",
+"%XXXXXXXXXXX##XX##XXXX",
+"%XXXXXXXXXX##XXX##XXXX",
+"%XXXXXXXXX##XXXXXXXXXX",
+"%XXXXXXXX##XXXXXXXXXXX",
+"%XXXXXXX##XXXXXX##XXXX",
+"%XXXXXX##XXXXXXX##XXXX",
+"%XXXXXX########XXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"X$XXXXXXXXXXXXXXXXXXXX",
+"XX$$$$$$$$$$$$$$$$$$$$"
+};

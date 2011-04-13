@@ -1,0 +1,1370 @@
+global string $nombreEmitter;
+global string $nombreParticles[];
+global string $elElegido;
+global int $nuevoEmitter;
+global string $tablaFountain;
+global int $nextFountain;
+global string $selectedLOD = "radioButton1";
+global int $openPanelIfSelected = false;
+global int $createBowl = true;
+global int $selectedTab = 1;
+
+global string $selectedNode = "";
+global string $selectedFountain = "";
+global string $menuGlu;
+
+global int $updateMesh = 0;
+global int $showParticles = 1;
+global int $rebuildMesh = 0;
+global int $meshRes = 1;
+global int $dropSize = 4;
+global int $meltingForce = 6;
+
+global int $LodPanelCollapsed = 0;
+global int $fountainPanelCollapsed = 0;
+global int $OptionsPanelCollapsed = 1;
+global int $MeshPanelCollapsed = 1;
+global string $editBox;
+global string $gluShelfButton;
+global string $nameMainWindow;
+global string $buttonPLAY;
+global string $sliderAccuracy;
+global string $sliderThickness;
+global string $tabs;
+global int $MainWindowfullSizewindow;
+global int $MainWindowCollapsed = 0;
+// global string $child1;
+global string $child2;
+global string $child3;
+global int $firstTimeCreatedGluEmitter = true;
+global int $numFountains = 0;
+global int $swapDyn = true;
+global string $fileFolderBackup = "";
+global string $licensed;
+
+
+
+global proc int Asegurate()
+{
+    string $answer =`confirmDialog -title "glu3D" -message "Discard previous calculations?"
+    	-button "Yes" -button "No" -defaultButton "Yes"
+    	-cancelButton "No" -dismissString "No"`;
+
+	if ( $answer == "No")
+		return 0;
+	else
+		return 1;
+}
+
+
+global proc playWholeScene()
+{
+	$actualTime = `currentTime -q`;
+	$start = `playbackOptions -q -minTime`;
+	currentTime $start;
+	currentTime $actualTime;
+}
+
+global proc string GetSourcesPanel( string $emitterName)
+{
+	global int $nextFountain;
+	global string $speedFountain;
+	global string $radiusFountain;
+	global string $tablaFountain;
+	global string $selectedNode;
+	global string $selectedFountain;
+	global string $nombreEmitter;
+	global int $numFountains;
+	global int $createBowl;
+	global string $elElegido;
+	global string $nameMainWindow;
+
+	$altura = `window -query -h $nameMainWindow`;
+	string $child2 = `frameLayout -label (" Sources pouring to this Glu emitter") -mh 10 -mw 10 -collapsable true -cc "collapseMainWindow" -ec "collapseMainWindow"`;
+		frameLayout -label ("") -bs "etchedIn" -la "center" -mh 5 -mw 5 laDelaEtiqueta;
+				string $formula5= `formLayout -numberOfDivisions 420`; 
+					float $radios[];
+					int $numRadios = 0;
+
+					if( $emitterName =="")
+					{
+						CreaEmitter();
+						
+						ReadPreferences();
+					
+						$createTestContainer = `getAttr ( $nombreEmitter + ".createTestContainer")`;
+						if( $createTestContainer == true)
+							CreateBowlInScene();
+						
+						$elElegido = $nombreEmitter;
+						$selectedNode = CreaFountain();
+						$emitterName = $nombreEmitter;
+					}
+					else
+					{
+						ReadPreferences();
+					}
+					$selectedFountain = getFountainNodeCorrespongingToCircle( $selectedNode );
+
+					if( $emitterName != "")
+					{
+						string $listConnections[] = `listConnections -t "sourceGlu" $nombreEmitter`;
+						$numRadios = size( $listConnections) / 4;
+						$radios = `getAttr ($emitterName + ".radius")`;
+					}
+
+					$tablaFountain = `scriptTable -rows $numFountains -columns 8 -cw 1 65 -cw 2 65 -cw 3 65 -cw 4 53  -cw 5 65  -cw 6 65 -cw 7 65 -cw 8 65 
+								-gcc "getTableValue" -ccc "setTableValue" -dpc "selectCorrectFountain"
+    					-label 1 "Name" -label 2 "Radius" -label 3 "Speed" -label 4 "Emit" -label 5 "Thickness" -label 6 "LOD" -label 7 "Start" -label 8 "Stop"
+						-ann "Source's params. Edit table values"`;
+					string $buttonAddFountain= `button -w 200 -rs true -al "center" -label "NEW SOURCE" -annotation "Creates a new glu3D source" `; 
+					string $deleteFountainButton = `button -label "DELETE" -w 200 -command "deleteFountain" -annotation "Delete selected source" `;
+					button -edit -command ("CreaFountain") $buttonAddFountain;								
+
+					if( $selectedFountain == "")
+						$selectedFountain = getFountain();
+					frameLayout -edit -label $selectedFountain laDelaEtiqueta;
+
+					$nextFountain++;
+
+					formLayout -edit	
+						-attachForm			$tablaFountain		"top"		5
+						-attachForm			$tablaFountain		"right"		5	
+						-attachForm			$tablaFountain		"left"		5	
+						-attachControl		$tablaFountain		"bottom"	5 $deleteFountainButton
+						
+    					-attachForm     $deleteFountainButton	"right"		5
+    					-attachForm     $deleteFountainButton	"bottom"	5
+						-attachControl	$deleteFountainButton	"left"		5 $buttonAddFountain
+
+						-attachForm		$buttonAddFountain		"left"		5
+    					-attachForm     $buttonAddFountain		"bottom"	5
+
+						$formula5;
+					setParent..;
+				setParent..;
+			setParent..;
+
+		return $child2;
+}
+
+global proc SetSelected( int $val)
+{
+	global string $tablaObstacles;
+	global string $nombreEmitter;
+	string $nombreObj;
+	string $dagnodes[] = `selectedNodes -dagObjects`;
+	string $compuesto;
+	int $j = 0;
+	int $i;
+	int $comp;
+
+	$numObjs = `getAttr -s ($nombreEmitter + ".objectList")`;
+
+	while( $j < size($dagnodes))
+	{
+		for( $i = 0; $i < $numObjs; $i++)
+		{
+			$nombreObj = `getAttr ($nombreEmitter + ".objectList[" + $i + "]")`;
+
+			string $array[];
+			tokenize $nombreObj "|" $array;
+
+			$compuesto = ("|" + $array[0]);
+			$comp = `strcmp $compuesto $dagnodes[$j]`;
+			
+			if( $comp == 0)
+				setAttr ($nombreEmitter + ".collisionList[" + $i + "]") $val;
+		}
+		$j ++;
+	}
+	
+	int $result = `scriptTable -exists $tablaObstacles`;
+	if( $result != 0)
+		ActualizaTablaObjects();
+}
+
+global proc SetKiller( int $val)
+{
+	global string $tablaObstacles;
+	global string $nombreEmitter;
+	string $nombreObj;
+	string $dagnodes[] = `selectedNodes -dagObjects`;
+	string $compuesto;
+	int $j = 0;
+	int $i;
+	int $comp;
+
+	$numObjs = `getAttr -s ($nombreEmitter + ".objectList")`;
+
+	while( $j < size($dagnodes))
+	{
+		for( $i = 0; $i < $numObjs; $i++)
+		{
+			$nombreObj = `getAttr ($nombreEmitter + ".objectList[" + $i + "]")`;
+
+			string $array[];
+			tokenize $nombreObj "|" $array;
+
+			$compuesto = ("|" + $array[0]);
+			$comp = `strcmp $compuesto $dagnodes[$j]`;
+			
+			if( $comp == 0)
+				setAttr ($nombreEmitter + ".kilL[" + $i + "]") $val;
+		}
+		$j ++;
+	}
+	
+	int $result = `scriptTable -exists $tablaObstacles`;
+	if( $result != 0)
+		ActualizaTablaObjects();
+}
+
+
+global proc string GetObjectsPanel()
+{
+	global string $nombreEmitter;
+	global string $tablaObstacles;
+	$numObjs = `getAttr -s ($nombreEmitter + ".objectList")`;
+	int $contObjs = 0;
+	int $i;
+	int $collideValue;
+
+	global string $nameMainWindow;
+
+	$altura = `window -query -h $nameMainWindow`;
+	string $child1 = `frameLayout -label (" Objects that interact with glu3D particles") -mh 10 -mw 10 -collapsable true -cc "collapseMainWindow" -ec "collapseMainWindow"`;
+		string $formula6= `formLayout -numberOfDivisions 420`; 
+
+			for( $i = 0; $i < $numObjs; $i++)
+			{
+				$collideValue = getAttr ( $nombreEmitter + ".collisionList[" + $i + "]");
+				if( $collideValue != 0)
+					$contObjs ++;
+			}
+			$tablaObstacles = `scriptTable -rows $contObjs -columns 7 -cw 1 60 -cw 2 80 -cw 3 80 -cw 4 80 -cw 5 80 -cw 6 80 -cw 7 80
+				-gcc "perObjectGetValue" -ccc "perObjectSetValue"
+    			-label 1 "Name" -label 2 "Collide" -label 3 "Friction" -label 4 "Adherence" -label 5 "Bounce" -label 6 "col. GAP" -label 7 "killer"
+				-ann "Select and change per-object parameters. 1 is On and 0 is Off"`;
+
+			string $buttonAddObstacle= `button -w 200 -rs true -al "center" -label "ADD SELECTED" -annotation "Add selected objects to collision list" `; 
+			button -edit -command ("SetSelected 1") $buttonAddObstacle;
+			
+			string $deleteObstacleButton = `button -label "REMOVE SELECTED" -w 200 -command "" -annotation "Set collide off for selected objects" `;
+			button -edit -command ("SetSelected 0") $deleteObstacleButton;
+			formLayout -edit 
+				-attachForm			$tablaObstacles		"top"		5
+				-attachForm			$tablaObstacles		"right"		5	
+				-attachForm			$tablaObstacles		"left"		5	
+				-attachControl		$tablaObstacles		"bottom"	5 $deleteObstacleButton
+
+				-attachForm		$buttonAddObstacle		"left"		5
+    			-attachForm     $buttonAddObstacle		"bottom"	5
+				
+    			-attachForm			$deleteObstacleButton	"bottom"	5
+    			-attachControl		$deleteObstacleButton	"left"		0 $buttonAddObstacle
+
+				$formula6;
+			setParent..;
+		setParent..;
+
+	return $child1;
+}
+
+proc SetSameTime()		// para que actualice las particulas cuando se active el showParticles
+{
+	$actualTime = `currentTime -q`;
+	currentTime $actualTime;
+}
+
+
+global proc mainGlu( float $gravity, float $density, string $emitterName, string $selectedNodeGiven)
+{
+	global int $selectedTab;
+	global string $nombreEmitter;
+	//$nombreEmitter = $emitterName;
+	global string $velocity;
+	global int $openPanelIfSelected;
+	global string $selectedNode;
+	global string $selectedFountain;
+	global int $createBowl;
+	global int $updateMesh;
+	global int $showParticles;
+	global int $rebuildMesh;
+	int $rebuildMeshAttr; 
+	global int $meshRes;
+	global int $LodPanelCollapsed;
+	global int $fountainPanelCollapsed;
+	global int $OptionsPanelCollapsed;
+	global int $MeshPanelCollapsed;
+	global int $dropSize;
+	global int $meltingForce;
+	global string $editBox;
+	global string $nameMainWindow;
+	global string $buttonPLAY;
+	global string $sliderAccuracy;
+	global string $sliderThickness;
+	global string $tablaFountain;
+	global string $tabs;
+	global int $MainWindowCollapsed;
+	global string $child2;
+	global string $child3;
+	global int $firstTimeCreatedGluEmitter;
+	float $thickness;
+	global int $swapDyn;
+	global string $licensed;
+	global int $numFountains;
+
+
+	$firstTimeCreatedGluEmitter = false;
+	playbackOptions -ps 0;
+	$selectedNode = $selectedNodeGiven;
+	file -command " playWholeScene";
+	int $sizeof = size($emitterName);
+	int $preservateValue;
+	string $label = "";
+
+	if( `objExists ("GluEmitter")` == 0)
+		$nombreEmitter = "";
+	if( $nombreEmitter != "")
+	{
+		$label = substring($emitterName, 1, $sizeof);
+		$rebuildMeshAttr = `getAttr ($nombreEmitter + ".rebuildMesh")`;
+		$updateMesh = `getAttr ($nombreEmitter + ".withMesh")`;
+		$dropSize = `getAttr ($nombreEmitter + ".drops")`;
+		$meltingForce = `getAttr ( $nombreEmitter + ".meltingForce")`;
+		$meshRes = `getAttr ( $nombreEmitter + ".MeshAccuracy")`;
+		$showParticles = `getAttr( $nombreEmitter + ".showParticles")`;
+		$licensed = `getAttr( $nombreEmitter + ".licensed")`;
+	}
+	else
+	{	
+		$rebuildMeshAttr = false;
+		$updateMesh = false;
+		$preservateValue = 30;
+	}
+
+	$nameMainWindow = `window  -mnb true -mxb false -wh 480 460 -title ("glu3D " + $licensed ) -sizeable true`;    
+		string $formidable = `formLayout -numberOfDivisions 100`;
+			$tabs = `tabLayout`;
+				string $child2 = GetSourcesPanel( $nombreEmitter);
+				string $child1 = GetObjectsPanel();
+				tabLayout -edit
+					-tabLabel $child2 "Sources" 
+					-tabLabel $child1 "Obstacles"
+					-selectTabIndex $selectedTab
+					//-iv true -i "gluMicro.xpm" 
+				$tabs;
+				setParent..;
+
+			string $formHelpAbout = `formLayout`;
+				$helpLine = `helpLine -w 450`;
+				formLayout -edit
+					-attachForm		$helpLine			"left"		5
+				$formHelpAbout;
+				setParent..;
+			string $form2 = `formLayout -numberOfDivisions 100`;
+				string $buttonPLAY= `button -w 150 -h 35 -al "center" -label "GO!" -annotation "Launches glu3D dynamic solver" `; 
+				string $buttonRECALCULATE= `button -w 85 -h 35 -al "center" -label "FLUSH" -annotation "Flush dynamic data." `; 
+				string $buttonREPLAY= `button -w 80 -h 35 -al "center" -label "REPLAY" -annotation "Review current animation" `; 
+				string $buttonOK= `button -w 80 -h 35 -al "center" -label "CLOSE" -annotation "Close this panel. To show it again, select Glu Emitter or a source and push glu3D shelf button" `; 
+				string $buttonHoldTime = `button -label "HOLD" -w 80 -h 35 -al "center" -annotation "Freeze time while solver is working. Only last particle positions will be kept" `;
+				
+				button -edit -command ("ComputeGlu") $buttonPLAY;
+				button -edit -command ("REPlay") $buttonREPLAY;
+				button -edit -command ("Recalculate") $buttonRECALCULATE;
+				button -edit -command ("deleteUI $nameMainWindow") $buttonOK;
+				button -edit -command ("HoldTime") $buttonHoldTime;
+				formLayout -edit        
+					-attachForm			   $buttonOK     "bottom"	5 
+					-attachForm		       $buttonOK     "right"	5
+					-attachControl         $buttonOK     "left"		2		$buttonREPLAY
+					
+					-attachForm			   $buttonREPLAY	"bottom" 5 
+					-attachControl         $buttonREPLAY    "left"	 2 $buttonRECALCULATE
+
+					-attachForm			   $buttonRECALCULATE	"bottom"	5 
+					-attachControl         $buttonRECALCULATE   "left"		2 $buttonHoldTime
+
+					-attachForm			   $buttonHoldTime	"bottom" 5 
+					-attachControl         $buttonHoldTime     "left"	2 $buttonPLAY
+				
+					-attachForm			   $buttonPLAY		"bottom"	 5 
+					-attachForm	           $buttonPLAY		"left"		 5
+				$form2;
+				setParent..;
+			formLayout -edit
+					-attachForm				$tabs        "top" 0
+					-attachForm				$tabs        "right" 0
+					-attachForm				$tabs        "left" 0
+					-attachControl          $tabs		"bottom"  5 $formHelpAbout
+					-attachForm				$form2		"bottom"0
+					-attachForm				$form2		"right"0
+					-attachForm				$form2		"left"0
+					-attachForm				$formHelpAbout		"right"0
+					-attachForm				$formHelpAbout		"left"0
+					-attachControl			$formHelpAbout		"bottom"	2 $form2
+			$formidable;
+			setParent..;
+			SetSameTime();
+			ActualizaTablaObjects();
+	showWindow;
+
+	$altura = `window -query -h $nameMainWindow`;
+	$anchura = `window -query -w $nameMainWindow`;
+	$anchura = $anchura - 20;
+
+	button -e -w ($anchura / 5) $buttonPLAY;
+	button -e -w ($anchura / 5) $buttonREPLAY;
+	button -e -w ($anchura / 5) $buttonRECALCULATE;
+	button -e -w ($anchura / 5) $buttonHoldTime;
+	button -e -w ($anchura / 5) $buttonOK;
+
+	if ( $MainWindowCollapsed == 1)
+	{
+		frameLayout -edit -collapse true $child1;
+		frameLayout -edit -collapse true $child2;
+//		window -edit -h 180 $nameMainWindow;
+	}
+	else
+	{
+		frameLayout -edit -collapse false $child1;
+		frameLayout -edit -collapse false $child2;
+//		window -edit -h 460 $nameMainWindow;
+	}
+}
+		
+
+global proc rebuildMesh()
+{
+	global string $nombreEmitter;
+	global int $rebuildMesh;
+	setAttr ($nombreEmitter + ".rebuildMesh") true;	 
+	$rebuildMesh = 1;
+}
+
+
+global proc WritePreferences()
+{
+	global string $nombreEmitter;
+	string $nombreFicheroPreferencias;
+	global string $fileFolderBackup;
+	global int $everyObjectCollides;
+	global int $excludeHiddenObjects;
+	global int $createTestContainer;
+	string $licenseString;
+	string $lic;
+
+	if( $fileFolderBackup == "")
+		$fileFolderBackup = `getAttr ( $nombreEmitter + ".fileFolder")`;
+
+	string $fileFolder = `getAttr ( $nombreEmitter + ".fileFolder")`;
+	$everyObjectCollides = `getAttr ( $nombreEmitter + ".everyObjectCollides")`;
+	$excludeHiddenObjects = `getAttr ( $nombreEmitter + ".excludeHiddenObjects")`;
+	$createTestContainer = `getAttr ( $nombreEmitter + ".createTestContainer")`;
+	$licenseString = `getAttr ( $nombreEmitter + ".license")`;
+	
+	$nombreFicheroPreferencias = ( $fileFolderBackup + "/glu.prefs");
+	$fileId = `fopen $nombreFicheroPreferencias "w"`;
+
+	fwrite $fileId $fileFolder;
+	fwrite $fileId $everyObjectCollides;
+	fwrite $fileId $excludeHiddenObjects;
+	fwrite $fileId $createTestContainer;
+	fwrite $fileId $licenseString;
+
+	fclose $fileId;
+}
+
+global proc ReadPreferences()
+{
+	global string $nombreEmitter;
+	string $nombreFicheroPreferencias;
+	global string $fileFolderBackup;
+	string $fileFolder;
+	string $lic;
+	global int $everyObjectCollides;
+	global int $excludeHiddenObjects;
+	global int $createTestContainer;
+	
+	if( $fileFolderBackup == "")
+		$fileFolderBackup = `getAttr ( $nombreEmitter + ".fileFolder")`;
+	
+	$nombreFicheroPreferencias = ( $fileFolderBackup + "/glu.prefs");
+	
+	if( `filetest -r $nombreFicheroPreferencias` == 0)
+	{
+		WritePreferences();
+		return;
+	}
+	
+	$fileId = `fopen $nombreFicheroPreferencias "r"`;
+
+	$fileFolder = `fread $fileId $fileFolder`;
+	$everyObjectCollides = `fread $fileId $everyObjectCollides`;
+	$excludeHiddenObjects = `fread $fileId $excludeHiddenObjects`;
+	$createTestContainer =  `fread $fileId $createTestContainer`;
+	$lic =  `fread $fileId $lic`;
+
+	setAttr ( $nombreEmitter + ".everyObjectCollides") $everyObjectCollides;
+	setAttr ( $nombreEmitter + ".excludeHiddenObjects") $excludeHiddenObjects;
+	setAttr ( $nombreEmitter + ".createTestContainer") $createTestContainer;
+	setAttr -type "string" ( $nombreEmitter + ".fileFolder") $fileFolder;
+	setAttr -type "string" ( $nombreEmitter + ".license") $lic;
+
+	fclose $fileId;
+}
+
+
+global proc collapseMainWindow()
+{
+	global string $nameMainWindow;
+	global int $MainWindowCollapsed;
+	global string $child2;
+	global string $child3;
+
+	if ( $MainWindowCollapsed == 1)
+	{
+		$MainWindowCollapsed = 0; 
+		frameLayout -edit -collapse false $child2;
+		frameLayout -edit -collapse false $child3;
+		window -edit -h 460 $nameMainWindow;
+	}
+	else
+	{
+		$MainWindowCollapsed = 1;  
+		frameLayout -edit -collapse true $child2;
+		frameLayout -edit -collapse true $child3;
+		window -edit -h 180 $nameMainWindow;
+	}
+}
+
+global proc selectCorrectFountain()
+{
+	global string $tablaFountain;
+
+	int $rowSelected =`scriptTable -query -sr $tablaFountain`;
+	selectNextFountain( $rowSelected);
+	
+}
+
+global proc selectNextFountain( int $num)
+{
+	global int $nextFountain;
+	global string $speedFountain;
+	global string $radiusFountain;
+	global string $nombreEmitter;
+
+	string $listRadios[] = `listConnections -t "transform" $nombreEmitter`;
+	int $numradios = size( $listRadios);
+	
+	if( $nextFountain >= $numradios)
+		$nextFountain = 0;
+	select $listRadios[ $num - 1];
+}
+
+global proc deleteFountain()
+{
+	global string $selectedNode;
+	global string $selectedFountain;
+	global string $nombreEmitter;
+	global int $numFountains;
+
+   	string $selectedDagNodes[] = `selectedNodes -dagObjects`;
+	print $selectedDagNodes[0];
+	print "\n";
+//	if ( `nodeType $selectedDagNodes[0]` != "|nurbsCircle" ) 
+//		return;
+	
+	$selectedFountain = getFountainNodeCorrespongingToCircle( $selectedDagNodes[0] );
+	print $selectedFountain;
+	print "\n";
+	if( $selectedFountain == "")
+		return;
+
+	delete $selectedFountain;
+	delete $selectedNode;
+
+//	string $listRadios[] = `listConnections -t "transform" $nombreEmitter`;
+//	int $numradios = size( $listRadios);
+//	if( $numradios > 0)
+//		select $listRadios[0];
+//	else
+//		select -r $nombreEmitter;
+	
+	$numFountains = $numFountains - 1;
+	ActualizaTablaSources();
+}
+
+global proc ActualizaTablaSources()
+{
+	global int $numFountains;
+	global string $tablaFountain;
+
+	scriptTable -edit -rows $numFountains $tablaFountain;
+	scriptTable -edit -clearTable $tablaFountain;
+}
+
+
+global proc string getFountain()
+{
+	global string $nombreEmitter;
+	global int $nextFountain;
+	string $listConnections[] = `listConnections -t "sourceGlu" $nombreEmitter`;
+	if( $nextFountain >= size( $listConnections))
+		$nextFountain = 0;
+	if(size($listConnections))
+		return $listConnections[ $nextFountain];
+	else
+		return "";
+}
+
+global proc string getFountainNodeCorrespongingToCircle( string $circleNode )
+{
+	global string $nombreEmitter;
+	string $listConnections[] = `listConnections -t "transform" $nombreEmitter`;
+	string $listados[] = `listConnections -t "sourceGlu" $nombreEmitter`;
+	string $result = "";
+	
+	int $i = size( $listConnections);
+	for( $i = 0; $i < size( $listConnections); $i++)
+	{
+		string $match = match( $listConnections[$i], $circleNode); 
+		
+		if( $match != "")
+			$result = $listados[$i];
+	}
+	return $result;
+}
+global proc string recortaValue( string $value)
+{
+	string $array[];
+	string $cola;
+	tokenize $value "." $array;
+	$cola = $array[1];
+	$sizeCola = size( $cola);
+	if( $sizeCola > 4)
+	{
+		$cola = `substring $array[1] 1 4`;
+		$value = ( $array[0] + "." + $cola);
+	}
+	else
+		$value = ( $array[0] + ".0000");
+
+	return $value;
+}
+
+global proc string getTableValue( int $row, int $column)
+{
+	global string $nombreEmitter;
+	global string $tablaFountain;
+	string $listConnections[] = `listConnections -t "sourceGlu" $nombreEmitter`;
+	string $value;
+	string $result;
+
+	if( $column == 1)
+		return $listConnections[$row - 1];
+	if( $column == 2)
+		$result = string(`getAttr ($listConnections[$row - 1]+ ".radius")`);
+
+	if( $column == 3)
+		$result = string(`getAttr ($listConnections[$row - 1]+ ".speed")`);	
+	if( $column == 4)
+	{
+		$emitState = `getAttr ($listConnections[$row - 1]+ ".stopEmitting")`;	
+		if( $emitState == 1)
+			return "0";
+		else
+			return "1";
+	}
+	if( $column == 5)
+		$result = string(`getAttr ($listConnections[$row - 1] + ".thickness")`);
+	if( $column == 6)
+		$result =  string(`getAttr ($listConnections[$row - 1] + ".simulationLOD")`);
+	if( $column == 7)
+		return string(`getAttr ($listConnections[$row - 1] + ".startAtFrame")`);
+	if( $column == 8)
+		return string(`getAttr ($listConnections[$row - 1] + ".stopAtFrame")`);
+
+	return recortaValue( $result);
+}
+
+
+
+global proc int setTableValue( int $row, int $column, string $value)
+{
+	global string $nombreEmitter;
+	string $listConnections[] = `listConnections -t "sourceGlu" $nombreEmitter`;
+	global string $tablaFountain;
+
+	select -add $listConnections[$row - 1];
+	
+	selectNextFountain( $row);
+	
+	if( $column == 1)
+		return true;
+	if( $column == 2)
+	{
+		float $radiusValue = $value;
+		string $cadena = `setAttr ($listConnections[$row - 1] + ".radius") $radiusValue`;	
+		scriptTable -edit -clearTable $tablaFountain;
+		return true;
+	}
+	if( $column == 3 )
+	{
+		float $speedValue = $value;
+		setAttr ($listConnections[$row - 1] + ".speed") $speedValue;	
+		scriptTable -edit -clearTable $tablaFountain;
+		return true;
+	}
+	if( $column == 4 )
+	{
+		float $stopEmittingValue = $value;
+		if( $value == 0)
+			$stopEmittingValue = 1;
+		else
+			$stopEmittingValue = 0;
+		setAttr ($listConnections[$row - 1] + ".stopEmitting") $stopEmittingValue;	
+		scriptTable -edit -clearTable $tablaFountain;
+		return true;
+	}
+	if( $column == 5)
+	{
+		float $falue = $value;
+		string $cadena = `setAttr ($listConnections[$row - 1] + ".thickness") $falue`;	
+		scriptTable -edit -clearTable $tablaFountain;
+		return true;
+	}
+	if( $column == 6)
+	{
+		float $falue = $value;
+		string $cadena = `setAttr ($listConnections[$row - 1] + ".simulationLOD") $falue`;	
+		scriptTable -edit -clearTable $tablaFountain;
+		return true;
+	}
+	if( $column == 7)
+	{
+		float $falue = $value;
+		string $cadena = `setAttr ($listConnections[$row - 1] + ".startAtFrame") $falue`;	
+		scriptTable -edit -clearTable $tablaFountain;
+		return true;
+	}
+	if( $column == 8)
+	{
+		float $falue = $value;
+		string $cadena = `setAttr ($listConnections[$row - 1] + ".stopAtFrame") $falue`;	
+		scriptTable -edit -clearTable $tablaFountain;
+		return true;
+	}
+
+	return false;
+}
+
+
+global proc CreaEmitter()
+{
+	global string $nombreEmitter;
+	global string $nombreParticles[];
+	global string $nombreShape;
+	global string $sliderAccuracy;
+	global string $sliderThickness;
+	global int $numFountains;
+	
+	$numFountains = 0;
+	$nombreEmitter = `createNode GluEmitter -name GluEmitter`;
+	$nombreParticles = `particle`;		
+	select -r $nombreEmitter;
+
+	connectDynamic -em $nombreEmitter $nombreParticles[0];
+	setAttr ($nombreParticles[0] + "|" + $nombreParticles[1] + ".emissionInWorld") off;
+	setAttr ($nombreParticles[0] + "|" + $nombreParticles[1] + ".dynamicsWeight") 0.0;
+	setAttr ($nombreParticles[0] + "|" + $nombreParticles[1] + ".lifespanMode") 3;
+
+	select -r $nombreParticles[0];
+	string $gravity[] = `gravity -pos 0 0 0 -m 9.8 -att 0 -dx 0 -dy -1 -dz 0  -mxd -1  -vsh none -vex 0 -vof 0 0 0 -vsw 360 -tsr 0.5`;
+	connectDynamic -f $gravity[0] $nombreParticles[0];
+
+	if( `upAxis -q -axis` == "z")
+		gravity -e -dx 0 -dy 0 -dz -1 $gravity[0];
+
+
+	string $nombreMesh= `createNode transform -n GluSurface`;
+	$nombreShape= `createNode mesh -p $nombreMesh -n GluPolySurfaceShape`;
+	setAttr ( $nombreShape + ".backfaceCulling") 3;
+ 	sets -add initialShadingGroup $nombreShape;
+	connectAttr time1.outTime ($nombreEmitter + ".time");
+	connectAttr ($nombreEmitter + ".polysurface") ($nombreShape + ".inMesh");
+
+	connectAttr ($nombreParticles[1] + ".force") ( $nombreEmitter + ".forces");
+	connectAttr ($nombreParticles[1] + ".maxCount") ( $nombreEmitter + ".numMaxParticles");
+}
+
+global proc CreateBowlInScene()
+{
+	if( `upAxis -q -axis` == "z")
+	{
+		polySphere -r 10.0656 -sx 8 -sy 8 -ax 0 0 1 -tx 1 -ch 1;
+		select -r pSphere1.f[24:47] pSphere1.f[56:63] ;
+		delete;
+	}
+	else
+	{
+		polySphere -r 10.0656 -sx 8 -sy 8 -ax 0 1 0 -tx 1 -ch 1;
+		select -r pSphere1.f[24:47] pSphere1.f[56:63] ;
+		delete;
+	}
+}
+
+global proc string buscaEmitter()
+{
+ 	string  $allObjects[];
+ 	string  $obj;
+ 	$allObjects = `ls -l`;
+ 	for ( $obj in $allObjects ) {
+ 	    if ( `nodeType $obj` == "GluEmitter" ) {
+ 	        return $obj;
+ 	    }
+ 	}
+	return "";
+}
+
+global proc shelfButtonPressed()
+{
+	string $emitter = buscaEmitter();
+	global string $nostring;
+	int $result; 
+	string $answer = "Yes";
+	global int $firstTimeCreatedGluEmitter;
+
+	$nostring = "";
+	$result = EditGlu( $emitter);
+	if ( $result == 0)
+	{
+		//if( $firstTimeCreatedGluEmitter == false)
+		{
+			if( `objExists $emitter`)
+			{
+				$answer =`confirmDialog -title "glu3D" -message "Only a single glu3D instance is allowed per scene."
+    				-button "OK" -defaultButton "OK"
+    				-cancelButton "OK" -dismissString "OK"`;
+				if ( $answer == "OK")
+				{
+					//warning "To edit an existing glu3D emitter, select it before pushing glu3D shelf button.";
+					return;
+				}
+			}
+		}
+		mainGlu( 9.8, 1100, $nostring, $nostring);
+	}
+}
+
+global proc glu()
+{
+	global string $nostring;
+	global string $gluShelfButton;
+	global string $menuGlu;
+	int $i = 0;
+	int $found = 0;
+	string $anotationShelfButton = "Creates a new Glu Emitter or edit an existing one ( select it before pushing shelf button).";
+	string $anotation;
+
+	$nostring = "";
+
+	if ( !`pluginInfo -query -loaded glu` ) 
+	{
+		loadPlugin "glu";
+		loadPlugin "sourceGlu";
+	}
+	
+    if (!`menu -exists Glu3DMenu`)
+	{
+		menu -l "glu3D" -p "MayaWindow" Glu3DMenu;
+		$menuGlu = `menuItem -l "Open glu3D Control Panel" -c "shelfButtonPressed" -p Glu3DMenu GluMenuItem`;
+		setParent -menu ..;
+	}
+}
+
+
+global proc string CreaFountain()
+{
+	global string $nombreEmitter;
+	global string $nombreParticles[];
+	global string $tablaFountain;
+	string $nombreCircle[];
+	global int $numFountains;
+
+	float $pi = 3.141592;
+	float $delta = 2.0 * 2.0 * $pi / 11.0;
+
+	float $coordx = -5.5 * cos( $numFountains * $delta);
+	float $coordy = -5.5 * sin( $numFountains * $delta);
+	$delta = $numFountains * $delta * 180.0 / 3.141592;
+
+	if( `upAxis -q -axis` == "z")
+	{
+		$nombreCircle= `circle -c 0 0 0 -nr 1 0 1`;
+		move -r $coordx $coordy 0.3;
+		rotate -r 0 0 $delta;
+	}
+	else
+	{
+		$nombreCircle= `circle -c 0 0 0 -nr 1 1 0`;
+		move -r $coordx 0.3 $coordy;
+		$delta = - $delta;
+		rotate -r 0 $delta 0;
+	}
+	
+	select -add -r $nombreEmitter $nombreCircle;
+	string $nombreFountain = `createNode sourceGlu -name sourceGlu`;
+	connectAttr ($nombreFountain + ".radius") ($nombreCircle[1] + ".radius");
+	connectAttr -na ($nombreFountain + ".radius") ($nombreEmitter + ".radius");
+	setAttr ($nombreFountain + ".speed") 4;
+	connectAttr time1.outTime ($nombreFountain + ".time");
+	connectAttr ($nombreEmitter + ".scaleFactor") ($nombreFountain + ".scaleFactor");
+
+	connectAttr -na ($nombreFountain + ".speed") ($nombreEmitter + ".velocidad");
+	connectAttr -na ($nombreFountain + ".simulationLOD") ($nombreEmitter + ".simulationLOD");
+	connectAttr -na ($nombreFountain + ".thickness") ($nombreEmitter + ".thickness");
+	connectAttr -na ($nombreFountain + ".startAtFrame") ($nombreEmitter + ".startAtFrame");
+	connectAttr -na ($nombreFountain + ".stopAtFrame") ($nombreEmitter + ".stopAtFrame");
+	connectAttr -na ($nombreFountain + ".stopEmitting") ($nombreEmitter + ".stopEmitting");
+	connectAttr -na ($nombreFountain + ".lifespan") ($nombreEmitter + ".lifespan");
+	connectAttr -na ($nombreCircle[0] + ".translate") ($nombreEmitter + ".emitterLocation");
+	connectAttr -na ($nombreCircle[1] + ".normal") ($nombreEmitter + ".emitterDirection");
+	connectAttr -na ($nombreCircle[0] + ".worldMatrix") ($nombreEmitter + ".transfMatrix");
+	connectAttr -na ($nombreFountain + ".filledPositionsOutput") ($nombreEmitter + ".filledPositionsInput");
+ 
+	select -r $nombreCircle;
+
+	int $result = `scriptTable -exists $tablaFountain`;
+	
+	$numFountains = $numFountains + 1;
+	if( $result == true )
+	{
+		scriptTable -edit -rows $numFountains $tablaFountain;
+		scriptTable -edit -clearTable $tablaFountain;
+	}
+	
+	return $nombreCircle[0];
+
+}
+
+global proc string getSelectedGluEmitter()
+{
+	string $dagnodes[] = `selectedNodes -dagObjects`;
+	string $tipo = "|nurbsCircle";
+	string $selectedNode = ""; 
+	string $result;
+	int $j = 0;
+	int $comp;
+	int $alguno = 0;
+	global string $nombreEmitter;
+
+	//$nombreEmitter = "";
+	while( $j < size($dagnodes))// && $nombreEmitter == "")
+	{
+		$result = match( $tipo, $dagnodes[$j]);
+		$comp = `strcmp $result $tipo`;
+		if( $comp == 0)	
+		{
+			string $listados[] = `listConnections -t "GluEmitter" $dagnodes[$j]`;
+			//$nombreEmitter = $listados[0];
+			$selectedNode = $dagnodes[$j];
+			break;
+		}
+		$j ++;
+	}
+
+	if( $nombreEmitter == "")
+	{
+		$j = 0;
+		while( $j < size($dagnodes))// && $nombreEmitter == "")
+		{
+			$result = match( "GluEmitter", $dagnodes[$j]);
+			$comp = `strcmp $result "GluEmitter"`;
+			if( $comp == 0)	
+			{
+				string $listados[] = `listConnections -t "transform" $dagnodes[$j]`;
+				//$nombreEmitter = $dagnodes[$j];
+				if( size( $listados) > 0 )
+					$selectedNode = $listados[0];
+				break;
+			}
+			$j ++;
+		}
+	}
+
+	return $selectedNode;		
+}
+
+
+global proc int EditGlu(string $emitter)
+{
+    global int $openPanelIfSelected;
+	global string $nameMainWindow;
+	global int $selectedTab;	
+	global string $tabs;
+	global string $nombreEmitter;
+	float $gravity;
+	float $resolution;
+	float $density;
+	string $selectedNode;
+
+	$selectedNode = $emitter;		
+	if( $selectedNode != "")
+	{
+		$gravity = `getAttr ($nombreEmitter + ".gravity")`;	
+		$density = `getAttr ($nombreEmitter + ".density")`;	
+	}
+
+	if( `window -exists $nameMainWindow`)
+	{
+		$selectedTab = `tabLayout -q -sti $tabs`;
+		deleteUI $nameMainWindow;
+	}
+
+	{
+		mainGlu( $gravity, $density, $nombreEmitter, $selectedNode);
+		return 1; 
+	}
+}
+
+global proc REPlay()
+{
+	global string $nombreEmitter;
+	global string $buttonPLAY;
+
+	$start = `playbackOptions -q -minTime`;
+	currentTime $start;
+	play;		
+}
+
+
+global proc Recalculate()
+{
+	global string $nombreEmitter;
+
+	int $respuesta = Asegurate();
+	if( $respuesta == 0)
+		return;
+
+	$start = `playbackOptions -q -minTime`;
+	setAttr( $nombreEmitter + ".recalculate" ) true;
+	currentTime $start;
+}
+
+global proc renderRange( int $start, int $end)
+{
+	for( $i = $start; $i < $end; $i++)
+	{
+		currentTime $i;
+		render;
+	}
+	print "Render completed";
+}
+
+global proc ComputeGlu()
+{
+	global string $nombreEmitter;
+
+	setAttr ($nombreEmitter + ".isSolverWorking") true;
+	$start = `getAttr ($nombreEmitter + ".lastComputedFrame")`;
+	$end = `playbackOptions -q -maxTime`;
+	$totalFrames = $end - $start;
+
+	int $amount = 0;
+	progressWindow
+		-title "Solving glu3D scene..."
+		-progress $amount
+		-status "Percentage done: 0%"
+		-isInterruptable true;
+	currentTime $start;
+
+	$i = 0;
+	while ( $start != $end) {
+		// Check if the dialog has been cancelled
+		if ( `progressWindow -query -isCancelled` ) break;
+
+		// Check if end condition has been reached
+		// if ( `progressWindow -query -progress` >= 100 ) break;
+
+		$start++;
+		currentTime $start;
+		$amount = 100 * ( $start / $totalFrames ) ;
+
+		$start = `getAttr ($nombreEmitter + ".lastComputedFrame")`;
+		progressWindow -edit
+			-progress $amount 
+			-status ("Percentage done: "+$amount+"%");
+	}
+
+	progressWindow -endProgress;
+
+	setAttr ($nombreEmitter + ".isSolverWorking") false;
+}
+
+global proc HoldTime()
+{
+	global string $nombreEmitter;
+	
+	setAttr ($nombreEmitter + ".isSolverWorking") true;
+	$start = `getAttr ($nombreEmitter + ".lastComputedFrame")`;
+	$end = `playbackOptions -q -maxTime`;
+	$totalFrames = $end - $start;
+
+	int $amount = 0;
+	progressWindow
+		-title "Solving glu3D scene..."
+		-progress $amount
+		-status "Percentage done: 0%"
+		-isInterruptable true;
+	currentTime $start;
+
+	$i = 0;
+	while ( $i != $totalFrames) {
+		// Check if the dialog has been cancelled
+		if ( `progressWindow -query -isCancelled` ) break;
+
+		// Check if end condition has been reached
+		if ( `progressWindow -query -progress` >= 100 ) break;
+
+		//$start++;
+		setAttr ($nombreEmitter + ".relaxing") true;
+		currentTime $start;
+		$i += 1;
+		
+		$amount = 100 * ( $i / $totalFrames ) ;
+
+		progressWindow -edit
+			-progress $amount
+			-status ("Percentage done: "+$amount+"%");
+
+	}
+
+	progressWindow -endProgress;
+	setAttr ($nombreEmitter + ".relaxing") false;
+	setAttr ($nombreEmitter + ".isSolverWorking") false;
+}
+
+global proc BuildMesh()
+{
+	global string $nombreEmitter;
+
+	$start = `playbackOptions -q -minTime`;
+	$end = `getAttr ($nombreEmitter + ".lastComputedFrame")`;
+	$totalFrames = $end - $start;
+
+	int $amount = 0;
+	progressWindow
+		-title "Solving glu3D scene..."
+		-progress $amount
+		-status "Percentage done: 0%"
+		-isInterruptable true;
+	currentTime $start;
+
+	$i = 0;
+	while ( $i != $totalFrames) {
+		// Check if the dialog has been cancelled
+		if ( `progressWindow -query -isCancelled` ) break;
+
+		// Check if end condition has been reached
+		if ( `progressWindow -query -progress` >= 100 ) break;
+
+		$start++;
+		currentTime $start;
+		$i += 1;
+		$amount = 100 * ( $i / $totalFrames ) ;
+
+		progressWindow -edit
+			-progress $amount
+			-status ("Percentage done: "+$amount+"%");
+	}
+	progressWindow -endProgress;
+}
+
+global proc ShowMesh()
+{
+	global string $nombreEmitter;
+	setAttr( $nombreEmitter + ".withMesh" ) true;
+}
+
+global proc FlushMeshCache()
+{
+	global string $nombreEmitter;
+	int $respuesta = Asegurate();
+	if( $respuesta == 0)
+		return;
+
+	setAttr( $nombreEmitter + ".flushMesh" ) true;
+//	BuildMesh();
+}
+
+global proc string perObjectGetValue(int $fila, int $columna)
+{
+	string $result;
+	string $nombreObj;
+	string $array[];
+	global string $nombreEmitter;
+	global string $tablaObstacles;
+	$numObjs = `getAttr -s ($nombreEmitter + ".objectList")`;
+	if( $fila > $numObjs)
+		return "";
+
+	int $contObjs = 0;
+	int $i;
+	int $collideValue;
+
+	for( $i = 0; $i < $numObjs; $i++)
+	{
+		$collideValue = getAttr ( $nombreEmitter + ".collisionList[" + $i + "]");
+		if( $collideValue != 0)
+			$contObjs ++;
+		if( $fila == $contObjs)
+			break;
+	}
+	
+	if( $columna == 1)
+	{
+		$nombreObj = `getAttr ($nombreEmitter + ".objectList[" + $i + "]")`;
+		tokenize $nombreObj "|" $array;
+		return $array[1];
+	}
+	if( $columna == 2)
+		return string(`getAttr ($nombreEmitter + ".collisionList[" + $i + "]")`);
+	if( $columna == 3)
+		$result = `getAttr ($nombreEmitter + ".frictionList[" + $i + "]")`;
+	if( $columna == 4)
+		$result = `getAttr ($nombreEmitter + ".adherenceList[" + $i + "]")`;
+	if( $columna == 5)
+		$result = `getAttr ($nombreEmitter + ".bounceList[" + $i + "]")`;
+	if( $columna == 6)
+		$result = `getAttr ($nombreEmitter + ".gapList[" + $i + "]")`;
+	if( $columna == 7)
+		return string( `getAttr ($nombreEmitter + ".kilL[" + $i + "]")`);
+
+	return ( recortaValue( $result));
+}
+
+
+global proc ActualizaTablaObjects()
+{
+	global string $nombreEmitter;
+	global string $tablaObstacles;
+	$numObjs = `getAttr -s ($nombreEmitter + ".objectList")`;
+	int $collideValue;
+	int $contObjs = 0;
+	int $i;
+
+	for( $i = 0; $i < $numObjs; $i++)
+	{
+		$collideValue = getAttr ( $nombreEmitter + ".collisionList[" + $i + "]");
+		if( $collideValue != 0)
+			$contObjs ++;
+	}
+
+	scriptTable -edit -rows $contObjs $tablaObstacles;
+	scriptTable -edit -clearTable $tablaObstacles;
+}
+
+global proc int perObjectSetValue(int $fila, int $columna, string $value)
+{
+	global string $nombreEmitter;
+	global string $tablaObstacles;
+	$numObjs = `getAttr -s ($nombreEmitter + ".objectList")`;
+	if( $fila > $numObjs)
+		return false;
+
+	int $contObjs = 0;
+	int $i;
+	int $collideValue;
+
+	for( $i = 0; $i < $numObjs; $i++)
+	{
+		$collideValue = getAttr ( $nombreEmitter + ".collisionList[" + $i + "]");
+		if( $collideValue != 0)
+			$contObjs ++;
+		if( $fila == $contObjs)
+			break;
+	}
+
+	string $result;
+
+	if( $columna == 1)
+		return true;
+
+	if( $columna == 2)
+	{
+		int $collideValue = $value;
+		setAttr ($nombreEmitter + ".collisionList[" + $i + "]") $collideValue;
+		ActualizaTablaObjects();
+		return true;
+	}
+	
+
+	if( $columna == 3)
+	{
+		float $frictionListValue = $value;
+		if( $frictionListValue > 100.0)
+			$frictionListValue = 100.0;
+		if( $frictionListValue < 0.0)
+			$frictionListValue = 0.0;
+		setAttr ($nombreEmitter + ".frictionList[" + $i + "]") $frictionListValue;
+		ActualizaTablaObjects();
+		return true;
+	}
+
+	if( $columna == 4)
+	{
+		float $adherenceListValue = $value;
+		if( $adherenceListValue > 1.0)
+			$adherenceListValue = 1.0;
+		if( $adherenceListValue < 0.0)
+			$adherenceListValue = 0.0;
+		setAttr ($nombreEmitter + ".adherenceList[" + $i + "]") $adherenceListValue;
+		ActualizaTablaObjects();
+		return true; 
+	}
+
+	if( $columna == 5)
+	{
+		float $bounceListValue = $value;
+		if( $bounceListValue > 100.0)
+			$bounceListValue = 100.0;
+		if( $bounceListValue < 0.0)
+			$bounceListValue = 0.0;
+		setAttr ($nombreEmitter + ".bounceList[" + $i + "]") $bounceListValue;
+		ActualizaTablaObjects();
+		return true;
+	}
+
+	if( $columna == 6)
+	{
+		float $gapListValue = $value;
+		if( $gapListValue > 5.0)
+			$gapListValue = 5.0;
+		if( $gapListValue < 0.001)
+			$gapListValue = 0.001;
+
+		setAttr ($nombreEmitter + ".gapList[" + $i + "]") $gapListValue;
+		ActualizaTablaObjects();
+		return true;
+	}
+
+	if( $columna == 7)
+	{
+		int $killerValue = $value;
+		setAttr ($nombreEmitter + ".kilL[" + $i + "]") $killerValue;
+		ActualizaTablaObjects();
+		return true;
+	}
+	
+	return false;
+}
+
+
+
+glu;
+global int $counter = 0;
+global int $veces = 0;
+
+

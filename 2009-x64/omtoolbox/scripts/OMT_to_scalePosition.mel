@@ -1,0 +1,164 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	OMT_to_scalePositionu.mel						///
+///  AUTHOR: 	Jakob Welner (jakob@welner.dk)					///
+///										///
+///  UDTATE LOG:
+///  13th of march: 1.30 by Jakob Welner
+///  - Enabled rotation as group for seperated objects
+///	23rd of january: 1.20 by Jakob Welner
+///	- made objects keep position after scale if they are keyed
+///	21th of october: 1.10 by Jakob Welner
+///	- Made pivot dependent instead of bounding box
+///	28th og july: 1.00 by Jakob Welner
+///	- First version
+///				
+///  DEPENDENCIES:
+///   	None	
+///				
+///  PURPOSE & USE:
+///	Select some objects and use the tool to scale their position
+///	closer / farther from each other
+///   or rotate seperated objects as if they were a group
+///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Alias Maya toolbox			///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+global proc OMT_to_scalePosition()
+{
+
+global 	string	$selObjects[];
+global	string	$gScale;
+		clear	$selObjects;
+
+	$selObjects = `ls -objectsOnly -sl`;
+	
+
+	if (size($selObjects) > 1)
+	{
+		float	$objPos[];
+		float $objRot[];
+global	string	$groupName;
+		string	$locName[];
+		string	$locatorNames[];
+		clear 	$locatorNames;
+
+		string	$consName[];
+global	string	$constraintNames[];
+		clear 	$constraintNames;
+	
+		int	$counter = 0;
+
+		for($obj in $selObjects)
+		{
+			$objPos = (`xform -q -piv -ws $obj`);
+			$objRot = (`xform -q -ro -ws $obj`);
+			
+			// creating scale locators
+			$locName = `spaceLocator -n ("OMT_scaleLocator" + $counter)`;
+			xform -ws -t $objPos[0] $objPos[1] $objPos[2] $locName[0];
+			xform -ws -ro $objRot[0] $objRot[1] $objRot[2] $locName[0];
+			$locatorNames[size($locatorNames)] = $locName[0];
+			
+			// Constrain
+			$consName = `parentConstraint -n ("OMT_scaleConstraint" + $counter) $locName[0] $obj`;
+			$constraintNames[size($constraintNames)] = $consName[0];
+			
+			$counter++;
+		}
+
+		$groupName = `group -n "OMT_scalePosGroup" $locatorNames`;
+		
+		// Sets group pivot to center of object bounding box
+		xform -cp $groupName;
+		
+		hide $locatorNames;
+
+		hilite $selObjects;
+
+		storeLastAction( "restoreLastContext " + `currentCtx` );
+		setToolTo $gScale;
+
+
+//	Choose for keyed objects or not.	
+//		if($keyed == 1)	scriptJob -runOnce true -compressUndo true -e "SelectionChanged" "OMT_reposScaled($selObjects, $constraintNames, $groupName)";
+//		else scriptJob -runOnce true -compressUndo true -e "SelectionChanged" "delete $constraintNames; delete $groupName;";
+
+		scriptJob -runOnce true -compressUndo true -e "SelectionChanged" "OMT_reposScaled($selObjects, $constraintNames, $groupName)";
+
+	}
+	else warning "You need to select at least 2 objects";
+	
+	
+}
+
+
+global proc OMT_reposScaled(string $selObjects[], string $constraintNames[], string $groupName)
+{
+global 	string $gLastAction;
+	vector $objPos[];
+	vector $objRot[];
+	float  $tx;	
+	float  $ty;
+	float  $tz;
+
+	float  $rx;	
+	float  $ry;
+	float  $rz;
+	
+	vector $tempVector1;
+	vector $tempVector2;
+
+	for($o in $selObjects)
+	{
+		$tx = `getAttr ($o + ".tx")`;
+		$ty = `getAttr ($o + ".ty")`;
+		$tz = `getAttr ($o + ".tz")`;
+		$objPos[size($objPos)] = <<$tx, $ty, $tz>>;
+		
+		$rx = `getAttr ($o + ".rx")`;
+		$ry = `getAttr ($o + ".ry")`;
+		$rz = `getAttr ($o + ".rz")`;
+		$objRot[size($objRot)] = <<$rx, $ry, $rz>>;
+	}
+
+	delete $constraintNames;
+	delete $groupName;
+
+	for ($i = 0; $i < size($selObjects) ; $i++)
+	{
+		$tempVector1 = $objPos[$i];
+		setAttr ($selObjects[$i] + ".tx") ($tempVector1.x);
+		setAttr ($selObjects[$i] + ".ty") ($tempVector1.y);
+		setAttr ($selObjects[$i] + ".tz") ($tempVector1.z);
+		
+		$tempVector2 = $objRot[$i];
+		setAttr ($selObjects[$i] + ".rx") ($tempVector2.x);
+		setAttr ($selObjects[$i] + ".ry") ($tempVector2.y);
+		setAttr ($selObjects[$i] + ".rz") ($tempVector2.z);
+	}
+
+	eval $gLastAction;
+	select -r $selObjects;
+}

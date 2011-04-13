@@ -1,0 +1,6 @@
+To start out - first create a board by pressing the "new board" button.  Boards are the things you draw on.  Now make sure its parented to the current camera by right clicking the "use selected cam" button
+You can change the camera that your boards are parented to at any time by right clicking on the "use selected cam" button
+The load/unload button in the top left corner of the window controls whether the script is turned on or not.  When the script is off, you can't draw.  When turned on, the current board is automatically enabled for drawing
+When you close the window, by default the script is automatically turned off.  If you want to close the window but still have the script loaded, make sure "Prefs->unload on window close" is turned off.
+By default, pre ghosting is turned on.  You can have either pre or post ghosting, or both or none on your boards.  To control this go to the Manage menu
+You can name your boards if you want.  Simply type what you want to call your board next to the time in the board list.  Naming boards can be really useful for long sequences

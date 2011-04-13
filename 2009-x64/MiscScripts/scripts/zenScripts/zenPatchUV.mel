@@ -1,0 +1,295 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//ZenLoft
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//assigns uv coordinates for a rectangular patch on a polygon surface
+global proc zenPatchUV(int $distribution)
+{
+		waitCursor -state on;
+
+	global	string $zenLastEndLoops[];
+	
+	string	$allSel[]=`ls -sl -fl`;
+
+	//get selected edges
+	string	$sel[]=`polyListComponentConversion -fe -te`;
+		if(size($sel)==0) error("Improper selection.\n");
+	
+	string	$obj=zenReturnFirstStringItem(`ls -o $sel`);
+	string	$tr=zenReturnFirstStringItem(`listRelatives -f -p $obj`);
+	string	$dup=`createNode -p $tr mesh`;
+
+	//create a duplicate
+		connectAttr ($obj+".outMesh") ($dup+".inMesh");
+		
+	string	$dupSel[]=`zenMimicSelection $sel $dup`;
+	
+	
+	string	$allVertsOnObj[]=`polyListComponentConversion -tv $dup`;
+		$allVertsOnObj=`ls -fl $allVertsOnObj`;
+		
+		delete -ch $dup;
+	
+	string	$edgeLoopsU[]=`zenLoopRing $dupSel`;
+
+	//determine if the first and last edges are shared
+	int	$wrap=0;
+		$edgeLoopsU=`stringArrayRemove {""," ",","} $edgeLoopsU`;
+		if(strip($edgeLoopsU[size($edgeLoopsU)-1])==strip($edgeLoopsU[0]))
+		{
+			$wrap=1;
+		}
+		else
+		{
+			$edgeLoopsU=`stringArrayRemoveDuplicates $edgeLoopsU`;
+		}
+
+	//get an array of all the involved edges
+	string	$allEdges[];
+		for($i=0;$i<size($edgeLoopsU);$i++)
+		{
+			$allEdges=stringArrayCatenate($allEdges,`stringToStringArray $edgeLoopsU[$i] ","`);
+		}
+		
+	//get an array of all the involved faces
+	string	$facets[]=`polyListComponentConversion -tv $allEdges`;
+		$facets=`polyListComponentConversion -tf -in $facets`;
+		$facets=`ls -fl $facets`;
+				
+	//create uv's
+		select -r $facets;
+		polyForceUV -cp -u;
+		select -r $facets;
+		polyMergeUV;
+		polyMapCut `stringToStringArray ($edgeLoopsU[size($edgeLoopsU)-1]) ","`;
+		
+	string	$uvPoints[]=`polyListComponentConversion -tuv $facets`;
+		$uvPoints=`ls -fl $uvPoints`;
+	string	$edgeRingsU[];
+	string	$edgeRingsV[];
+	string	$edgeLoopsV[];
+	string	$vertLoopsU[];
+	string	$vertLoopsV[];
+	string	$uCoordinates[];
+	string	$uCoordinates[];
+	string	$uVertLoop[];
+	string	$uLoop[];
+	string	$vVertLoop[];
+	string	$vLoop[];
+	float	$avgEdgeLengthU[];
+	float	$avgEdgeLengthV[];
+	float	$totalEdgeLengthU=0;
+	float	$totalEdgeLengthV=0;
+	float	$uSpace=1;
+	float	$vSpace=1;	
+	string	$tempArray[];
+			
+	//progress window
+		progressWindow -isInterruptable 1 -title "Working" -max (size($allEdges)*3) -progress 0 -status "Sorting...";
+	
+	//create dynamic "matrix"
+		for($i=0;$i<size($edgeLoopsU);$i++)
+		{
+			$uLoop=`stringToStringArray ($edgeLoopsU[$i]) ","`;
+			$uVertLoop=`zenVertLoopFromEdgeLoop $uLoop`;
+			$vertLoopsU[$i]=`stringArrayToString $uVertLoop ","`;
+			for($n=0;$n<size($uVertLoop);$n++)
+			{
+				progressWindow -e -s 1;
+				$vertLoopsV[$n]=$vertLoopsV[$n]+$uVertLoop[$n]+",";
+			}
+			
+			for($n=0;$n<size($uLoop);$n++)
+			{
+				progressWindow -e -s 1;
+				$edgeRingsU[$n]=$edgeRingsU[$n]+$uLoop[$n]+",";
+			}
+			
+			if(`progressWindow -q -ic`==1)
+			{
+				progressWindow -endProgress;
+				error "User Interupt.";
+			}
+		}
+		
+		for($i=0;$i<size($vertLoopsV);$i++)
+		{
+			$vVertLoop=`stringToStringArray $vertLoopsV[$i] ","`;
+			$vLoop=`zenEdgeLoopFromVertLoop $vVertLoop`;
+			for($n=0;$n<size($vLoop);$n++)
+			{
+				progressWindow -e -s 1;
+				if($vLoop[$n]!="" && $vLoop[$n]!=" ")
+				{
+					$edgeRingsV[$n]=$edgeRingsV[$n]+$vLoop[$n]+",";
+				}
+			}
+			
+			if(`progressWindow -q -ic`==1)
+			{
+				progressWindow -endProgress;
+				error "User Interupt.";
+			}
+		}
+		
+		//$edgeRingsU=`stringArrayRemove {""," ",","} $edgeRingsU`;
+		//$edgeRingsV=`stringArrayRemove {""," ",","} $edgeRingsV`;
+					
+		if($distribution==1) //chord length distribution
+		{
+		
+			for($i=0;$i<size($edgeRingsV);$i++)
+			{
+				$tempArray=`stringToStringArray $edgeRingsV[$i] ","`;
+				$tempArray=`stringArrayRemove {""," ",","} $tempArray`;
+				$avgEdgeLengthV[$i]=`zenAverageEdgeLength $tempArray`;
+				$totalEdgeLengthV=$totalEdgeLengthV+$avgEdgeLengthV[$i];
+				if(`progressWindow -q -ic`==1)
+				{
+					progressWindow -endProgress;
+					error "User Interupt.";
+				}
+			}
+			
+			//calculate average chord lengths in the u direction
+			for($i=0;$i<size($edgeRingsU);$i++)
+			{
+				$tempArray=`stringToStringArray $edgeRingsU[$i] ","`;
+				$tempArray=`stringArrayRemove {""," "} $tempArray`;
+				$avgEdgeLengthU[$i]=`zenAverageEdgeLength $tempArray`;
+				$totalEdgeLengthU=$totalEdgeLengthU+$avgEdgeLengthU[$i];
+				
+				progressWindow -e -s 1;
+				if(`progressWindow -q -ic`==1)
+				{
+					progressWindow -endProgress;
+					error "User Interupt.";
+				}
+			}
+			
+			//calculate aspect ratios
+			if($totalEdgeLengthV>$totalEdgeLengthU)
+				$uSpace=($totalEdgeLengthU)/($totalEdgeLengthV);
+			if($totalEdgeLengthU>$totalEdgeLengthV)
+				$vSpace=($totalEdgeLengthV)/($totalEdgeLengthU);
+		}
+		else 
+	//uniform distribution
+		{
+			$totalEdgeLengthV=1;			
+			for($i=0;$i<size($edgeRingsV);$i++)
+				$avgEdgeLengthV[$i]=$totalEdgeLengthV/(size($edgeRingsV));
+				
+			$totalEdgeLengthU=1;
+			for($i=0;$i<size($edgeRingsU);$i++)
+			{
+				$avgEdgeLengthU[$i]=$totalEdgeLengthU/(size($edgeRingsU));
+			}
+		}
+		
+		progressWindow -endProgress;
+
+		progressWindow -ii 1 -status "Moving Points" -progress 0 -max (size($vertLoopsU)*size($uVertLoop));
+		
+	string	$intersector=`stringArrayIntersector`;
+	float	$v=0;
+	string	$inUVPoints[];
+	string	$currentUV[];
+	int	$errorOnUV;
+	
+	
+		if($distribution!=4 && $distribution!=3)//set new point positions
+		{
+			for($i=0;$i<size($vertLoopsU);$i++)
+			{
+					$inUVPoints=$uvPoints;
+					$uVertLoop=`stringToStringArray ($vertLoopsU[$i]) ","`;
+					$uVertLoop=`stringArrayRemove {""," "} $uVertLoop`;
+					
+					if($wrap)
+					{
+						if($i==0)
+						{	
+							$tempArray=stringArrayCatenate(`stringToStringArray ($vertLoopsU[1]) ","`,$uVertLoop);
+							$tempArray=`polyListComponentConversion -tv $tempArray`;
+							$tempArray=`polyListComponentConversion -tf -in $tempArray`;
+							$tempArray=`polyListComponentConversion -tuv -in $tempArray`;
+							$inUVPoints=stringArrayRemoveDuplicates(`ls -fl $tempArray`);
+						}
+													
+						if($i==size($vertLoopsU)-1)
+						{	
+							$tempArray=stringArrayCatenate(`stringToStringArray ($vertLoopsU[$i-1]) ","`,$uVertLoop);
+							$tempArray=`polyListComponentConversion -tv $tempArray`;
+							$tempArray=`polyListComponentConversion -tf -in $tempArray`;
+							$tempArray=`polyListComponentConversion -tuv $tempArray`;
+							$inUVPoints=stringArrayRemoveDuplicates(`ls -fl $tempArray`);
+						}
+					}
+					
+					float	$u=0;
+					
+					if($i!=0)
+					{						
+						$v=$v+($vSpace*$avgEdgeLengthV[$i-1]/$totalEdgeLengthV);
+					}
+					
+					for($n=0;$n<size($uVertLoop);$n++)
+					{
+					
+						progressWindow -e -s 1;
+						if(`progressWindow -q -ic`==1)
+						{
+							deleteUI $intersector;
+							progressWindow -endProgress;
+							error "User Interupt.";
+						}
+						
+						if($n!=0)
+						{
+							$u=$u+($uSpace*$avgEdgeLengthU[$n-1]/$totalEdgeLengthU);
+						}
+						
+						$currentUV=`polyListComponentConversion -tuv $uVertLoop[$n]`;								
+						$currentUV=`ls -fl $currentUV`;
+
+						stringArrayIntersector -e -r $intersector;
+						stringArrayIntersector -e -i $currentUV $intersector;
+						stringArrayIntersector -e -i $inUVPoints $intersector;
+						$currentUV=`stringArrayIntersector -q $intersector`;
+
+						$errorOnUV=catch(`polyEditUV -r 0 -u $u -v $v $currentUV[0]`);
+						if($errorOnUV) print("Unable to evalutate coordinates for: "+$currentUV[0]);							
+						
+						catch(`delete -ch $dup`);
+					}
+			}
+		}
+		
+		select `polyListComponentConversion -tuv $facets`;
+		
+		deleteUI $intersector;
+		
+	//transfer uvs from intermediate object and delete intermediate object
+		polyTransfer -ch 1 -v 0 -vc 0 -uv 1 -ao $dup $obj;
+		//delete -ch $dup;
+		delete $dup;
+		
+		progressWindow -endProgress;
+		waitCursor -state off;
+}
+

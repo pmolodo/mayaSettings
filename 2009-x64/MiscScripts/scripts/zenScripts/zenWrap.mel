@@ -1,0 +1,71 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//create a wrap from shape attributes
+global proc string zenWrap(string $deformShapeAttr,string $baseShapeAttr,string $verts[])
+{
+	string	$obj=zenReturnFirstStringItem(`ls -o $verts`);
+	string	$objTr=zenReturnFirstStringItem(`listRelatives -p -pa $obj`);
+
+		select -clear;		
+	string	$wrapNode=zenReturnFirstStringItem(`deformer -type wrap $verts`);
+	
+		connectAttr -f $baseShapeAttr ($wrapNode+".basePoints[0]");
+		connectAttr -f $deformShapeAttr ($wrapNode+".driverPoints[0]");
+		
+	//find a node to use for controlling dropOff and sampling
+	string	$controlNode=zenReturnFirstStringItem(`ls -o $deformShapeAttr`);
+		if(size(`ls -type shape $controlNode`)&&size(`listRelatives -p $controlNode`))
+			$controlNode=zenReturnFirstStringItem(`listRelatives -p $controlNode`);
+		
+	//add attributes to control the wrap
+		addAttr -ln "dropoff" -at "double" -dv 4 $controlNode;
+		setAttr -k false -cb on ($controlNode+".dropoff");
+		connectAttr ($controlNode+".dropoff")  ($wrapNode+".dropoff[0]");
+	
+	//add object type specific attributes
+	string	$attrType=`getAttr -type $deformShapeAttr`;
+	
+		if($attrType=="nurbsSurface" || $attrType=="nurbsCurve")
+		{
+			addAttr -ln "wrapSamples" -at "short" -dv 10 $controlNode;
+			setAttr -k false -cb on ($controlNode+".wrapSamples");
+			connectAttr ($controlNode+".wrapSamples")  ($wrapNode+".nurbsSamples[0]");
+		}
+		else
+		if($attrType=="mesh")
+		{
+			addAttr -ln "smoothness" -at "double" -dv 0 $controlNode;
+			setAttr -k false -cb on ($controlNode+".smoothness");
+			connectAttr ($controlNode+".smoothness")  ($wrapNode+".smoothness[0]");
+			
+			addAttr -ln "inflType" -at "short" -dv 2 $controlNode;
+			setAttr -k false -cb on ($controlNode+".inflType");
+			connectAttr ($controlNode+".inflType")  ($wrapNode+".inflType[0]");
+		}
+		else
+			error("Influence object must be a mesh, nurbs surface, or nurbs curve");
+		
+	string	$newGeometry=zenReturnFirstStringItem(`listConnections -d 1 -s 0 -sh 1 ($wrapNode+".outputGeometry")`);
+	
+	string	$oldGeometry;
+	
+		if(`exists $newGeometry`)
+		{
+			$oldGeometry=`rename $obj (zenNumberSuffix($obj))`;
+			$newGeometry=`rename $newGeometry $obj`;
+		}
+
+	return	$wrapNode;
+}

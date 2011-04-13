@@ -1,0 +1,31 @@
+/* XPM */
+static char *zDisable[] = {
+/* columns rows colors chars-per-pixel */
+"22 20 5 1",
+"  s bg c magenta",
+". c #69696D",
+"X c #CECED2",
+"o c gray100",
+"O c black",
+/* pixels */
+"  XXXXXXXXXXXXXXXXXXXX",
+" X                    ",
+"X                     ",
+"X                     ",
+"X                     ",
+"X      ........       ",
+"X            ..       ",
+"X           ..  ..    ",
+"X          ..   ..    ",
+"X         ..          ",
+"X        ..           ",
+"X       ..      ..    ",
+"X      ..       ..    ",
+"X      ........       ",
+"X                     ",
+"X                     ",
+"X                     ",
+"X                     ",
+" .                    ",
+"  ...................."
+};

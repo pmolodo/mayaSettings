@@ -1,0 +1,97 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//zenOrderedVertexLoop returns a vertex loop between two selected vertices, in order of their distance from
+//the vertex with the lower index number
+global proc string[] zenOrderedVertexLoop(string $verts[],int $edgeDistance)
+{
+	string	$sel[];
+	string	$sel2[];
+	int 	$indexA;
+	int 	$indexB;
+	string	$edgeLoop[];
+	string	$edgeLoopVerts[];
+	string	$obj=zenReturnFirstStringItem(`stringToStringArray $verts[0] "."`);
+	
+		if($edgeDistance==0)
+			$edgeDistance=zenReturnFirstIntegerItem(`zenEdgeDistance $verts[0] {$verts[1]}`);
+	
+		//Maya 8 optimization
+		if(`getApplicationVersionAsFloat`>=8)
+		{
+			int	$vertA=`zenCompID $verts[0]`;
+			int	$vertB=`zenCompID $verts[1]`;
+				$edgeLoop=zenCompFromID($obj,"e",`polySelect -sep $vertA $vertB $obj`);
+				if($verts[0]!=$edgeLoop[0])
+					$edgeLoop=`zenReverseStringArray $edgeLoop`;
+		}
+		
+		if(size($edgeLoop)!=$edgeDistance)
+		{
+				$edgeLoop={};
+			string	$edgesA[]=`polyListComponentConversion -te $verts[0]`;
+				$edgesA=`ls -fl $edgesA`;
+			string	$edgesB[]=`polyListComponentConversion -te $verts[1]`;
+				$edgesB=`ls -fl $edgesB`;
+
+			int	$i;
+			int	$ii;
+				for($i=0;$i<size($edgesA);$i++)
+				{
+					select -clear;
+					$indexA=`zenCompID ($edgesA[$i])`;
+					for($ii=0;$ii<size($edgesB);$ii++)
+					{
+						$indexB=`zenCompID ($edgesB[$ii])`;
+
+						$sel=zenCompFromID($obj,"e",`polySelect -ns -elp $indexA $indexB $obj`);							
+						$sel2=zenCompFromID($obj,"e",`polySelect -ns -ebp $indexA $indexB $obj`);						
+
+						$sel=`stringArrayCatenate $sel $sel2`;
+						$sel=`stringArrayRemoveDuplicates $sel`;
+						if(size($sel)==$edgeDistance){
+							$edgeLoop=$sel;
+							break;
+						}
+					}
+					if(size($edgeLoop)>0) break;
+				}
+		}
+		if(size($edgeLoop)>2)
+		{
+			$edgeLoopVerts=`zenVertLoopFromEdgeLoop $edgeLoop`;
+			if($edgeLoopVerts[0]!=$verts[0]) $edgeLoopVerts=`zenReverseStringArray $edgeLoopVerts`;
+		}else
+		{
+			$edgeLoopVerts=`polyListComponentConversion -tv $edgeLoop`;
+			$edgeLoopVerts=`ls -fl $edgeLoopVerts`;
+			$edgeLoopVerts=`zenSortVertsByDistance $verts[0] $edgeLoopVerts`;
+		}
+		
+	int	$pyErr=true;
+	
+		if(size($edgeLoopVerts)<2)
+		{
+			if(`getApplicationVersionAsFloat`>=8.5)
+				$pyErr=catch($edgeLoopVerts=python("zenShortestVertexPath('"+$verts[0]+"','"+$verts[1]+"')"));
+			
+			if($pyErr)
+			{
+				$edgeLoopVerts=`zenShortestVertexPath $verts[0] $verts[1]`;
+				warning("Error executing zenShortestVertexPath.py, using zenShortestVertexPath.mel.");
+			}
+		}
+			
+	return 	$edgeLoopVerts;
+}

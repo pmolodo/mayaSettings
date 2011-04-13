@@ -1,0 +1,366 @@
+global proc zooXferWeights() {
+	string $windowName = "zooXferWeightsWindow";
+	string $windowTitle = "zooXferWeights v" + `zooXferWeightsInfo version` + "   ::macaroniKazoo::";
+
+	//source all dependencies
+	string $deps[] = `zooXferWeightsDependencies -scripts`;
+	for( $script in $deps ) if( `exists $script` ) eval( "source " + $script );
+
+	if( `window -exists $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -width 210 $windowName;
+
+		menuBarLayout zooXferWeightsMenuMain;
+			menu -label "File";
+				menuItem -en 0 -l "Export Weights" -c ( "" ) zooXferWeightsMenuExportWeights;
+				menuItem -en 0 -l "Import Weights" -c ( "" ) zooXferWeightsMenuImportWeights;
+				menuItem -d 1;
+				menuItem -l "Remap Objects" -c ( "zooXferWeightsWindowFunctions matchSrcTgt n; zooXferWeightsWindowFunctions update n;" ) zooXferWeightsMenuRemap;
+				menuItem -l "Check Mapping" -c ( "zooXferWeightsWindowFunctions mappingCheck 0" ) zooXferWeightsMenuCheck;
+				menuItem -d 1;
+				menuItem -l "Xfer Animation" -c ( "zooXferWeightsWindowFunctions mappingCheck 1" ) zooXferWeightsMenuXfer;
+
+			menu -label "Load Items" -p zooXferWeightsMenuMain zooXferWeightsMenuQss;
+				menuItem -l "Load Source" -c ( "zooXferWeightsWindowFunctions loadSrc n" ) zooXferWeightsMenuSrc;
+				menuItem -l "Load Target" -c ( "zooXferWeightsWindowFunctions loadTgt n" ) zooXferWeightsMenuTgt;
+
+			menu -label "Prefs";
+				menuItem -l "sort Alphabetically" -checkBox ( `optionVar -exists zooXferWeightsAlphabetically`?`optionVar -q zooXferWeightsAlphabetically`:0 ) -c ( "optionVar -iv zooXferWeightsAlphabetically ( `menuItem -q -checkBox zooXferWeightsMenuAlphabetically` )" ) zooXferWeightsMenuAlphabetically;
+
+			menu -label "Help" -p zooXferWeightsMenuMain;
+				menuItem -l "Help..." -c ( "zooHelp zooXferWeights 2" );
+				menuItem -l "Scripting xferWeights" -c ( "zooHelp zooXferWeights 3" );
+				menuItem -d 1;
+				menuItem -l "About" -c ( "zooHelp zooXferWeights 1" );
+
+		formLayout zooXferWeightsForm;
+			text -l "Source Skin Joints" zooXferWeightsTextSrc;
+			scrollLayout -width 170 -horizontalScrollBarThickness 5 -verticalScrollBarThickness 5 -p zooXferWeightsForm zooXferWeightsScrollSrcs;
+				columnLayout -adjustableColumn 1 -rowSpacing 1 -p zooXferWeightsScrollSrcs zooXferWeightsCol01;
+					radioCollection zooXferWeightsRadioSrc;
+				setParent ..;
+			setParent ..;
+
+			text -l "Target Skin Joints" zooXferWeightsTextTgt;
+			textScrollList -width 110 -numberOfRows 22 -allowMultiSelection 0 -sc ( "zooXferWeightsWindowFunctions tgtChange n" ) -doubleClickCommand ( "zooXferWeightsWindowFunctions select n" ) -deleteKeyCommand ( "zooXferWeightsWindowFunctions deleteLink n" ) zooXferWeightsScrollTgts;
+
+			frameLayout -l "xfer options" -labelVisible 1 -collapsable 0 -borderStyle "etchedIn" zooXferWeightsFrameXferOptions;
+				columnLayout -adjustableColumn 1 -rowSpacing 5;
+					rowLayout -numberOfColumns 2
+						-columnWidth2 175 165
+						-columnAttach 1 "both" 	5
+						-columnAttach 2 "both" 	5;
+						columnLayout -adjustableColumn 1;
+							radioCollection zooXferWeightsRadioMode;
+							radioButton -l "" -align left -sl -cc( "" ) zooXferWeightsRadioModeDupe;
+							radioButton -l "" -align left -cc( "" ) zooXferWeightsRadioModeCopy;
+							radioButton -l "" -align left -cc( "" ) zooXferWeightsRadioModeTrace;
+						setParent ..;
+					setParent ..;
+				setParent ..;
+			setParent ..;
+
+			button -l "Xfer Weights" -c ( "zooXferWeightsWindowFunctions mappingCheck 1" ) zooXferWeightsButtonXfer;
+			string $image = `image -p zooXferWeightsForm -width 300 -height 8 -backgroundColor ((float)1) ((float)0) ((float)0) -image(zooGetFileLocation(zooListEnv("XBMLANGPATH"),"zoo_sig","tga") +"zoo_sig.tga" )`;
+				popupMenu -p $image -b 1 -pmc ( "showHelp -a \"http://www.macaronikazoo.com/\"" );
+			setParent ..;
+
+	formLayout -edit
+		-af zooXferWeightsTextSrc "top" 2
+		-af zooXferWeightsTextSrc "left" 2
+		-ap zooXferWeightsTextSrc "right" 1 50
+		-an zooXferWeightsTextSrc "bottom"
+
+		-ac zooXferWeightsScrollSrcs "top" 2 zooXferWeightsTextSrc
+		-af zooXferWeightsScrollSrcs "left" 2
+		-ap zooXferWeightsScrollSrcs "right" 2 50
+		-ac zooXferWeightsScrollSrcs "bottom" 3 zooXferWeightsFrameXferOptions
+
+		-af zooXferWeightsTextTgt "top" 2
+		-ac zooXferWeightsTextTgt "left" 2 zooXferWeightsScrollSrcs
+		-af zooXferWeightsTextTgt "right" 2
+		-an zooXferWeightsTextTgt "bottom"
+
+		-ac zooXferWeightsScrollTgts "top" 2 zooXferWeightsTextTgt
+		-ac zooXferWeightsScrollTgts "left" 2 zooXferWeightsScrollSrcs
+		-af zooXferWeightsScrollTgts "right" 2
+		-ac zooXferWeightsScrollTgts "bottom" 3 zooXferWeightsFrameXferOptions
+
+		-an zooXferWeightsFrameXferOptions "top"
+		-af zooXferWeightsFrameXferOptions "left" 2
+		-af zooXferWeightsFrameXferOptions "right" 2
+		-ac zooXferWeightsFrameXferOptions "bottom" 2 zooXferWeightsButtonXfer
+
+		-an zooXferWeightsButtonXfer "top"
+		-af zooXferWeightsButtonXfer "left" 2
+		-af zooXferWeightsButtonXfer "right" 2
+		-ac zooXferWeightsButtonXfer "bottom" 2 $image
+
+		-an $image "top"
+		-af $image "left" 2
+		-af $image "right" 2
+		-af $image "bottom" 2
+		zooXferWeightsForm;
+
+	showWindow $windowName;
+	zooXferWeightsWindowFunctions update n;
+	}
+
+
+
+//------
+//just about all UI controls use this function in some way.  This is the layer between the UI, and the actual command engine
+//almost all script functionality can be accessed through the command engine, without using the UI.  This makes it useful to other scripts
+//------
+global proc zooXferWeightsWindowFunctions ( string $function, string $variable01 ) {
+	string $srcChildren[] = `columnLayout -q -ca zooXferWeightsCol01`;
+	string $tgtChildren[] = `textScrollList -q -allItems zooXferWeightsScrollTgts`;
+	string $isSrcLoaded = ( `size $srcChildren`>0 )?1:0;
+	string $isTgtLoaded = ( `size $tgtChildren`>0 )?1:0;
+	string $UIPrefix = "zooXferWeightsRadioSrc_";
+
+	switch ( $function ) {
+		case "update":  //handles all updates of the UI
+		break;
+
+
+		case "addSrc":
+		string $obj = $variable01;
+		string $objName = `match "[^|]+$" $obj`;
+		string $buttonName = `radioButton -l $objName -docTag $obj -p zooXferWeightsCol01 -height 12 -align left -cl zooXferWeightsRadioSrc -onc ( "zooXferWeightsWindowFunctions srcChange " + $objName ) ( $UIPrefix + $objName )`;
+		break;
+
+
+		case "loadSrc":  //called to load selected objects into the source pane
+		string $selObjs[] = `ls -sl`;
+		string $obj = $selObjs[0];
+		string $skin = `findRelatedSkinCluster $obj`;
+		string $joints[] = `skinCluster -q -inf $skin`;
+		string $clearUIObjs[] = `columnLayout -q -ca zooXferWeightsCol01`;
+
+		columnLayout -e -docTag $obj zooXferWeightsCol01;
+		if( `optionVar -q zooXferWeightsAlphabetically` ) $joints = `sort $joints`;
+		for( $ui in $clearUIObjs ) deleteUI $ui;
+		for( $j in $joints ) zooXferWeightsWindowFunctions addSrc $j;
+
+		if( $isTgtLoaded ) zooXferWeightsWindowFunctions matchSrcTgt n;
+		zooXferWeightsWindowFunctions update n;
+		break;
+
+
+		case "loadTgt":  //called to load selected objects into the target pane
+		string $selObjs[] = `ls -sl`;
+		string $obj = $selObjs[0];
+		string $skin = `findRelatedSkinCluster $obj`;
+		string $joints[] = `skinCluster -q -inf $skin`;
+
+		textScrollList -e -docTag $obj zooXferWeightsScrollTgts;
+		if( `optionVar -q zooXferWeightsAlphabetically` ) $selObjs = `sort $selObjs`;
+		text -e -l ( "Target Objects - "+ `size $selObjs` +" objects" ) zooXferWeightsTextTgt;
+
+		textScrollList -e -removeAll zooXferWeightsScrollTgts;
+		if( `optionVar -q zooXferWeightsAlphabetically` ) $joints = `sort $joints`;
+		for( $j in $joints ) textScrollList -e -append $j zooXferWeightsScrollTgts;
+		zooXferWeightsWindowFunctions matchSrcTgt n;
+		zooXferWeightsWindowFunctions update n;
+		break;
+
+
+		case "srcChange":  //called when an object is "selected" in the source pane.  Its only a UI update function, to display the source's target
+		string $srcObject = `radioCollection -q -sl zooXferWeightsRadioSrc`;
+		string $tgt = `radioButton -q -docTag $srcObject`;
+
+		if( $tgt != "" ) textScrollList -e -selectItem $tgt zooXferWeightsScrollTgts;
+		else textScrollList -e -deselectAll zooXferWeightsScrollTgts;
+		break;
+
+
+		case "tgtChange":  //called when a new target is selected for a given source object
+		string $newTargets[] = `textScrollList -q -selectItem zooXferWeightsScrollTgts`;
+		string $srcObject = `radioCollection -q -sl zooXferWeightsRadioSrc`;
+
+		radioButton -e -docTag $newTargets[0] $srcObject;
+		break;
+
+
+		case "matchSrcTgt":  //used to do start the auto object mapping process
+		string $srcs[] = `columnLayout -q -ca zooXferWeightsCol01`;
+		string $tgts[] = `textScrollList -q -ai zooXferWeightsScrollTgts`;
+		int $n = 0;
+
+		for( $obj in $srcs ) {
+			int $startLength = `size $UIPrefix` + 1;
+			int $nameLength = `size $obj`;
+
+			$srcs[$n] = `substring $obj $startLength $nameLength`;
+			$n++;
+			}
+
+		string $matches[] = `zooMatchNames $srcs $tgts ""`;
+		for( $n = 0; $n < `size $srcs`; $n++ ) radioButton -e -docTag $matches[$n] ( $UIPrefix + $srcs[$n] );
+		break;
+
+
+		case "deleteLink":  //delete a mapping
+		string $srcObject = `radioCollection -q -sl zooXferWeightsRadioSrc`;
+		radioButton -e -docTag "" $srcObject;
+		textScrollList -e -deselectAll zooXferWeightsScrollTgts;
+		break;
+
+
+		case "mappingCheck":  //check to see if there are any targets being mapped to by multiple source objects...  this would cause weirdness
+		string $srcObjUIs[] = `columnLayout -q -ca zooXferWeightsCol01`;
+		string $srcObjsToCheck[] = {};
+		string $tgtObjs[] = {};
+		string $proceed = "";
+		string $same = "";
+		int $start = `size $UIPrefix` + 1;
+		int $xferAfterConfirm = $variable01;
+		int $tgtSrcMappings[] = {};
+		int $n = 0;
+
+		for( $obj in $srcObjUIs ) $tgtObjs[( `size $tgtObjs` )] = `radioButton -q -docTag $obj`;
+		for( $n = 0; $n < `size $tgtObjs`; $n++ ) for( $entry in $tgtObjs ) if( $tgtObjs[$n] == $entry && $tgtObjs[$n] != "" ) $tgtSrcMappings[$n] += 1;
+		for( $n = 0; $n < `size $tgtSrcMappings`; $n++ ) if( $tgtSrcMappings[$n] > 1 ) $same += `substring $srcObjUIs[$n] $start (size($srcObjUIs[$n]))` + "\n";
+		if( $xferAfterConfirm ) {
+			if( `size $same` ) $proceed = `confirmDialog -title "Oh, By the way..." -message ( "The following source objects are mapped to the same targets:\n" + $same + "\nContinue anyway?  Weirdness may ensue..." ) -button "Yes" -button "No" -defaultButton "Yes" -cancelButton "No" -dismissString "No"`;
+			if( $proceed != "No" ) zooXferWeightsWindowFunctions xferWeights n;
+			}
+		else {
+			if( $same != "" ) confirmDialog -title "Oh, By the way..." -message ( "The following source objects are mapped to the same targets:\n" + $same ) -button "gee, thanks";
+			else confirmDialog -title "You are good to go!" -message "There are no duplicate mappings" -button "rockin!";
+			}
+		break;
+
+
+		case "xferWeights":  //this is the function that deals with doing the xfer essentially.  it figures out how the xfer needs to be handled, but the actual xferring is done in other procs
+		string $srcJUIs[] = `columnLayout -q -ca zooXferWeightsCol01`;
+		string $srcJs[] = {};
+		string $tgtJs[] = {};
+		string $srcObj = `columnLayout -q -docTag zooXferWeightsCol01`;
+		string $tgtObj = `textScrollList -q -docTag zooXferWeightsScrollTgts`;
+
+		for( $obj in $srcJUIs ) $srcJs[( `size $srcJs` )] = `radioButton -q -l $obj`;
+		for( $src in $srcJs ) $tgtJs[( `size $tgtJs` )] = `radioButton -q -docTag ( $UIPrefix + $src )`;
+
+		//init the variables for the progress window
+		float $progress = 0;
+		float $increment = ( `size $tgtObj` )? 100/(float)( `size $tgtObj` ): 1;
+		progressWindow -title "Duplicating animCurves" -progress 0 -status "Progress: 0%" -isInterruptable 1;
+		for( $n=0; $n<`size $srcJs`; $n++ ) {
+			if( `progressWindow -q -isCancelled` ) break;
+			zooXferJoint $srcObj $tgtObj $srcJs[$n] $tgtJs[$n];
+
+			//update progress window
+			$progress += $increment;
+			progressWindow -e -progress ((int)$progress) -status ( $srcJs[$n] +" -> "+ $tgtJs[$n] );
+			}
+		progressWindow -endProgress;
+		break;
+		}
+	}
+
+
+global proc zooXferJoint( string $srcObj, string $tgtObj, string $srcJoint, string $tgtJoint ){
+	string $tgtSkin = `findRelatedSkinCluster $tgtObj`;
+	int $numTgtVerts[] = `polyEvaluate -v $tgtObj`;
+	for( $n=0; $n<$numTgtVerts[0]; $n++ ) {
+		float $pos[] = `pointPosition ( $tgtObj +".vtx["+ $n +"]" )`;
+		float $weight = `zooFindPosWeight $srcObj $srcJoint $pos`;
+		skinPercent -tv $tgtJoint $weight $tgtSkin ( $tgtObj +".vtx["+ $n +"]" );
+		}
+	}
+
+
+//given a point in space, this proc returns a skinWeight based on an input mesh
+global proc float zooFindPosWeight( string $srcObj, string $joint, float $srcPos[] ) {
+	string $srcSkin = `findRelatedSkinCluster $srcObj`;
+	string $node = `createNode closestPointOnMesh`;
+	string $verts[] = {};
+	float $tolerance = 0.00001;
+	float $pos[] = {};
+	float $value = 0;
+	int $face;
+
+	connectAttr -f ( $srcObj +".worldMesh" ) ( $node +".inMesh" );
+	setAttr ( $node +".ipx" ) $srcPos[0];
+	setAttr ( $node +".ipy" ) $srcPos[1];
+	setAttr ( $node +".ipz" ) $srcPos[2];
+	$face = `getAttr ( $node +".closestFaceIndex" )`;
+	$verts = (ls("-fl",`polyListComponentConversion -ff -tv ( $srcObj +".f["+ $face +"]" )`));
+	delete $node;
+
+	float $weights[] = {};
+	float $distances[] = {};
+	for( $vert in $verts ) {
+		float $pos[] = `pointPosition $vert`;
+		$distances[( `size $distances` )] = `zooGetDistanceBetween $srcPos $pos`;
+		$weights[( `size $weights` )] = `skinPercent -t $joint -q -v $srcSkin $vert`;
+		}
+print $distances;
+print $weights;
+	//check to see if any of the distances is within the tolerance
+	for( $n=0; $n<`size $distances`; $n++ ) if( $distances[$n] < $tolerance ) return $weights[$n];
+
+	float $sortedDists[] = `sort $distances`;
+	for( $n=0; $n<`size $distances`; $n++ ) $distances[$n] /= $sortedDists[0];  //make the shortest distance 1
+	for( $n=0; $n<`size $distances`; $n++ ) $distances[$n] = 1/$distances[$n];  //invert to so the closest is weight the highest
+
+	float $totalDist = 0;
+	for( $a in $distances ) $totalDist += $a;
+	for( $n=0; $n<`size $weights`; $n++ ) $distances[$n] /= $totalDist;  //normalise the distances by dividing by the total distance
+
+	//now sum all distance weighted weights, and return the result
+	for( $n=0; $n<`size $weights`; $n++ ) $value += $weights[$n]*$distances[$n];
+
+	return $value;
+	}
+
+
+//returns the distance between two points
+global proc float zooGetDistanceBetween( float $pos1[], float $pos2[] ) {
+	float $distVec[] = {};
+	float $dist;
+
+	$distVec[0] = $pos2[0] - $pos1[0];
+	$distVec[1] = $pos2[1] - $pos1[1];
+	$distVec[2] = $pos2[2] - $pos1[2];
+	$dist = sqrt( $distVec[0]*$distVec[0] + $distVec[1]*$distVec[1] + $distVec[2]*$distVec[2] );
+	return $dist;
+	}
+
+
+global proc string zooXferWeightsInfo( string $function ) {
+	string $creationDate = "25 July 2004";
+	string $lastRevision = "25 July 2004";
+	string $currentVersion = "0.1.1a";
+
+	if( $function == "created" ) $info = $creationDate;
+	if( $function == "modified" ) $info = $lastRevision;
+	if( $function == "version" ) $info = $currentVersion;
+	return $info;
+	}
+
+
+//------
+//these dependencies allow the zooZipScript to package this script easily for distribution
+//------
+global proc string[] zooXferWeightsDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $helpDependencies[] = {};
+	string $iconDependencies[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooHelp";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooMatchNames";
+	$helpDependencies[( `size $helpDependencies` )] = "zooXferAnim_about";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+
+	if( $mode == "-scripts" ) return $melDependencies;
+	if( $mode == "-docs" ) return $helpDependencies;
+	if( $mode == "-icons" ) return $iconDependencies;
+	}
+
+
+
+//zoo.end

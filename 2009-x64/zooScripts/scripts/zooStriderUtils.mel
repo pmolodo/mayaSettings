@@ -1,0 +1,60 @@
+zooArrays_str;
+zooFlags;
+zooTangentWksUtils;
+zooUtils;
+
+
+global proc zooStriderUtils() {
+	return;
+	}
+
+
+//strides are a little more complicated than static key discovery because strides
+//in cyclic animation often fall at the end of a loop, or actually happen across
+//cycle boundaries.  so this must be accounted for
+global proc zooGetStrides( string $obj, string $optionStr, float $strideStarts[], float $strideEnds[] ) {
+	string $temp[] = {};
+	float $tolerance = 0.01;
+	int $start = `playbackOptions -q -min`;
+	int $end = `playbackOptions -q -max`;
+
+	$temp = `zooGetFlagArguments $optionStr tol`; if( `size $temp` ) $tolerance = $temp[0];
+	$temp = `zooGetFlagArguments $optionStr start`; if( `size $temp` ) $start = $temp[0];
+	$temp = `zooGetFlagArguments $optionStr end`; if( `size $temp` ) $end = $temp[0];
+
+	clear $strideStarts;
+	clear $strideEnds;
+	float $st_tim[] = {};
+	float $st_val[] = {};
+	int $st_idx[] = {};
+
+	zooGetOuterStaticKeys $obj ty $start $end $tolerance $st_tim $st_val $st_idx;
+
+	//figure out which of the outer static keys have the lowest values - these are our strides
+	int $allKeyIdxs[] = `keyframe -t( $start +":"+ $end ) -q -iv ( $obj +".ty" )`;
+	float $orderedVal[] = `sort $st_val`;
+	float $low = $orderedVal[0];
+
+	for( $n=0; $n<`size $st_val`; $n++ ) {
+		float $curVal = $st_val[$n];
+		if( `zooEqTol $curVal $low $tolerance` ) {
+			//so this key is a stride - now figure out if the key is at the start or end of a stride
+			//if the key falls at the end of the range given, wrap back to the start
+			int $isStart = $st_tim[$n] == $start;
+			int $isEnd = $st_tim[$n] == $end;
+			int $nextKeyIdx = $isEnd? $allKeyIdxs[0]+1: $st_idx[$n]+1;
+			int $prevKeyIdx = $isStart? $allKeyIdxs[`size $allKeyIdxs`-1]-1: $st_idx[$n]-1;
+			float $nextKeyVal = zooGetElement_float(0,`keyframe -in $nextKeyIdx -q -vc ( $obj +".ty" )`);
+			float $prevKeyVal = zooGetElement_float(0,`keyframe -in $prevKeyIdx -q -vc ( $obj +".ty" )`);
+
+			print( "working on key idx: "+ $curVal +","+ $st_idx[$n] +"  prev val: "+ $prevKeyVal +","+ $prevKeyIdx +"  next val: "+ $nextKeyVal +","+ $nextKeyIdx +"\n" );
+			if( !`zooEqTol $prevKeyVal $curVal $tolerance` ) $strideStarts[`size $strideStarts`] = $st_tim[$n];
+			else $strideEnds[`size $strideEnds`] = $st_tim[$n];
+			}
+		}
+
+	print "-----------STARTS-----------\n";
+	print $strideStarts;
+	print "-----------ENDS-----------\n";
+	print $strideEnds;
+	}

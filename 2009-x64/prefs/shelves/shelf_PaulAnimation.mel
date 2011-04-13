@@ -1,0 +1,603 @@
+global proc shelf_PaulAnimation () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "History" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "His" 
+        -image "menuIconEdit.xpm" 
+        -image1 "menuIconEdit.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "DeleteHistory" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Freeze Transformations" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "FT" 
+        -image "menuIconModify.xpm" 
+        -image1 "menuIconModify.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import PMP.maya.rigging\r\nPMP.maya.rigging.freezeAndZeroPivots(moveToPivot=True)" 
+        -sourceType "python" 
+        -doubleClickCommand "python(\"import PMP.maya.rigging\\r\\nPMP.maya.rigging.freezeAndZeroPivots(moveToPivot=False)\")" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Center Pivot" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "CP" 
+        -image "menuIconModify.xpm" 
+        -image1 "menuIconModify.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CenterPivot" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "DeleteLayer" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "XLayer" 
+        -image "commandButton.xpm" 
+        -image1 "commandButton.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "deleteLayerConnection;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Show Attribute Info" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "Attr" 
+        -image "MENUICONLISTED.xpm" 
+        -image1 "MENUICONLISTED.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "PMP_showAttribInfo" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "___SPACER___" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "PIVOTICON.xpm" 
+        -image1 "PIVOTICON.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "select -cl  ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Toggle HUD elements" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "HUD" 
+        -image "commandButton.xpm" 
+        -image1 "commandButton.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "//TogglePolyCount;\r\nToggleCameraNames;\r\nToggleViewAxis;\r\nToggleOriginAxis;\r\n//ToggleFrameRate;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Set Resolution Gate" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "RES" 
+        -image "commandButton.xpm" 
+        -image1 "commandButton.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "{\r\n\tPMP_toggleResolutionGate();\r\n}" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Toggle big time slider" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "bigTm" 
+        -image "pythonFamily.xpm" 
+        -image1 "pythonFamily.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import PMP.maya.ui\rPMP.maya.ui.toggleBigTimeSlider()" 
+        -sourceType "python" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "___SPACER___" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "PIVOTICON.xpm" 
+        -image1 "PIVOTICON.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "select -cl  ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Picker - Key all" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "KEY" 
+        -image "MENUICONKEYS.xpm" 
+        -image1 "MENUICONKEYS.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "// Run the abxPicker command to key all; otherwise, key RIG_Generick_all_ctrls_qss\r\nif( (!exists(\"abxPickerExecuteByLabel\")) || (!abxPickerExecuteByLabel(\"Generick_Main_PIKR\", \"key\", true)))\r\n{\r\n\tsetKeyframe RIG_Generick_all_ctrls_qss;\r\n}\r\n\r\n" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Picker - Select All" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "All" 
+        -image "RADIAL.xpm" 
+        -image1 "RADIAL.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "// Run the abxPicker command to select all; otherwise, select RIG_Generick_all_ctrls_qss\r\nif( (!exists(\"abxPickerExecuteByLabel\")) || (!abxPickerExecuteByLabel(\"Generick_Main_PIKR\", \"all\", true)))\r\n{\r\n\tselect -r RIG_Generick_all_ctrls_qss;\r\n}" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Apply Maya Motion Trail" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "Trail" 
+        -image "MENUICONEDITCURVES.xpm" 
+        -image1 "MENUICONEDITCURVES.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doMotionTrail 1 { \"snapshot  -motionTrail 1  -increment 1 -constructionHistory 1 -startTime `playbackOptions -query -min` -endTime `playbackOptions -query -max`\", \"point\", \"0\", \"force\"};\r\ndoMotionTrail 1 { \"snapshot  -motionTrail 1  -increment 1 -constructionHistory 1 -startTime `playbackOptions -query -min` -endTime `playbackOptions -query -max`\", \"line\", \"0\", \"force\"};\r\n" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "___SPACER___" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "PIVOTICON.xpm" 
+        -image1 "PIVOTICON.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "select -cl  ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "abxSmartKey" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "sKey" 
+        -image "abxSmartKey.bmp" 
+        -image1 "abxSmartKey.bmp" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "abxSmartKey ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "autoTangent ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "T_autoTangnt.bmp" 
+        -image1 "T_autoTangnt.bmp" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "autoTangent ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "zoomerate" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "zoom" 
+        -image "zooShots.xpm" 
+        -image1 "zooShots.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "zoomerate ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Toggle X-Ray" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "T_toggleXRay.bmp" 
+        -image1 "T_toggleXRay.bmp" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "{\r\n    string $currentPanel = `getPanel -underPointer`;\r\n    if (\"\" == $currentPanel) \r\n        {\r\n        $currentPanel = `getPanel -withFocus`;\r\n        }\r\n    if (\"\" != $currentPanel) \r\n       {\r\n        string $panelType = `getPanel -typeOf $currentPanel`;\r\n        if ($panelType ==  \"modelPanel\") \r\n            {\r\n            int $state = `modelEditor -q -xray $currentPanel`;\r\n            modelEditor -e -xray (!$state) $currentPanel;\r\n            }\r\n       }\r\n}\r\n\r\n" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "poseLib" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "poses" 
+        -image "T_poseLib.BMP" 
+        -image1 "T_poseLib.BMP" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "{\r\n\tglobal string $poseLibVersion;\r\n\tglobal string $poseLibDefaultPath;\r\n\tglobal string $poseLibCurrentProject;\r\n\t$poseLibCurrentProject = `workspace -q -fn`;\r\n\r\n\tif($poseLibVersion == \"\")\r\n\t{\r\n\t\tsource poseLib;\r\n\t}\r\n\telse if ( `optionVar -exists poseLibDefaultPathStatus` )\r\n\t{\r\n\t\t$poseLibDefaultPath = `optionVar -q poseLibDefaultPathStatus`;\r\n\t}\r\n\telse\r\n\t{\r\n\t\t$poseLibDefaultPath = $poseLibCurrentProject + \"/poseLib\";\r\n\t}\r\n\r\n\tposeLib;\r\n}" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "cMotionTrailUI ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "track" 
+        -image "T_cMotion.BMP" 
+        -image1 "T_cMotion.BMP" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "cMotionTrailUI ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "tweenMachine ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "tween" 
+        -image "tweenMachine.xpm" 
+        -image1 "tweenMachine.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "tweenMachine ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "oaIcon2Shelf ;" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "Icon" 
+        -image "T_icon2shelf.BMP" 
+        -image1 "T_icon2shelf.BMP" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "oaIcon2Shelf ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "load the zooShots UI - right click for additional options" 
+        -docTag "zooToolBox" 
+        -align "center" 
+        -label "zooToolBox shelf button" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "toolbx" 
+        -image "zooToolBox.xpm" 
+        -image1 "zooToolBox.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "zooToolBox;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "abxPicker, python version" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "pick" 
+        -image "abxPicker.bmp" 
+        -image1 "abxPicker.bmp" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import abxPicker\r\nreload(abxPicker)\r\nmyPick = abxPicker.abxPicker()" 
+        -sourceType "python" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "___SPACER___" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "PIVOTICON.xpm" 
+        -image1 "PIVOTICON.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "select -cl  ;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Key the selected cameras, then make them unkeyable" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "keyCam" 
+        -image "pythonFamily.xpm" 
+        -image1 "pythonFamily.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import PMP.maya.animation\rPMP.maya.animation.keyCamera()" 
+        -sourceType "python" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+
+} 

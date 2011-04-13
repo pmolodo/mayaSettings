@@ -1,0 +1,26 @@
+//Maya 2008 Extension 2 Project Definition
+
+workspace -ot "scene" "scenes";
+workspace -fr "iprImages" "renderData/iprImages";
+workspace -fr "IGES" "data";
+workspace -fr "DXFexport" "data";
+workspace -fr "lights" "renderData/shaders";
+workspace -fr "OBJexport" "data";
+workspace -fr "textures" "textures";
+workspace -fr "audio" "sound";
+workspace -fr "particles" "particles";
+workspace -fr "image" "images";
+workspace -fr "RIBexport" "data";
+workspace -fr "RIB" "data";
+workspace -fr "aliasWire" "data";
+workspace -fr "move" "data";
+workspace -fr "DXF" "data";
+workspace -fr "clips" "clips";
+workspace -fr "depth" "renderData/depth";
+workspace -fr "animExport" "data";
+workspace -fr "diskCache" "data";
+workspace -fr "OBJ" "data";
+workspace -fr "sourceImages" "sourceimages";
+workspace -fr "animImport" "data";
+workspace -rt "renderScenes" "renderScenes";
+workspace -rt "images" "images";

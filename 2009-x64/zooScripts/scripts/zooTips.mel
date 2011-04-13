@@ -1,0 +1,89 @@
+global proc zooTips() {
+	return;
+	}
+
+
+global proc zooTipsWin( string $script, int $tipNum ) {
+	string $windowName = $script +"TipsWindow";
+	string $windowTitle = $script +" Tips";
+	string $tip = `zooGetNextTip $script $tipNum`;
+
+	int $showTips = `zooTipState $script -1`;
+
+	$tipNum += 1;
+	if( `window -exists $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -maximizeButton 0 -sizeable 1 -width 300 -height 200 $windowName;
+		string $form = `formLayout`;
+			string $text = `scrollField -ed 0 -ww 1 -tx $tip`;
+			string $checkBox = `checkBox -l "show tips on startup" -v $showTips -cc( "zooTipState "+ $script +" #1;" )`;
+			string $nextButt = `button -l "next tip" -c( "zooTipsWin "+ $script +" "+ $tipNum )`;
+			string $closeButt = `button -l "close" -c( "deleteUI "+ $windowName )`;
+			string $image = `image -width 300 -height 8 -backgroundColor ((float)96/255) ((float)100/255) ((float)146/255) -image(zooGetFileLocation(zooListEnv("XBMLANGPATH"),"zoo_sig","tga") +"zoo_sig.tga" )`;
+				popupMenu -p $image -b 1 -pmc ( "showHelp -a \"http://www.macaronikazoo.com/\"" );
+
+		formLayout -e
+			-af $text "top" 2
+			-af $text "left" 2
+			-af $text "right" 2
+			-ac $text "bottom" 5 $checkBox
+
+			-an $checkBox "top"
+			-af $checkBox "left" 2
+			-af $checkBox "right" 2
+			-ac $checkBox "bottom" 2 $nextButt
+
+			-an $nextButt "top"
+			-af $nextButt "left" 2
+			-ap $nextButt "right" 1 50
+			-ac $nextButt "bottom" 2 $image
+
+			-an $closeButt "top"
+			-ap $closeButt "left" 1 50
+			-af $closeButt "right" 2
+			-ac $closeButt "bottom" 2 $image
+
+			-an $image "top"
+			-af $image "left" 2
+			-af $image "right" 2
+			-af $image "bottom" 2
+			$form;
+
+	showWindow $windowName;
+	}
+
+
+global proc string zooGetNextTip( string $script, int $tipNum ) {
+	string $tipsFile = `zooGetTipsFile $script`;
+	string $tips[] = `zooReadFile $tipsFile "-strip 1"`;
+	int $index = 0;
+
+	for( $n=0; $n<`size $tips`; $n++ ) $tips[$n] = `substituteAllString $tips[$n] "|" "\n"`;
+	int $numTips = `size $tips`?`size $tips`:1;
+	if( $tipNum < 0 ) $index = rand( 0, $numTips );
+	else $index = $tipNum%$numTips;
+
+	return $tips[$index];
+	}
+
+
+global proc string zooGetTipsFile( string $script ) {
+	string $location = `zooGetFileLocation {} ( $script +"Tips" ) "txt"`;
+	return ( $location + $script +"Tips.txt" );
+	}
+
+
+//1 or 0 set the state, while -1 queries the current state
+global proc int zooTipState( string $script, int $state ) {
+	string $optionVarName = $script +"Tips";
+	int $showTips = `optionVar -ex $optionVarName`? `optionVar -q $optionVarName`: 1;
+
+	if( $state == -1 ) return $showTips;
+	if( $state ) optionVar -rm $optionVarName;
+	else optionVar -iv $optionVarName 0;
+
+	return $state;
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

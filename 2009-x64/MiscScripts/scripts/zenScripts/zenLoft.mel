@@ -1,0 +1,419 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//ZenLoft
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//project the uv coordinates from a nurbs object onto given polygon facets
+proc zenSnapVertsToSurface(string $nurbsSource, string $verts[])
+{
+	string	$closestPoint=`createNode closestPointOnSurface`;
+	
+		connectAttr ($nurbsSource+".worldSpace") ($closestPoint+".inputSurface");
+		
+	float	$xyz[];
+	float	$uvPos[];
+	
+		for($vert in $verts)
+		{
+			$xyz=`xform -q -a -ws -t $vert`;
+			setAttr ($closestPoint+".inPosition") $xyz[0] $xyz[1] $xyz[2];
+			xform 	-a
+				-ws 
+				-t `getAttr ($closestPoint+".positionX")` `getAttr ($closestPoint+".positionY")` `getAttr ($closestPoint+".positionZ")`
+				$vert;
+		}
+		
+		delete $closestPoint;
+}
+
+//zenLoft creates a loft between edges and distributes the sandwiched patch of vertices along the lofted surface                      
+global proc zenLoft( int $distribution, int $keepSurface, string $alternateObj )
+{
+		waitCursor -state on;
+
+	global	string $zenLastEndLoops[];// used to retrieve variable from zenLoopRing
+	
+	string	$allSel[]=`ls -sl -fl`;
+
+	//get selected edges
+	string	$sel[]=`polyListComponentConversion -fe -te`;
+		if(size($sel)==0) error("Improper selection.\n");
+	
+	string	$obj[]=`ls -o $sel`;
+	string	$allVertsOnObj[]=`polyListComponentConversion -tv $obj`;
+		$allVertsOnObj=`ls -fl $allVertsOnObj`;
+		
+	string	$tr[]=`listRelatives -p $obj[0]`;
+		//delete -ch $obj;
+	
+	string	$edgeLoopsU[]=`zenLoopRing $sel`;
+
+	//determine if the first and last edges are shared
+	int	$wrap=0;
+		$edgeLoopsU=`stringArrayRemove {""," ",","} $edgeLoopsU`;
+		if(strip($edgeLoopsU[size($edgeLoopsU)-1])==strip($edgeLoopsU[0]))
+			$wrap=1;
+		else
+			$edgeLoopsU=`stringArrayRemoveDuplicates $edgeLoopsU`;
+
+	//get an array of all the involved edges
+	string	$allEdges[];
+		for($i=0;$i<size($edgeLoopsU);$i++)
+		{
+			$allEdges=stringArrayCatenate($allEdges,`stringToStringArray $edgeLoopsU[$i] ","`);
+		}
+		
+	//get wrap vertices
+	string	$verts[]=`polyListComponentConversion -tv $allEdges`;
+				
+	string	$edgeRingsU[];
+	string	$edgeRingsV[];
+	string	$edgeLoopsV[];
+	string	$vertLoopsU[];
+	string	$vertLoopsV[];
+	string	$uCoordinates[];
+	string	$uCoordinates[];
+	string	$uVertLoop[];
+	string	$uLoop[];
+	string	$vVertLoop[];
+	string	$vLoop[];
+	float	$avgEdgeLengthU[];
+	float	$avgEdgeLengthV[];
+	float	$totalEdgeLengthU=0;
+	float	$totalEdgeLengthV=0;
+	float	$uSpace=1;
+	float	$vSpace=1;	
+	string	$tempArray[];
+	string	$alternateObj;
+	int	$useAlternate;	
+		$alternateObj=strip($alternateObj);
+		
+		if($alternateObj!="")
+		{
+			print("\nUsing "+$alternateObj+" as base.\n");
+			$useAlternate=1;
+		}
+			
+	//progress window
+		progressWindow -isInterruptable 1 -title "Working" -max (size($allEdges)*3) -progress 0 -status "Sorting...";
+	
+	//create dynamic "matrix"
+		for($i=0;$i<size($edgeLoopsU);$i++)
+		{
+			$uLoop=`stringToStringArray ($edgeLoopsU[$i]) ","`;
+			$uVertLoop=`zenVertLoopFromEdgeLoop $uLoop`;
+			$vertLoopsU[$i]=`stringArrayToString $uVertLoop ","`;
+			for($n=0;$n<size($uVertLoop);$n++)
+			{
+				progressWindow -e -s 1;
+				$vertLoopsV[$n]=$vertLoopsV[$n]+$uVertLoop[$n]+",";
+			}
+			
+			for($n=0;$n<size($uLoop);$n++)
+			{
+				progressWindow -e -s 1;
+				$edgeRingsU[$n]=$edgeRingsU[$n]+$uLoop[$n]+",";
+			}
+			
+			if(`progressWindow -q -ic`==1)
+			{
+				progressWindow -endProgress;
+				error "User Interupt.";
+			}
+		}
+		
+		for($i=0;$i<size($vertLoopsV);$i++)
+		{
+			$vVertLoop=`stringToStringArray $vertLoopsV[$i] ","`;
+			$vLoop=`zenEdgeLoopFromVertLoop $vVertLoop`;
+			for($n=0;$n<size($vLoop);$n++)
+			{
+				progressWindow -e -s 1;
+				if($vLoop[$n]!="" && $vLoop[$n]!=" ")
+				{
+					$edgeRingsV[$n]=$edgeRingsV[$n]+$vLoop[$n]+",";
+				}
+			}
+			
+			if(`progressWindow -q -ic`==1)
+			{
+				progressWindow -endProgress;
+				error "User Interupt.";
+			}
+		}
+		
+		$edgeRingsU=`stringArrayRemove {""," ",","} $edgeRingsU`;
+		$edgeRingsV=`stringArrayRemove {""," ",","} $edgeRingsV`;
+					
+		if($distribution==1) //chord length distribution
+		{
+		
+			for($i=0;$i<size($edgeRingsV);$i++)
+			{
+				$tempArray=`stringToStringArray $edgeRingsV[$i] ","`;
+				$tempArray=`stringArrayRemove {""," ",","} $tempArray`;
+				if($useAlternate) $tempArray=`zenMimicSelection $tempArray $alternateObj`;
+				$avgEdgeLengthV[$i]=`zenAverageEdgeLength $tempArray`;
+				$totalEdgeLengthV=$totalEdgeLengthV+$avgEdgeLengthV[$i];
+				if(`progressWindow -q -ic`==1)
+				{
+					progressWindow -endProgress;
+					error "User Interupt.";
+				}
+			}
+			
+			/*
+			//calculate average chord lengths in the u direction
+			for($i=0;$i<size($edgeRingsU);$i++)
+			{
+				$tempArray=`stringToStringArray $edgeRingsU[$i] ","`;
+				$tempArray=`stringArrayRemove {""," "} $tempArray`;
+				if($useAlternate) $tempArray=`zenMimicSelection $tempArray $alternateObj`;
+				$avgEdgeLengthU[$i]=`zenAverageEdgeLength $tempArray`;
+				$totalEdgeLengthU=$totalEdgeLengthU+$avgEdgeLengthU[$i];
+				progressWindow -e -s 1;
+				if(`progressWindow -q -ic`==1)
+				{
+					progressWindow -endProgress;
+					error "User Interupt.";
+				}
+			}
+			*/
+			
+			//calculate aspect ratios
+			if($totalEdgeLengthV>$totalEdgeLengthU)
+				$uSpace=($totalEdgeLengthU)/($totalEdgeLengthV);
+			if($totalEdgeLengthU>$totalEdgeLengthV)
+				$vSpace=($totalEdgeLengthV)/($totalEdgeLengthU);
+		}
+		else //uniform distribution
+		{
+			$totalEdgeLengthV=1;			
+			for($i=0;$i<size($edgeRingsV);$i++)
+				$avgEdgeLengthV[$i]=$totalEdgeLengthV/(size($edgeRingsV));
+		}		
+		
+		//force u to be uniform if the operation is a loft 
+		$totalEdgeLengthU=1;
+		for($i=0;$i<size($edgeRingsU);$i++)
+		{
+			$avgEdgeLengthU[$i]=$totalEdgeLengthU/(size($edgeRingsU));
+		}
+		
+		progressWindow -endProgress;
+		
+	string	$pointOnSurfaceInfo;
+	string	$surfaceNode[];
+	string	$surfaceNodeTr;
+	
+		//create lofted surface
+		$surfaceNode=`zenLoftEdges $zenLastEndLoops`;
+		$surfaceNodeTr=zenReturnFirstStringItem(`listRelatives -p $surfaceNode[1]`);
+		$pointOnSurfaceInfo=`createNode pointOnSurfaceInfo`;
+		//connectAttr ($surfaceNode[1]+".worldSpace") ($pointOnSurfaceInfo+".inputSurface");
+		connectAttr ($surfaceNode[0]+".outputSurface") ($pointOnSurfaceInfo+".inputSurface");
+
+		//reset aspect ratio
+		$uSpace=1;
+		$vSpace=1;
+			
+		delete -ch $surfaceNode;
+
+		progressWindow -ii 1 -status "Moving Points" -progress 0 -max (size($vertLoopsU)*size($uVertLoop));
+		
+	string	$intersector=`stringArrayIntersector`;
+	float	$v=0;
+	string	$inUVPoints[];
+	
+		for($i=0;$i<size($vertLoopsU);$i++)
+		{
+			$uVertLoop=`stringToStringArray ($vertLoopsU[$i]) ","`;
+			$uVertLoop=`stringArrayRemove {""," "} $uVertLoop`;
+
+			if($wrap)
+			{
+				if($i==0)
+				{	
+					$tempArray=stringArrayCatenate(`stringToStringArray ($vertLoopsU[1]) ","`,$uVertLoop);
+					$tempArray=`polyListComponentConversion -tv $tempArray`;
+					$tempArray=`polyListComponentConversion -tf -in $tempArray`;
+					$tempArray=`polyListComponentConversion -tuv -in $tempArray`;
+					$inUVPoints=stringArrayRemoveDuplicates(`ls -fl $tempArray`);
+				}
+
+				if($i==size($vertLoopsU)-1)
+				{	
+					$tempArray=stringArrayCatenate(`stringToStringArray ($vertLoopsU[$i-1]) ","`,$uVertLoop);
+					$tempArray=`polyListComponentConversion -tv $tempArray`;
+					$tempArray=`polyListComponentConversion -tf -in $tempArray`;
+					$tempArray=`polyListComponentConversion -tuv $tempArray`;
+					$inUVPoints=stringArrayRemoveDuplicates(`ls -fl $tempArray`);
+				}
+			}
+
+			float	$u=0;
+			
+			if($i!=0)
+			{						
+				$v=$v+($vSpace*$avgEdgeLengthV[$i-1]/$totalEdgeLengthV);
+			}
+			
+			for($n=0;$n<size($uVertLoop);$n++)
+			{
+
+				progressWindow -e -s 1;
+				if(`progressWindow -q -ic`==1)
+				{
+					deleteUI $intersector;
+					progressWindow -endProgress;
+					error "User Interupt.";
+				}
+
+				if($n!=0) $u=$u+($uSpace*$avgEdgeLengthU[$n-1]/$totalEdgeLengthU);
+
+				setAttr ($pointOnSurfaceInfo+".parameterU") $v;
+				setAttr ($pointOnSurfaceInfo+".parameterV") $u;
+				xform 
+					-ws 
+					-a 
+					-t `getAttr ($pointOnSurfaceInfo+".positionX")` `getAttr ($pointOnSurfaceInfo+".positionY")` `getAttr ($pointOnSurfaceInfo+".positionZ")` 
+					$uVertLoop[$n];
+
+				//catch(`delete -ch $obj`);
+			}
+		}
+		
+	string	$baseShape;
+	string	$wrapNode;
+	string	$rebuiltSurface;
+	string	$rebuiltBase;
+	string	$rebuiltHistorySurface;
+	string	$resetSelectPriority;
+	string	$historyShape;
+	string	$tempTr;
+	
+	int	$selectPrioritySurface;
+	int	$selectPriorityMesh;
+	
+	float	$spansU;
+	float	$spansV;
+	float	$degreeU;
+	float	$degreeV;
+	
+	
+		if($keepSurface)
+		//create a wrap deformer using the lofted surface
+		{
+			catch(`sets -e -in initialShadingGroup $surfaceNode[1]`);
+			
+			//create post-operative rebuild node
+			$rebuiltSurface=`createNode rebuildSurface`;
+			
+			$spansU=`getAttr ($surfaceNode[1]+".spansU")`;
+			$degreeU=`getAttr ($surfaceNode[1]+".degreeU")`;
+			$spansV=`getAttr ($surfaceNode[1]+".spansV")`;
+			$degreeV=`getAttr ($surfaceNode[1]+".degreeV")`;
+			
+			setAttr ($rebuiltSurface+".spansU") $spansU;
+			setAttr ($rebuiltSurface+".spansV") $spansV;
+			setAttr ($rebuiltSurface+".keepRange") 0;
+			setAttr ($rebuiltSurface+".endKnots") 1;
+			setAttr ($rebuiltSurface+".direction") 2;
+			
+			$rebuiltBase=zenReturnFirstStringItem(`duplicate -rc $rebuiltSurface`);
+			
+			connectAttr -f ($surfaceNode[1]+".local") ($rebuiltSurface+".inputSurface");
+
+			//create history shape
+			$tempTr=zenReturnFirstStringItem(`duplicate -rc $surfaceNodeTr`);
+			$historyShape=zenReturnFirstStringItem(`listRelatives -s -ni $tempTr`);
+			parent -s -add $historyShape $surfaceNodeTr;
+			setAttr ($historyShape+".intermediateObject") 1;
+			delete $tempTr;
+			
+			//create a new surface to act as the base
+			$baseShape=`createNode -p $surfaceNodeTr -n "baseShape#" nurbsSurface`;
+			connectAttr ($rebuiltSurface+".outputSurface") ($baseShape+".create");
+			setAttr ($baseShape+".intermediateObject") 1;
+
+			//create pre-operative rebuild
+			connectAttr ($historyShape+".local") ($surfaceNode[1]+".create");
+			$rebuiltHistorySurface=zenReturnLastStringItem
+			(
+				`rebuildSurface -su $spansU -sv $spansV -du $degreeU -dv $degreeV $surfaceNode[1]`
+			);
+			
+			connectAttr -f ($rebuiltHistorySurface+".outputSurface") ($rebuiltBase+".inputSurface");
+				
+					
+			//create wrap
+			$wrapNode=`zenWrap ($rebuiltSurface+".outputSurface") ($rebuiltBase+".outputSurface") $verts`;
+			
+			delete -ch $baseShape;
+			zenDeferCommand("disconnectAttr "+$rebuiltSurface+".outputSurface "+$baseShape+".create");			
+			
+			//selectMode -co;
+			select ($surfaceNode[1]+".cv[*]");//"+(string(ceil(($spansU+$degreeU-1)/2)))+"]["+(string(ceil(($spansV+$degreeV-1)/2)))+"
+			xform -centerPivots  $surfaceNode[1];
+			
+			//change selection priority
+			$selectPrioritySurface=`selectPriority -q -ns`;
+			$selectPrioritySurfaceKnot=`selectPriority -q -sk`;
+			$selectPriorityMesh=`selectPriority -q -p`;
+			
+
+			if($selectPrioritySurface<=$selectPriorityMesh) selectPriority -ns (`selectPriority -q -p`+1);
+			if($selectPrioritySurfaceKnot<=$selectPriorityMesh) selectPriority -sk (`selectPriority -q -p`+1);
+
+			$resetSelectPriority=
+			(
+				"selectPriority -ns "+(string($selectPrioritySurface))+";\n"+
+				"selectPriority -sk "+(string($selectPrioritySurfaceKnot))+";\n"
+			);
+			
+			//attach deformer to history
+			zenHistoryCleanup ($resetSelectPriority) {$surfaceNodeTr} ($obj[0]+".inMesh");
+			
+			//control pre-op rebuild
+			addAttr -ln "spansU" -at long -dv (`getAttr ($rebuiltHistorySurface+".spansU")`) $surfaceNodeTr;
+			setAttr -e -k false -cb true ($surfaceNodeTr+".spansU");
+			connectAttr ($surfaceNodeTr+".spansU") ($rebuiltHistorySurface+".spansU");
+			
+			addAttr -ln "spansV" -at long -dv (`getAttr ($rebuiltHistorySurface+".spansV")`) $surfaceNodeTr;
+			setAttr -e -k false -cb true ($surfaceNodeTr+".spansV");
+			connectAttr ($surfaceNodeTr+".spansV") ($rebuiltHistorySurface+".spansV");
+			
+			addAttr -ln "degreeU" -at long -dv (`getAttr ($rebuiltHistorySurface+".degreeU")`) $surfaceNodeTr;
+			setAttr -e -k false -cb true ($surfaceNodeTr+".degreeU");
+			connectAttr ($surfaceNodeTr+".degreeU") ($rebuiltHistorySurface+".degreeU");
+			
+			addAttr -ln "degreeV" -at long -dv (`getAttr ($rebuiltHistorySurface+".degreeV")`) $surfaceNodeTr;
+			setAttr -e -k false -cb true ($surfaceNodeTr+".degreeV");
+			connectAttr ($surfaceNodeTr+".degreeV") ($rebuiltHistorySurface+".degreeV");
+			
+		}
+		else
+		{
+			delete $surfaceNodeTr;
+			select $sel;
+		}
+		
+		delete $pointOnSurfaceInfo;
+		deleteUI $intersector;
+		progressWindow -endProgress;
+		waitCursor -state off;
+}
+

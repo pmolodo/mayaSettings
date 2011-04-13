@@ -1,0 +1,118 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc doZenProportionateUVShells()
+{
+	string $sel[]=`ls -sl`;
+
+	string	$obj[]=stringArrayRemoveDuplicates(`ls -o $sel`);
+	
+		if(size($obj)>1) error "Selection must be on the same mesh.";
+		
+		$sel=`polyListComponentConversion -tuv $sel`;
+		$sel=`polyListComponentConversion -tf $sel`;
+		
+	string	$shells[]=`zenReturnUVShellFaces $sel`;
+		
+	string	$shell[];
+	string	$tempFaces[];
+	string	$allTempFaces[];
+	string	$dup;
+	string	$dupVerts[];
+	string	$uvs[];
+	float	$area;
+	float	$areaUV;
+	float	$ratio;
+	string	$overlappingUVs[];
+	
+		progressWindow -ii 1 -title "Working" -status "Comparing Surface Area to Texture Area" -max (size($shells)*2) -progress 0;
+			
+		for($s in $shells)
+		{
+			//create a temporary mesh from the shell
+			$shell=`stringToStringArray $s ","`; 
+			$dup=zenReturnFirstStringItem(`duplicate $obj[0]`);
+			$tempFaces=`zenMimicSelection $shell $dup`;
+			$tempFaces=`ls -fl $tempFaces`;
+			$allTempFaces=`polyListComponentConversion -tf $dup`;
+			$allTempFaces=`ls -fl $allTempFaces`;
+						
+			delete `stringArrayRemove $tempFaces $allTempFaces`;
+			delete -ch $dup;
+			
+			//find the surface area
+			$area=zenReturnFirstFloatItem(`polyEvaluate -a $dup`);
+			
+			//move the vertices to their uv position
+			delete -ch $dup;
+			
+			progressWindow -e -s 1;
+
+			zenMoveVertsToUVs {$dup};
+						
+			//find the surface area again, this is the uv surface area.
+			$areaUV=zenReturnFirstFloatItem(`polyEvaluate -a $dup`);
+			
+			delete $dup;
+			
+			//scaling ratio
+			$ratio=0;
+			if($areaUV==0)
+			{
+				$overlappingUVs=`stringArrayCatenate $overlappingUVs $shell`;
+			}
+			else
+			{
+				$ratio=sqrt($area/($areaUV));
+			
+				//scale the original uv shell accordingly
+				if(size($shell)) polyEditUV -su $ratio -sv $ratio `polyListComponentConversion -tuv $shell`;
+			}
+			
+			print $ratio;print "\n";
+			
+			$uvs=stringArrayCatenate($uvs,$shell);
+
+			progressWindow -e -s 1;
+			if(`progressWindow -q -ic`)
+			{
+				undoInfo -swf 1;
+				
+				if(`getApplicationVersionAsFloat`>=8)
+					polyLayoutUV -lm 1 -sc 1 -se 0 -rbf 0 -fr 1 -ps 0.2 -l 2 -ch 1 $uvs;
+				else
+					polyLayoutUV -sc 1 -se 0 -rbf 0 -fr 1 -ps 0.2 -l 2 -ch 1 $uvs;
+					
+				progressWindow -ep;
+				error "User Intrupt.";
+			}
+			
+			delete -ch $obj;
+		}
+				
+		progressWindow -ep;
+		
+		if(`getApplicationVersionAsFloat`>=8)
+			polyLayoutUV -lm 1 -sc 1 -se 0 -rbf 0 -fr 1 -ps 0.2 -l 2 -ch 1 $uvs;
+		else
+			polyLayoutUV -sc 1 -se 0 -rbf 0 -fr 1 -ps 0.2 -l 2 -ch 1 $uvs;
+		
+		select $uvs;
+		
+		if(size($overlappingUVs))
+		{	
+			warning "Mesh has overlpping uv's, could not determine texture area for selected region.";
+			select $overlappingUVs;			
+		}
+}

@@ -1,0 +1,1545 @@
+// Copyright (C) 1997-2003 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+// Alias|Wavefront Script File
+// MODIFY THIS AT YOUR OWN RISK
+//
+//
+// LT_layoutProcs.mel
+//
+// Contains all procs used by LT_UI.mel for Layout tab in LevelToolsUI
+//
+// Author:             Steven T. L. Roselle
+//                     
+//
+// Creation Date:      ( 04/04/03 )
+// Last Update:        ( 11/29/04 )
+//
+// Version:		LevelTools 2.0
+
+
+
+global proc LT_layoutProcs()
+{
+	// Force loading of all LevelTools layout procs
+}
+
+
+///////////////////////////////////////////////////
+//	Dragger Context Procs - Click Drag Placement
+///////////////////////////////////////////////////
+
+
+global proc buildContextPress(string $Obj)
+{
+	//Move selected object with cursor
+	//
+
+	float  $pressPosition[] = `draggerContext -query -anchorPoint buildContext`;
+	string $modifier   = `draggerContext -query -modifier buildContext`;
+	string $message;
+	string $unit;
+	string $tmp;
+
+	//print ("Drag: " + $pressPosition[0] + " " + $pressPosition[1] + " " + $pressPosition[2] + "  Button is " + $button + "  Modifier is " + $modifier + "\n");
+
+	//convert value from cm to current units because draggerContext always returns cm
+	$unit = `currentUnit -q -linear`;
+	if ($unit != "cm") 
+		{
+		$tmp = $pressPosition[0];
+		$pressPosition[0] = `convertUnit -fromUnit "cm" -toUnit $unit $tmp`;
+		$tmp = $pressPosition[1];
+		$pressPosition[1] = `convertUnit -fromUnit "cm" -toUnit $unit $tmp`;
+		$tmp = $pressPosition[2];
+		$pressPosition[2] = `convertUnit -fromUnit "cm" -toUnit $unit $tmp`;
+		}
+		
+	select -r $Obj;
+
+	if ( $modifier == "shift" )
+		{
+		//Move selected object with cursor along view plane
+		string $message = ("tx:"+`swFloatToNiceString $pressPosition[0]` + "  ty:"+`swFloatToNiceString $pressPosition[1]` + " tz: "+`swFloatToNiceString $pressPosition[2]`);
+		draggerContext -edit -drawString $message buildContext;
+		move $pressPosition[0] $pressPosition[1] $pressPosition[2];
+		}
+	else if ($modifier == "ctrl")
+		{
+		//Contrain translate to y axis
+		string $message = ("tx:LOCKED ty:"+`swFloatToNiceString $pressPosition[1]` +  "  tz:LOCKED");
+		draggerContext -edit -drawString $message buildContext;
+		move `getAttr ($Obj+".tx")` $pressPosition[1] `getAttr ($Obj+".tz")`;
+		}
+	else
+		{
+		//Contrain translate to XZ plane
+		string $message = ("tx:"+`swFloatToNiceString $pressPosition[0]` +  "  ty:LOCKED  tz:"+`swFloatToNiceString $pressPosition[2]`);
+		draggerContext -edit -drawString $message buildContext;
+		move $pressPosition[0] `getAttr ($Obj+".ty")` $pressPosition[2];
+		}
+
+	refresh -currentView;
+}
+
+
+
+
+global proc buildContextDrag(string $Obj)
+{
+	//Move selected object with cursor
+	//
+
+	float  $dragPosition[] = `draggerContext -query -dragPoint buildContext`;
+	string $modifier   = `draggerContext -query -modifier buildContext`;
+	string $message;
+	string $unit;
+	string $tmp;		
+
+	//print ("Drag: " + $dragPosition[0] + " " + $dragPosition[1] + " " + $dragPosition[2] + "  Button is " + $button + "  Modifier is " + $modifier + "\n");
+		
+	//convert value from cm to current units because draggerContext always returns cm
+	$unit = `currentUnit -q -linear`;
+	if ($unit != "cm") 
+		{
+		$tmp = $dragPosition[0];
+		$dragPosition[0] = `convertUnit -fromUnit "cm" -toUnit $unit $tmp`;
+		$tmp = $dragPosition[1];
+		$dragPosition[1] = `convertUnit -fromUnit "cm" -toUnit $unit $tmp`;
+		$tmp = $dragPosition[2];
+		$dragPosition[2] = `convertUnit -fromUnit "cm" -toUnit $unit $tmp`;
+		}
+
+	select -r $Obj;
+
+	if ( $modifier == "shift" )
+		{
+		//Move selected object with cursor along view plane
+		string $message = ("tx:"+`swFloatToNiceString $dragPosition[0]` + "  ty:"+`swFloatToNiceString $dragPosition[1]` + " tz: "+`swFloatToNiceString $dragPosition[2]`);
+		draggerContext -edit -drawString $message buildContext;
+		move $dragPosition[0] $dragPosition[1] $dragPosition[2];
+		}
+	else if ($modifier == "ctrl")
+		{
+		//Contrain translate to y axis
+		string $message = ("tx:LOCKED ty:"+`swFloatToNiceString $dragPosition[1]` +  "  tz:LOCKED");
+		draggerContext -edit -drawString $message buildContext;
+		move `getAttr ($Obj+".tx")` $dragPosition[1] `getAttr ($Obj+".tz")`;
+		}
+	else
+		{
+		//Contrain translate to XZ plane
+		string $message = ("tx:"+`swFloatToNiceString $dragPosition[0]` +  "  ty:LOCKED  tz:"+`swFloatToNiceString $dragPosition[2]`);
+		draggerContext -edit -drawString $message buildContext;
+		move $dragPosition[0] `getAttr ($Obj+".ty")` $dragPosition[2];
+		}
+
+	refresh -currentView;
+}
+
+
+global proc buildContextRelease(string $Obj)
+{
+
+	//Print location of object at release point
+	//
+
+	float $releasePosition[] = `draggerContext -query -dragPoint buildContext`;
+	string $unit;
+	string $tmp;		
+
+	/*
+	//convert value from cm to current units because draggerContext always returns cm
+	$unit = `currentUnit -q -linear`;
+	if ($unit != "cm") 
+		{
+		$tmp = $releasePosition[0];
+		$releasePosition[0] = `convertUnit -fromUnit "cm" -toUnit $unit $tmp`;
+		$tmp = $releasePosition[1];
+		$releasePosition[1] = `convertUnit -fromUnit "cm" -toUnit $unit $tmp`;
+		$tmp = $releasePosition[2];
+		$releasePosition[2] = `convertUnit -fromUnit "cm" -toUnit $unit $tmp`;
+		}
+			select -r $Obj;
+	*/
+	
+	$releasePosition[0] = getAttr ($Obj+".tx");	
+	$releasePosition[1] = getAttr ($Obj+".ty");	
+	$releasePosition[2] = getAttr ($Obj+".tz");	
+	
+	print ($Obj +" is located at: " + `swFloatToNiceString $releasePosition[0]` + " " + `swFloatToNiceString $releasePosition[1]` + " " + `swFloatToNiceString $releasePosition[2]` + "\n");
+
+}
+
+
+
+global proc clickDragObj()
+{
+
+	//Create and enable the dragger context 
+	//for interactively placing new or imported object
+	//
+
+	global string $LT_buildContextName;
+	global string $LT_currentObj;
+
+	string $objects[] = `ls -sl -type transform`;
+
+	if (`size $objects` == 0)
+		error ("No transform selected to move");
+	else if (`size $objects` > 1)
+		error ("Select only one transform at a time to move");
+	else
+		$LT_currentObj = $objects[0];
+
+
+	if ( `draggerContext -exists $LT_buildContextName` )
+	{
+		deleteUI $LT_buildContextName;
+	}
+
+	$LT_buildContextName  = `draggerContext
+			-pressCommand  (" buildContextPress($LT_currentObj)")
+			-dragCommand  ("undoInfo -swf 0; buildContextDrag($LT_currentObj); undoInfo -swf 1")   // turn off undo first & turn on undo after
+			-releaseCommand (" buildContextRelease($LT_currentObj)")
+			-cursor	 "crossHair"
+			-space world
+			buildContext`;
+
+	// set the current tool to the dragger context
+	setToolTo buildContext;
+
+}
+
+
+//////////////////////////////////////////////
+//	Snapping Tool Procs
+//////////////////////////////////////////////
+
+global proc string createHandle()
+{
+	// Create dummy node for handle
+	$handleName = `createNode transform -name "snapHandle#"`;
+
+	// Enable pivot icon, selection handle and local axis
+	//
+	setAttr ($handleName + ".displayHandle") 1;
+	setAttr ($handleName + ".displayRotatePivot") 1;
+	setAttr ($handleName + ".displayLocalAxis") 1;
+
+	addAttr -ln expr -at bool  $handleName;
+	setAttr -e -keyable true ($handleName+".expr");
+
+	return $handleName;
+
+}
+
+global proc float[] getCenter(string $vertices[])
+{
+	//Return the center of selected verts
+	//Get center based on average
+	//
+	float $center[];
+	float $tmpLocation[];
+	float $xtotal = 0;
+	float $ytotal = 0;
+	float $ztotal = 0;
+
+	$size = `size $vertices`;
+	print $size;
+
+	for ($vert in $vertices)
+		{
+		$tmpLocation = `xform -q -ws -t $vert`;
+		$xtotal +=  $tmpLocation[0];
+		$ytotal +=  $tmpLocation[1];
+		$ztotal +=  $tmpLocation[2];
+		}
+
+	$center[0] = ($xtotal / ($size));
+	$center[1] = ($ytotal / ($size));
+	$center[2] = ($ztotal / ($size));
+
+	return $center;
+}
+
+global proc int pivotWarning(float $dummy)
+{
+	string $selected[] = `ls -sl`;
+	string $handleName;
+
+	// dummy var is just used to trigger expr
+
+	for ($handleName in $selected)
+	{
+		$scaleVal = `getAttr ($handleName+ ".sx")`;
+		if ($scaleVal != 1)
+			{
+			warning ("Either create a new handle or reset the scale of the current handle back to 1 1 1 before moving pivot");
+			warning ("Moving the pivot on " + $handleName + " could have adverse effects with current scale value.");
+			}
+	}
+	return 1;
+}
+
+
+global proc componentTransformManip()
+{
+
+	global string $gMove;
+	global string $gRotate;
+
+	//Filter out non-poly components and objects
+	//
+	$components = `filterExpand -sm 31 -sm 32 -sm 34`;
+	if (`size $components` == 0)
+		error("Nothing valid selected. Select one or more poly verts, faces or edges.");
+
+	//Convert all to vertices
+	//
+	select -r `polyListComponentConversion -ff -fe -fvf -fv -tv`;
+	string $verts[] = `filterExpand -sm 31`;
+
+	//Get object name
+	//select -r $verts;
+	//$shape = `selectedNodes`;
+	//$object = `listRelatives -f -parent $shape`;
+
+	//Create visual handle
+	//
+	$handle = `createHandle`;
+
+	//Create polyMoveVertex node
+	//
+	select -r $verts;
+	$pmvPivot = `getCenter ($verts)`;
+	$tmp =  `polyMoveVertex -pvt $pmvPivot[0] $pmvPivot[1] $pmvPivot[2] `;
+	rename $tmp[0] ($handle + "_pmv");
+	string $pmv = ($handle + "_pmv");
+	//$pmvPivot = `getAttr ($pmv + ".pivot")`;
+
+	//Connect Handle to PolyMoveVertex
+	//
+	select -r $handle;
+	setAttr ($handle + ".translate") $pmvPivot[0] $pmvPivot[1] $pmvPivot[2] ;
+	FreezeTransformations;
+	performFreezeTransformations(0);
+	setAttr ($handle + ".selectHandle") $pmvPivot[0] $pmvPivot[1] $pmvPivot[2] ;
+	connectAttr -f ($handle + ".translate") ($pmv + ".translate");
+	connectAttr -f ($handle + ".scale") ($pmv + ".scale");
+	connectAttr -f ($handle + ".scalePivot") ($handle + ".selectHandle");
+	connectAttr -f ($handle + ".scalePivot") ($pmv + ".pivot");
+
+	//Create add nodes to calculate and drive pivot of PolyMoveVertex manip
+	//
+	$addX = `shadingNode -asUtility plusMinusAverage`;
+	connectAttr -f ($handle + ".rotatePivotX") ($addX + ".input1D[0]");
+	connectAttr -f ($handle + ".translateX") ($addX + ".input1D[1]");
+	connectAttr -f ($addX + ".output1D") ($pmv + ".pivotX");
+	$addY = `shadingNode -asUtility plusMinusAverage`;
+	connectAttr -f ($handle + ".rotatePivotY") ($addY + ".input1D[0]");
+	connectAttr -f ($handle + ".translateY") ($addY + ".input1D[1]");
+	connectAttr -f ($addY + ".output1D") ($pmv + ".pivotY");
+	$addZ = `shadingNode -asUtility plusMinusAverage`;
+	connectAttr -f ($handle + ".rotatePivotZ") ($addZ + ".input1D[0]");
+	connectAttr -f ($handle + ".translateZ") ($addZ + ".input1D[1]");
+	connectAttr -f ($addZ + ".output1D") ($pmv + ".pivotZ");
+
+	//put expressoin here to check handle for pivot-scale problem and print warning
+	//
+	select -r $handle;
+	$expr = "expression -n " + $handle + "_expr -s \"" + $handle + ".expr = `pivotWarning (" + $handle + ".scalePivotX)`;\\r\"  -o \"\" -ae 1 -uc all;";
+	eval $expr;
+
+	//Ensure that move pivot is disabled and transform manip enabled
+	//
+	setToolTo $gRotate;
+	setToolTo $gMove;
+
+}
+
+//////////////////////////////////////////////
+//	XForm / Snap / Align Tool Procs
+//////////////////////////////////////////////
+
+global proc snapToVirtualGrid(float $snapVal, int $axis)
+{
+	//Creates a virtual grid of a given subdivision interval 
+	//and snaps selected object to nearest virtual point
+	//
+
+	string $sel_items[] = `ls -sl` ;
+	int $sel_size = `size( $sel_items )` ;
+
+	int $c;
+	for( $c = 0; $c < $sel_size; $c ++ )
+	{
+		float $tx, $ty, $tz;
+
+		string $obj = $sel_items[$c];
+
+		$tx = floor( float((`getAttr ($obj + ".tx")` / $snapVal) + 0.5) ) * $snapVal;
+		$ty = floor( float((`getAttr ($obj + ".ty")` / $snapVal) + 0.5) ) * $snapVal;
+		$tz = floor( float((`getAttr ($obj + ".tz")` / $snapVal) + 0.5) ) * $snapVal;
+
+		if ($axis == 1 || $axis == 0)
+			{
+			setAttr ($obj + ".tx") $tx ;	
+			print ($obj+".tx : snapped to "+$tx+"\n");			
+			}
+		if ($axis == 2 || $axis == 0)
+			{
+			setAttr ($obj + ".ty") $ty ; 
+			print ($obj+".ty : snapped to "+$ty+"\n");			
+			}
+		if ($axis == 3 || $axis == 0)
+			{
+			setAttr ($obj + ".tz") $tz ;
+			print ($obj+".tz : snapped to "+$tz+"\n");			
+			}
+		if ($axis == -1)
+			{
+			setAttr ($obj + ".ty") 0; //ground plane snap
+			print ($obj+".ty : snapped to ground plane\n");			
+			}
+	
+	}
+}
+
+
+
+global proc moveAlongEdge( float $offset ){
+
+	// Last update : 11/17/2004
+	// Author : Hiroyuki Haga ( hhaga@alias.com )
+	// Modified : Steven Roselle 
+	
+	string $selectionList[];
+	$selectionList = `ls -sl`;
+	int $listSize;
+	$listSize = `size $selectionList`;
+	
+	if ($listSize < 2)
+		error "Select 1 or more objects and/or components, followed by a target edge to move parallel to.";
+
+	string $directionalEdge;
+	$directionalEdge = $selectionList[$listSize-1];
+	
+	print $directionalEdge;
+	
+	//check last selection for edge
+	$edgeCheck = `filterExpand -sm 32 $directionalEdge`;
+	if (`size $edgeCheck` != 1)
+		error "Last selection must be a polygonal edge.";
+
+	string $attachedVertices[];
+	string $directionalVertex[];
+
+	$attachedVertices= `polyListComponentConversion -ff -fe -fuv -fvf -tv $directionalEdge`;
+
+	$directionalVertex = `filterExpand -sm 31 $attachedVertices`;
+
+	float $vertexPosition1[];
+	float $vertexPosition2[];
+	//calculate vector
+	 $vertexPosition1 = `pointPosition $directionalVertex[0]`;
+	 $vertexPosition2 = `pointPosition $directionalVertex[1]`;
+
+	float $floatMoveDirection[3];
+	for ( $i = 0; $i < 3; $i++ ){
+		  $floatMoveDirection[$i] = $vertexPosition1[$i] - $vertexPosition2[$i];
+	 }
+
+	//Normalize
+	normalize( $floatMoveDirection );
+	vector $moveDirection;
+	$moveDirection = $floatMoveDirection;
+
+	//move component
+	select -replace $selectionList;
+	select -deselect $directionalEdge;
+
+	$moveDirection *= $offset;
+	float $moveLength[3];
+	$moveLength = $moveDirection;
+	print $moveDirection;
+
+	move -r -worldSpace ($moveLength[0]) ($moveLength[1]) ($moveLength[2]);
+
+	select $selectionList;
+}
+
+	
+global proc moveAlongNormal( float $offset ){
+
+	// Last update : 11/17/04
+	// Author : Hiroyuki Haga ( hhaga@alias.com )
+	// Modified : Steven Roselle 
+	
+	string $selectionList[];
+	$selectionList = `ls -sl`;
+	int $listSize;
+	$listSize = `size $selectionList`;
+	
+	if ($listSize < 2)
+		error "Select 1 or more objects and/or components, followed by a target face to move parallel to.";
+
+	string $targetFace;
+	$targetFace = $selectionList[$listSize-1];
+	
+	print $targetFace;
+	
+	//check last selection for normal
+	$faceCheck = `filterExpand -sm 34 $targetFace`;
+	if (`size $faceCheck` != 1)
+		error "Last selection must be a polygonal face.";
+	
+	select -r  $targetFace;
+	string $faceInfo[] = `polyInfo -faceNormals`;
+	string $stringNormal[];
+	tokenize $faceInfo[0] " " $stringNormal;
+	float $faceNormal[3] = {
+		(float)$stringNormal[2],
+		(float)$stringNormal[3],
+		(float)$stringNormal[4]
+	};
+	
+	//Get Worldspace
+	float $tMat[16] = `xform -q -ws -matrix`;
+	float $worldNorm[] = `pointMatrixMult $faceNormal $tMat`;
+	
+	//Normalize
+	//normalize( $floatMoveDirection );
+	//vector $moveDirection;
+	//$moveDirection = $floatMoveDirection;
+
+	normalize( $worldNorm );
+	vector $moveDirection;
+	$moveDirection = $worldNorm;
+	
+	//move component
+	select -replace $selectionList;
+	select -deselect $targetFace;
+
+	$moveDirection *= $offset;
+	float $moveLength[3];
+	$moveLength = $moveDirection;
+	print $moveDirection;
+
+	move -r -worldSpace ($moveLength[0]) ($moveLength[1]) ($moveLength[2]);
+
+	select $selectionList;
+}
+
+
+global proc moveOffset (float $value, int $axis, string $space)
+{
+	global string $gSelect;
+	global string $gMove;
+	
+	if (($space == "-os") || ($space == "-ws"))
+		{
+		setToolTo $gMove; 
+		if ($axis == 1)
+			move  -r -wd $space $value 0 0;
+		else if ($axis == 2)
+			move  -r -wd $space 0 $value 0;
+		else if ($axis == 3)
+			move  -r -wd $space 0 0 $value;
+		else 
+			warning ("No axis defined for move");
+		}
+	else if ($space == "-edge")
+	{
+		setToolTo $gSelect; 
+		moveAlongEdge ($value);
+	}
+	else if ($space == "-normal")
+	{
+		setToolTo $gSelect; 
+		moveAlongNormal ($value);
+	}
+		
+		
+}
+
+
+global proc rotateOffset (float $value, int $axis, string $space)
+{
+if ($axis == 1)
+	rotate  -r $space $value 0 0;
+else if ($axis == 2)
+	rotate  -r $space 0 $value 0;
+else if ($axis == 3)
+	rotate  -r $space 0 0 $value;
+else 
+	warning ("No axis defined for rotation");
+}
+
+
+global proc rotateSnap (float $snapVal, string $axis)
+{
+	//Snap rotate value of selected object to given interval 
+	//and normalize between -360 and 360 degrees
+	//
+
+	string $attr;
+
+	if ($axis == 1)
+		$attr = ".rx";
+	if ($axis == 2)
+		$attr = ".ry";
+	if ($axis == 3)
+		$attr = ".rz";
+
+	string $sel_items[] = `ls -sl` ;
+
+	int $sel_size = `size( $sel_items )` ;
+
+	int $c;
+	for( $c = 0; $c < $sel_size; $c ++ )
+	{
+		float $rot;
+
+		string $obj = $sel_items[$c];
+
+		//get lower snap point
+		$r1 = floor( float( `getAttr ($obj + $attr)` / $snapVal ) ) * $snapVal ;
+		if( $r1 > 360.0 )
+			$r1 -= 360.0 ;
+
+		//get upper snap point
+		$r2 = floor( float( `getAttr ($obj + $attr)` / $snapVal ) ) * $snapVal + $snapVal;
+		if( $r2 > 360.0 )
+			$r2 -= 360.0 ;
+		
+		//snap down
+		if ((`getAttr ($obj + $attr)` - $r1) < ($r2 - `getAttr ($obj + $attr)`))
+			{
+			setAttr ($obj + $attr) $r1 ;
+			print ($obj+" "+ $attr +" : snapped to "+$r1+"\n");
+			}			
+		//snap up
+		else
+			{
+			setAttr ($obj + $attr) $r2 ;
+			print ($obj+" "+ $attr +" : snapped to "+$r2+"\n");			
+			}
+
+	}
+}
+
+
+global proc stackAllOnLast (string $list[], int $axis)
+{
+	$size = `size $list`;
+	$last = $list[$size-1];
+	$c = 0;
+
+	if ($axis == 1)
+		$flag = "-x";
+	else if ($axis == 2)
+		$flag = "-y";
+	else if ($axis == 3)
+		$flag = "-z";
+	
+	$stackTo = $last;
+	
+	while ($c <= ($size-2)) 
+		{
+		select -r $list[$c] $stackTo;
+
+		//make sure first obj is definitely on top
+		align -atl $flag Max;
+		select -r $list[$c];
+		move -r -ws $flag 50;
+
+		//then stack
+		select -r $list[$c] $stackTo;	
+		align -atl $flag Stack;
+
+		//set next obj to stack on
+		$stackTo = $list[$c];
+
+		$c++;
+		}
+
+select -r $list;
+}
+
+
+global proc alignObjects (string $type, int $axis)
+{
+	if (($type == "line") && ($axis == 1))  // X
+		align -atl -z Mid -y Mid;
+	else if (($type == "line") && ($axis == 2))  // Y
+		align -atl -x Mid -z Mid;
+	else if (($type == "line") && ($axis == 3))  // Z
+		align -atl -y Mid -x Mid;
+	else if (($type == "ground") && ($axis == 1))  // X
+		align -atl -z Mid -y Min;
+	else if (($type == "ground") && ($axis == 2))  // Y
+		align -atl -x Mid -z Mid;
+	else if (($type == "ground") && ($axis == 3))  // Z
+		align -atl -y Min -x Mid;
+	else if (($type == "dist") && ($axis == 1))  // X
+		align -x Dist;
+	else if (($type == "dist") && ($axis == 2))  // Y
+		align -y Dist;
+	else if (($type == "dist") && ($axis == 3))  // Z
+		align -z Dist;	
+	else
+		warning "wrong parameters.";
+}
+
+
+global proc snapToEdgeCenter()
+{
+	string $selected[] = `ls -sl`;
+	string $lastSelected = $selected[`size $selected` - 1];
+
+	select -r $lastSelected;
+
+	string $edge[] = `filterExpand -sm 32`;
+	float $xtotal = 0;
+	float $ytotal = 0;
+	float $ztotal = 0;
+	
+	if (`size $edge` == 0)
+		{
+		select -r $selected;
+		error ("A single edge must be selected last");
+		}
+	else
+		{
+		float $pos[] = `xform -q -ws -t -r $edge`; 
+
+		//Get average position of all verts for selected edge
+		for ($i = 0; $i <= `size $pos`; $i += 3)
+			{
+			$xtotal += $pos[$i];
+			$ytotal += $pos[$i+1];
+			$ztotal += $pos[$i+2];			
+			}
+		float $xavg = ($xtotal / (`size $pos`/3));
+		float $yavg = ($ytotal / (`size $pos`/3));
+		float $zavg = ($ztotal / (`size $pos`/3));
+
+		//Move objects to edge
+		//reselect all but last edge
+		select -r $selected;
+		select -d $lastSelected;
+		string $objects[] = `ls -sl -type transform`;
+		for ($obj in $objects)
+			{
+			float $pivotx = `getAttr ($obj + ".rotatePivotX")`;
+			float $pivoty = `getAttr ($obj + ".rotatePivotY")`;
+			float $pivotz = `getAttr ($obj + ".rotatePivotZ")`;
+			select -r $obj;
+
+			// move object and compensate for pivot
+			move -a ($xavg-$pivotx) ($yavg-$pivoty) ($zavg-$pivotz);
+			}
+
+		//Move faces and edges to edge
+		//reselect all but last edge
+		select -r $selected;
+		select -d $lastSelected;
+		string $components[] = `filterExpand -sm 32 -sm 34`;
+		if (`size $components` != 0)
+			{
+			select -r $components;
+			componentTransformManip;
+			$manip = `ls -sl`;
+			float $pivotx = `getAttr ($manip[0] + ".rotatePivotX")`;
+			float $pivoty = `getAttr ($manip[0] + ".rotatePivotY")`;
+			float $pivotz = `getAttr ($manip[0] + ".rotatePivotZ")`;
+			select -r $manip[0];
+
+			// move object and compensate for pivot
+			move -a ($xavg-$pivotx) ($yavg-$pivoty) ($zavg-$pivotz);
+			delete $manip[0];
+			}
+
+		//Move verts to edge
+		//reselect all but last edge
+		select -r $selected;
+		select -d $lastSelected;
+		string $components[] = `filterExpand -sm 31`;
+		select -r $components;
+		if (`size $components` != 0)
+			move -a ($xavg) ($yavg) ($zavg);
+
+		select -r $selected;
+		}
+}
+
+
+global proc snapToFaceCenter()
+{
+	string $selected[] = `ls -sl`;
+	string $lastSelected = $selected[`size $selected` - 1];
+
+	select -r $lastSelected;
+
+	string $face[] = `filterExpand -sm 34`;
+	float $xtotal = 0;
+	float $ytotal = 0;
+	float $ztotal = 0;
+	
+	if (`size $face` == 0)
+		{
+		select -r $selected;
+		error ("A single face must be selected last");
+		}
+	else
+		{
+		float $pos[] = `xform -q -ws -t -r $face`; 
+
+		//Get average position of all verts for selected face
+		for ($i = 0; $i <= `size $pos`; $i += 3)
+			{
+			$xtotal += $pos[$i];
+			$ytotal += $pos[$i+1];
+			$ztotal += $pos[$i+2];			
+			}
+		float $xavg = ($xtotal / (`size $pos`/3));
+		float $yavg = ($ytotal / (`size $pos`/3));
+		float $zavg = ($ztotal / (`size $pos`/3));
+
+		//Move objects to face
+		//reselect all but last face
+		select -r $selected;
+		select -d $lastSelected;
+		string $objects[] = `ls -sl -type transform`;
+		for ($obj in $objects)
+			{
+			float $pivotx = `getAttr ($obj + ".rotatePivotX")`;
+			float $pivoty = `getAttr ($obj + ".rotatePivotY")`;
+			float $pivotz = `getAttr ($obj + ".rotatePivotZ")`;
+			select -r $obj;
+
+			// move object and compensate for pivot
+			move -a ($xavg-$pivotx) ($yavg-$pivoty) ($zavg-$pivotz);
+			}
+
+		//Move faces and edges to face
+		//reselect all but last face
+		select -r $selected;
+		select -d $lastSelected;
+		string $components[] = `filterExpand -sm 32 -sm 34`;
+		if (`size $components` != 0)
+			{
+			select -r $components;
+			componentTransformManip;
+			$manip = `ls -sl`;
+			float $pivotx = `getAttr ($manip[0] + ".rotatePivotX")`;
+			float $pivoty = `getAttr ($manip[0] + ".rotatePivotY")`;
+			float $pivotz = `getAttr ($manip[0] + ".rotatePivotZ")`;
+			select -r $manip[0];
+
+			// move object and compensate for pivot
+			move -a ($xavg-$pivotx) ($yavg-$pivoty) ($zavg-$pivotz);
+			delete $manip[0];
+			}
+
+		//Move verts to face
+		//reselect all but last face
+		select -r $selected;
+		select -d $lastSelected;
+		string $components[] = `filterExpand -sm 31`;
+		select -r $components;
+		if (`size $components` != 0)
+			move -a ($xavg) ($yavg) ($zavg);
+
+		select -r $selected;
+		}
+}
+
+
+global proc dupConnect()
+{
+	string $srcObj[] = `ls -sl`;
+	$relList = `listRelatives -shapes $srcObj[0]` ;
+	string $srcShape = $relList[0] ;
+		
+	// downstream connection to temporary shading group
+	//
+	string $shadeGrp[] = `listConnections  -t shadingEngine $srcShape`;
+	//string $combined =  ("|" + $srcObj[0] + "|" + $srcShape + ".instObjGroups[0]");
+		
+	//duplicatePreset(1,1,1,0,1,0,0,0,0,0,0,0,1,1,1);
+	//duplicatePreset(1,1,1,0,1,0,0,0,0,0,0,0,0,1,1,1);
+	duplicate -rr;
+
+	//connect to original shading group
+	//
+	sets -e -forceElement $shadeGrp[0];
+
+	//defaultNavigation -source $shadeGrp[0] -destination $combined -connectToExisting;
+
+
+}
+
+
+global proc replaceObj(int $inst, int $rot, int $scale)
+{
+string $list[] = `ls -sl -tr`;
+int $size = `size $list`;
+
+int $i = 0;
+while ($i < ($size-1))
+	{
+	select -r ($list[$size-1]);
+	if ($inst)
+		instance; 
+	else
+		duplicate -rr; //duplicatePreset(1,1,1,0,1,0,0,0,0,0,0,0,0,1,1,1);
+	string $new[] = `ls -sl`;
+
+	//Set Transform
+	//
+	//float $trans[] = `getAttr ($list[$i]+".t")`; 
+	//setAttr ($new[0]+".t") 	$trans[0] $trans[1] $trans[2];
+
+	//Get and set Worldspace values	
+	float $trans[] = `xform -q -ws -t $list[$i]`; 	
+	xform -a -ws -t $trans[0] $trans[1] $trans[2] $new[0];
+
+	if ($rot) 
+		{
+		float $rotate[] = `getAttr ($list[$i]+".r")`; 	
+		setAttr ($new[0]+".r") 	$rotate[0] $rotate[1] $rotate[2];
+		}
+
+	if ($scale)
+		{
+		float $scale[] = `getAttr ($list[$i]+".s")`; 	
+		setAttr ($new[0]+".s") 	$scale[0] $scale[1] $scale[2];
+		}
+
+	delete $list[$i];
+	warning ("Replacing " + $list[$i] + " with " +$new[0]);
+	
+	$i++;
+	}
+
+delete ($list[$size-1]);
+select -cl;
+}
+
+
+global proc geometrySnap()
+{
+string $list[] = `ls -sl -tr`;
+int $size = `size $list`;
+
+// Geo and Normal snap all select to last selected
+//
+int $i = 0;
+while ($i < ($size-1))
+	{
+	select -r $list[$size-1]; //last object
+	select -add $list[$i]; //current item
+	geometryConstraint -weight 1;
+	normalConstraint -weight 1 -aimVector 0 1 0 -upVector 1 0 0 -worldUpType "scene";
+	$i++;
+	}
+select -cl;
+
+}
+
+
+
+global proc cycleAimAxis()
+{
+string $list[] = `ls -sl -tr`;
+int $size = `size $list`;
+float $tmpValue;
+
+//Cycle through normal constraint options
+
+for ($item in $list)
+	{
+	$normConstraint = `listRelatives -type normalConstraint`;
+	$tmpValue = `getAttr  ($normConstraint[0] + ".aimVectorX")`;
+	setAttr ($normConstraint[0] + ".aimVectorX") `getAttr  ($normConstraint[0] + ".aimVectorY")`;
+	setAttr ($normConstraint[0] + ".aimVectorY") `getAttr  ($normConstraint[0] + ".aimVectorZ")`;
+	setAttr ($normConstraint[0] + ".aimVectorZ") $tmpValue;
+	}
+}
+
+
+global proc flipAimAxis()
+{
+string $list[] = `ls -sl -tr`;
+int $size = `size $list`;
+float $tmpValue;
+
+//Cycle through normal constraint options
+
+for ($item in $list)
+	{
+	$normConstraint = `listRelatives -type normalConstraint`;
+	setAttr ($normConstraint[0] + ".aimVectorX") (-1 * `getAttr  ($normConstraint[0] + ".aimVectorX")`);
+	setAttr ($normConstraint[0] + ".aimVectorY") (-1 * `getAttr  ($normConstraint[0] + ".aimVectorY")`);
+	setAttr ($normConstraint[0] + ".aimVectorZ") (-1 * `getAttr  ($normConstraint[0] + ".aimVectorZ")`);
+	}
+}
+
+
+global proc cycleUpAxis()
+{
+string $list[] = `ls -sl -tr`;
+int $size = `size $list`;
+float $tmpValue;
+
+//Cycle through normal constraint options
+
+for ($item in $list)
+	{
+	$normConstraint = `listRelatives -type normalConstraint`;
+	$tmpValue = `getAttr  ($normConstraint[0] + ".upVectorX")`;
+	setAttr ($normConstraint[0] + ".upVectorX") `getAttr  ($normConstraint[0] + ".upVectorY")`;
+	setAttr ($normConstraint[0] + ".upVectorY") `getAttr  ($normConstraint[0] + ".upVectorZ")`;
+	setAttr ($normConstraint[0] + ".upVectorZ") $tmpValue;
+	}
+}
+
+
+global proc flipUpAxis()
+{
+string $list[] = `ls -sl -tr`;
+int $size = `size $list`;
+float $tmpValue;
+
+//Cycle through normal constraint options
+
+for ($item in $list)
+	{
+	$normConstraint = `listRelatives -type normalConstraint`;
+	setAttr ($normConstraint[0] + ".upVectorX") (-1 * `getAttr  ($normConstraint[0] + ".upVectorX")`);
+	setAttr ($normConstraint[0] + ".upVectorY") (-1 * `getAttr  ($normConstraint[0] + ".upVectorY")`);
+	setAttr ($normConstraint[0] + ".upVectorZ") (-1 * `getAttr  ($normConstraint[0] + ".upVectorZ")`);
+	}
+}
+
+
+///////////// Orient Tools
+// Last update : Aug 22th, 2004
+// Author : Hiroyuki Haga ( hhaga@alias.com )
+// modified: cpam Oct 2004
+
+global proc orientToEdgeToolProperties () {
+
+	// Linux Motif2.1 shrinks the checkBox, if the string is ""
+    // NT would tab over the blank (" ") string label.
+    // So...
+	string $emptyLabel = "";
+    if (`about -linux`) {
+        $emptyLabel = " ";
+    }
+
+	string $parent = `toolPropertyWindow -q -location`;
+
+	setUITemplate -pushTemplate OptionsTemplate;
+
+	setParent $parent;
+
+	columnLayout orientToEdgeTool;
+		frameLayout -collapsable true -collapse false
+			-l "Orient To Edge Tool Settings";
+			columnLayout;
+
+				radioButtonGrp -nrb 3 
+					-l "Rotate Axis" 
+					-l1 "X"
+					-l2 "Y"
+					-l3 "Z"
+					rotationalAlignEdgeAxisRadio;
+
+			setParent ..;
+		setParent ..;
+	setParent ..;	
+
+	setUITemplate -popTemplate;
+}
+
+global proc orientToEdgeToolValues ( string $toolName ) {
+
+	string $parent = (`toolPropertyWindow -q -location` + "|orientToEdgeTool");
+	setParent $parent;
+
+	// Initialize settings
+	//
+
+	int $axis = `optionVar -q rotationalAlignEdgeAxis`;
+	switch ($axis)
+	{
+		case 0:
+		case 1:
+			 radioButtonGrp -e -sl 1 rotationalAlignEdgeAxisRadio;
+			optionVar -iv rotationalAlignEdgeAxis 1;
+			 //$manipMode = 1;
+		break;
+		case 2:
+			radioButtonGrp -e -sl 2  rotationalAlignEdgeAxisRadio;
+			optionVar -iv rotationalAlignEdgeAxis 2;
+			 //$manipMode = 2;
+		break;
+		case 3:
+			radioButtonGrp -e -sl 3 rotationalAlignEdgeAxisRadio;
+			optionVar -iv rotationalAlignEdgeAxis 3;
+			 //$manipMode = 3;
+		break;
+	}
+
+	radioButtonGrp -e
+		-nrb 2
+		-on1 ("optionVar -iv rotationalAlignEdgeAxis 1")
+		-on2 ("optionVar -iv rotationalAlignEdgeAxis 2")
+		-on3 ("optionVar -iv rotationalAlignEdgeAxis 3")
+		-select $axis
+		rotationalAlignEdgeAxisRadio;
+
+	string $helpTag = "orientToEdgeTool";
+	toolPropertySetCommon $toolName "orientToEdge.xpm" $helpTag;
+	toolPropertySelect "orientToEdgeTool";
+}
+
+global proc rotationalAlignEdge( string $Selection1[], int $axis ){
+
+	//string $selectionList[2];
+	//$selectionList = `ls -sl`;
+
+	string $shape[] = `listRelatives -f -parent $Selection1[0]`;
+	string $transform[] = `listRelatives -f -parent $shape[0]`;
+	string $moveObject = $transform[0];
+
+	float $pivots[3];
+	$pivots =`xform -q -ws -scalePivot $moveObject`;
+
+	float $objectVertex[3];
+	$objectVertex = `pointPosition $Selection1[0]`;
+
+	$attachedVertices = `polyListComponentConversion -ff -fe -fuv -fvf -tv $Selection1[1]`;
+	string $guideVertices[2];
+	$guideVertices = `filterExpand -sm 31 $attachedVertices`;
+
+	$guideVertex1 = `pointPosition $guideVertices[0]`;
+
+	$guideVertex2 = `pointPosition $guideVertices[1]`;
+
+	//locate center
+	float $guideFloat[3];
+	for ($i = 0; $i < 3; $i++ ){
+		$objectVertex[$i] -= $pivots[$i];
+		$guideVertex1[$i] -= $pivots[$i];
+		$guideVertex2[$i] -= $pivots[$i];
+		$guideFloat[$i] = $guideVertex1[$i] - $guideVertex2[$i];
+
+		if ($i == ($axis-1)){
+			$objectVertex[$i] = 0;
+			$guideVertex1[$i] = 0;
+			$guideVertex2[$i]= 0;
+			$guideFloat[$i] = 0;
+		}
+	}
+	vector $pivotVector;
+	vector $objectVector;
+	vector $guideVector;
+	vector $guidePivotVector;
+
+	//detectNearPoint;
+	vector $vertex1;
+	vector $vertex2;
+	$vertex1 = $guideVertex1;
+	$vertex2 = $guideVertex2;
+
+	//default vertex2 = pivot;
+
+	if ( `mag $vertex1` < `mag $vertex2` ){
+		for ($i = 0; $i < 3; $i++ ){
+			$guideFloat[$i] = (-$guideFloat[$i]);
+		}
+		$guidePivotVector = $guideVertex1;
+	}else {
+		$guidePivotVector = $guideVertex2;
+	}
+
+	$pivotVector = $pivots;
+	$objectVector = $objectVertex;
+	$guideVector = $guideFloat;
+
+	float $radius;
+	$radius = `mag $objectVector`;
+	float $guideVectorSize = `mag $guideVector`;
+	$a = `pow $guideVectorSize 2`;
+	float $guideVectorDot = `dot $guideVector $guidePivotVector`;
+	$b = 2 * $guideVectorDot;
+	float $guidePivotVectorSize = `mag $guidePivotVector`;
+	float $radiusPower = `pow $radius 2`;
+	$c = `pow $guidePivotVectorSize 2 ` - $radiusPower;
+	$D = `pow $b 2` - (4 * $a * $c);
+
+	if ( $D >= 0 ){
+		float $t1, $t2;
+		if ( $a == 0 ) {
+		$t1 =  ( (-$b) - `sqrt $D` );
+		$t2 = ( (-$b) + `sqrt $D` );
+		} else {
+		$t1 =  ( (-$b) - `sqrt $D` )/ (2 * $a);
+		$t2 = ( (-$b) + `sqrt $D` )/ (2 * $a);
+		}
+
+		vector $finalVector1 = $guidePivotVector + ($t1 * $guideVector);
+		vector $finalVector2 = $guidePivotVector + ($t2 * $guideVector);
+
+		//$finalVector1 += $pivotVector;
+		//$finalVector2 += $pivotVector;
+
+		vector $cross1;
+		$cross1 = `cross $objectVector $finalVector1`;
+		//print($cross1.y); print ("\n");
+		
+		$rad = `angle $objectVector $finalVector1`;
+		$degree1 = rad_to_deg($rad);
+
+		switch( $axis ){
+			case 1:
+				if ($cross1.x < 0 ){
+					$degree1 = (-$degree1);
+				}
+				break;
+
+			case 2:
+				if ($cross1.y < 0 ){
+					$degree1 = (-$degree1);
+				}
+				break;
+
+			case 3:
+				if ($cross1.z < 0 ){
+					$degree1 = (-$degree1);
+				}
+				break;
+		}
+
+
+		vector $cross2;
+		$cross2 = `cross $objectVector $finalVector2`;
+
+		$rad = `angle $objectVector $finalVector2`;
+		$degree2 = rad_to_deg($rad);
+
+		switch( $axis ){
+			case 1:
+				if ($cross2.x < 0 ){
+					$degree2 = (-$degree2);
+				}
+				break;
+
+			case 2:
+				if ($cross2.y < 0 ){
+					$degree2 = (-$degree2);
+				}
+				break;
+
+			case 3:
+				if ($cross2.z < 0 ){
+					$degree2 = (-$degree2);
+				}
+				break;
+
+		}
+
+		float $degree;
+		if (abs($degree1) < abs($degree2)){
+			$degree = $degree1;
+		}else{
+			$degree = $degree2;
+		}
+
+		//print $degree1;print ("\n");
+		//print $degree2;print ("\n");
+		select -r $moveObject;
+
+		switch( $axis ){
+	case 1:
+		rotate -r -os $degree 0 0;
+		break;
+
+	case 2:
+		rotate -r -os 0 $degree 0;
+		break;
+
+	case 3:
+		rotate -r -os 0 0 $degree;
+		break;
+		}
+	}
+	//select $selectionList;
+}
+
+proc orientToEdgeToolCtx(){
+
+	scriptCtx
+		-title "Orient To Edge Tool"
+		//-image1 "polyWedgeFace.xpm"
+		-showManipulators false
+		-baseClassName "orientToEdgeTool"
+		-toolCursorType "tumble"
+		-totalSelectionSets 1
+
+		-cumulativeLists false
+		-expandSelectionList true
+		//-fcs ("snapNearPoint $moveObject $axis")
+		//-fcs ("rotationalAlignEdge $Selection1 $Selection2 $axis")
+		-fcs ("rotationalAlignEdge $Selection1 `optionVar -q rotationalAlignEdgeAxis`")
+
+		-setNoSelectionPrompt "Select an alignment vertex on object to rotate, then select an alignment edge on target object."
+		//-setSelectionPrompt ("Select additional vert " +
+		//"and press Enter to complete")
+		-setAutoToggleSelection true
+		-setAutoComplete true
+		-setSelectionCount 2
+		-polymeshVertex on
+		-polymeshEdge on	
+
+		-exitUponCompletion false
+		//-toolFinish ("rotationalAlignEdge $Selection1 $Selection2 2")
+		orientToEdgeTool;
+
+}
+
+
+
+global proc orientToVertToolProperties () {
+
+	// Linux Motif2.1 shrinks the checkBox, if the string is ""
+    // NT would tab over the blank (" ") string label.
+    // So...
+	string $emptyLabel = "";
+    if (`about -linux`) {
+        $emptyLabel = " ";
+    }
+
+	string $parent = `toolPropertyWindow -q -location`;
+
+	setUITemplate -pushTemplate OptionsTemplate;
+
+	setParent $parent;
+
+	columnLayout orientToVertTool;
+		frameLayout -collapsable true -collapse false
+			-l "Orient To Vertex Tool Settings";
+			columnLayout;
+
+				radioButtonGrp -nrb 3 
+					-l "Rotate Axis" 
+					-l1 "X"
+					-l2 "Y"
+					-l3 "Z"
+					rotationalAlignAxisRadio;
+			setParent ..;
+		setParent ..;
+	setParent ..;	
+
+	setUITemplate -popTemplate;
+}
+
+
+
+global proc orientToVertToolValues ( string $toolName ) {
+
+	string $parent = (`toolPropertyWindow -q -location` + "|orientToVertTool");
+	//string $parent = `toolPropertyWindow -q -location`;
+	setParent $parent;
+
+	// Initialize settings
+	//
+
+	int $axis = `optionVar -q rotationalAlignAxis`;
+	switch ($axis)
+	{
+		case 0:
+			 radioButtonGrp -e -sl 1 rotationalAlignAxisRadio;
+			 //$manipMode = 1;
+		break;
+		case 1:
+			radioButtonGrp -e -sl 2  rotationalAlignAxisRadio;
+			 //$manipMode = 2;
+		break;
+		case 2:
+			radioButtonGrp -e -sl 3 rotationalAlignAxisRadio;
+			 //$manipMode = 3;
+		break;
+	}
+
+	radioButtonGrp -e
+		-nrb 2
+		-on1 ("optionVar -iv rotationalAlignAxis 1")
+		-on2 ("optionVar -iv rotationalAlignAxis 2")
+		-on3 ("optionVar -iv rotationalAlignAxis 3")
+		-select $axis
+		rotationalAlignAxisRadio;
+
+	string $helpTag = "orientToVertTool";
+	toolPropertySetCommon $toolName "orientToVert.xpm" $helpTag;
+	toolPropertySelect "orientToVertTool";
+}
+
+	
+global proc rotationalAlign(string $Selection1[], string $Selection2[], int $axis){
+	//string $vertices[];
+	//$vertices = `ls -sl`;
+	
+	string $shape[] = `listRelatives -f -parent $Selection1[0]`;  //added full path
+	string $transform[] = `listRelatives -f -parent $shape[0]`;  //added full path
+	string $moveObject = $transform[0];
+
+	float $point1[3];
+	float $point2[3];
+	float $point3[3];
+
+	$point1 = `pointPosition $Selection1[0]`;
+
+	$point2 = `xform -q -ws -scalePivot $moveObject`;
+
+	$point3 = `pointPosition $Selection2[0]`;
+
+	float $floatDirection1[3];
+	float $floatDirection2[3];
+
+	for ($i = 0; $i < 3; $i++ ){
+		$floatDirection1[$i] = $point1[$i] - $point2[$i];
+		$floatDirection2[$i] = $point3[$i] - $point2[$i];
+		if( $i == ($axis-1) ){
+			$floatDirection1[$i] = 0;
+			$floatDirection2[$i] = 0;
+		}
+	}
+
+	vector $vectorDirection1;
+	vector $vectorDirection2;
+
+	$vectorDirection1 = $floatDirection1;
+	$vectorDirection2 = $floatDirection2;
+
+	vector $cross;
+	$cross = `cross $vectorDirection1 $vectorDirection2`;
+
+	normalize($vectorDirection1);
+	normalize($vectorDirection2);
+
+
+	float $angle;
+	$angle = `angle $vectorDirection1 $vectorDirection2`;
+
+	switch ($axis){
+		case 1:
+			if ($cross.x < 0 ){
+				$angle = (-$angle);
+			}
+			break;
+		case 2:
+			if ($cross.y < 0 ){
+				$angle = (-$angle);
+			}
+			break;
+		case 3:
+			if ($cross.z < 0 ){
+				$angle = (-$angle);
+			}
+			break;
+	}
+	$degree = rad_to_deg($angle);
+	print $degree;
+
+	switch($axis){
+		case 1:
+			rotate -r -os $degree 0 0 $moveObject;
+			break;
+
+		case 2:
+			rotate -r -os 0 $degree 0 $moveObject;
+			break;
+
+		case 3:
+			rotate -r -os 0 0 $degree $moveObject;
+			break;
+	}
+	//select $vertices;
+}
+
+
+proc orientToVertToolCtx(){
+	
+	scriptCtx
+		-title "Orient To Vertex Tool"
+		//-image1 "polyWedgeFace.xpm"
+		-showManipulators false
+		-baseClassName "orientToVertTool"
+		-toolCursorType "tumble"
+		-totalSelectionSets 2
+		
+		-cumulativeLists false
+		-expandSelectionList true
+		//-fcs ("snapNearPoint $moveObject $axis")
+		//-fcs ("rotationalAlign $Selection1 $Selection2 $axis")
+		-fcs ("rotationalAlign $Selection1 $Selection2 `optionVar -q rotationalAlignAxis`")
+
+		-setNoSelectionPrompt "Select alignment vertex on object to rotate."
+		//-setSelectionPrompt ("Select additional vert " +
+		//	"and press Enter to complete")
+		-setAutoToggleSelection true
+		-setAutoComplete true
+		-setSelectionCount 1
+		-polymeshVertex true
+		
+		-setNoSelectionPrompt "Select alignment vertex on target object."
+		//-setSelectionPrompt ("Select additional vert " +
+		//	"about and press Enter to complete")
+		-setAutoToggleSelection true
+		-setAutoComplete true
+		-setSelectionCount 1
+		-polymeshVertex true		
+		
+		-exitUponCompletion false
+		//-toolFinish ("rotationalAlign $Selection1 $Selection2 2")
+		orientToVertTool;
+	
+}
+
+
+global proc orientTool()
+	{
+	if (`optionVar -q LT_orientToolType` == "vert")
+		{
+		if (!`contextInfo -exists orientToVertTool`)
+			orientToVertToolCtx;
+		setToolTo orientToVertTool;
+		}
+
+	else if (`optionVar -q LT_orientToolType` == "edge")
+		{
+		if (!`contextInfo -exists orientToEdgeTool`)
+			orientToEdgeToolCtx;
+		setToolTo orientToEdgeTool;
+		}
+	else
+		warning ("Can't find OrientTool");
+	}

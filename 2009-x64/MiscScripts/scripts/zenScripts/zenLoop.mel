@@ -1,0 +1,658 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+requires "decomposeMatrix";
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//ZenLoop
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//creates a curve running through vertices which share an edge loop, returns the curve name
+//type 0 is arc, type 1 is an edit point curve,type 2 is a control point curve
+proc string[] zenCurveFromEdgeLoopPoints(string $points[],int $selType, int $curveType, int $keepHistory)
+{
+	string	$objs[]=`ls -o $points`;
+	vector	$allPointPos[];
+	string	$arcCenter;
+	string	$arc;
+	int	$curveDegree=size($points)-1;
+	
+		if($curveDegree>3) $curveDegree=3;
+		
+	float 	$pointPos[];
+	vector 	$pointPosVector;
+	string	$endVerts[];
+	string	$returnCurve;
+	string	$curveCreationCommand="curve -ws -d "+(string($curveDegree))+" ";
+	string	$loftCurves[];
+	string	$loftNode;
+	string	$curveFromSurfaceIso;
+	string	$rebuildSurfaceNode;
+	string	$locators[];
+	float	$locatorScale;
+	string	$sampleEdges[];
+	string	$curveTr;
+	string	$clusterNodes[];
+	string	$returnCurveTr;
+	string	$locatorShape;
+	string	$pointMatrixMultNode1;
+	string	$pointMatrixMultNode2;
+	
+	//find size for locators
+		if($keepHistory)
+		{
+			$sampleEdges=`polyListComponentConversion -te $points`;
+			$locatorScale=zenAverageEdgeLength(`ls -fl $sampleEdges`);
+			$locatorScale=$locatorScale/3;
+		}
+		
+		if(size($points)!=3 && $curveType==1)
+			$curveType=2;
+		
+	//get point positions
+		if($selType)
+		{
+			for($i=0;$i<size($points);$i++)
+			{
+				$pointPos=`polyEditUV -q $points[$i]`;
+				$allPointPos[$i]=<<$pointPos[0],$pointPos[1],0>>;
+			}
+		}
+		else
+		{
+			for($i=0;$i<size($points);$i++)
+			{
+				$pointPos=`xform -q -ws -t $points[$i]`;
+				$allPointPos[$i]=<<$pointPos[0],$pointPos[1],$pointPos[2]>>;
+			}
+		}
+		
+		switch($curveType)
+		{
+		
+			//arc curve
+			case 1:
+				$arc=`createNode makeThreePointCircularArc`;
+				$returnCurveTr=`createNode -n "zenLoopCurve#" transform`;
+				$returnCurve=`createNode -p $returnCurveTr -n "zenLoopCurveShape#" nurbsCurve`;
+				
+				$pointPosVector=$allPointPos[0];
+				
+				setAttr ($arc+".point1") ($pointPosVector.x) ($pointPosVector.y) ($pointPosVector.z);
+				
+				$pointPosVector=$allPointPos[1];
+				
+				setAttr ($arc+".point2")  ($pointPosVector.x) ($pointPosVector.y) ($pointPosVector.z);	
+				
+				$pointPosVector=$allPointPos[2];
+				
+				setAttr ($arc+".point3")  ($pointPosVector.x) ($pointPosVector.y) ($pointPosVector.z);
+				
+				if($keepHistory)
+				{
+					$pointPosVector=$allPointPos[0];
+					$locators[0]=zenReturnFirstStringItem(`spaceLocator -n ("zenLoopLocator#")`);
+					setAttr	($locators[0]+".t") ($pointPosVector.x) ($pointPosVector.y) ($pointPosVector.z);
+					connectAttr ($locators[0]+".t") ($arc+".point1");
+					$locatorShape=zenReturnFirstStringItem(`listRelatives -s -ni  $locators[0]`);
+					setAttr ($locatorShape+".localScale") $locatorScale $locatorScale $locatorScale;
+					
+					$pointPosVector=$allPointPos[1];
+					$locators[1]=zenReturnFirstStringItem(`spaceLocator -n ("zenLoopLocator#")`);
+					setAttr	($locators[1]+".t") ($pointPosVector.x) ($pointPosVector.y) ($pointPosVector.z);
+					connectAttr ($locators[1]+".t") ($arc+".point2");
+					$locatorShape=zenReturnFirstStringItem(`listRelatives -s -ni  $locators[1]`);
+					setAttr ($locatorShape+".localScale") $locatorScale $locatorScale $locatorScale;
+					
+					$pointPosVector=$allPointPos[2];
+					$locators[2]=zenReturnFirstStringItem(`spaceLocator -n ("zenLoopLocator#")`);
+					setAttr	($locators[2]+".t") ($pointPosVector.x) ($pointPosVector.y) ($pointPosVector.z);
+					connectAttr ($locators[2]+".t") ($arc+".point3");
+					$locatorShape=zenReturnFirstStringItem(`listRelatives -s -ni  $locators[2]`);
+					setAttr ($locatorShape+".localScale") $locatorScale $locatorScale $locatorScale;
+				}				
+				
+				connectAttr ($arc+".oc") ($returnCurve+".cr");
+				
+				if(`objExists $returnCurve`==0)
+				{
+					catch(`delete $returnCurve`);
+					$curveType=2;
+				}
+				else break;
+			
+			//edit point curve
+			case 2:
+				$returnCurveTr=`createNode -n "zenLoopCurve#" transform`;
+				$returnCurve=`createNode -p $returnCurveTr -n "zenLoopCurveShape#" nurbsCurve`;
+				$loftNode=`createNode loft`;
+				$rebuildSurfaceNode=`createNode rebuildSurface`;
+				$curveFromSurfaceIso=`createNode curveFromSurfaceIso`;
+				setAttr ($curveFromSurfaceIso+".isoparmDirection") 0;
+				setAttr ($loftNode+".uniform") 0;
+				
+				for($i=0;$i<size($points);$i++)
+				{
+					$pointPosVector=$allPointPos[$i];
+					
+					$locators[$i]=zenReturnFirstStringItem(`spaceLocator -n ("zenLoopLocator#")`);
+					setAttr	($locators[$i]+".t") ($pointPosVector.x) ($pointPosVector.y) ($pointPosVector.z);
+					//setAttr ($locators[$i]+".inheritsTransform") off;
+					$locatorShape=zenReturnFirstStringItem(`listRelatives -s -ni  $locators[$i]`);
+					setAttr ($locatorShape+".localScale") $locatorScale $locatorScale $locatorScale;
+					
+					$loftCurves[$i]=`curve -os -d 1 -p 0 0 0 -p 0 0 0`;
+					$curveTr=$loftCurves[$i];
+					$loftCurves[$i]=zenReturnFirstStringItem(`listRelatives -s -ni $curveTr`);			
+					//parent -r -s $loftCurves[$i] $locators[$i];
+					parent -add -s $loftCurves[$i] $returnCurveTr;
+					delete $curveTr;
+					
+					$pointMatrixMultNode1=`createNode pointMatrixMult`;
+					$pointMatrixMultNode2=`createNode pointMatrixMult`;
+					
+					connectAttr ($locators[$i]+".t") ($pointMatrixMultNode1+".inPoint");
+					connectAttr ($locators[$i]+".t") ($pointMatrixMultNode2+".inPoint");
+					
+					connectAttr ($returnCurve+".worldInverseMatrix") ($pointMatrixMultNode1+".inMatrix");
+					connectAttr ($returnCurve+".worldInverseMatrix") ($pointMatrixMultNode2+".inMatrix");
+					
+					connectAttr ($pointMatrixMultNode1+".output") ($loftCurves[$i]+".controlPoints[0]");
+					connectAttr ($pointMatrixMultNode2+".output") ($loftCurves[$i]+".controlPoints[1]");
+					
+					setAttr ($loftCurves[$i]+".intermediateObject") 1;
+					
+					connectAttr ($loftCurves[$i]+".worldSpace[0]") ($loftNode+".inputCurve["+(string($i))+"]");
+				}
+				
+				connectAttr ($loftNode+".outputSurface") ($curveFromSurfaceIso+".inputSurface");
+				connectAttr ($curveFromSurfaceIso+".outputCurve") ($returnCurve+".create");
+				break;
+			
+			//control point curve
+			case 3:
+				for($i=0;$i<size($points);$i++)
+				{
+					$pointPosVector=$allPointPos[$i];
+					$curveCreationCommand=$curveCreationCommand+"-p "+(string($pointPosVector.x))+" "+(string($pointPosVector.y))+" "+(string($pointPosVector.z))+" ";
+				}
+				
+				$returnCurveTr=`eval $curveCreationCommand`;
+				$returnCurveTr=`rename $returnCurveTr "zenLoopCurve#"`;
+				$returnCurve=zenReturnFirstStringItem(`listRelatives -ni -s $returnCurveTr`);
+				break;
+		}
+				
+	return	`stringArrayCatenate {$returnCurve} $locators`;
+}
+
+proc zenSnapVertsToCurve(string $curveAttr, string $verts[])
+{
+	string	$lofted=`createNode loft`;
+	
+		connectAttr $curveAttr ($lofted+".inputCurve[0]");
+		connectAttr $curveAttr ($lofted+".inputCurve[1]");
+	
+	string	$cpNode=`createNode closestPointOnSurface`;
+		connectAttr -f ($lofted+".outputSurface") ($cpNode+".inputSurface");
+		
+	string 	$vert;
+		for($vert in $verts)
+		{
+			float	$inPos[]=`xform -q -ws -t $vert`;
+				setAttr ($cpNode+".inPosition") $inPos[0] $inPos[1] $inPos[2];
+			float 	$pos[]=`getAttr ($cpNode+".position")`;
+				xform -ws -t $pos[0] $pos[1] $pos[2] $vert;
+		}
+		
+		disconnectAttr $curveAttr ($lofted+".inputCurve[0]");
+		disconnectAttr $curveAttr ($lofted+".inputCurve[1]");
+		
+		delete $cpNode;	
+}
+
+proc zenSnapUVsToCurve(string $curveAttr, string $uvPoints[])
+{
+	string	$lofted=`createNode loft`;
+	
+		connectAttr $curveAttr ($lofted+".inputCurve[0]");
+		connectAttr $curveAttr ($lofted+".inputCurve[1]");
+	
+	string	$cpNode=`createNode closestPointOnSurface`;
+		connectAttr -f ($lofted+".outputSurface") ($cpNode+".inputSurface");
+		
+	string 	$uv;
+		for($uv in $uvPoints)
+		{
+			float	$inPos[]=`polyEditUV -q $uv`;
+			
+				setAttr ($cpNode+".inPosition") $inPos[0] $inPos[1] 0;
+				
+			float 	$pos[]=`getAttr ($cpNode+".position")`;
+			
+				polyEditUV -r 0 -u $pos[0] -v $pos[1] $uv;
+		}
+		
+		disconnectAttr $curveAttr ($lofted+".inputCurve[0]");
+		disconnectAttr $curveAttr ($lofted+".inputCurve[1]");
+		
+		delete $cpNode;
+}
+
+global proc string zenWire(string $deformCurveAttr,string $baseCurveAttr,string $verts[])
+{
+	string	$obj=zenReturnFirstStringItem(`ls -o $verts`);
+	string	$objTr=zenReturnFirstStringItem(`listRelatives -p -pa $obj`);
+		
+		//create wire set and connections
+		select -clear;		
+	string	$wireNode=zenReturnFirstStringItem(`wire -af -dds 0 (1.#INF) $verts`);
+	
+		connectAttr -f $baseCurveAttr ($wireNode+".baseWire[0]");
+		connectAttr -f $deformCurveAttr ($wireNode+".deformedWire[0]");	
+		
+	string	$newGeometry=zenReturnFirstStringItem(`listConnections -d 1 -s 0 -sh 1 ($wireNode+".outputGeometry")`);
+		print $newGeometry;print "\n";
+	
+	string	$oldGeometry=`rename $obj (zenNumberSuffix($obj))`;
+		$newGeometry=`rename $newGeometry $obj`;		
+		
+	return	$wireNode;
+}
+
+//distributes vertices along a curve
+//if $affix==1 creates a wire deformer also
+global proc zenDistributeVertsAlongCurve
+(
+	string	$vertices[],
+	string	$inputCurve,
+	int	$distributionType,//1=uniform 3=chordLength 2=closestPoint
+	string	$chordLengthObj,
+	int	$affix,
+	int	$rebuild,
+	int	$sampling//an integer of 1 or more
+)
+{
+	int	$edgeNum=size(`ls -fl $vertices`)-1;
+	string	$curveShape=zenReturnFirstStringItem(stringArrayRemoveDuplicates(stringArrayCatenate(`listRelatives -s -ni $inputCurve`,`ls -type nurbsCurve $inputCurve`)));
+	string	$curveTr=zenReturnFirstStringItem(stringArrayRemoveDuplicates(stringArrayCatenate(`listRelatives -p $inputCurve`,`ls -type transform $inputCurve`)));
+	string	$obj=zenReturnFirstStringItem(`ls -o $vertices`);
+	float	$vertNum=(size($vertices));
+	float	$fraction=(1/($vertNum-1));
+;	string	$edges[];
+	float	$pointRatio[];
+	float 	$curvePoint[];
+	string	$pointOnCurveInfoNode;
+	string	$pointMatrixMultNode;
+	string	$rebuildNode;
+	string	$rebuiltShape;
+	string	$baseShape;
+	
+		//rebuild
+		$rebuildNode=`createNode rebuildCurve`;
+		
+		connectAttr ($curveShape+".local") ($rebuildNode+".inputCurve");
+
+		setAttr ($rebuildNode+".rebuildType") 0;
+		setAttr ($rebuildNode+".spans") ($edgeNum*$sampling);
+		setAttr ($rebuildNode+".degree") `getAttr ($curveShape+".degree")`;
+		setAttr ($rebuildNode+".keepTangents") 1;
+		setAttr ($rebuildNode+".keepEndPoints") 1;
+		setAttr ($rebuildNode+".keepRange") 0;
+			
+		if($distributionType==2)
+		{
+			zenSnapVertsToCurve ($rebuildNode+".outputCurve") $vertices;
+		}
+		else
+		{
+			$pointOnCurveInfoNode=`createNode pointOnCurveInfo`;
+			$pointMatrixMultNode=`createNode pointMatrixMult`;
+
+			connectAttr ($rebuildNode+".outputCurve") ($pointOnCurveInfoNode+".inputCurve");
+			connectAttr ($curveShape+".worldMatrix[0]") ($pointMatrixMultNode+".inMatrix");
+			connectAttr ($pointOnCurveInfoNode+".position") ($pointMatrixMultNode+".inPoint");
+
+			if($distributionType==3)
+			{
+				$pointRatio={0};
+				$edges=`zenEdgeLoopFromVertLoop $vertices`;
+				if($chordLengthObj!="") $edges=`zenMimicSelection $edges $chordLengthObj`;
+				$pointRatio=`zenEdgeLengthRatios $edges`;
+				$pointRatio=zenFloatArrayCatenate({0.00},$pointRatio);
+			}
+
+			for($i=0;$i<size($vertices);$i++)
+			{
+				if($distributionType==3)
+				{
+					setAttr ($pointOnCurveInfoNode+".parameter") ($pointRatio[$i]);
+				}
+				else
+				if($distributionType==1)
+				{
+					setAttr ($pointOnCurveInfoNode+".parameter") ($i*$fraction);
+				}
+
+				$curvePoint=`getAttr ($pointMatrixMultNode+".output")`;
+
+				move -a -ws ($curvePoint[0]) ($curvePoint[1]) ($curvePoint[2]) $vertices[$i];
+			}
+			
+			disconnectAttr ($rebuildNode+".outputCurve") ($pointOnCurveInfoNode+".inputCurve");
+			delete $pointOnCurveInfoNode;
+			delete $pointMatrixMultNode;
+		}
+	
+		if($affix)
+		{
+			$rebuiltShape=`createNode -p $curveTr nurbsCurve`;
+			connectAttr ($rebuildNode+".outputCurve") ($rebuiltShape+".create");
+
+			setAttr ($rebuiltShape+".intermediateObject") 0;
+			setAttr ($curveShape+".intermediateObject") 1;
+
+			//create wire deformer
+			zenWire ($rebuildNode+".outputCurve") ($rebuiltShape+".local") $vertices;
+			
+
+			setAttr ($rebuiltShape+".intermediateObject") 1;
+			setAttr ($curveShape+".intermediateObject") 0;
+	
+			zenDeferCommand("disconnectAttr \""+$rebuildNode+".outputCurve\" \""+$rebuiltShape+".create\";\n");
+		}
+}
+
+//distributes uvPoints evenly along a curve
+proc zenDistributeUVsAlongCurve(string $uvPoints[],string $inputCurve, int $distributionType, string $chordLengthObj)
+{
+	int	$edgeNum=size(`ls -fl $uvPoints`)-1;
+	float	$fraction=(1/(float($edgeNum)));
+;	string	$edges[];
+	float	$pointRatio[];
+	float 	$curvePoint[];
+	string	$verts[];
+	
+	string	$curveShape=zenReturnFirstStringItem(stringArrayRemoveDuplicates(stringArrayCatenate(`listRelatives -s -ni $inputCurve`,`ls -type nurbsCurve $inputCurve`)));
+	string	$curveTr=zenReturnFirstStringItem(stringArrayRemoveDuplicates(stringArrayCatenate(`listRelatives -p $inputCurve`,`ls -type transform $inputCurve`)));
+	
+	string	$pointOnCurveInfoNode;
+	string	$pointMatrixMultNode;
+
+		//rebuild
+		$rebuildNode=`createNode rebuildCurve`;
+
+		connectAttr ($curveShape+".local") ($rebuildNode+".inputCurve");
+
+		setAttr ($rebuildNode+".rebuildType") 0;
+		setAttr ($rebuildNode+".spans") ($edgeNum*10);
+		setAttr ($rebuildNode+".degree") `getAttr ($curveShape+".degree")`;
+		setAttr ($rebuildNode+".keepTangents") 1;
+		setAttr ($rebuildNode+".keepEndPoints") 1;
+		setAttr ($rebuildNode+".keepRange") 0;
+
+		if($distributionType==2)
+		{
+			zenSnapUVsToCurve ($rebuildNode+".outputCurve") $uvPoints;
+		}
+		else
+		{
+			$pointOnCurveInfoNode=`createNode pointOnCurveInfo`;
+			$pointMatrixMultNode=`createNode pointMatrixMult`;
+
+			connectAttr ($rebuildNode+".outputCurve") ($pointOnCurveInfoNode+".inputCurve");
+			connectAttr ($curveShape+".worldMatrix[0]") ($pointMatrixMultNode+".inMatrix");
+			connectAttr ($pointOnCurveInfoNode+".position") ($pointMatrixMultNode+".inPoint");
+
+			if($distributionType==3)
+			{
+				for($i=0;$i<size($uvPoints);$i++)
+				{
+					$verts[$i]=zenReturnFirstStringItem(`polyListComponentConversion -tv $uvPoints[$i]`); 
+				}
+
+				$pointRatio={0};
+				$edges=`zenEdgeLoopFromVertLoop $verts`;
+				$chordLengthObj=strip($chordLengthObj);
+				if($chordLengthObj!="") $edges=`zenMimicSelection $edges $chordLengthObj`;
+				$pointRatio=`zenEdgeLengthRatios $edges`;
+				$pointRatio=zenFloatArrayCatenate({0.00},$pointRatio);
+			}
+
+			for($i=0;$i<size($uvPoints);$i++)
+			{
+				if($distributionType==3)
+				{
+					setAttr ($pointOnCurveInfoNode+".parameter") ($pointRatio[$i]);
+				}
+				else
+				if($distributionType==1)
+				{
+					setAttr ($pointOnCurveInfoNode+".parameter") ($i*$fraction);
+				}
+
+				$curvePoint=`getAttr ($pointMatrixMultNode+".output")`;
+
+				polyEditUV -r 0 -u ($curvePoint[0]) -v ($curvePoint[1]) $uvPoints[$i];
+			}
+					
+			delete $pointOnCurveInfoNode;
+			delete $pointMatrixMultNode;
+		}
+
+}
+
+//create a curve between selected vertices and distribute the vert loops which connect them along this curve
+global proc zenLoop(int $type, int $distributionType,int $keepCurve, string $zenChordLengthObj)
+{
+	global	int $zenOptions_safeUVLoop;
+	
+	global	int $zenVertDistances[];//stores vertex distance information from "zenSortVertsByDistance" to prevent the need to re-measure	
+		clear $zenVertDistances;
+	
+		$zenChordLengthObj=strip($zenChordLengthObj);//clenup user entry
+		
+		waitCursor -state on;
+		
+	string	$uniqueName;
+	string 	$wireGroup[];
+	string	$sel[]=`ls -sl -fl`;
+	
+	//determine input type
+	string	$inPoints[]=`polyListComponentConversion -fv -tv`;
+	int	$selType;
+	string	$proxyPoints[];
+	string	$proxyMesh;
+	
+		if(size($inPoints)>0) //selection is vertices
+		{
+			$selType=0;			
+		}
+		else //see if selection is uv points	
+		{
+			$inPoints=`polyListComponentConversion -fuv -tuv $sel`;
+			if(size($inPoints)==0)
+				error("You must select either vertices or uv points.");
+			else //selection is uv points			
+				$selType=1;
+		}
+			
+	string	$obj[]=`ls -o $inPoints`;
+		$obj=`stringArrayRemoveDuplicates $obj`;
+		
+		if(size($obj)>1) error("Selection must be on one mesh.\n");
+		
+	string	$endPoints[];
+	string	$points[];
+	string	$guide[];
+	
+	//organize points
+		if($selType) //uv selection
+		{
+			$endPoints=`ls -fl $inPoints`;
+			
+			if(size($endPoints)>2)
+			{	
+				if($zenOptions_safeUVLoop)
+					$endPoints=`zenFindEndUVs $inPoints`;
+				else
+					$endPoints=`zenFindEndUVsFast $inPoints`;
+					
+				$inPoints=`zenSortUVsByDistance $endPoints[0] $inPoints`;
+			}
+			else
+				$inPoints=$endPoints;
+		}
+		else //vertex selection
+		{
+			$endPoints=`ls -fl $inPoints`;
+			if(size($endPoints)>2)
+			{
+				$endPoints[0]=`zenFindEndVert $inPoints`;
+				$inPoints=`zenSortVertsByDistance $endPoints[0] $inPoints`;
+			}
+			else
+				$inPoints=$endPoints;
+		}
+
+	//find loop path connecting input points
+	string	$partialLoop[];
+	
+		if($selType)
+		//uv selection
+		{
+			for($i=1;$i<size($inPoints);$i++)
+			{
+				$partialLoop=`zenShortestUVPath $inPoints[$i-1] $inPoints[$i]`;
+				$points=`stringArrayCatenate $points $partialLoop`;
+			}
+			
+		}
+		else 
+		//vertex selection
+		{
+			for($i=1;$i<size($inPoints);$i++)
+			{
+				$partialLoop=`zenOrderedVertexLoop {$inPoints[$i-1],$inPoints[$i]} $zenVertDistances[$i]`;
+				$points=`stringArrayCatenate $points $partialLoop`;
+				
+				//free up the memory used by $zenVertDistances
+				clear $zenVertDistances;
+			}
+		}
+
+		$points=`stringArrayRemoveDuplicates $points`;
+	int	$edgeNum=size($points)-1;
+	
+		//create curve
+		$guide=`zenCurveFromEdgeLoopPoints $inPoints $selType $type $keepCurve`;
+	string	$guideCurveTr=zenReturnFirstStringItem(`listRelatives -p $guide[0]`);
+	string	$guideCurve=$guide[0];
+	int	$sampling;	
+	int	$rebuild=1;
+	
+		//distribute points along curve
+		if($selType) //uv selection
+		{
+			zenDistributeUVsAlongCurve $points $guideCurve $distributionType $zenChordLengthObj;
+			
+			delete -ch $guide;
+			delete -ch $guideCurveTr;
+			delete `zenReturnTopLevelTransforms $guide`;
+		}
+		else //vertex selections
+		{
+			if($type==1)
+				$sampling=1;
+			else
+				$sampling=10;
+		
+			zenDistributeVertsAlongCurve $points $guideCurve $distributionType $zenChordLengthObj $keepCurve $rebuild $sampling;		
+		
+			if(!$keepCurve)
+			{
+				delete -ch $guide;
+				delete -ch $guideCurveTr;
+				delete `zenReturnTopLevelTransforms $guide`;
+			}
+		}		
+		
+		selectMode -co;
+		
+	string	$locators[];
+	string	$curveGroup=zenReturnFirstStringItem(zenReturnTopLevelTransforms({$guideCurveTr}));
+	int	$selectLoc;
+	string	$cvs[];
+	int	$selectPriorityCurve;
+	int	$selectPriorityMesh;
+	int	$selectPriorityLocator;
+	string	$resetSelectPriority="";
+	
+		if(!$selType && $keepCurve && `objExists $guide[0]`)
+		{
+			if($type==3)
+			{
+				$cvs=`ls -fl ($guideCurve+".cv[*]")`;
+				select ($guideCurve+".cv["+(trunc(size($cvs)/2))+"]");
+				
+				//change selection priority
+				$selectPriorityCurve=`selectPriority -q -nc`;
+				$selectPriorityMesh=`selectPriority -q -p`;
+				
+				if(`selectPriority -q -nc`<=`selectPriority -q -p`) selectPriority -nc (`selectPriority -q -p`+1);
+				
+				$resetSelectPriority=
+				(
+					"selectPriority -nc "+(string($selectPriorityCurve))+";\n"
+				);
+			}
+			else
+			{
+				selectMode -o;
+				$locators=`stringArrayRemove {$guide[0]} $guide`;
+				parent $locators $curveGroup;
+				$selectLoc=ceil(size($locators)/2);
+				catch(`select $locators[$selectLoc]`);
+				
+				//change selection priority
+				$selectPriorityCurve=`selectPriority -q -nc`;
+				$selectPriorityMesh=`selectPriority -q -p`;
+				$selectPriorityLocator=`selectPriority -q -xyz`;
+				
+				if(`selectPriority -q -nc`<=`selectPriority -q -p`) selectPriority -nc (`selectPriority -q -p`+1);
+				if(`selectPriority -q -xyz`<=`selectPriority -q -nc`) selectPriority -xyz (`selectPriority -q -nc`+1);
+				
+				$resetSelectPriority=
+				(
+					"selectPriority -nc "+(string($selectPriorityCurve))+";\n"+
+					"selectPriority -xyz "+(string($selectPriorityLocator))+";\n"
+				);			
+				
+			}
+
+			
+			//creates a scriptJob which will delete the manipulator curve if history is deleted
+			//and reset selection priorities if they have been changed
+			zenHistoryCleanup $resetSelectPriority {$curveGroup} ($obj[0]+".inMesh");
+		}
+		else
+		//select uv loop
+		if($selType)
+			select -r $points;
+		else
+		//restore original selection
+			select -r $sel;
+		
+		waitCursor -state off;
+}

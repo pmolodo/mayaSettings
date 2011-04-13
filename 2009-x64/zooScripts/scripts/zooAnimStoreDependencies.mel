@@ -1,0 +1,20 @@
+global proc string[] zooAnimStoreDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $helpDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $return[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooAnimFile";
+	$melDependencies[( `size $melDependencies` )] = "zooAnimStoreUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_str";
+	$melDependencies[( `size $melDependencies` )] = "zooPresetManager";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooXferAnimUtils";
+	//$iconDependencies[( `size $iconDependencies` )] = "zooAnimStore.xpm";
+
+	if( $mode == "-deps" ) return $melDependencies;
+	if( $mode == "-docs" ) return $helpDependencies;
+	if( $mode == "-icons" ) return $iconDependencies;
+	if( $mode == "-scripts" ) return $melDependencies;
+	return $return;
+	}

@@ -1,0 +1,381 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	OMT_to_spinEdge.mel						///
+///  AUTHOR: 	Geoff Wedig (gwedig@sporadicenterprises.net)			///
+///										///
+///  UDTATE LOG:								///
+///     2005.02.19: 	0.1a by Geoff Wedig   					///
+///	 - Initial implementation released into the wild			///
+///										///
+///     2005.02.25  	0.11a by Geoff Wedig					///   
+///	 - Revised to try to track down the 'multiple objects' glitch		///
+///										///
+///     2005.03.10  	0.2 by Geoff Wedig     					///
+///	 - Being transfered into the OM_Toolbox project.			///
+///										///
+///										///
+///  DEPENDENCIES:								///
+///   	None									///
+///										///
+///  PURPOSE AND USE:								///
+///	Given either two faces with a single shared edge, or an edge which 	///
+///	separates a pair of faces, moves the endpoints of the edge one unit 	///
+///	along the path described by the perimeter of the two faces.		///
+///										///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Alias Maya toolbox			///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+// ========================
+// Errors
+// ========================
+//
+// Because errors can be invoked at more than one place within the code, they are sorted 
+// out to the top, to make certain all errors of similar type are presented in the same way.
+
+// This error is if the user has selected the wrong number or type of arguments 
+proc bad_sel_err()
+{
+    error "You must select exactly 2 faces or 1 edge to use spinEdge";
+}
+
+// An edge which doesn't have exactly two faces has been selected
+proc border_edge_err()
+{
+    error "Selected Edge must have exactly two faces (possible non-manifold or border edge)";
+}
+
+// Faces are non-adjacent, or adjacent at more than one edge
+proc adj_err()
+{
+    error "Faces must be adjacent with exactly one edge to use spinEdge";
+}
+
+// Non-manifold geometry present at the location of spin
+proc non_manifold_err()
+{
+    error "There are non-manifold properties to this selection inhibiting spinEdge";
+}
+
+// ========================
+// Utilities
+// ========================
+//
+// Often called functions that make life just a bit less complex.  Some of these might be useful 
+// general utility functions, or could be enhanced as such
+
+// This expands a list of faces, edges and/or vertices, so that each element has its own entry
+// in the list.  Ie, it removes the ":" syntax Maya often (annoyingly) uses for its poly functions
+proc expandObjList(string $objs[], string $exp_objs[])
+{
+    string $exp_objs[] = `filterExpand -ex true -sm 34 -sm 31 -sm 32 $objs`;
+}
+
+// Given a selection, returns the index of the selection.  Ie, "obj.vtx[243]" returns
+// 243 as a string.
+proc string convert2Index(string $Obj)
+{
+    string $Index[];
+    
+    tokenize($Obj, "[]", $Index);
+
+    return $Index[1];
+}
+
+// Given an edge and a vertex, determines if that vertex is at the beginning (0% along) or
+// the end (100% along) the length of the edge, and returns that value (0 or 1)
+//
+// Note that it assumes that the vertex is, in fact, on that edge.  Behavior if not
+// should be considered undefined.
+proc float edgeDistance(string $edge, string $vtx)
+{
+    string $vtxID = convert2Index($vtx);
+    
+    string $EdgeInfo[] = `polyInfo -ev $edge`;
+    
+    string $eVtxIDs[];
+    
+    tokenize($EdgeInfo[0], " ", $eVtxIDs);
+    
+    if     ($vtxID == $eVtxIDs[2]) return 0;
+    else                           return 1;
+    
+}
+
+// Given a selection, returns the type of the selection.   Ie, "obj.vtx[243]" returns
+// "vtx"
+proc string getType (string $whatisthis)
+{
+    string $thisis[];
+    tokenize($whatisthis, ".[", $thisis);
+    return $thisis[1];	
+}
+
+// Finds the first occurance of an item within an array and returns its index.
+proc int findFirstIn(string $item, string $array[])
+
+{
+    int $i = 0;
+    for ($i = 0; $i < size($array); ++$i)
+	{
+        if ($array[$i] == $item)
+            return $i;
+	}
+
+    return -1;
+}
+
+// Returns a (non-filtered) list of the edges shared between a group of faces.
+// Removes the border edges shared by only one face.  There should be an easier way to do
+// this, but I haven't found it.  Perhaps using sets?
+proc string[] getSharedEdges(string $faces[])
+{
+    // Get the internal edges in preparation for finding shared edges, which includes border edges
+    // Get the border edges too
+    
+    string $internalEdges[];
+    
+    expandObjList(`polyListComponentConversion -te -in $faces`, $internalEdges);
+    
+    // The internal edges may include edges which are boundaries.  These must be ignored
+    
+    string $sharedEdges[];
+    int $sharedEdgeCount = 0;
+    
+    int $i = 0;
+    for($i = 0; $i < size($internalEdges); ++$i)
+    {
+        string $edgeFaces[];
+        
+        expandObjList(`polyListComponentConversion -tf $internalEdges[$i]`, $edgeFaces);
+
+        if(size($edgeFaces) != 1)
+        {
+            $sharedEdges[$sharedEdgeCount] = $internalEdges[$i];
+            ++$sharedEdgeCount;
+        }
+    }
+    
+    return $sharedEdges;
+}
+
+// ========================
+// Check Routines
+// ========================
+//
+// These routines do a basic check of the selection to verify that it's valid
+
+// Checks the faces selected, verifies that there are two of them, that they're both faces
+proc checkFaces(string $Selection[])
+{
+    // If we've got faces, we must make sure there are two and that they are adjacent
+    
+    if (size($Selection) != 2)
+    {
+        bad_sel_err();
+    }
+    
+    // Verify that the other selction is also a face
+    
+    $SelectionType = getType($Selection[1]);
+    
+    if ($SelectionType != "f")
+    {
+        bad_sel_err();
+    }
+}
+
+// Checks that there is one edge selected and that it not a border edge or a non-manifold edge
+proc checkEdge(string $Selection[])
+{
+    // Verify that there's only 1 edge selected
+    if (size($Selection) != 1)
+    {
+        bad_sel_err();
+    }
+    
+    // Check that there's two faces.  Otherwise non-manifold geometry
+    string $Faces[];
+    
+    expandObjList(`polyListComponentConversion -tf $Selection[0]`, $Faces);
+
+    if (size($Faces) == 1)
+    {
+        border_edge_err();
+    }
+
+    if (size($Faces) != 2)
+    {
+        non_manifold_err();
+    }
+}
+
+// ========================
+// Main Procedure
+// ========================
+
+global proc OMT_to_spinEdge()
+{
+    // Primary values to be determined, the edge which is being spun and the faces which surround it
+    // Either might be what's selected.
+    
+    string $SpinEdge;
+    string $SpinFaces[2];
+
+    // Determine if we have faces or an edge selected, and find the other one
+    
+    string $Selection[] = `ls -sl -fl`;
+    
+    string $SelectionType = getType($Selection[0]);
+    
+    if ($SelectionType == "f")
+    {
+        checkFaces($Selection);
+        
+        // Get the shared edges
+        
+        string $sharedEdges[] = getSharedEdges($Selection);
+        
+        // Test to make sure there's only one shared edge.
+        
+        if(size($sharedEdges) != 1)
+        {
+            adj_err();
+        }
+        
+        // Verify that the shared edge has exactly two faces connected
+        string $Faces[];
+        
+        expandObjList(`polyListComponentConversion -tf $sharedEdges[0]`, $Faces);
+
+        if (size($Faces) != 2)
+        {
+            non_manifold_err();
+        }
+
+        $SpinEdge  = $sharedEdges[0];
+        $SpinFaces = $Selection;
+    }
+    else
+    {
+        // Otherwise, we hopefully are looking at an edge.
+        
+        if($SelectionType == "e")
+        {
+            checkEdge($Selection);
+            
+            $SpinEdge  = $Selection[0];
+            
+            expandObjList(`polyListComponentConversion -tf $Selection[0]`, $SpinFaces);
+            
+            // Make sure the faces only have the single edge shared
+            string $sharedEdges[] = getSharedEdges($SpinFaces);
+        
+            // If there's too many shared edges, we've got a problem.
+            
+            if(size($sharedEdges) != 1)
+            {
+                adj_err();
+            }
+        }
+        else
+        {
+            bad_sel_err();
+        }
+    }    
+
+    // We've got our faces and our edge.  Get a few other critical data items
+    
+    string $EdgeVtxs[];
+    
+    expandObjList(`polyListComponentConversion -tv $SpinEdge`, $EdgeVtxs);
+
+    string $FaceVtxs[];
+    
+    expandObjList(`polyListComponentConversion -tv $SpinFaces`, $FaceVtxs);
+    
+    string $Object[];
+    
+    tokenize($SpinEdge, ".", $Object);
+    
+    // Delete the spin edge.  We'll recreate it between two new vertices
+    
+    polyDelEdge $SpinEdge;
+
+    // Get the resulting big face
+    
+    string $BigFace[] = `polyListComponentConversion -tf -in $FaceVtxs`;
+    
+    // Get the face vertices in order
+    
+    string $OrderedFaceVtxs[];
+
+    string $FaceInfo[] = `polyInfo -fv $BigFace`;
+    
+    tokenize($FaceInfo[0], " ", $OrderedFaceVtxs);
+
+    /// Get the number of vertices we have.  Note that there is some garbage (from polyInfo) in
+    // the OrderedFaceVtxs.
+    int $bfVtxCount = size($OrderedFaceVtxs) - 3;
+    
+    // Find the index of the new edge vertices in the ordered vertices
+
+    // Get current vertex indices
+    int $spinVtx0Index = findFirstIn(convert2Index($EdgeVtxs[0]),$OrderedFaceVtxs);
+    int $spinVtx1Index = findFirstIn(convert2Index($EdgeVtxs[1]),$OrderedFaceVtxs);
+    
+    // Get next vertex indices
+    int $eVtx0Index = ($spinVtx0Index - 1) % $bfVtxCount + 2;
+    int $eVtx1Index = ($spinVtx1Index - 1) % $bfVtxCount + 2;
+
+    // Get the next vertices themselves
+    string $eVtx0 = $Object[0] + ".vtx[" + $OrderedFaceVtxs[$eVtx0Index] +"]";
+    string $eVtx1 = $Object[0] + ".vtx[" + $OrderedFaceVtxs[$eVtx1Index] +"]";
+
+    // Get the edges upon which we'll rotate
+    
+    string $EdgeA[] = `polyListComponentConversion -fv -te -in $EdgeVtxs[0] $eVtx0`;
+    string $EdgeB[] = `polyListComponentConversion -fv -te -in $EdgeVtxs[1] $eVtx1`;
+
+    // Determine if our vertices are at the beginning or end of the chosen edges
+    float $EdgeADist = edgeDistance($EdgeA[0], $eVtx0);
+    float $EdgeBDist = edgeDistance($EdgeB[0], $eVtx1);
+    
+    // polySpit takes *indices*, not edges (inconsistent with other poly tools)
+    int $EdgeAIndex = `convert2Index $EdgeA[0]`;
+    int $EdgeBIndex = `convert2Index $EdgeB[0]`;
+
+    polySplit -ep $EdgeAIndex $EdgeADist -ep $EdgeBIndex $EdgeBDist $Object[0];
+
+    // Reselect the items that we 'started' with.
+    if($SelectionType == "f")
+    {
+        select `polyListComponentConversion -tf -in $FaceVtxs`;
+    }
+    else
+    {
+        select `polyListComponentConversion -te -in $eVtx0 $eVtx1`;
+    }
+
+}
+
+

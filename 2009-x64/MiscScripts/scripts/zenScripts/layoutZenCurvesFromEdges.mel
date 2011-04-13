@@ -1,0 +1,48 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+global proc string layoutZenCurvesFromEdges()
+{
+	global 	int 	$zenMinimumWindowWidth,
+			$zenOptions_attachCurvesDegree;
+	
+	string 	$parentLayout=`zenClearToolColumn`;
+	
+	string	$zenAttachColumn=`columnLayout -adj 1 -p $parentLayout`;
+	
+	global 	string $zenToolsWindow;
+	
+		window -e -w $zenMinimumWindowWidth -title "ZenTools : Curves from Edges" $zenToolsWindow;
+				
+			intFieldGrp
+				-co2 2 2
+				-p $zenAttachColumn
+				-l "Degree"
+				-adj 2
+				-cw 1 50
+				-v1 $zenOptions_attachCurvesDegree
+				-cc "$zenOptions_attachCurvesDegree=`intFieldGrp -q -v1 zenOptions_attachCurvesDegree`"
+				zenOptions_attachCurvesDegree;
+
+			separator -p $zenAttachColumn -w $zenMinimumWindowWidth;
+
+			button
+				-h 20
+				-p $zenAttachColumn
+				-label Apply
+				-command "doZenCommand doZenCurvesFromEdges";
+				
+	return	$zenAttachColumn;
+}

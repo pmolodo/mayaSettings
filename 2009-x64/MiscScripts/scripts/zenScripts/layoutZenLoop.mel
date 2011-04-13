@@ -1,0 +1,102 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc string layoutZenLoop()
+{
+	global 	int 	$zenWindowWidth,
+			$zenMinimumWindowWidth;
+	
+	global 	int	$zenOptions_curveType,
+			$zenOptions_safeUVLoop,
+			$zenOptions_keepCurve,
+			$zenOptions_loopDistributionType;
+		
+	string	$zenLoopColumn=`zenClearToolColumn`;
+	
+	global 	string $zenToolsWindow;
+	
+		window -e -title "ZenLoop" $zenToolsWindow;
+		
+			text -al left -p $zenLoopColumn -label "Curve Type:";
+
+			radioButtonGrp
+				-p $zenLoopColumn
+				-numberOfRadioButtons 3 
+				-l1 "Arc" 
+				-l2 "EP" 
+				-l3 "CV"
+				-cc "$zenOptions_curveType=`radioButtonGrp -q -sl zenOptions_curveType`"
+				-select $zenOptions_curveType 
+				-columnWidth3 40 40 40
+				zenOptions_curveType;
+
+			separator -p $zenLoopColumn -w $zenMinimumWindowWidth;
+
+			text -al left -p $zenLoopColumn -label "Distribution:";					
+
+		string	$loopDistributionTypeChangeCmd=
+			(
+				"$zenOptions_loopDistributionType=`radioButtonGrp -q -select zenOptions_loopDistributionType`;\n"+
+				"if($zenOptions_loopDistributionType==3) button -e -en 1 zenLoopBaseButton;\n"+
+				"else button -e -en 0 zenLoopBaseButton;\n"
+			);
+			
+			radioButtonGrp 
+				-p $zenLoopColumn
+				-numberOfRadioButtons 3 
+				-l1 "Uniform" 
+				-l2 "Closest"
+				-l3 "Chord Length"
+				-cc $loopDistributionTypeChangeCmd
+				-select $zenOptions_loopDistributionType 
+				-columnWidth3 65 65 95
+				zenOptions_loopDistributionType;
+
+			separator -p $zenLoopColumn -w ($zenWindowWidth-16);
+
+			checkBox 
+				-w 100
+				-v $zenOptions_keepCurve 
+				-label "Keep Curve"
+				-al "left"
+				-cc "$zenOptions_keepCurve=`checkBox -q -v zenOptions_keepCurve`"
+				zenOptions_keepCurve;
+
+			separator -p $zenLoopColumn -w ($zenWindowWidth-16);
+			button
+				-h 20
+				-p $zenLoopColumn
+				-en 0
+				-annotation "Use an alternate object for calculating chord length distribution."
+				-l "Set Alternate Base"
+				-c 
+				(
+					"$zenLoopChordLengthObj=zenReturnFirstStringItem(`ls -sl`);\n"+
+					"$zenLoopChordLengthObj=zenReturnFirstStringItem(`stringToStringArray $zenLoopChordLengthObj \".\"`);\n"+
+					"button -e -l (\"Alternate Base: \"+$zenLoopChordLengthObj) zenLoopBaseButton;\n"+
+					"if($zenLoopChordLengthObj==\"\") button -e -l \"Set Alternate Base\"zenLoopBaseButton;\n"+
+					"else print ($zenLoopChordLengthObj+\" will be used to calculate chord length ratios.\\n\");"
+				)
+				zenLoopBaseButton;							
+
+			button
+				-h 20
+				-p $zenLoopColumn
+				-label Apply
+				-command "doZenCommand doZenLoop";
+				
+			eval $loopDistributionTypeChangeCmd;
+				
+	return	$zenLoopColumn;
+}

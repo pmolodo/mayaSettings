@@ -1,0 +1,214 @@
+//Maya Preference 2009 (Release 1)
+//
+//
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("animCurveConvergeTowardCenter2(0);")
+	AnimConverge;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("toggleUIComponentVisibility(\"Channel Box / Layer Editor\");")
+	ChannelBox_Toggle;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("manipRotateContext -e -mode 0 Rotate;")
+	LocalRotate;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("manipRotateContext -e -mode 2 Rotate;")
+	GimbalRotate;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("manipMoveContext -e -mode 2 Move;")
+	Translate_World;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("lpFilterCurves ;")
+	FilterCurves;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("zooKeymaster \"-dir right -nudge 1 -factor 0 -pivot mid -abs 1 -curvePivot 0\";\r\n")
+	Nudge_Fwd;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("zooKeymaster \"-dir left -nudge 1 -factor 0 -pivot mid -abs 1 -curvePivot 0\";")
+	Nudge_Bkwd;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("zooKeymaster \"-dir down -nudge 1 -factor 0.02 -pivot mid -abs 1 -curvePivot 0\";")
+	Nudge_Dn;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("zooKeymaster \"-dir up -nudge 1 -factor 0.02 -pivot mid -abs 1 -curvePivot 0\";\r\n")
+	Nudge_Up;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("{\r\n    string $currentPanel = `getPanel -underPointer`;\r\n    if (\"\" == $currentPanel) \r\n        {\r\n        $currentPanel = `getPanel -withFocus`;\r\n        }\r\n    if (\"\" != $currentPanel) \r\n       {\r\n        string $panelType = `getPanel -typeOf $currentPanel`;\r\n        if ($panelType ==  \"modelPanel\") \r\n            {\r\n            int $state = `modelEditor -q -xray $currentPanel`;\r\n            modelEditor -e -xray (!$state) $currentPanel;\r\n            }\r\n       }\r\n}\r\n\r\n")
+	Xray;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("keyTangent -edit -weightedTangents true;\r\nkeyTangent -weightLock off;")
+	WeightedFreeTangents;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("cMotionTrailUI ;")
+	MotionTrail;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("manipMoveContext -e -mode 1 Move;")
+	Translate_Local;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("timeSliderClearKey;")
+	DeleteTimeSlideKey;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("jsPickWalk down ;")
+	jsPickWalk_down;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("jsPickWalk up ;")
+	jsPickWalk_up;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("jsPickWalk left ;")
+	jsPickWalk_left;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("jsPickWalk right ;")
+	jsPickWalk_right;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("autoTangent ;\r\naTan_start();")
+	AutoTangnt;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("timeSliderEditKeys addInbetween;")
+	rippleTimeSliderKeysFWD;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("timeSliderEditKeys removeInbetween;")
+	rippleTimeSliderKeysBKWD;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("animCurveEditor -edit -lookAt currentTime graphEditor1GraphEd;")
+	CurrentTimeGraphEditor;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("// ============================================================\r\n// Copy this to a new hotkey command, assigned to \"Left\", with\r\n// direction set to \"Release\" (not \"Press\"!)\r\n// ============================================================\r\n{\r\n    // Signal that the key is released\r\n    global int $PMP_stickyPreviousFrame_keyPressed;\r\n    $PMP_stickyPreviousFrame_keyPressed = false;\r\n\r\n    // Stop playback\r\n    play -state off;\r\n\r\n    // Check if frame has changed - if not, go back one\r\n    global float $PMP_stickyPreviousFrame_startFrame;\r\n    if($PMP_stickyPreviousFrame_startFrame == `currentTime -q`)\r\n    {\r\n        print \"Previous frame\\n\";\r\n        currentTime($PMP_stickyPreviousFrame_startFrame - 1);\r\n    }\r\n}\r\n// ============================================================\r\n// End of stuff to put in \"Left\" \"Release\" command\r\n// ============================================================")
+	L_KeyTap_Release;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("// ============================================================\r\n// Copy this to a new hotkey command, assigned to \"Left\"\r\n// ============================================================\r\n{\r\n    // Signal that the key is pressed\r\n    global int $PMP_stickyPreviousFrame_keyPressed;\r\n    $PMP_stickyPreviousFrame_keyPressed = true;\r\n\r\n    // Frame at which we started\r\n    global float $PMP_stickyPreviousFrame_startFrame;\r\n    $PMP_stickyPreviousFrame_startFrame = `currentTime -q`;\r\n    \r\n    // Time at which we started\r\n    global float $PMP_stickyPreviousFrame_startTime;\r\n    $PMP_stickyPreviousFrame_startTime = `timerX`;\r\n\r\n    scriptJob -idleEvent \"PMP_stickyPreviousFrame_whilePressed()\" -runOnce true;\r\n}\r\n\r\n// This must be set to a script job with the -runOnce flag!\r\nglobal proc PMP_stickyPreviousFrame_whilePressed()\r\n{\r\n    // Time to delay before playback starts\r\n    float $delayTime = .2 ;\r\n\r\n    global float $PMP_stickyPreviousFrame_startTime;\r\n    global int $PMP_stickyPreviousFrame_keyPressed;\r\n\r\n    //print(\"PMP_stickyPreviousFrame_whilePressed - elapsedTime: \" + `timerX -startTime $PMP_stickyPreviousFrame_startTime` + \"\\n\");\r\n    \r\n    if(`timerX -startTime $PMP_stickyPreviousFrame_startTime` > $delayTime && \r\n       $PMP_stickyPreviousFrame_keyPressed)\r\n    {\r\n        //print \"playing...\\n\";\r\n        play -forward false;\r\n    }\r\n    else if($PMP_stickyPreviousFrame_keyPressed)\r\n    {\r\n        //print \"starting script again...\\n\";\r\n        scriptJob -idleEvent \"PMP_stickyPreviousFrame_whilePressed()\" -runOnce true;\r\n    }\r\n}\r\n// ============================================================\r\n// End of stuff to put in \"Left\" command\r\n// ============================================================")
+	L_KeyTap_Press;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("// ============================================================\r\n// Copy this to a new hotkey command, assigned to \"Right\"\r\n// ============================================================\r\n{\r\n    // Signal that the key is pressed\r\n    global int $PMP_stickyNextFrame_keyPressed;\r\n    $PMP_stickyNextFrame_keyPressed = true;\r\n\r\n    // Frame at which we started\r\n    global float $PMP_stickyNextFrame_startFrame;\r\n    $PMP_stickyNextFrame_startFrame = `currentTime -q`;\r\n    \r\n    // Time at which we started\r\n    global float $PMP_stickyNextFrame_startTime;\r\n    $PMP_stickyNextFrame_startTime = `timerX`;\r\n\r\n    scriptJob -idleEvent \"PMP_stickyNextFrame_whilePressed()\" -runOnce true;\r\n}\r\n\r\n// This must be set to a script job with the -runOnce flag!\r\nglobal proc PMP_stickyNextFrame_whilePressed()\r\n{\r\n    // Time to delay before playback starts\r\n    float $delayTime = .2 ;\r\n\r\n    global float $PMP_stickyNextFrame_startTime;\r\n    global int $PMP_stickyNextFrame_keyPressed;\r\n\r\n    //print(\"PMP_stickyNextFrame_whilePressed - elapsedTime: \" + `timerX -startTime $PMP_stickyNextFrame_startTime` + \"\\n\");\r\n    \r\n    if(`timerX -startTime $PMP_stickyNextFrame_startTime` > $delayTime && \r\n       $PMP_stickyNextFrame_keyPressed)\r\n    {\r\n        //print \"playing...\\n\";\r\n        play;\r\n    }\r\n    else if($PMP_stickyNextFrame_keyPressed)\r\n    {\r\n        //print \"starting script again...\\n\";\r\n        scriptJob -idleEvent \"PMP_stickyNextFrame_whilePressed()\" -runOnce true;\r\n    }\r\n}\r\n// ============================================================\r\n// End of stuff to put in \"Right\" command\r\n// ============================================================")
+	R_KeyTap_Press;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("// ============================================================\r\n// Copy this to a new hotkey command, assigned to \"Right\", with\r\n// direction set to \"Release\" (not \"Press\"!)\r\n// ============================================================\r\n{\r\n    // Signal that the key is released\r\n    global int $PMP_stickyNextFrame_keyPressed;\r\n    $PMP_stickyNextFrame_keyPressed = false;\r\n\r\n    // Stop playback\r\n    play -state off;\r\n\r\n    // Check if frame has changed - if not, go forward one\r\n    global float $PMP_stickyNextFrame_startFrame;\r\n    if($PMP_stickyNextFrame_startFrame == `currentTime -q`)\r\n    {\r\n        print \"Next frame\\n\";\r\n        currentTime($PMP_stickyNextFrame_startFrame + 1);\r\n    }\r\n}\r\n// ============================================================\r\n// End of stuff to put in \"Right\" \"Release\" command\r\n// ============================================================")
+	R_KeyTap_Release;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("setKeyframe -insert")
+	Insert_Key;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("playButtonEnd;")
+	Play_Range_End;
+
+runTimeCommand
+	-annotation ""
+	-category "User"
+	-commandLanguage "mel"
+	-command ("playButtonStart;")
+	Play_Range_Start;
+

@@ -1,0 +1,8 @@
+you can now set the default name matching threshold from the "Mapping" menu
+changing the matching threshold allows less exact matches to pass through.  setting the threshold to 1 means the names have to be VERY similar to get matched, while a 0 allows only vague matches to pass.||NOTE a 0 threshold doesn't mean the matching is less accurate.  names that are very similar are always matched, but if the threshold is low, less exact matches are considered if nothing better is found
+xferAnim is the animation import/export engine for the zooAnimStore tool, which is great for use as an animation library
+trace can be used to transfer animation between similarly proportioned character rigs.  its can be used for re-using existing animation as a starting point for new characters||it can also be used to turn a static walk cycle being moved by a world locator into real world animation - great for shots with lots of walking
+instancing animation allows you to have the same animation on two objects, and lets you alter animation on one object and have the same changes propagate to the other
+to delete a mapping, just select the source name in the UI and hit the delete key
+if you right click in the source pane, you can remove many source objects at once by using the "batch remove" function
+you can save custom mappings to a file if the name matching algorithm isn't giving what you want, and you need to re-use the mapping relationship more than once.||to save a mapping relationship, simply go to the mapping menu, and choose to save the mapping||NOTE: to restore a mapping, you need to load the objects up in the UI before applying the mapping

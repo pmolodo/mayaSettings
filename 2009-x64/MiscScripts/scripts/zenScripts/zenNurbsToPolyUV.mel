@@ -1,0 +1,43 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//project the uv coordinates from a nurbs object onto given polygon facets
+proc zenNurbsToPolyUV(string $nurbsSource, string $polyFacets[])
+{
+	//create uv's on the polygon facets
+		polyForceUV -cp $polyFacets;
+		
+	string 	$uvs[]=`polyListComponentConversion -tuv $polyFacets`;
+		$uvs=`ls -fl $uvs`;
+		
+	string	$closestPoint=`createNode closestPointOnSurface`;
+		connectAttr ($nurbsSource+".worldSpace") ($closestPoint+".inputSurface");
+		
+	float	$xyz[];
+	float	$uvPos[];
+
+		for($uv in $uvs)
+		{
+			$xyz=`xform -q -a -ws -t $uv`;
+			setAttr ($closestPoint+".inPosition") $xyz[0] $xyz[1] $xyz[2];
+			polyEditUV
+				-r 0
+				-u `getAttr ($closestPoint+".parameterU")`
+				-v `getAttr ($closestPoint+".parameterV")`
+				$uv;
+		}
+		
+		delete $closestPoint;
+		select $polyFacets;
+}

@@ -1,0 +1,83 @@
+global proc string[] zooCSTDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $includeFiles[] = {};
+	string $helpDependencies[] = {};
+	string $iconDependencies[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooAlign";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_str";
+	$melDependencies[( `size $melDependencies` )] = "zooBrandTools";
+	$melDependencies[( `size $melDependencies` )] = "zooBounds";
+	$melDependencies[( `size $melDependencies` )] = "zooBuildControl";
+	$melDependencies[( `size $melDependencies` )] = "zooCSTCtrlType";
+	$melDependencies[( `size $melDependencies` )] = "zooCSTPrimitives";
+	$melDependencies[( `size $melDependencies` )] = "zooCSTValidateFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooCSTMakeStretchy";
+	$melDependencies[( `size $melDependencies` )] = "zooCSTUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooObjMenuUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooShelveIt";
+	$melDependencies[( `size $melDependencies` )] = "zooTriggeredUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooStrUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+
+	$includeFiles[( `size $includeFiles` )] = "zooCSTInfo";
+	$includeFiles[( `size $includeFiles` )] = "zooRenamerUtils";
+	$includeFiles[( `size $includeFiles` )] = "zooReorderAttrs";
+	$includeFiles[( `size $includeFiles` )] = "zooArrays_float";
+	$includeFiles[( `size $includeFiles` )] = "zooArrays_int";
+	$includeFiles[( `size $includeFiles` )] = "zooAttrUtils";
+	$includeFiles[( `size $includeFiles` )] = "zooLineOfAction";
+	$includeFiles[( `size $includeFiles` )] = "zooShaders";
+	$includeFiles[( `size $includeFiles` )] = "zooChangeSpace";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTWin";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildWorld";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildRoot";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimRootSpine";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimBasicSpine";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimReverseSpine";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildMPath";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimFKSpine";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimIKSpine";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimIKFKSpine";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimHand";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimHead";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimEyes";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimMoveableEyes";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimArm";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimLeg";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildPrimHaunch";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildIKFK";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTBuildSplineIK";
+	$includeFiles[( `size $includeFiles` )] = "zooHelp";
+	$includeFiles[( `size $includeFiles` )] = "zooKeyCommands";
+	$includeFiles[( `size $includeFiles` )] = "zooMatchNames";
+	$includeFiles[( `size $includeFiles` )] = "zooObjMenu";
+	$includeFiles[( `size $includeFiles` )] = "zooStickToCurve";
+	$includeFiles[( `size $includeFiles` )] = "zooSpaceSwitching";
+	$includeFiles[( `size $includeFiles` )] = "zooSurgeon";
+	$includeFiles[( `size $includeFiles` )] = "zooSurgeonUtils";
+	$includeFiles[( `size $includeFiles` )] = "zooTips";
+	$includeFiles[( `size $includeFiles` )] = "zooVectors";
+
+	$helpDependencies[( `size $helpDependencies` )] = "zooCSTHelp_about";
+	$helpDependencies[( `size $helpDependencies` )] = "zooCSTHelp_flags";
+	$helpDependencies[( `size $helpDependencies` )] = "zooCSTHelp_intro";
+	$helpDependencies[( `size $helpDependencies` )] = "zooCSTHelp_works";
+	$helpDependencies[( `size $helpDependencies` )] = "zooCSTHelp_tech";
+
+	$iconDependencies[( `size $iconDependencies` )] = "zooCST.xpm";
+	$iconDependencies[( `size $iconDependencies` )] = "zooTriggered_0.xpm";
+	$iconDependencies[( `size $iconDependencies` )] = "zooTriggered_1.xpm";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+
+	if( $mode == "-deps" ) return $melDependencies;
+	if( $mode == "-docs" ) return $helpDependencies;
+	if( $mode == "-icons" ) return $iconDependencies;
+	if( $mode == "-scripts" ) {
+		$melDependencies = `zooAddArray_str $melDependencies $includeFiles`;
+		$melDependencies = `stringArrayRemoveDuplicates $melDependencies`;
+		return $melDependencies;
+		}
+	return {};
+	}

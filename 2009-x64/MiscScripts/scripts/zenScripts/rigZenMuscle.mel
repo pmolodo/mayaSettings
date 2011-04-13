@@ -1,0 +1,1588 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+requires "closestPointOnMesh";
+requires "decomposeMatrix";
+
+proc string rigZenTangentSpaceMuscleCluster(string $sel,string	$poseA, string $poseB, int $createJiggle)
+{
+	string	$surfaceSh=zenReturnFirstStringItem(stringArrayCatenate(`ls -type shape $sel`,`listRelatives -s -ni $sel`));
+	string	$surfaceTr=zenReturnFirstStringItem(`listRelatives -p $surfaceSh`);
+	string	$inSurface=zenReturnFirstStringItem(`listConnections -plugs 1 ($surfaceSh+".create")`);
+	string	$computeSurface=$surfaceSh;
+	
+	//check for history
+	
+		if(`objExists $inSurface`)
+		{
+			$computeSurface=`createNode -p $surfaceTr nurbsSurface`;
+			connectAttr $inSurface ($computeSurface+".create");
+		}
+		
+		setAttr ($computeSurface+".caching") 1;
+				
+	string	$clusterSpace;
+	string	$clusterAutoTr;
+	string	$clusterTr;
+	string	$clusterHandleShape;
+	string	$makeNurbSphereNode;
+	string	$pointOnSurfaceInfoNode;
+	string	$decomposeMatrixNode;
+	string	$fourByFourMatrixNode;
+	string	$scaleCompensateDecomposeMatrix;
+	string	$parentTr;
+	string	$clusterSpaceGroup;
+	
+		$parentTr=zenReturnFirstStringItem(`listRelatives -p $surfaceTr`);
+
+		$clusterSpaceGroup=`createNode -n "tangentSpaceGroup#" transform`;
+
+		$clusterSpace=`createNode -p $clusterSpaceGroup -n "tangentSpace#" transform`;
+		
+			setAttr ($clusterSpace+".inheritsTransform") 0;
+			
+			setAttr -lock true ($clusterSpace+".sx");
+			setAttr -lock true ($clusterSpace+".sy");	
+			setAttr -lock true ($clusterSpace+".sz");			
+
+		if(`objExists $parentTr`)
+		{
+			$scaleCompensateDecomposeMatrix=`createNode decomposeMatrix`;
+			connectAttr ($parentTr+".worldMatrix[0]") ($scaleCompensateDecomposeMatrix+".inputMatrix");
+		}
+				
+		$clusterAutoTr=`createNode -p $clusterSpace -n "tangentSpaceAutoFlex#" transform`;
+		$clusterTr=`createNode -p $clusterAutoTr -n "muscleCtrl#" transform`;
+		$clusterHandleShape=`createNode -p $clusterTr -n ($clusterTr+"Shape") nurbsSurface`;
+		
+		//weight control attributes
+		
+		addAttr -k 1 -ln "bias" -at double -min .01 -max .99 -hsn true -hsx true -smn .1 -smx .9 -dv .5 $clusterTr;
+		addAttr -k 1 -ln "fallOff" -at double -min 0 -max 1 -dv .8 $clusterTr;
+		addAttr -k 1 -ln "centerWidth" -at double -min 0 -max 1 -dv 0 $clusterTr;
+		addAttr -k 1 -ln "tangentSpace" -at double -min 0 -max 1 -dv 0 $clusterTr;
+			
+		//auto-flex attributes
+		
+		if(`objExists $poseB` && `objExists $poseA`)
+		{
+			addAttr -k 1 -ln "autoFlexBias" -at double -min 0.0 -max 1.0 -dv 0 $clusterTr;
+			addAttr -k 1 -ln "autoTransX" -at double -dv 0 $clusterTr;
+			addAttr -k 1 -ln "autoTransY" -at double -dv 0 $clusterTr;
+			addAttr -k 1 -ln "autoTransZ" -at double -dv 0 $clusterTr;
+			addAttr -k 1 -ln "autoRotX" -at double -dv 0 $clusterTr;
+			addAttr -k 1 -ln "autoRotY" -at double -dv 0 $clusterTr;
+			addAttr -k 1 -ln "autoRotZ" -at double -dv 0 $clusterTr;
+			addAttr -k 1 -ln "autoScaleX" -at double -dv 1 $clusterTr;
+			addAttr -k 1 -ln "autoScaleY" -at double -dv 1 $clusterTr;
+			addAttr -k 1 -ln "autoScaleZ" -at double -dv 1 $clusterTr;
+		}
+			
+	//jiggle attributes
+	
+		if($createJiggle)
+		{
+			addAttr -k 1 -ln "jiggle" -sn "j" -at "enum" -en "enable:disable:enableOnlyAfterObjectStops:" -dv 1 $clusterTr;
+			addAttr -k 1 -ln "jEnvelope" -sn "jE" -at double -min 0 -max 1  -dv 1 $clusterTr;
+			addAttr -k 1 -ln "jDamping" -sn "jD" -at double -min 0 -max 1 -dv .5 $clusterTr;
+			addAttr -k 1 -ln "jStiffness" -sn "jS" -at double -min 0 -max 1 -dv .5 $clusterTr;
+			addAttr -k 1 -ln "jWeight" -sn "jW" -at double -min 0 -dv 1 $clusterTr;
+			addAttr -k 1 -ln "jForceNormal" -sn "jFN" -at double -min 0 -max 1 -dv 1 $clusterTr;
+			addAttr -k 1 -ln "jForceTangent" -sn "jFT" -at double -min 0 -max 1 -dv 1 $clusterTr;
+			addAttr -k 1 -ln "jDirBias" -sn "jDB" -at double -min 0 -max 1 -dv .5 $clusterTr;
+			addAttr -k 1 -ln "jIgnoreTr" -sn "jIT" -at bool -dv 0 $clusterTr;
+			addAttr -k 1 -ln "jMotionMult" -sn "jMM" -at double -min 0 -dv 1 $clusterTr;
+		}
+
+	//display attributes 
+
+		addAttr -ln "handleOffsetX" -at double -dv 4 $clusterTr;
+		setAttr -k false -cb true ($clusterTr+".handleOffsetX");
+
+		addAttr -ln "handleOffsetY" -at double -dv 0 $clusterTr;
+		setAttr -k false -cb true ($clusterTr+".handleOffsetY");
+
+		addAttr -ln "handleOffsetZ" -at double -dv 0 $clusterTr;
+		setAttr -k false -cb true ($clusterTr+".handleOffsetZ");
+
+		addAttr -ln "handleRadius" -at double -dv 1 $clusterTr;
+		setAttr -k false -cb true ($clusterTr+".handleRadius");
+		
+		$makeNurbSphereNode=`createNode makeNurbSphere`;
+			
+			setAttr ($clusterHandleShape+".curvePrecisionShaded") 4;
+			
+	string	$handleOffsetMultiplier=`createNode multiplyDivide`;
+	
+		setAttr ($handleOffsetMultiplier+".i1") 1 1 1;
+	
+	string	$handleRadiusMultiplier=`createNode multDoubleLinear`;
+	
+		connectAttr ($clusterTr+".handleRadius") ($handleRadiusMultiplier+".i1");
+
+		connectAttr ($clusterTr+".handleOffsetX") ($handleOffsetMultiplier+".i2x");
+		connectAttr ($clusterTr+".handleOffsetY") ($handleOffsetMultiplier+".i2y");
+		connectAttr ($clusterTr+".handleOffsetY") ($handleOffsetMultiplier+".i2z");
+
+
+		connectAttr ($handleOffsetMultiplier+".ox") ($makeNurbSphereNode+".pivotX");
+		connectAttr ($handleOffsetMultiplier+".oy") ($makeNurbSphereNode+".pivotY");
+		connectAttr ($handleOffsetMultiplier+".oz") ($makeNurbSphereNode+".pivotZ");
+
+		connectAttr ($makeNurbSphereNode+".outputSurface") ($clusterHandleShape+".create");
+
+		if(`objExists $parentTr`) 
+		{
+			connectAttr ($scaleCompensateDecomposeMatrix+".outputScaleY")  ($handleRadiusMultiplier+".i2");
+			connectAttr ($handleRadiusMultiplier+".o") ($makeNurbSphereNode+".radius");
+
+			connectAttr ($scaleCompensateDecomposeMatrix+".outputScaleY")  ($handleOffsetMultiplier+".i1x");
+			connectAttr ($scaleCompensateDecomposeMatrix+".outputScaleY")  ($handleOffsetMultiplier+".i1y");
+			connectAttr ($scaleCompensateDecomposeMatrix+".outputScaleY")  ($handleOffsetMultiplier+".i1z");
+		}
+				
+		$pointOnSurfaceInfoNode=`createNode pointOnSurfaceInfo`;
+			
+			connectAttr ($computeSurface+".worldSpace[0]") ($pointOnSurfaceInfoNode+".inputSurface");
+			connectAttr ($clusterTr+".bias") ($pointOnSurfaceInfoNode+".parameterU");
+						
+			setAttr ($pointOnSurfaceInfoNode+".parameterV") .5;
+			
+		$decomposeMatrixNode=`createNode decomposeMatrix`;
+		$fourByFourMatrixNode=`createNode fourByFourMatrix`;
+		
+			connectAttr ($pointOnSurfaceInfoNode+".nnx") ($fourByFourMatrixNode+".in00");
+			connectAttr ($pointOnSurfaceInfoNode+".nny") ($fourByFourMatrixNode+".in01");
+			connectAttr ($pointOnSurfaceInfoNode+".nnz") ($fourByFourMatrixNode+".in02");
+			
+			connectAttr ($pointOnSurfaceInfoNode+".nux") ($fourByFourMatrixNode+".in10");
+			connectAttr ($pointOnSurfaceInfoNode+".nuy") ($fourByFourMatrixNode+".in11");
+			connectAttr ($pointOnSurfaceInfoNode+".nuz") ($fourByFourMatrixNode+".in12");
+			
+			connectAttr ($pointOnSurfaceInfoNode+".nvx") ($fourByFourMatrixNode+".in20");
+			connectAttr ($pointOnSurfaceInfoNode+".nvy") ($fourByFourMatrixNode+".in21");
+			connectAttr ($pointOnSurfaceInfoNode+".nvz") ($fourByFourMatrixNode+".in22");
+			
+			connectAttr ($pointOnSurfaceInfoNode+".px")  ($fourByFourMatrixNode+".in30");
+			connectAttr ($pointOnSurfaceInfoNode+".py")  ($fourByFourMatrixNode+".in31");
+			connectAttr ($pointOnSurfaceInfoNode+".pz")  ($fourByFourMatrixNode+".in32");
+			
+			connectAttr ($fourByFourMatrixNode+".output") ($decomposeMatrixNode+".inputMatrix");
+			
+			connectAttr ($decomposeMatrixNode+".outputTranslate") ($clusterSpace+".t");
+			connectAttr ($decomposeMatrixNode+".outputRotate") ($clusterSpace+".r");
+							
+	//create clusters
+			
+	string	$clusterNodes[];
+	string	$handleShape;
+	string	$multMatrixNode;
+	string	$multMatrixNode2;
+	string	$clusterPointOnSurfaceInfo;
+	string	$clusterFourByFourMatrix;
+	string	$clusterNodeSpace;
+	string	$decomposeClusterNodeSpace;
+	string	$blendRotMatrix;
+	string	$blendTrMatrix; 
+	string	$blendRotPreBindMatrix;
+	string	$blendTrPreBindMatrix; 
+	string	$blendClusterSpaceAddMatrix;
+	
+	string	$reverseMatrixWeighting=`createNode reverse`;
+		connectAttr ($clusterTr+".tangentSpace") ($reverseMatrixWeighting+".ix");
+		
+	float	$uCount=size(ls("-fl",($surfaceSh+".cv[*][0]")));
+	float	$vCount=size(ls("-fl",($surfaceSh+".cv[0][*]")));
+	
+	
+	int	$startNum=`getAttr ($computeSurface+".degreeU")`;
+	int	$weightID=$vCount*$startNum;
+	
+		for($i=$startNum;$i<($uCount-$startNum);$i++)
+		{
+			$clusterFourByFourMatrix=`createNode fourByFourMatrix`;
+			
+			$clusterPointOnSurfaceInfo=`createNode pointOnSurfaceInfo`;
+				
+				setAttr ($clusterPointOnSurfaceInfo+".parameterU") ((float($i))/($uCount-1));
+				setAttr ($clusterPointOnSurfaceInfo+".parameterV") .5;
+				
+				connectAttr ($computeSurface+".worldSpace[0]") ($clusterPointOnSurfaceInfo+".inputSurface");
+				
+				connectAttr ($clusterPointOnSurfaceInfo+".nnx") ($clusterFourByFourMatrix+".in00");
+				connectAttr ($clusterPointOnSurfaceInfo+".nny") ($clusterFourByFourMatrix+".in01");
+				connectAttr ($clusterPointOnSurfaceInfo+".nnz") ($clusterFourByFourMatrix+".in02");
+
+				connectAttr ($clusterPointOnSurfaceInfo+".nux") ($clusterFourByFourMatrix+".in10");
+				connectAttr ($clusterPointOnSurfaceInfo+".nuy") ($clusterFourByFourMatrix+".in11");
+				connectAttr ($clusterPointOnSurfaceInfo+".nuz") ($clusterFourByFourMatrix+".in12");
+
+				connectAttr ($clusterPointOnSurfaceInfo+".nvx") ($clusterFourByFourMatrix+".in20");
+				connectAttr ($clusterPointOnSurfaceInfo+".nvy") ($clusterFourByFourMatrix+".in21");
+				connectAttr ($clusterPointOnSurfaceInfo+".nvz") ($clusterFourByFourMatrix+".in22");
+
+				connectAttr ($clusterPointOnSurfaceInfo+".px")  ($clusterFourByFourMatrix+".in30");
+				connectAttr ($clusterPointOnSurfaceInfo+".py")  ($clusterFourByFourMatrix+".in31");
+				connectAttr ($clusterPointOnSurfaceInfo+".pz")  ($clusterFourByFourMatrix+".in32");
+							
+			$multMatrixNode=`createNode multMatrix`;
+			
+				connectAttr -f ($clusterTr+".matrix") ($multMatrixNode+".i[0]");
+				connectAttr -f ($clusterAutoTr+".matrix") ($multMatrixNode+".i[1]");
+						
+			$clusterNodeSpace=`createNode -n "clusterSpace#" -p $clusterSpaceGroup transform`;
+			
+				setAttr ($clusterNodeSpace+".inheritsTransform") 0;
+
+				setAttr -lock true ($clusterNodeSpace+".sx");
+				setAttr -lock true ($clusterNodeSpace+".sy");
+				setAttr -lock true ($clusterNodeSpace+".sz");
+			
+			$decomposeClusterNodeSpace=`createNode decomposeMatrix`;
+			
+				connectAttr -f ($clusterFourByFourMatrix+".o") ($decomposeClusterNodeSpace+".imat");
+				connectAttr -f ($decomposeClusterNodeSpace+".outputRotate") ($clusterNodeSpace+".r");
+				connectAttr -f ($decomposeClusterNodeSpace+".outputTranslate") ($clusterNodeSpace+".t");
+
+			//create tangent space blender
+				
+			$blendTrMatrix=`createNode blendColors`;
+			
+				connectAttr -f ($decomposeClusterNodeSpace+".outputTranslate") ($blendTrMatrix+".c1");
+				connectAttr -f ($decomposeMatrixNode+".outputTranslate") ($blendTrMatrix+".c2");
+				connectAttr -f ($clusterTr+".tangentSpace") ($blendTrMatrix+".b");
+			
+			$blendRotMatrix=`createNode blendColors`;
+				
+				connectAttr -f ($decomposeClusterNodeSpace+".outputRotate") ($blendRotMatrix+".c1");
+				connectAttr -f ($decomposeMatrixNode+".outputRotate") ($blendRotMatrix+".c2");
+				connectAttr -f ($clusterTr+".tangentSpace") ($blendRotMatrix+".b");
+				
+			$clusterNodes=cluster($surfaceSh+".cv["+(string($i))+"][*]");
+			
+				connectAttr -f ($multMatrixNode+".o") ($clusterNodes[0]+".matrix");
+				connectAttr -f ($clusterNodeSpace+".worldInverseMatrix") ($clusterNodes[0]+".bindPreMatrix");
+				connectAttr -f ($clusterNodeSpace+".worldMatrix[0]")  ($multMatrixNode+".i[2]");
+
+				connectAttr -f ($blendRotMatrix+".op") ($clusterNodeSpace+".r");
+				connectAttr -f ($blendTrMatrix+".op") ($clusterNodeSpace+".t");
+				
+			$handleShape=zenReturnFirstStringItem(`listRelatives -s -ni $clusterNodes[1]`);
+			
+			disconnectAttr ($handleShape+".clusterTransforms[0]") (zenReturnFirstStringItem(listConnections("-plugs",true,$handleShape+".clusterTransforms[0]")));
+			
+			delete $clusterNodes[1];			
+		}
+		
+	//create jiggle
+	
+	string	$jiggleNode;
+	string	$jiggleCache;
+	
+		if($createJiggle)
+		{			
+			$jiggleNode=zenReturnFirstStringItem(`deformer -n "jiggle#" -type jiggle $surfaceSh`);
+
+				connectAttr ($clusterTr+".j") ($jiggleNode+".enable");
+				connectAttr ($clusterTr+".jE") ($jiggleNode+".envelope");
+				connectAttr ($clusterTr+".jD") ($jiggleNode+".dp");
+				connectAttr ($clusterTr+".jS") ($jiggleNode+".sf");
+				connectAttr ($clusterTr+".jW") ($jiggleNode+".jw");
+				connectAttr ($clusterTr+".jFN") ($jiggleNode+".fan");
+				connectAttr ($clusterTr+".jFT") ($jiggleNode+".fot");
+				connectAttr ($clusterTr+".jDB") ($jiggleNode+".bias");
+				connectAttr ($clusterTr+".jIT") ($jiggleNode+".it");
+				connectAttr ($clusterTr+".jMM") ($jiggleNode+".motionMultiplier");
+			
+			//create jiggle cache
+	
+			$jiggleCache=`createNode -n ($jiggleNode+"Cache") diskCache`;
+		
+				setAttr -type "string" ($jiggleCache+".cacheName") $jiggleCache;		
+				connectAttr ($jiggleCache+".diskCache") ($jiggleNode+".diskCache");
+				catch(connectAttr(((zenReturnFirstStringItem(`ls -type time`))+".outTime"),($jiggleNode+".currentTime")));
+		}
+				
+	//create blendShape for weighting
+	
+	string	$blendShapeNode=zenReturnFirstStringItem(`blendShape -o local -w 0 1 $computeSurface $surfaceSh`);
+	
+	//create falloff ramp
+	
+	string	$controlRamp=`createNode ramp`;
+	
+			setAttr ($controlRamp+".colorEntryList[0].position") .1;
+			setAttr ($controlRamp+".colorEntryList[1].position") .475;
+			setAttr ($controlRamp+".colorEntryList[2].position") .525;
+			setAttr ($controlRamp+".colorEntryList[3].position") .9;
+			
+			setAttr ($controlRamp+".colorEntryList[0].color") -type double3 1 1 1;
+			setAttr ($controlRamp+".colorEntryList[1].color") -type double3 .2 .2 .2;
+			setAttr ($controlRamp+".colorEntryList[2].color") -type double3 .2 .2 .2;
+			setAttr ($controlRamp+".colorEntryList[3].color") -type double3 1 1 1;
+
+			//interpolation & type
+
+			setAttr ($controlRamp+".type") 1;
+			setAttr ($controlRamp+".interpolation ") 6;
+			
+	string	$weightRamps[];
+	
+		for($i=$startNum;$i<($uCount-$startNum);$i++)
+		{
+			$weightRamps[$i]=`createNode ramp`;
+				
+				addAttr -at double -ln setU -dv ((float($i))/($uCount-1)) $weightRamps[$i];
+				connectAttr ($weightRamps[$i]+".setU") ($weightRamps[$i]+".u");
+				connectAttr ($weightRamps[$i]+".setU") ($weightRamps[$i]+".v");
+				
+			connectAttr ($controlRamp+".colorEntryList[0].position") ($weightRamps[$i]+".colorEntryList[0].position");
+			connectAttr ($controlRamp+".colorEntryList[1].position") ($weightRamps[$i]+".colorEntryList[1].position");
+			connectAttr ($controlRamp+".colorEntryList[2].position") ($weightRamps[$i]+".colorEntryList[2].position");
+			connectAttr ($controlRamp+".colorEntryList[3].position") ($weightRamps[$i]+".colorEntryList[3].position");
+
+			connectAttr ($controlRamp+".colorEntryList[0].color") ($weightRamps[$i]+".colorEntryList[0].color");
+			connectAttr ($controlRamp+".colorEntryList[1].color") ($weightRamps[$i]+".colorEntryList[1].color");
+			connectAttr ($controlRamp+".colorEntryList[2].color") ($weightRamps[$i]+".colorEntryList[2].color");
+			connectAttr ($controlRamp+".colorEntryList[3].color") ($weightRamps[$i]+".colorEntryList[3].color");
+									
+			//interpolation & type
+			
+			connectAttr ($controlRamp+".type") ($weightRamps[$i]+".type");
+			connectAttr ($controlRamp+".interpolation") ($weightRamps[$i]+".interpolation");
+			
+			for($n=0;$n<$vCount;$n++)
+				connectAttr -f ($weightRamps[$i]+".outColorR") ($blendShapeNode+".inputTarget[0].inputTargetGroup[0].targetWeights["+(string($weightID++))+"]");
+		}
+		
+	//create ramp controlls
+		
+		//bias & center width
+				
+	string	$reverseNode0=`createNode reverse`;
+	
+			connectAttr ($clusterTr+".bias") ($reverseNode0+".ix");
+			
+	string	$multDoubleLinear0=`createNode multDoubleLinear`;
+	
+			setAttr ($multDoubleLinear0+".i1") -1;
+			
+			connectAttr ($clusterTr+".bias") ($multDoubleLinear0+".i2");
+					
+	string	$multDoubleLinearNode1=`createNode multDoubleLinear`;
+	
+			connectAttr ($multDoubleLinear0+".o") ($multDoubleLinearNode1+".i1");
+			
+			connectAttr ($clusterTr+".centerWidth") ($multDoubleLinearNode1+".i2");
+			
+	string	$addDoubleLinearNode1=`createNode addDoubleLinear`;
+
+			connectAttr ($clusterTr+".bias") ($addDoubleLinearNode1+".i1");
+			connectAttr ($multDoubleLinearNode1+".o") ($addDoubleLinearNode1+".i2");
+			
+			connectAttr ($addDoubleLinearNode1+".o") ($controlRamp+".colorEntryList[1].position");
+			
+	string	$multDoubleLinearNode2=`createNode multDoubleLinear`;
+	
+			connectAttr ($reverseNode0+".ox") ($multDoubleLinearNode2+".i1");
+			
+			connectAttr ($clusterTr+".centerWidth") ($multDoubleLinearNode2+".i2");
+			
+	string	$addDoubleLinearNode2=`createNode addDoubleLinear`;
+
+			connectAttr ($clusterTr+".bias") ($addDoubleLinearNode2+".i1");
+			connectAttr ($multDoubleLinearNode2+".o") ($addDoubleLinearNode2+".i2");
+
+			connectAttr ($addDoubleLinearNode2+".o") ($controlRamp+".colorEntryList[2].position");
+	
+		//falloff
+		
+	string	$reverseNode1=`createNode reverse`;
+	
+			connectAttr ($clusterTr+".fallOff") ($reverseNode1+".ix");
+	
+	string	$multDoubleLinear3=`createNode multDoubleLinear`;
+		
+			connectAttr  ($addDoubleLinearNode2+".o") ($multDoubleLinear3+".i1");
+			connectAttr ($reverseNode1+".ox") ($multDoubleLinear3+".i2");
+			
+	string	$reverseNode2=`createNode reverse`;
+	
+			connectAttr ($reverseNode1+".ox") ($reverseNode2+".ix");
+			
+	string	$addDoubleLinearNode3=`createNode addDoubleLinear`;
+	
+			connectAttr ($multDoubleLinear3+".o") ($addDoubleLinearNode3+".i1");
+			connectAttr ($reverseNode2+".ox") ($addDoubleLinearNode3+".i2");
+			connectAttr ($addDoubleLinearNode3+".o") ($controlRamp+".colorEntryList[3].position");
+		
+	string	$multDoubleLinear4=`createNode multDoubleLinear`;
+		
+			connectAttr  ($addDoubleLinearNode1+".o") ($multDoubleLinear4+".i1");
+			connectAttr ($reverseNode1+".ox") ($multDoubleLinear4+".i2");
+			connectAttr ($multDoubleLinear4+".o") ($controlRamp+".colorEntryList[0].position");
+		
+	//create automated controls
+	
+	string	$poseDriver;
+	string	$poseMultiplier;
+	string	$poseBlender;
+	
+		if(`objExists $poseB` && `objExists $poseA`)
+		{	
+			//translate
+			
+			$poseDriver=rigZenPoseDrivenWeight($poseA,$poseB);
+			
+			connectAttr -f ( $clusterTr+".autoFlexBias" ) ( ( zenReturnFirstStringItem( `ls -o $poseDriver` ) )+".bias" );
+			
+			$poseMultiplier=`createNode multDoubleLinear`;		
+				
+				connectAttr $poseDriver ($poseMultiplier+".i1");
+			
+				connectAttr ($clusterTr+".autoTransX") ($poseMultiplier+".i2");
+				
+				connectAttr ($poseMultiplier+".o") ($clusterAutoTr+".tx");
+				
+			$poseMultiplier=`createNode multDoubleLinear`;		
+				
+				connectAttr $poseDriver ($poseMultiplier+".i1");
+			
+				connectAttr ($clusterTr+".autoTransY") ($poseMultiplier+".i2");
+				
+				connectAttr ($poseMultiplier+".o") ($clusterAutoTr+".ty");
+				
+			$poseMultiplier=`createNode multDoubleLinear`;		
+				
+				connectAttr $poseDriver ($poseMultiplier+".i1");
+			
+				connectAttr ($clusterTr+".autoTransZ") ($poseMultiplier+".i2");
+				
+				connectAttr ($poseMultiplier+".o") ($clusterAutoTr+".tz");
+			
+			//rotate
+				
+			$poseMultiplier=`createNode multDoubleLinear`;		
+				
+				connectAttr $poseDriver ($poseMultiplier+".i1");
+			
+				connectAttr ($clusterTr+".autoRotX") ($poseMultiplier+".i2");
+				
+				connectAttr ($poseMultiplier+".o") ($clusterAutoTr+".rx");
+				
+			$poseMultiplier=`createNode multDoubleLinear`;		
+				
+				connectAttr $poseDriver ($poseMultiplier+".i1");
+			
+				connectAttr ($clusterTr+".autoRotY") ($poseMultiplier+".i2");
+				
+				connectAttr ($poseMultiplier+".o") ($clusterAutoTr+".ry");
+				
+			$poseMultiplier=`createNode multDoubleLinear`;	
+				
+				connectAttr $poseDriver ($poseMultiplier+".i1");
+			
+				connectAttr ($clusterTr+".autoRotZ") ($poseMultiplier+".i2");
+				
+				connectAttr ($poseMultiplier+".o") ($clusterAutoTr+".rz");
+				
+			//scale
+			
+			$poseBlender=`createNode blendColors`;
+			
+				setAttr ($poseBlender+".c2") 1 1 1;
+				
+				connectAttr $poseDriver ($poseBlender+".b");
+			
+				connectAttr ($clusterTr+".autoScaleX") ($poseBlender+".c1r");
+				
+				connectAttr ($poseBlender+".opr") ($clusterAutoTr+".sx");
+							
+				connectAttr ($clusterTr+".autoScaleY") ($poseBlender+".c1g");
+				
+				connectAttr ($poseBlender+".opg") ($clusterAutoTr+".sy");
+							
+				connectAttr ($clusterTr+".autoScaleZ") ($poseBlender+".c1b");
+				
+				connectAttr ($poseBlender+".opb") ($clusterAutoTr+".sz");			
+			
+		}
+						
+		if(`objExists $inSurface`) setAttr ($computeSurface+".intermediateObject") true;
+
+	return	$clusterTr;
+}
+
+global proc string[] rigZenMuscle
+(
+	string	$sel[],
+	int	$axis,
+	int	$createJiggle,
+	int	$generateScript
+)
+{
+	int	$degree=2;
+	int	$spans=2;
+	
+	//disable all node evaluations ( so we can manipulate joints without being bothered by IKs etc )
+	
+	DisableAll;
+	
+	//set EnableAll to occur when we're all done, regardless of errors
+	
+		zenDeferCommand("EnableAll");
+	
+	string	$tempString;
+	string	$tempStringArray[];
+
+	//convert string format
+		
+		for($i=0;$i<size($sel);$i++)
+		{
+			$sel[$i]=strip($sel[$i]);
+			$sel[$i]=`substituteAllString ($sel[$i]) " " ","`;
+			$sel[$i]=`substituteAllString ($sel[$i]) ",," ","`;
+		}
+		
+		$sel=`stringArrayRemove {""} $sel`;
+		
+	string	$edgeLists[];
+	string	$joints[];
+	string	$allEdges[];
+	string	$currentEdgeLists[];
+	string	$previousEdgeLists[];
+	string	$currentVerts[];
+	string	$previousVerts[];
+	string	$intersectedVerts[];
+
+	string	$currentJointList;
+	
+	int	$z;
+	
+	//get a list of all the edges
+	
+	string	$tempStringArray[];
+	
+		for($i=0;$i<size($sel);$i++)
+		{
+			$tempStringArray=stringToStringArray
+			(
+				( strip($sel[$i]) ),","
+			);
+			
+			$allEdges=stringArrayCatenate
+			(
+				$allEdges,
+				ls
+				(	
+					"-fl",
+					( 
+						polyListComponentConversion
+						(
+							"-fe",
+							"-te",
+							$tempStringArray
+						)
+					)
+				)
+			);
+		}
+			
+	//find out if all edges are on the same mesh
+	
+	string	$objects[]=stringArrayRemoveDuplicates(`ls -o $allEdges`);
+	
+	int	$multipleMeshes=false;
+	
+		if(size($objects)>1) $multipleMeshes=true;
+		
+	int	$firstMeshVertCount=zenReturnFirstIntegerItem(`polyEvaluate -v ($objects[0])`);
+	
+	//separate edges and joints and create ordered joint and edge lists
+	
+	string	$intersector=`stringArrayIntersector`;
+	
+	string	$allJoints[];
+	
+	string	$currentJointArray[];
+	
+		for($i=0;$i<size($sel);$i++)
+		{
+			$tempStringArray=`stringToStringArray ($sel[$i]) ","`;
+			$edges=ls("-fl",`polyListComponentConversion -fe -te $tempStringArray`);
+			$currentVerts=`polyListComponentConversion -fe -tv $edges`;
+			
+			//order the edge loop rings in this selection	
+			
+			$currentEdgeLists=zenOrderLoopRings(`zenIsolateLoops $edges`);
+					
+			//create the necessary number of joint selections to match
+			
+			$currentJointArray=`ls -type "transform" $tempStringArray`;
+			
+			$currentJointList=stringArrayToString($currentJointArray,",");
+			
+			$allJoints=stringArrayCatenate($allJoints,$currentJointArray);
+			
+			for($n=0;$n<size($currentEdgeLists);$n++)
+				$joints[(size($joints))]=$currentJointList;
+			
+			if($i>0)
+			{
+				if($multipleMeshes)
+				{
+					//find which of the previous edgeLoopRings is closes to the bounding box center of the current vertices
+					
+					
+				}
+				else
+				{				
+					//expand current vertex selection until encountering a vertex from the previous selection
+					
+					$tempStringArray=$currentVerts;
+					
+					for($n=0;$n<$firstMeshVertCount;$n++)
+					{
+						stringArrayIntersector -e -r $intersector;
+					
+						$tempStringArray=polyListComponentConversion
+						(
+							"-fe",
+							"-tv",
+							polyListComponentConversion
+							(
+								"-te",
+								"-fv",
+								$tempStringArray
+							)
+						);
+						
+						stringArrayIntersector -e -i (`ls -fl $tempStringArray`) $intersector;
+						stringArrayIntersector -e -i (`ls -fl $previousVerts`) $intersector;
+						
+						$intersectedVerts=`stringArrayIntersector -q $intersector`;
+						
+						if(size($intersectedVerts)) break;												
+					}
+					
+					//if the found vertices are from the first edgeLoopRing, reverse the previous array
+					
+					stringArrayIntersector -e -r $intersector;
+
+					$tempStringArray=polyListComponentConversion("-tv",`stringToStringArray ($previousEdgeLists[0]) ","`);
+
+					stringArrayIntersector -e -i (`ls -fl $tempStringArray`) $intersector;
+					stringArrayIntersector -e -i $intersectedVerts $intersector;
+					
+					if(size(`stringArrayIntersector -q $intersector`))
+						$previousEdgeLists=`zenReverseStringArray $previousEdgeLists`;
+						
+					//add the previous array to the edgeLists
+					
+					$edgeLists=stringArrayCatenate($edgeLists,$previousEdgeLists);
+				}
+			}
+						
+			if($i<(size($sel)-1))
+			{
+				$previousEdgeLists=$currentEdgeLists;
+				$previousVerts=$currentVerts;
+			}
+		}
+	
+	//find bindPose
+	
+		$allJoints=stringArrayRemoveDuplicates($allJoints);
+		
+		$tempStringArray=`dagPose -q -bp $allJoints`;
+		$tempStringArray=stringArrayRemoveDuplicates($tempStringArray);
+		
+	string	$bindPoseNode;
+	
+	int	$bound;
+	int	$poseDriven;
+	
+	string	$startPose;
+	string	$dupStartPose;
+	
+	//find the root joint
+	
+	string	$root;
+	int	$err=true;
+
+		if(size($tempStringArray))
+		{
+			$bound=1;			
+			$bindPoseNode=$tempStringArray[0];
+			
+			$root=zenReturnFirstStringItem(`dagPose -q -m $bindPoseNode`);
+			
+			if(size(`dagPose -q -ap $bindPoseNode`))
+			{
+				$poseDriven=true;
+				$startPose=`dagPose -s $root`;
+				
+				// if mirroring create a mirror pose
+				
+				if($axis)
+				{
+					rigZenFlipPose $axis $bindPoseNode;
+					$dupStartPose=`dagPose -s $root`;
+				}
+			}
+			
+			for( $i=0; $i<10 && $err ; $i++ )//this is necessary to overcome a glitch
+				$err=catchQuiet(`dagPose -r -g $bindPoseNode $root`);
+		
+			if($err) error("Error.");
+		}
+		else
+			$root=zenReturnFirstStringItem(`zenReturnTopLevelTransforms $joints`);
+		
+	//arrange the last edge list and add to edgeLists
+		
+		if($multipleMeshes)
+		{
+			//wip
+		}
+		else
+		{		
+			$intersectedVerts={};
+			
+			//expand previous vertex selection until encountering a vertex from the current selection
+
+			$tempStringArray=$previousVerts;
+
+			for($n=0;$n<$firstMeshVertCount;$n++)
+			{
+				stringArrayIntersector -e -r $intersector;
+
+				$tempStringArray=polyListComponentConversion
+				(
+					"-fe",
+					"-tv",
+					polyListComponentConversion
+					(
+						"-te",
+						"-fv",
+						$tempStringArray
+					)
+				);
+
+				stringArrayIntersector -e -i (`ls -fl $tempStringArray`) $intersector;
+				stringArrayIntersector -e -i (`ls -fl $currentVerts`) $intersector;
+
+				$intersectedVerts=`stringArrayIntersector -q $intersector`;
+
+				if(size($intersectedVerts)>0) break;												
+			}
+
+			//if the found vertices are not from the first edgeLoopRing, reverse the current array
+
+			stringArrayIntersector -e -r $intersector;
+
+			$tempStringArray=polyListComponentConversion("-tv",`stringToStringArray ($currentEdgeLists[0]) ","`);
+
+			stringArrayIntersector -e -i (`ls -fl $tempStringArray`) $intersector;
+			stringArrayIntersector -e -i $intersectedVerts $intersector;
+
+			if(!size(`stringArrayIntersector -q $intersector`))
+				$currentEdgeLists=`zenReverseStringArray $currentEdgeLists`;
+
+			//add the current array to the edgeLists
+
+			$edgeLists=stringArrayCatenate($edgeLists,$currentEdgeLists);
+		}
+						
+	float	$rebuildDegree=$degree;
+	
+	string	$curves[];
+	string	$curvesTr[];
+
+	string	$edgesOrdered[];
+	string	$edges[];
+	
+	string	$loftNode=`createNode loft`;
+		
+		setAttr ($loftNode+".degree") 1;
+		setAttr ($loftNode+".sectionSpans") $spans;
+		setAttr ($loftNode+".uniform") 1;
+		setAttr ($loftNode+".autoReverse") 0;
+		
+	string	$dupLoftNode;
+	
+		if($axis)
+		{
+			$dupLoftNode=`createNode loft`;
+
+			setAttr ($dupLoftNode+".degree") 1;
+			setAttr ($dupLoftNode+".sectionSpans") $spans;
+			setAttr ($dupLoftNode+".uniform") 1;
+			setAttr ($dupLoftNode+".autoReverse") 0;
+		}
+		
+	string	$parentJoints[];
+	string	$parentConstraints[];
+	
+	string	$dupJoints[];
+	string	$dupParentJoints[];
+	string	$dupParentConstraints[];
+	string	$dupCurvesTr[];
+	string	$dupCurves[];
+	
+	//fix this to ensure joint is bound
+			
+	string	$flipTr;
+	
+		if($axis)
+		{
+			$flipTr=`createNode -p $root transform`;
+
+			switch($axis)
+			{
+				case 1:
+					setAttr ($flipTr+".sx") -1;
+					break;
+
+				case 2:
+					setAttr ($flipTr+".sx") -1;
+					break;
+
+				case 3:
+					setAttr ($flipTr+".sx") -1;
+					break;
+			}
+		}
+		
+	//determine if any curves need reversal
+			
+	int	$flipped[];
+		
+		$flipped=`zenQueryFlippedEdgeRingPaths true $edgeLists`;
+			
+	//create tendon surface
+	
+	string	$dupJoints[];
+	
+		for($i=0;$i<(size($edgeLists));$i++)
+		{
+			$parentJoints=stringToStringArray($joints[$i],",");	
+									
+			$edges=`stringToStringArray ($edgeLists[$i]) ","`;
+							
+			$curvesTr[$i]=`createNode -n "muscleCurve#" transform`;
+			$curves[$i]=`createNode -p ($curvesTr[$i]) -n ($curvesTr[$i]+"Shape") nurbsCurve`;
+
+			connectAttr (`zenEdgeCurveNode $edges 1`+".outputCurve") ($curves[$i]+".create");
+			connectAttr -f ($curves[$i]+".worldSpace[0]") ($loftNode+".inputCurve["+(string($i))+"]");
+			
+			xform -cp ($curvesTr[$i]);
+			
+			setAttr (($curvesTr[$i])+".inheritsTransform") 1;
+			
+			if($flipped[$i])
+			{
+				reverseCurve $curvesTr[$i];
+				
+				$edges=`zenReverseStringArray $edges`;
+				$edgeLists[$i]=`stringArrayToString $edges ","`;				
+			}
+			
+			//mirror
+			
+			if($axis)
+			{
+				$dupCurvesTr[$i]=zenReturnFirstStringItem(`duplicate ($curvesTr[$i])`);
+				$dupCurves[$i]=zenReturnFirstStringItem(`listRelatives -s -ni $dupCurvesTr[$i]`);
+				
+				connectAttr -f ($dupCurves[$i]+".worldSpace[0]") ($dupLoftNode+".inputCurve["+(string($i))+"]");
+					
+				parent ($dupCurvesTr[$i]) $root;
+				
+				parent -r ($dupCurvesTr[$i]) $flipTr;
+				
+				parent ($dupCurvesTr[$i]) $root;
+				
+				makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 ($dupCurvesTr[$i]);
+								
+				//parent to opposing joint
+
+				$dupParentJoints=`rigZenReturnOpposingTransforms $parentJoints $root $axis`;
+				
+				$dupJoints[$i]=stringArrayToString($dupParentJoints,",");
+
+				for($n=0;$n<(size($parentJoints));$n++)
+					$dupJoints[$i]=$dupJoints[$i]+","+$dupParentJoints[$n];
+				
+				if(($dupParentJoints[0])!=$root)
+					parent ($dupCurvesTr[$i]) ($dupParentJoints[0]);
+				
+				setAttr (($dupCurvesTr[$i])+".inheritsTransform") 1;
+				
+				if(size($dupParentJoints)>1)
+				{
+					for($n=0;$n<(size($dupParentJoints));$n++)
+					{
+						$dupParentConstraints[$i]=zenReturnFirstStringItem(`parentConstraint -mo -weight 1 ($dupParentJoints[$n]) ($dupCurvesTr[$i])`);
+						addAttr -k 1 -at double -ln (($dupParentJoints[$n])+"_PC") -dv 1 ($dupCurvesTr[$i]);
+						connectAttr -f ($dupCurvesTr[$i]+"."+$dupParentJoints[$n]+"_PC") ($dupParentConstraints[$i]+".target["+(string($n))+"].targetWeight");
+					}
+										
+					setAttr ($dupParentConstraints[$i]+".interpType") 0;//no flip
+				}
+				
+			}
+
+			parent ($curvesTr[$i]) ($parentJoints[0]);
+			
+			if(size($parentJoints)>1)
+			{
+				for($n=0;$n<(size($parentJoints));$n++)
+				{
+					$parentConstraints[$i]=zenReturnFirstStringItem(`parentConstraint -mo -weight 1 ($parentJoints[$n]) ($curvesTr[$i])`);
+					addAttr -k 1 -at double -ln (($parentJoints[$n])+"_PC") -dv 1 ($curvesTr[$i]);
+					connectAttr -f ($curvesTr[$i]+"."+$parentJoints[$n]+"_PC") ($parentConstraints[$i]+".target["+(string($n))+"].targetWeight");
+					
+					if($axis)
+						connectAttr -f ($curvesTr[$i]+"."+$parentJoints[$n]+"_PC") ($dupCurvesTr[$i]+"."+$dupParentJoints[$n]+"_PC");
+				}
+							
+				setAttr ($parentConstraints[$i]+".interpType") 0;//no flip
+				
+				if($axis)
+					connectAttr -f ($parentConstraints[$i]+".interpType") ($dupParentConstraints[$i]+".interpType");
+			}
+		}
+		
+		if($axis) catch(`delete $flipTr`);
+		
+		delete -ch $curves;
+		
+
+	//create surface
+	
+	string	$surfaceTr=`createNode -n "tendon#" transform`;
+	string	$surfaceNode=`createNode -n ($surfaceTr+"Shape") -p ($surfaceTr) nurbsSurface`;
+	
+		connectAttr -f ($loftNode+".outputSurface") ($surfaceNode+".create");
+	
+		setAttr ($surfaceTr+".inheritsTransform") 0;
+		
+		parent -r $surfaceTr (zenReturnFirstStringItem(stringToStringArray($joints[0],",")));
+		
+			//zenDeferCommand("setAttr "+$surfaceTr+".t 0 0 0");
+		
+	//rebuild for 0-1 range
+	
+	string	$rebuildNode=`createNode rebuildSurface`;
+	
+			connectAttr -f ($loftNode+".outputSurface") ($rebuildNode+".inputSurface");
+
+			setAttr ($rebuildNode+".keepControlPoints") 1;
+			setAttr ($rebuildNode+".endKnots") 0;
+			setAttr ($rebuildNode+".degreeU") $degree;
+			setAttr ($rebuildNode+".degreeV") $degree;
+			setAttr ($rebuildNode+".keepRange") 0;
+			setAttr ($rebuildNode+".direction") 0;
+			setAttr ($rebuildNode+".rebuildType") 0;
+			setAttr ($rebuildNode+".endKnots") 1;
+	
+	//find out how many samples the rebuilt surface will need
+	
+	int	$rebuildNum=20;//default to 20
+	string	$firstVerts[];
+	string	$lastVerts[];
+
+		if($multipleMeshes)
+		{
+		}
+		else
+		{
+			//expand the first set of edges until reaching the last set and set $rebuildNum to twice this
+
+			$firstVerts=ls("-fl",(polyListComponentConversion("-tv",`stringToStringArray ($edgeLists[0]) ","`)));
+			$lastVerts=ls("-fl",(polyListComponentConversion("-tv",`stringToStringArray ($edgeLists[(size($edgeLists)-1)]) ","`)));
+														
+			$tempStringArray=$firstVerts;
+
+			for($i=0;$i<$firstMeshVertCount;$i++)
+			{
+				stringArrayIntersector -e -r $intersector;
+
+				$tempStringArray=polyListComponentConversion
+				(
+					"-fe",
+					"-tv",
+					polyListComponentConversion
+					(
+						"-te",
+						"-fv",
+						$tempStringArray
+					)
+				);
+
+				stringArrayIntersector -e -i `ls -fl $tempStringArray` $intersector;
+				stringArrayIntersector -e -i $lastVerts $intersector;
+
+				$intersectedVerts=`stringArrayIntersector -q $intersector`;
+
+				if(size($intersectedVerts)) break;											
+			}
+
+			$rebuildNum=$i*2;	
+		}
+		
+		deleteUI $intersector;
+	
+	
+	//rebuild evenly
+	
+	string	$rebuildNode2=`zenUniformSurfaceRebuild ($rebuildNode+".outputSurface") $rebuildNum -1`;
+
+			setAttr ($rebuildNode2+".degreeU") 2;
+			connectAttr -f ($rebuildNode2+".outputSurface") ($surfaceNode+".create");
+	
+	//create mirror surface
+
+	string	$dupSurfaceTr;
+	string	$dupSurfaceNode;
+	string	$dupRebuildNode;
+	string	$dupRebuildNode2;
+	string	$dupReverseSurfaceNode;
+	
+		if($axis)
+		{
+			$dupSurfaceTr=`createNode -n "tendon#" transform`;
+			$dupSurfaceNode=`createNode -n ($dupSurfaceTr+"Shape") -p ($dupSurfaceTr) nurbsSurface`;
+
+				connectAttr -f ($dupLoftNode+".outputSurface") ($dupSurfaceNode+".create");
+
+				setAttr ($dupSurfaceTr+".inheritsTransform") 0;
+
+			parent -r $dupSurfaceTr (zenReturnFirstStringItem(stringToStringArray($dupJoints[0],",")));
+				
+				//zenDeferCommand("setAttr "+$dupSurfaceTr+".t 0 0 0");
+
+			//rebuild for 0-1 range
+
+			$dupRebuildNode=`createNode rebuildSurface`;
+
+				connectAttr -f ($dupLoftNode+".outputSurface") ($dupRebuildNode+".inputSurface");
+				connectAttr -f ($dupRebuildNode+".outputSurface") ($dupSurfaceNode+".create");
+
+				setAttr ($dupRebuildNode+".keepControlPoints") 1;
+				setAttr ($dupRebuildNode+".endKnots") 0;
+				setAttr ($dupRebuildNode+".degreeU") $degree;
+				setAttr ($dupRebuildNode+".degreeV") $degree;
+				setAttr ($dupRebuildNode+".keepRange") 0;
+				setAttr ($dupRebuildNode+".direction") 0;
+				setAttr ($dupRebuildNode+".rebuildType") 0;
+				setAttr ($dupRebuildNode+".endKnots") 1;
+			
+			$dupRebuildNode2=`zenUniformSurfaceRebuild ($dupRebuildNode+".outputSurface") $rebuildNum -1`;
+			
+				setAttr ($dupRebuildNode2+".degreeU") 2;
+			
+				connectAttr -f ($dupRebuildNode2+".outputSurface") ($dupSurfaceNode+".create");
+			
+			$dupReverseSurfaceNode=`createNode reverseSurface`;
+			
+				setAttr ($dupReverseSurfaceNode+".direction") 1;
+
+				connectAttr -f ($dupLoftNode+".outputSurface") ($dupReverseSurfaceNode+".inputSurface"); 
+				connectAttr -f ($dupReverseSurfaceNode+".outputSurface") ($dupRebuildNode+".inputSurface");
+
+				setAttr ($dupReverseSurfaceNode+".nodeState") 1;
+		}
+		
+	//set display
+	
+		setAttr ($surfaceNode+".overrideEnabled") 1;
+		setAttr ($surfaceNode+".overrideShading") 0;
+		setAttr ($surfaceNode+".overrideColor") 13;
+		
+		setAttr ($surfaceNode+".curvePrecisionShaded") 4;
+		
+		if($axis)
+		{
+			setAttr ($dupSurfaceNode+".overrideEnabled") 1;
+			setAttr ($dupSurfaceNode+".overrideShading") 0;
+			setAttr ($dupSurfaceNode+".overrideColor") 13;
+			
+			setAttr ($dupSurfaceNode+".curvePrecisionShaded") 4;
+		}
+		
+	//determine if surface needs to be flipped
+	
+	string	$reverseSurfaceNode=`createNode reverseSurface`;
+	
+		setAttr ($reverseSurfaceNode+".direction") 1;
+	
+		connectAttr -f ($loftNode+".outputSurface") ($reverseSurfaceNode+".inputSurface");
+		connectAttr -f ($reverseSurfaceNode+".outputSurface") ($rebuildNode+".inputSurface");
+		
+		setAttr ($reverseSurfaceNode+".nodeState") 1;
+			
+	string	$pointOnSurfaceInfoNode=`createNode pointOnSurfaceInfo`;
+	string	$closestPointOnMeshNode=`createNode closestPointOnMesh`;
+	
+		connectAttr ($rebuildNode+".outputSurface") ($pointOnSurfaceInfoNode+".inputSurface");
+		
+		setAttr ($pointOnSurfaceInfoNode+".parameterU") .5;
+		setAttr ($pointOnSurfaceInfoNode+".parameterV") .5;
+			
+	float	$pointLoc[];
+	
+	float	$distance;
+	float	$closestDist=1000000000;
+	
+	string	$closestMesh;
+	
+	vector	$closestPoint;
+	vector	$point;
+
+		for($o in $objects)
+		{
+			connectAttr ($o+".worldMesh[0]") ($closestPointOnMeshNode+".inMesh");
+
+			$pointLoc=`getAttr ($pointOnSurfaceInfoNode+".position")`;
+
+			setAttr ($closestPointOnMeshNode+".inPosition") $pointLoc[0] $pointLoc[1] $pointLoc[2];
+			
+			$point=vector(<<(float(`getAttr ($closestPointOnMeshNode+".px")`)),(float(`getAttr ($closestPointOnMeshNode+".py")`)),(float(`getAttr ($closestPointOnMeshNode+".pz")`))>>);
+			
+			$distance=mag(<<($pointLoc[0]),($pointLoc[1]),($pointLoc[2])>>-$point);
+			
+			if($distance<$closestDist)
+			{
+				$closestDist=$distance;
+				$closestMesh=$o;
+				$closestPoint=$point;
+			}
+		}
+		
+		setAttr ($closestPointOnMeshNode+".inPosition") ($closestPoint.x) ($closestPoint.y) ($closestPoint.z);
+		
+	float	$meshNormalX=`getAttr ($closestPointOnMeshNode+".normalX")`;
+	float	$meshNormalY=`getAttr ($closestPointOnMeshNode+".normalY")`;
+	float	$meshNormalZ=`getAttr ($closestPointOnMeshNode+".normalZ")`;
+	
+	float	$surfaceNormalX=`getAttr ($pointOnSurfaceInfoNode+".normalX")`;
+	float	$surfaceNormalY=`getAttr ($pointOnSurfaceInfoNode+".normalY")`;
+	float	$surfaceNormalZ=`getAttr ($pointOnSurfaceInfoNode+".normalZ")`;
+	
+	float	$normalDifference=mag(<<$surfaceNormalX,$surfaceNormalY,$surfaceNormalZ>>-<<$meshNormalX,$meshNormalY,$meshNormalZ>>);
+
+		if($normalDifference>1) 
+			setAttr ($reverseSurfaceNode+".nodeState") 0;
+		else
+			setAttr ($dupReverseSurfaceNode+".nodeState") 0;
+
+		delete $pointOnSurfaceInfoNode $closestPointOnMeshNode;
+				
+//create handles
+
+	string	$handle=`rigZenTangentSpaceMuscleCluster $surfaceNode $bindPoseNode $startPose $createJiggle`;
+	
+	string	$dupHandle;
+	string	$dupHandleSpaces[];
+	string	$sharedAttributes[];
+	
+		if($axis)
+		{
+			$dupHandle=`rigZenTangentSpaceMuscleCluster $dupSurfaceNode $bindPoseNode $dupStartPose $createJiggle`;
+			
+			$tempStringArray=zenReturnTopLevelTransforms(`ls -l $dupHandle`);
+	
+			$dupHandleSpaces=`listRelatives -c $tempStringArray`;
+			
+			//setAttr ($dupHandle+".handleOffsetX") (getAttr($dupHandle+".handleOffsetX"));
+			
+			for($d in $dupHandleSpaces)
+			{
+				setAttr -lock false ($d+".sz"); 
+				setAttr -lock true ($d+".sz") -1;
+			}
+			
+			//connect automated attributes
+			
+			$sharedAttributes=
+			{
+				"bias",
+				"fallOff",
+				"centerWidth",
+				"tangentSpace",
+				"autoFlexBias",
+				"autoTransX",
+				"autoTransY",
+				"autoTransZ",
+				"autoRotX",
+				"autoRotY",
+				"autoRotZ",
+				"autoScaleX",   
+				"autoScaleY",
+				"autoScaleZ",
+				"handleOffsetX",
+				"handleOffsetY",
+				"handleOffsetZ"
+			};
+			
+			if($createJiggle)
+			{
+				$sharedAttributes=stringArrayCatenate
+				(
+					$sharedAttributes,
+					{
+						"jiggle",
+						"jEnvelope",
+						"jDamping",
+						"jStiffness",
+						"jWeight",
+						"jForceNormal",
+						"jForceTangent",
+						"jDirBias",
+						"jIgnoreTr",
+						"jMotionMult"			
+					}
+				);
+			}
+			
+			for($s in $sharedAttributes)
+				if( objExists($handle+"."+$s) && objExists($dupHandle+"."+$s) ) 
+					connectAttr -f ($handle+"."+$s) ($dupHandle+"."+$s);		
+		}
+
+//if any skin clusters are present, add muscle as influence object with weight of 0
+				
+	string	$skinClusters[]=stringArrayRemoveDuplicates(ls("-type","skinCluster",`listHistory $objects`));
+					
+	string	$baseShape;
+	
+	int	$nextBindPosePlug;
+	
+	int	$plug;
+	
+		xform -cp $surfaceTr;//center pivot
+		
+		if(size($skinClusters))
+		{
+			$baseShape=zenReturnFirstStringItem(listRelatives("-s","-ni",`duplicate -rc $surfaceTr`));
+			
+				$baseShape=`rename $baseShape ($baseShape+"Base")`;
+				
+			zenParentShape {$baseShape,$surfaceTr};
+			
+				setAttr ($baseShape+".intermediateObject") 1;
+			
+			addAttr -at short -ln "dropoff" $surfaceTr;
+				setAttr -k 0 -cb true ($surfaceTr+".dropoff") 4;
+			
+			addAttr -at short -ln "samples" $surfaceTr;
+				setAttr -k 0 -cb true ($surfaceTr+".samples") 10;
+
+			for($s in $skinClusters)
+			{
+				$plug=`zenNextPlug ($s+".matrix")`;
+				
+				
+				$nextBindPosePlug=`zenNextPlug ($bindPoseNode+".members")`;
+				
+				
+				skinCluster -e -ug -ns 10 -wt 0 -ai $surfaceTr -bsh $baseShape $s;
+					connectAttr -f ($surfaceTr+".dropoff") ($s+".dropoff["+(string($plug))+"]");
+					connectAttr -f ($surfaceTr+".samples") ($s+".nurbsSamples["+(string($plug))+"]");
+					
+				//ensures correct bind pose for influence
+				
+				catch( `connectAttr -f ($surfaceTr+".message") ($bindPoseNode+".members["+string($nextBindPosePlug)+"]")` );
+
+				zenDeferCommand
+				( 
+					"setAttr "+
+					"(zenReturnFirstStringItem(listConnections("+
+					"\""+$bindPoseNode+".members["+string($nextBindPosePlug)+"]"+"\""+
+					"))+\".t\") 0 0 0"
+				);
+
+				zenDeferCommand
+				( 
+					"setAttr -type \"matrix\" "+
+					$bindPoseNode+".xformMatrix["+string($nextBindPosePlug)+"] "+
+					zenFloatArrayToString(getAttr($surfaceTr+".matrix")," ")
+				);
+				zenDeferCommand
+				( 
+					"setAttr -type \"matrix\" "+
+					$bindPoseNode+".worldMatrix["+string($nextBindPosePlug)+"] "+
+					zenFloatArrayToString(getAttr($surfaceTr+".worldMatrix")," ")
+				);
+
+			}
+		
+			setAttr ($surfaceTr+".visibility") 1;
+			
+			if($axis)
+			{
+				$dupBaseShape=zenReturnFirstStringItem(listRelatives("-s","-ni",`duplicate -rc $dupSurfaceTr`));
+				
+					$dupBaseShape=`rename $dupBaseShape ($dupBaseShape+"Base")`;
+					zenParentShape {$dupBaseShape,$dupSurfaceTr};
+					setAttr ($dupBaseShape+".intermediateObject") 1;
+
+				addAttr -at short -ln "dropoff" $dupSurfaceTr;
+					
+					setAttr -k 0 -cb true ($dupSurfaceTr+".dropoff") 4;
+
+				addAttr -at short -ln "samples" $dupSurfaceTr;
+					
+					setAttr -k 0 -cb true ($dupSurfaceTr+".samples") 10;
+
+				for($s in $skinClusters)
+				{
+					$plug=`zenNextPlug ($s+".matrix")`;
+					$nextBindPosePlug=`zenNextPlug ($bindPoseNode+".members")`;
+					skinCluster -e -ug -ns 10 -wt 0 -ai $dupSurfaceTr -bsh $dupBaseShape $s;
+					connectAttr -f ($dupSurfaceTr+".dropoff") ($s+".dropoff["+(string($plug))+"]");
+					connectAttr -f ($dupSurfaceTr+".samples") ($s+".nurbsSamples["+(string($plug))+"]");	
+					
+					//ensures correct bind pose for influence
+					
+					catch ( `connectAttr -f ($dupSurfaceTr+".message") ($bindPoseNode+".members["+string($nextBindPosePlug)+"]")` );
+					
+					zenDeferCommand
+					( 
+						"setAttr "+
+						"(zenReturnFirstStringItem(listConnections("+
+						"\""+$bindPoseNode+".members["+string($nextBindPosePlug)+"]"+"\""+
+						"))+\".t\") 0 0 0"
+					);
+					
+					zenDeferCommand
+					( 
+						"setAttr -type \"matrix\" "+
+						$bindPoseNode+".xformMatrix["+string($nextBindPosePlug)+"] "+
+						zenFloatArrayToString(getAttr($dupSurfaceTr+".matrix")," ")
+					);
+					zenDeferCommand
+					( 
+						"setAttr -type \"matrix\" "+
+						$bindPoseNode+".worldMatrix["+string($nextBindPosePlug)+"] "+
+						zenFloatArrayToString(getAttr($dupSurfaceTr+".worldMatrix")," ")
+					);
+
+				}
+
+				setAttr ($dupSurfaceTr+".visibility") 1;
+			}
+		}
+
+//create an assembly command for scripting convenience
+
+	string	$assemblyCommand;
+	string	$curveAttr[];
+	string	$dupCurveAttr[];
+	string	$handleShape;
+	string	$dupHandleShape;
+	int	$firstCurveAttrNoted=true;
+	
+		if($generateScript)
+		{
+			
+			if($axis) $returnVal=stringArrayCatenate(stringArrayCatenate({$handle,$dupHandle,$surfaceTr,$dupSurfaceTr},$curvesTr),$dupCurvesTr);
+			else $returnVal=stringArrayCatenate({$handle,$surfaceTr},$curvesTr);
+		
+			$assemblyCommand=
+			(
+				"//Create Muscle\n\n"+
+				
+				"string	$muscle[]=rigZenMuscle\n"+
+				"	(\n"+
+				"		{\n"+
+				"			\""+(stringArrayToString($sel,"\",\n			\""))+"\"\n"+
+				"		},\n"+
+				"		"+(string($axis))+","+(string($createJiggle))+",0\n"+
+				"	);\n\n"
+			);
+			
+			if($axis)
+			{
+				$assemblyCommand=$assemblyCommand+
+				(
+					"//Name the Muscles\n\n"+
+					
+					"	$muscle[2]=`rename $muscle[2] \"muscle#_left\"`;\n\n"+
+					"	$muscle[2]=`rename $muscle[3] \"muscle#_right\"`;\n\n"+
+					
+					"//Name the Handles\n\n"+
+					
+					"	$muscle[0]=`rename $muscle[0] \"muscleCtrl#_left\"`;\n\n"+
+					"	$muscle[1]=`rename $muscle[1] \"muscleCtrl#_right\"`;\n\n"
+				);
+			}
+			else
+			{
+				$assemblyCommand=$assemblyCommand+
+				(
+					"//Name the Muscles\n\n"+
+					
+					"	$muscle[1]=`rename $muscle[2] \"muscle#\"`;\n\n"+
+				
+					"//Name the Handles\n\n"+
+					
+					"	$muscle[0]=`rename $muscle[0] \"muscleCtrl#\"`;\n\n"
+				);
+			}
+				
+			$assemblyCommand=$assemblyCommand+
+			(
+				"\n//These attributes determine the shape of the muscles bulge.\n"+
+				
+				"	setAttr ($muscle[0]+\".fallOff\") "+(string(getAttr($handle+".fallOff")))+";\n"+				
+				"	setAttr ($muscle[0]+\".bias\") "+(string(getAttr($handle+".bias")))+";\n"+				
+				"	setAttr ($muscle[0]+\".centerWidth\") "+(string(getAttr($handle+".centerWidth")))+";\n\n"+
+				
+				"	//These attributes determine whether the muscle bulge deforms along the tangent of the bias\n"+
+				"	//tangentSpace==0 deforms the surface in the object space of the handle\n"+
+				"	//tangentSpace==1 deforms each row of cv's in their own local tangent space, effectively similar to displacement.\n\n"+
+
+				"	setAttr ($muscle[0]+\".tangentSpace\") "+(string(getAttr($handle+".tangentSpace")))+";\n\n"
+			);
+			
+			if(`objExists ($handle+".autoRotX")`)
+			{
+				$assemblyCommand=$assemblyCommand+
+				(
+					"//These attributes set the values for graduated transformations applied to the handle as the\n"+
+					"//character reaches the 'flex' pose.\n"+
+					"//The 'autoFlexBias' attribute determines how far into the pose the deformation will begin.\n\n"+
+					
+					"	setAttr ($muscle[0]+\".autoFlexBias\") "+(string(getAttr($handle+".autoFlexBias")))+";\n"+
+					"	setAttr ($muscle[0]+\".autoTransX\") "+(string(getAttr($handle+".autoTransX")))+";\n"+
+					"	setAttr ($muscle[0]+\".autoTransY\") "+(string(getAttr($handle+".autoTransY")))+";\n"+
+					"	setAttr ($muscle[0]+\".autoTransZ\") "+(string(getAttr($handle+".autoTransZ")))+";\n"+
+					"	setAttr ($muscle[0]+\".autoRotX\") "+(string(getAttr($handle+".autoRotX")))+";\n"+
+					"	setAttr ($muscle[0]+\".autoRotY\") "+(string(getAttr($handle+".autoRotY")))+";\n"+
+					"	setAttr ($muscle[0]+\".autoRotZ\") "+(string(getAttr($handle+".autoRotZ")))+";\n"+
+					"	setAttr ($muscle[0]+\".autoScaleX\") "+(string(getAttr($handle+".autoScaleX")))+";\n"+
+					"	setAttr ($muscle[0]+\".autoScaleY\") "+(string(getAttr($handle+".autoScaleY")))+";\n"+
+					"	setAttr ($muscle[0]+\".autoScaleZ\") "+(string(getAttr($handle+".autoScaleZ")))+";\n\n"
+				);
+			}
+			
+			if(`objExists ($handle+".jiggle")`)
+			{
+				$assemblyCommand=$assemblyCommand+
+				(
+					"//These attributes control the Jiggle Deformer associated with this muscle.\n\n"+
+					
+					"	setAttr ($muscle[0]+\".jiggle\") "+(string(getAttr($handle+".jiggle")))+";//0==enable 1==disable 2==enable only after object stops\n"+
+					"	setAttr ($muscle[0]+\".jEnvelope\") "+(string(getAttr($handle+".jEnvelope")))+";\n"+
+					"	setAttr ($muscle[0]+\".jDamping\") "+(string(getAttr($handle+".jDamping")))+";\n"+
+					"	setAttr ($muscle[0]+\".jWeight\") "+(string(getAttr($handle+".jWeight")))+";\n"+
+					"	setAttr ($muscle[0]+\".jForceNormal\") "+(string(getAttr($handle+".jForceNormal")))+";\n"+
+					"	setAttr ($muscle[0]+\".jForceTangent\") "+(string(getAttr($handle+".jForceTangent")))+";\n"+
+					"	setAttr ($muscle[0]+\".jDirBias\") "+(string(getAttr($handle+".jDirBias")))+";\n"+
+					"	setAttr ($muscle[0]+\".jIgnoreTr\") "+(string(getAttr($handle+".jIgnoreTr")))+";\n"+
+					"	setAttr ($muscle[0]+\".jMotionMult\") "+(string(getAttr($handle+".jMotionMult")))+";\n\n"
+				);
+			}
+			
+			$assemblyCommand=$assemblyCommand+
+			(
+				"//These attributes control the size and offset of this muscles handle.\n\n"+
+				
+				"	setAttr ($muscle[0]+\".handleOffsetX\") "+(string(getAttr($handle+".handleOffsetX")))+";\n"+
+				"	setAttr ($muscle[0]+\".handleOffsetY\") "+(string(getAttr($handle+".handleOffsetY")))+";\n"+
+				"	setAttr ($muscle[0]+\".handleOffsetZ\") "+(string(getAttr($handle+".handleOffsetZ")))+";\n"+
+				"	setAttr ($muscle[0]+\".handleRadius\") "+(string(getAttr($handle+".handleRadius")))+";\n\n"
+			);
+		
+			$tempStringArray={};
+			
+			
+			for($i=0;$i<size($curvesTr);$i++)
+			{
+				$curveAttr={};
+				$tempStringArray=`listAttr $curvesTr[$i]`;
+				
+				for($s in $tempStringArray)
+				{
+					if(`gmatch $s "*_PC"`)
+						$curveAttr[(size($curveAttr))]=$s;
+				}
+				
+				if($axis)
+				{
+					$dupCurveAttr={};
+					$tempStringArray=`listAttr $dupCurvesTr[$i]`;
+					
+					for($s in $tempStringArray)
+					{
+						if(`gmatch $s "*_PC"`)
+							$dupCurveAttr[(size($dupCurveAttr))]=$s;
+					}
+				}
+				
+				if(size($curveAttr))
+				{
+					for($n=0;$n<size($curveAttr);$n++)
+					{
+						if($firstCurveAttrNoted)
+						{
+							$assemblyCommand=$assemblyCommand+"//Set Parent Constraint Weighting for Muscle Curve\n\n";
+							$firstCurveAttrNoted=false;
+						}
+						
+						$assemblyCommand=$assemblyCommand+
+						(
+							"	setAttr ($muscle["+(string($i+3))+"]+\"."+(string($curveAttr[$n]))+"\") "+(string(getAttr($curvesTr[$i]+"."+(string($curveAttr[$n])))))+";\n"
+						);
+					}
+				}
+			}
+	
+			$handleShape=zenReturnFirstStringItem(`listRelatives -s -ni $handle`);
+			if($axis) $dupHandleShape=zenReturnFirstStringItem(`listRelatives -s -ni $dupHandle`);
+			
+			if(!`objExists ($handle+".notes")`)
+				addAttr -dt "string" -ln notes -sn nts $handle;
+	
+			if(!`objExists ($handleShape+".notes")`)
+				addAttr -dt "string" -ln notes -sn nts $handleShape;
+			
+			if(`objExists $dupHandle` && !`objExists ($dupHandle+".notes")`)
+			{
+				addAttr -dt "string" -ln notes -sn nts $dupHandle;
+				setAttr -type "string" ($dupHandle+".notes") $assemblyCommand;
+			}
+			
+			if(`objExists $dupHandleShape` && !`objExists ($dupHandleShape+".notes")`)
+			{
+				addAttr -dt "string" -ln notes -sn nts $dupHandleShape;
+				setAttr -type "string" ($dupHandleShape+".notes") $assemblyCommand;
+			}
+			
+			setAttr -type "string" ($handle+".notes") $assemblyCommand;
+			setAttr -type "string" ($handleShape+".notes") $assemblyCommand;
+		}
+		
+//
+		
+	string	$returnVal[];
+		
+		if($axis) $returnVal=stringArrayCatenate(stringArrayCatenate({$handle,$dupHandle,$surfaceTr,$dupSurfaceTr},$curvesTr),$dupCurvesTr);
+		else $returnVal=stringArrayCatenate({$handle,$surfaceTr},$curvesTr);
+				
+	return	$returnVal;
+}

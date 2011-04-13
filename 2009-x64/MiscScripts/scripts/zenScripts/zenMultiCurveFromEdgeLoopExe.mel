@@ -1,0 +1,29 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//create curves from selected edge loops
+global proc string[] zenMultiCurveFromEdgeLoopExe(int $degree)
+{
+	string	$sel[]=`ls -sl -fl`;
+	string	$newCurve[];
+	string	$curves[]=`zenAlignedCurveNodesFromEdgeLoops $sel $degree`;
+	
+		for($i=0;$i<size($newCurve);$i++)
+		{
+				$newCurve[$i]=`createNode -n "CurveFromEdgeLoop#" nurbsCurve`;
+				connectAttr -f ($curves[$i]+".outputCurve") ($newCurve[$i]+".create");
+		}
+		
+	return 	$newCurve;
+}

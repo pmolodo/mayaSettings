@@ -1,0 +1,74 @@
+global proc ss2_revLimScale  (){
+	print"";
+}
+print "ss2_revLimScale : sourced\n";
+
+global proc ss2_revLimScale_run (string $limitee, string $limiter, string $axis){
+
+	//Buffer selection
+
+		string $sel[] = `ls -sl`;
+
+	//Get existing connections
+
+		string $connections[] = `listConnections -scn 1 -plugs 1 -source 1 -destination 0 ($limitee+".scaleY")`;
+
+	//Plug in old connections if applicable - if not, make some noise
+
+		if ( size($connections) ){
+
+			//Create nodes
+
+				string $plusMinusAverage = `createNode plusMinusAverage`;
+				string $reverse = `createNode reverse`;
+				string $clamp = `createNode clamp`;
+
+			//Make sure input will work, default to Y if bad
+
+				$axis = `toupper $axis`;
+
+				if ($axis != "X" && $axis != "Y" && $axis != "Z")
+					$axis = "Y";
+
+			//Set limiting attrs
+
+				eval ("transformLimits -scale"+ $axis +" 0 2 -enableScale"+ $axis +" 1 1 "+$limitee);
+				eval ("transformLimits -scale"+ $axis +" 0 2 -enableScale"+ $axis +" 1 1 "+$limiter);
+
+				setAttr ($plusMinusAverage+".input1D[1]") 1;
+
+			//Make new Connections
+
+				connectAttr -f $connections[0] ($clamp+".inputG");
+				connectAttr -f ($limiter+".scaleY") ($reverse+".inputY");
+				connectAttr -f ($reverse+".outputY") ($plusMinusAverage+".input1D[0]");
+				connectAttr -f ($plusMinusAverage+".output1D") ($clamp+".maxG");
+				connectAttr -f ($clamp+".outputG") ($limitee+".scaleY");
+
+		}else{
+
+			error ("ss2_revLimScale_run : "+$limiter+" has no existing connections; you don't want to run this tool until AFTER you've set up some driven keys");
+
+		}
+
+	//Restore selection
+
+		select $sel;
+
+}
+
+global proc ss2_revLimScale_shelf (){
+
+	string $sel[] = `ls -sl`;
+
+	if ( size($sel) == 2 ){
+
+		ss2_revLimScale_run $sel[0] $sel[1] "y";
+
+	}else{
+
+		error "ss2_revLimScale_shelf : requires two objects";
+
+	}
+
+}

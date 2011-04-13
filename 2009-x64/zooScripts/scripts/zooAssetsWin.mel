@@ -1,0 +1,221 @@
+//This is the basic UI for zooAssets.  It is stored separately in the script so
+//that it doesn't take up any memory by being contained in a global procedure.
+//This script merely builds the UI and exits.  The zooAssets script is responsible
+//for updating and maintaining the interface.
+//
+// ©2007 macaronikazoo.com
+
+
+proc win() {
+//load dependencies
+zooAnimFile;
+zooArrays_str;
+zooArrays_int;
+zooArrays_float;
+zooBrandTools;
+zooFlags;
+zooObjMenuUtils;
+zooTips;
+zooTriggeredUtils;
+zooUtils;
+
+string $assetsButtons[] = `zooGetShelfButtonAll zooAssets`;
+for( $a in $assetsButtons ) popupMenu -p $a -aob 1 -pmc ( "zooAssetsBuildPopMenu zooAssetsPopMenu" ) zooAssetsPopMenu;
+
+string $windowName = "zooAssetsWindow";
+string $windowTitle = "zooAssets v"+ `zooAssetsInfo version`;
+int $infoDate = 50910;  //this is actually a reversed date, with the first number being the year number
+int $showTips = `optionVar -ex zooAssetsTips`? `optionVar -q zooAssetsTips`: 1;
+int $latestTip = -1;
+int $showNames = `zooGetGlobalAttrData fullNames`;//`optionVar -ex zooShowActualAssetNames`? `optionVar -q zooShowActualAssetNames`: 0;
+
+if( $infoDate > `optionVar -q zooAssetsPreviousTipDate` ) {
+	$showTips = 1;
+	$latestTip = 16;
+	}
+optionVar -iv zooAssetsPreviousTipDate $infoDate;  //When new tips are added, this counter in incremented.  If the number stored in the script is bigger than the one stored in the userPrefs, then the user hasn't seen the new tips
+
+if( `window -ex $windowName` ) deleteUI $windowName;
+window -t $windowTitle -resizeToFitChildren 0 -maximizeButton 0 -sizeable 1 -width 650 -height 350 $windowName;
+	menuBarLayout zooAssetsMenuMain;
+		menu -l "Manage";
+			menuItem -l "Import Assets From..." -c( "zooAssetsWindowFunctions importAssets n;" );
+			menuItem -d 1;
+			menuItem -l "Add Empty Slot" -c( "zooAssetsWindowFunctions emptySlot n;" );
+			menuItem -l "Delete un-used Slots" -c( "zooAssetsWindowFunctions deleteUnused n;" );
+			menuItem -l "Delete disabled Slots" -c( "zooAssetsWindowFunctions deleteDisabled n;" );
+			menuItem -d 1;
+			menuItem -l "Install Shelf Button" -c( "zooAssetsSetup;" );
+			menuItem -l "Remove Shelf Button" -c ( "deleteUI `zooShelveItGetShelfButton zooAssets`;" );
+		menu -l "View";
+			menuItem -l "Show Perforce Menu Items" -cb( `optionVar -ex zooAssetsP4Menu`?`optionVar -q zooAssetsP4Menu`:1) -c( "if( #1 ) optionVar -rm zooAssetsP4Menu; else optionVar -iv zooAssetsP4Menu 0;" );
+			menuItem -l "Show Full Names" -cb $showNames -c( "zooAssetsWindowFunctions toggleNameView #1;" ) zooShowActualAssetNames;
+			menuItem -l "Hide Disabled" -cb( `optionVar -ex zooHideDisabledAssets`? `optionVar -q zooHideDisabledAssets`: 0 ) -c( "zooAssetsWindowFunctions toggleHideOption #1;" ) zooHideDisabledAssets;
+			menuItem -d 1;
+			menuItem -l "Order by Slot Number" -cb 0 -c( "zooAssetsWindowFunctions order slot;" ) zooAssetsOrder_slot;
+			menuItem -l "Order by Start Range" -cb 0 -c( "zooAssetsWindowFunctions order range;" ) zooAssetsOrder_range;
+			menuItem -l "Order by Colour" -cb 0 -c( "zooAssetsWindowFunctions order colour;" ) zooAssetsOrder_colour;
+			menuItem -l "Order by Name" -cb 0 -c( "zooAssetsWindowFunctions order name;" ) zooAssetsOrder_name;
+			menuItem -d 1;
+			menuItem -l "Highlight Current" -c( "zooHighlightActiveAsset 1;" );
+			menuItem -l "Auto Highlight Current" -cb (`optionVar -ex zooHighlightActiveAsset`? `optionVar -q zooHighlightActiveAsset`: 1) -c( "optionVar -iv zooHighlightActiveAsset `menuItem -q -cb zooAssetsHighlight`; zooRevertAssetColour -1;" ) zooAssetsHighlight;
+		menu -l "Export" -aob 1;
+			menuItem -l "Export All..." -c( "zooAssetsWindowFunctions exportAll n;" );
+			menuItem -d 1;
+			menuItem -l "Select Node" -c( "select `zooGetAssetNode 0`;" );
+		menu -l "Help";
+			menuItem -l "Help..." -c ( "zooHelp zooAssets 1;" );
+			menuItem -l "Technical Info" -c ( "zooHelp zooAssets 3;" );
+			menuItem -l "Show Tips Window" -c( "zooTipsWin zooAssets -1;" );
+
+	string $layoutForm = `formLayout zooAssetsFormMain`;
+		scriptJob -p zooAssetsFormMain -cu 1 -e timeChanged "zooHighlightActiveAsset 0";
+
+		string $frame = `frameLayout -l "export options" -collapsable 1 -collapse 0 -labelAlign "center" -borderStyle "etchedIn"`;
+			string $topForm = `formLayout`;
+				string $expLbl = `text -l "export path"`;
+				textField -tx `zooGetGlobalAttrData path` -cc( "zooSetGlobalAttrData path \"#1\"; textField -e -tx `zooGetGlobalAttrData path` zooAssetsTextGlobalPath;" ) zooAssetsTextGlobalPath;
+				popupMenu -p zooAssetsTextGlobalPath -pmc( "zooBuildExportPathMenu zooAssetsPopupMasterPath" ) zooAssetsPopupMasterPath;
+
+				string $prefixLbl = `text -l "global prefix"`;
+				string $prefixTxt = `textField -tx(zooGetGlobalAttrData("prefix")) -cc( "zooSetGlobalAttrData prefix \"#1\"; zooAssetsWindowFunctions updateNames \"*\"; textField -e -tx `zooGetGlobalAttrData prefix` zooAssetsTextGlobalPrefix;" ) zooAssetsTextGlobalPrefix`;
+			setParent ..;
+		setParent ..;
+
+		int $paneSize = `optionVar -ex zooAssetsPane`? `optionVar -q zooAssetsPane`: 75;
+		string $scroll = `scrollLayout -childResizable 1 -hst 0 -vst 1 -height 300 zooAssetsScroll`;
+			string $pane = `paneLayout -configuration vertical2 -paneSize 1 $paneSize 100 -smc( "zooAssetsWindowFunctions savePrefs n" ) zooAssetsPane`;
+				columnLayout -adjustableColumn 1 zooAssetsListA;
+				setParent ..;
+				columnLayout -adjustableColumn 1 zooAssetsListB;
+				setParent ..;
+			setParent ..;
+		setParent ..;
+
+		string $infoText = `text -l "" zooAssetsTextInfo`;
+		string $namesCheck = `checkBox -l "view full names" -v $showNames -cc( "zooAssetsWindowFunctions toggleNameView #1" ) zooAssetsCheckFullNames`;
+		string $filterFrame = `frameLayout -l "view filter" -collapsable 1 -collapse 1 -labelAlign "center" -borderStyle "etchedIn"`;
+			string $filterForm = `formLayout`;
+				string $filterLbl = `text -l "name filter:"`;
+				string $filterTxt = `textField -tx "" -width 80 -cc( "zooAssetsWindowFunctions updateFilter \"*\"" ) zooAssetsTextViewFilter`;
+				string $startLbl = `text -l "after frame:"`;
+				string $startInput = `intField -en 0 -v( playbackOptions("-q", "-min")) -docTag "0" -width 40 -cc( "zooAssetsWindowFunctions updateFilter \"*\"" ) zooAssetsIntStartFilter`;
+				string $endLbl = `text -l "before frame:"`;
+				string $endInput = `intField -en 0 -v( playbackOptions("-q", "-max")) -docTag "0" -width 40 -cc( "zooAssetsWindowFunctions updateFilter \"*\"" ) zooAssetsIntEndFilter`;
+				string $selOnlyCheck = `checkBox -l "selected only" -v 0 -cc( "zooAssetsWindowFunctions updateFilter \"*\"" ) zooAssetsCheckSelFilter`;
+				popupMenu -p $filterLbl -pmc( "textField -e -tx \"\" zooAssetsTextViewFilter; zooAssetsWindowFunctions updateFilter zooAssetsIntStartFilter" );
+				popupMenu -p $startLbl -pmc( "zooAssetsWindowFunctions toggleFilterEnable zooAssetsIntStartFilter" );
+				popupMenu -p $endLbl -pmc( "zooAssetsWindowFunctions toggleFilterEnable zooAssetsIntEndFilter" );
+				setParent ..;
+			setParent ..;
+
+		string $manButt = `button -l "manage selected objects" -c( "zooAssetsWindowFunctions manage \"*\"" )`;
+		string $image = `image -width 340 -height 8 -backgroundColor ((float)96/255) ((float)100/255) ((float)146/255) -image(zooGetFileLocation(zooListEnv("XBMLANGPATH"),"zoo_sig","tga") +"zoo_sig.tga" )`;
+
+formLayout -e
+	-af $expLbl "top"    8
+	-af $expLbl "left"   3
+	-an $expLbl "right"
+	-an $expLbl "bottom"
+
+	-af zooAssetsTextGlobalPath "top" 5
+	-ac zooAssetsTextGlobalPath "left" 5 $expLbl
+	-ac zooAssetsTextGlobalPath "right" 10 $prefixLbl
+	-an zooAssetsTextGlobalPath "bottom"
+
+	-af $prefixLbl "top" 8
+	-ap $prefixLbl "left" 5 65
+	-an $prefixLbl "right"
+	-an $prefixLbl "bottom"
+
+	-af $prefixTxt "top" 5
+	-ac $prefixTxt "left" 5 $prefixLbl
+	-af $prefixTxt "right" 0
+	-an $prefixTxt "bottom"
+	$topForm;
+
+formLayout -e
+	-af $frame "top" 0
+	-af $frame "left" 0
+	-af $frame "right" 0
+	-an $frame "bottom"
+
+	-ac $scroll "top" 2 $frame
+	-af $scroll "left" 0
+	-af $scroll "right" 0
+	-ac $scroll "bottom" 1 $infoText
+
+	-an $infoText "top"
+	-af $infoText "left" 1
+	-ac $infoText "right" 0 $namesCheck
+	-ac $infoText "bottom" 1 $filterFrame
+
+	-an $namesCheck "top"
+	-an $namesCheck "left"
+	-af $namesCheck "right" 1
+	-ac $namesCheck "bottom" 0 $filterFrame
+
+	-an $filterFrame "top"
+	-af $filterFrame "left" 0
+	-af $filterFrame "right" 0
+	-ac $filterFrame "bottom" 2 $manButt
+
+	-an $manButt "top"
+	-af $manButt "left" 0
+	-af $manButt "right" 0
+	-ac $manButt "bottom" 2 $image
+
+	-an $image "top"
+	-af $image "left" 0
+	-af $image "right" 0
+	-af $image "bottom" 0
+	$layoutForm;
+
+formLayout -e
+	-an $filterLbl "top"
+	-af $filterLbl "left" 10
+	-an $filterLbl "right"
+	-af $filterLbl "bottom" 3
+
+	-an $filterTxt "top"
+	-ac $filterTxt "left" 0 $filterLbl
+	-an $filterTxt "right"
+	-af $filterTxt "bottom" 0
+
+	-an $startLbl "top"
+	-ac $startLbl "left" 10 $filterTxt
+	-an $startLbl "right"
+	-af $startLbl "bottom" 3
+
+	-an $startInput "top"
+	-ac $startInput "left" 0 $startLbl
+	-an $startInput "right"
+	-af $startInput "bottom" 0
+
+	-an $endLbl "top"
+	-ac $endLbl "left" 5 $startInput
+	-an $endLbl "right"
+	-af $endLbl "bottom" 3
+
+	-an $endInput "top"
+	-ac $endInput "left" 0 $endLbl
+	-an $endInput "right"
+	-af $endInput "bottom" 0
+
+	-an $selOnlyCheck "top"
+	-ac $selOnlyCheck "left" 10 $endInput
+	-an $selOnlyCheck "right"
+	-af $selOnlyCheck "bottom" 3
+	$filterForm;
+
+showWindow $windowName;
+zooAssetsWindowFunctions rebuild n;
+zooAssetsWindowFunctions updateFilter n;
+if( $showTips ) zooTipsWin zooAssets $latestTip;
+}
+
+
+win();
+
+
+//zoo.end

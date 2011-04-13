@@ -1,0 +1,40 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: frameCounter v1.0
+''    Author: Patrick McNabb
+''    Last Updated: December 31, 2002
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=interface#2079
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+//stick this file in your My Documents/maya/4.0/scripts directory and rename it to: userSetup.mel
+//it'll give you a framecounter display menu item
+//if you already have a userSetup.mel file add this stuff to it:
+
+headsUpDisplay
+-section 8
+-block 0
+-blockSize "medium"
+-dfs "large"
+-command "currentTime -q"
+-atr
+ HUDFrameCount;
+
+
+
+// Adds menu items to control the framecounter - it'll be under display-headsupdisplay
+
+global string $gHeadsUpDisplayMenu;
+
+menuItem
+-parent $gHeadsUpDisplayMenu
+-checkBox true
+-label "Frame Counter"
+-command "headsUpDisplay -e -vis #1 HUDFrameCount"
+-annotation "Frame Counter: Toggle the display of frame counter";

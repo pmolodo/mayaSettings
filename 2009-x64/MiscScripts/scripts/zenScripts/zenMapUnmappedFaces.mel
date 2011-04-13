@@ -1,0 +1,38 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc zenMapUnmappedFaces(string $faces[])
+{
+	string	$sel[]=`ls -sl`;
+
+	string	$obj=zenReturnFirstStringItem(`ls -o $faces`);
+		
+	// get unmapped faces
+		select $faces;
+		polySelectConstraint -m 3 -t 8 -tx 2;
+	string 	$unmappedFaces[] = `ls -sl`;
+		polySelectConstraint -dis;	
+	
+	// make UVs
+		if(size($unmappedFaces))
+		{
+			delete -ch $obj;
+			polyForceUV -unitize $unmappedFaces;
+			polyLayoutUV $unmappedFaces;
+			delete -ch $obj;
+		}
+		
+	
+		select $sel;
+}

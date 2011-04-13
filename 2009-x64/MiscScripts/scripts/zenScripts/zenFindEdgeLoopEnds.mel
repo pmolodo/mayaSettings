@@ -1,0 +1,44 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//find the end edges of an edge loop
+
+global proc string[] zenFindEdgeLoopEnds(string $edgeLoop[])
+{			
+	string	$intersector=`stringArrayIntersector`;
+		
+		$edgeLoop=`ls -fl $edgeLoop`;
+		
+	string	$ends[];
+	string	$testEdges[];
+	
+		for($i=0;$i<size($edgeLoop);$i++)
+		{
+			$testEdges=`polyListComponentConversion -tv $edgeLoop[$i]`;
+			$testEdges=`polyListComponentConversion -te $testEdges`;
+			$testEdges=`ls -fl $testEdges`;
+			
+			stringArrayIntersector -e -r $intersector;
+			stringArrayIntersector -e -i $testEdges $intersector;
+			stringArrayIntersector -e -i $edgeLoop $intersector;
+			
+			$testEdges=`stringArrayIntersector -q $intersector`;
+			
+			if(size($testEdges)==2) $ends[size($ends)]=$edgeLoop[$i];
+		}
+		
+		deleteUI $intersector;
+		
+	return $ends;
+}

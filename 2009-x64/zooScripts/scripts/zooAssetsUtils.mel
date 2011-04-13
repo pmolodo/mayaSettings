@@ -1,0 +1,808 @@
+//This is the engine script for zooAssets.
+//
+//This script basically contains all the core code used to drive zooAssets.  So
+//the creation and management of assets, default values, export code etc.  This
+//script alone can be used to manage assets from a command-line.  For any UI
+//code please refer to the zooAssets.mel script.
+//
+// ©2007 macaronikazoo.com
+
+
+zooArrays_str;
+zooFlags;
+zooTriggeredUtils;
+zooStrUtils;
+zooUtils;
+p4;
+
+
+//this dummy proc allows this script to be loaded into memory without having to
+//actually source the script.  By simply calling zooAssetsUtils, all procedures
+//within this script are loaded into memory
+global proc zooAssetsUtils() {
+	return;
+	}
+
+
+//------
+//exports all managed objects in the scene
+//------
+global proc string zooExportAll() {
+	string $errors = "";
+	int $slots[] = `zooListAssets`;
+
+	for( $a in $slots ) {
+		string $return = `zooExportAsset $a`;
+		if( $return == "" ) $errors = $errors +"slot "+ $a +" didn't export correctly\n";
+		}
+
+	return $errors;
+	}
+
+
+//------
+//exports the given object
+//an object can be potentially managed in multiple different slots - this proc will find all slots the
+//specified object is managed by, and export them all
+//------
+global proc string zooExportObj( string $obj ) {
+	string $errors = "";
+	int $slots[] = `zooGetObjAssets $obj`;
+
+	for( $a in $slots ) {
+		string $return = `zooExportAsset $a`;
+		if( $return == "" ) $errors = $errors +"slot "+ $a +" didn't export correctly\n";
+		}
+
+	return $errors;
+	}
+
+
+//------
+//exports the given slot, and returns the path of the exported file
+//for customisation of this proc, set the extension to whatever your extension
+//your exporter exports to, and set the export command.  There should be all the
+//variables you need already set in this procedure, so use them at will
+//------
+global proc string zooExportAsset( int $slot ) {
+	string $extension = ".exp";
+	string $node = `zooGetAssetNode 0`;
+	if( !`objExists $node` ) return "";
+
+	string $obj = `zooGetAssetObj $slot`;
+	string $path = `zooGetSlotExportFilepath $slot` +"."+ $extension;
+	int $initialHideState = `objExists ( $obj +".v" )`? `getAttr ( $obj +".v")`: 1;
+	int $preStart = `playbackOptions -q -min`;
+	int $preEnd = `playbackOptions -q -max`;
+	int $start = `zooGetAttrData $slot start`;
+	int $end = `zooGetAttrData $slot end`;
+	int $animation = `zooGetAttrData $slot anim`;
+	int $shapes = `zooGetAttrData $slot shapes`;
+	int $disable = `zooGetAttrData $slot disable`;
+
+	//check the disable state of the slot before proceeding
+	if( $disable ) { warning( "slot "+ $slot +" is disabled and won't be exported" ); return ""; }
+
+	//check to see if the managed object is from a referenced file.  if so, make
+	//sure the reference is loaded, and after export, restore its load state
+	int $unloadState = `nodeType $obj` == "reference";
+	if( $unloadState ) file -lr $obj;
+
+	//check to see if the export file is open for edit
+	string $dataNames[] = {};
+	string $data[] = {};
+	int $isEdit = `isEdit $path $dataNames $data`;
+
+	if( !$isEdit ) p4_edit {$path};
+
+	//execute pre export MEL command
+	string $cmd = `zooGetAssetMEL $slot pre`;
+	if( $cmd != "" ) if( catch( `eval $cmd` )) warning( "pre-export command failed for slot "+ $slot );
+
+	//exportPluginExportCommand;  put the command to invoke the exporter here
+	//if( $isEdit == -1 ) p4_add {$path};  //if the edit is -1, then the file isn't being managed by perforce - so add it
+
+	//execute post export MEL command
+	$cmd = `zooGetAssetMEL $slot post`;
+	if( $cmd != "" ) if( catch( `eval $cmd` )) warning( "post-export command failed for slot "+ $slot );
+
+	//now revert the scene to the state it was in before export
+	if( `objExists ( $obj +".v" )` ) if( `getAttr -se ( $obj +".v" )`) setAttr ( $obj +".v") $initialHideState;
+	if( $unloadState ) file -ur $obj;
+
+	return $path;
+	}
+
+
+//------
+//returns a list of current slots - current slots encompass the current time.  So
+//if the current time was 10, then only slots that start before 10 and end after
+//10 are returned
+//------
+global proc int[] zooGetCurrentAssets() {
+	float $currentTime = `currentTime -q`;
+	int $slots[] = `zooListAssets`;
+	int $starts[] = {};
+	int $ends[] = {};
+	int $currentSlots[] = {};
+
+	for( $n=0; $n<`size $slots`; $n++ ) {
+		$starts[$n] = `zooGetAttrData $slots[$n] start`;
+		$ends[$n] = `zooGetAttrData $slots[$n] end`;
+		}
+
+	for( $n=0; $n<`size $slots`; $n++ ) if( $currentTime >= $starts[$n] && $currentTime <= $ends[$n] ) $currentSlots[( `size $currentSlots` )] = $slots[$n];
+
+	return $currentSlots;
+	}
+
+
+//------
+//returns the filepath to export a slot to - deals with sorting out whether the
+//slot has a custom export path, or whether to use the default global export path
+//------
+global proc string zooGetSlotExportFilepath( int $slot ) {
+	string $globalPath = `zooGetGlobalAttrData path`;
+	string $assetPath = `zooGetAttrData $slot path`;
+	string $prefix = `zooGetGlobalAttrData prefix`;
+	string $path = `zooGetAttrData $slot name`;
+
+	if( $assetPath != "" ) return ( $assetPath + $prefix + $path );
+	return( $globalPath + $prefix + $path );
+	}
+
+
+//------
+//returns a list of commands required to build an assets node contained in a given
+//file.  NOTE this command returns a list of commands used to build an assets node
+//it doesn't actually build the node itself.  So this command is usually used like so:
+//
+//string $cmds[] = `zooGetAssetsFromFile "c:/temp/file.ma"`;
+//for( $cmd in $cmds ) eval $cmd;
+//------
+global proc string[] zooGetAssetsFromFile( string $file ) {
+	string $fileContents[] = {};
+	string $buildCmds[] = { "createNode time -n zooAssets" };
+	int $foundCmds = 0;
+
+	$fileContents = `zooReadFile $file "-strip 1"`;
+	for( $line in $fileContents ) {
+		if( `match "addAttr.*\"zooAssetNode\".*\"bool\"" $line` != "" ) $foundCmds = 1;
+		if( $foundCmds ) {
+			if( `match "^createNode" $line` != "" ) return $buildCmds;
+			$buildCmds[( `size $buildCmds` )] = $line;
+			}
+		}
+
+	return $buildCmds;
+	}
+
+
+//performs basic arithmetic on start/end frames for a given list of assets
+global proc zooRangeArithmetic( string $optionStr, int $slots[] ) {
+	string $temp[] = {};
+	string $operation = "add";
+	float $startFactor = 0;
+	float $endFactor = 0;
+	int $doStart = 0;
+	int $doEnd = 0;
+
+	if( !`size $slots` ) $slots = `zooGetSelectedAssets`;
+	$temp = `zooGetFlagArguments $optionStr operation`; if( `size $temp` ) $operation = $temp[0];
+	$temp = `zooGetFlagArguments $optionStr startFactor`; if( `size $temp` ) { $startFactor = $temp[0]; $doStart = 1; }
+	$temp = `zooGetFlagArguments $optionStr endFactor`; if( `size $temp` ) { $endFactor = $temp[0]; $doEnd = 1; }
+
+	for( $slot in $slots ) {
+		int $start = `zooGetAttrData $slot start`;
+		int $end = `zooGetAttrData $slot end`;
+		if( $operation == "mult" ) {
+			$start = ((float)$start) * $startFactor;
+			$end = ((float)$end) * $endFactor;
+			}
+		else if( $operation == "add" ) {
+			$start += $startFactor;
+			$end += $endFactor;
+			}
+		if( $doStart ) zooSetAttrData $slot start $start;
+		if( $doEnd ) zooSetAttrData $slot end $end;
+		}
+	}
+
+
+//------
+//copies all attrs from the source slot to the target slots.  you can specify a
+//list of attributes to exclude from the copy
+//------
+global proc zooCopyAttrDataTo( int $source, string $attrsToIgnore[], int $targets[] ) {
+	string $attrs[] = `zooListAssetAttrs $source`;
+	$attrs = `zooSubtractArray_str $attrs $attrsToIgnore`;
+	for( $slot in $targets ) {
+		string $tgtAttrs[] = `zooListAssetAttrs $slot`;
+		$tgtAttrs = `zooSubtractArray_str $tgtAttrs $attrsToIgnore`;
+		for( $attr in $tgtAttrs ) zooDelAttr $slot $attr;  //first, delete all attrs on the target slot - this will assure that the targets are identical after the copy
+		for( $attr in $attrs ) zooSetAttrData $slot $attr `zooGetAttrData $source $attr`;
+		}
+	}
+
+
+//------
+//given a list of slots, an attribute to search within this proc goes though the
+//given slots and does a search and replace on the attribute data
+//------
+global proc zooSearchReplaceAttrData( int $slots[], string $attr, string $search, string $replace ) {
+	for( $slot in $slots ) {
+		string $data = `zooGetAttrData $slot $attr`;
+		string $newData = `zooReplaceInString $data $search $replace`;
+		zooSetAttrData $slot $attr $newData;
+		}
+	}
+
+
+//------
+//deletes a given attribute from a slot
+//------
+global proc zooDelAttr( int $slot, string $attr ) {
+	string $default = `zooGetAttrDefault $slot $attr`;
+	zooSetAttrData $slot $attr $default;
+	}
+
+
+//------
+//used to change data stored in an asset attribute
+//------
+global proc zooSetAttrData( int $slot, string $attr, string $data ) {
+	string $node = `zooGetAssetNode 0`;
+	if( !`objExists $node` ) return;
+
+	string $default = `zooGetAttrDefault $slot $attr`;
+	string $noDefaultList[] = { "start", "end" };
+	int $hasDefault = 1;
+
+	//this section is an optional formatting section - if you want strict formatting
+	//of attr data, put in a case for the attr name, and proceed to format the data
+	switch( $attr ) {
+		case "start":
+		case "end":
+			$data = (int)$data;
+			break;
+
+		case "name":
+			$data = `zooReplaceChars $data "" "_"`;
+			break;
+
+		case "path":
+			$data = `zooScrubPath $data`;
+			if( $data != "" && `match "/$" $data` == "" ) $data += "/";
+			break;
+		}
+
+	if( !`objExists ( $node+".ast"+$slot )` ) error "slot doesn't exist";
+	for( $a in $noDefaultList ) if( $attr == $a ) $hasDefault = 0;
+	if( $data == $default && $hasDefault ) {
+		//if the data is being set to the default value, delete the attribute as its no longer needed
+		if( `objExists ( $node+".ast"+$slot+"_"+$attr )` ) deleteAttr ( $node+".ast"+$slot+"_"+$attr );
+		return;
+		}
+
+	if( !`objExists ( $node+".ast"+$slot+"_"+$attr )` ) addAttr -dt "string" -ln( "ast"+$slot+"_"+$attr ) $node;
+	setAttr -type "string" ( $node+".ast"+$slot+"_"+$attr ) $data;
+	}
+
+
+//------
+//returns attribute data for a given slot. if the attribute doesn't exist on the
+//slot, then the default data for that attribute is return instead.  if you want
+//to get the actual data stored for a given attribute, use zooGetActualAttrData
+//instead
+//------
+global proc string zooGetAttrData( int $slot, string $attr ) {
+	string $info = `zooGetActualAttrData $slot $attr`;
+	string $default = `zooGetAttrDefault $slot $attr`;
+
+	if( $info != "" ) return $info;
+	else return $default;
+	}
+
+
+//------
+//this proc returns the actual data stored in a slot attribute.  so if the
+//attribute doesn't exist for the given slot, an empty string is returned
+//------
+global proc string zooGetActualAttrData( int $slot, string $attr ) {
+	string $node = `zooGetAssetNode 0`;
+	if( !`objExists $node` ) return "";
+
+	string $default = `zooGetAttrDefault $slot $attr`;
+
+	if( !`objExists ( $node +".ast"+$slot+"_"+$attr )` ) return $default;
+	string $data = `getAttr ( $node +".ast"+$slot+"_"+$attr )`;
+
+	if( $data == $default && $attr != "start" && $attr != "end" ) return "";
+
+	//if we're querying start or end times on a slot thats linked to shots, we need to query the start/end time from shots
+	if( $attr == "start" || $attr == "end" ) {
+		string $linkToShotsStr = `zooGetActualAttrData $slot linkToShots`;
+		int $linkToShots = 0;
+
+		if( $linkToShotsStr == "1" ) $linkToShots = 1;
+		if( $linkToShots ) {
+			string $shotsStr = `zooGetActualAttrData $slot shots`;
+			int $shots[] = {};
+
+			$shots[0] = `match "^[^:]+" $shotsStr`;
+			$shots[1] = `match "[^:]+$" $shotsStr`;
+			if( `size $shots` ) {
+				$shots = `sort $shots`;
+				if( $attr == "start" ) $data = `zooGetShotInfo start $shots[0]`;
+				if( $attr == "end" ) $data = `zooGetShotInfo end $shots[(size($shots)-1)]`;
+				}
+			}
+		}
+
+	return $data;
+	}
+
+
+//------
+//this proc parses the pre/post export MEL command, and substitutes in useful
+//meta variables the following meta variables are supported:
+//
+// # - the object name connected to the slot
+// %slot - the slot number
+// %prefix - the global prefix
+// %name - the slot name
+// %path - the path the asset will export to
+// all triggered symbols are also supported
+//
+//for example, try using this as a pre-export command
+//print "%prefix%name start: %start end: %end #\n";
+//------
+global proc string zooGetAssetMEL( int $slot, string $prePost ) {
+	string $cmd = `zooGetAttrData $slot preMEL`;
+	string $start = `zooGetAttrData $slot start`;
+	string $end = `zooGetAttrData $slot end`;
+	string $prefix = `zooGetGlobalAttrData prefix`;
+	string $globalPath = `zooGetGlobalAttrData path`;
+	string $path = `zooGetActualAttrData $slot path`;
+	string $obj = `zooGetAssetObj $slot`;
+	int $useTriggered = `exists zooTriggeredUtils`;
+
+	if( $path == "" ) $path = $globalPath;  //if there isn't a user specified path for the asset, use the global export path
+	if( $prePost == "post" ) $cmd = `zooGetAttrData $slot postMEL`;
+	if( $cmd == "" ) return "";
+	$cmd = `substituteAllString $cmd "#" $obj`;
+	while( `match "\%slot" $cmd` != "" ) $cmd = `substitute "\%slot" $cmd ((string)$slot)`;
+	while( `match "\%prefix" $cmd` != "" ) $cmd = `substitute "\%prefix" $cmd $prefix`;
+	while( `match "\%path" $cmd` != "" ) $cmd = `substitute "\%path" $cmd $path`;
+	while( `match "\%[a-zA-Z_]+" $cmd` != "" ) {
+		string $attr = `match "\%[a-zA-Z_]+" $cmd`;
+		string $val = "";
+
+		$attr = `match "[^\%]+$" $attr`;
+		$val = `zooGetAttrData $slot $attr`;
+		if( $attr == "preMEL" || $attr == "postMEL" ) $val = "!";  //this is a safeguard, just in case the user tries to sub in the command string
+		$cmd = `substitute "\%[a-zA-Z_]+" $cmd $val`;
+		}
+	if( $useTriggered ) $cmd = `zooPopulateCmdStr $obj $cmd`;
+	return $cmd;
+	}
+
+
+//------
+//returns default values for a given attr name - not all attrs have default values,
+//but if you want to add a default value, simply add a new if test to this proc
+//------
+global proc string zooGetAttrDefault( int $slot, string $attr ) {
+	string $default = "";
+
+	if( $attr == "start" ) $default = (int)`playbackOptions -q -min`;
+	if( $attr == "end" ) $default = (int)`playbackOptions -q -max`;
+	if( $attr == "disable" ) $default = "0";
+	if( $attr == "anim" ) $default = "1";
+	if( $attr == "shapes" ) $default = "1";
+	if( $attr == "shots" ) $default = "0:0";
+	if( $attr == "linkToShots" ) $default = "0";
+
+	return $default;
+	}
+
+
+//deals with locking a slot - must be put into edit mode to change the lock state,
+//otherwise it assumes query mode
+// -edit [bool]   needs to be in edit mode for the -val flag to have any effect
+// -val [int]   0 is unlocked, 1 is locked, 2 is toggle
+// -slot [int]   this is the slot number the proc affects
+//
+//returns the lock state of the slot after the operation (or query)
+global proc int zooLockAsset( string $optionStr ) {
+	string $node = `zooGetAssetNode 0`;
+	string $info[] = {};
+	int $val = 1;
+	int $edit = 0;
+	int $slot = 0;
+
+	if( !`objExists $node` ) return -1;
+	$info = `zooGetFlagArguments $optionStr val`; if( `size $info` ) $val = $info[0];
+	$info = `zooGetFlagArguments $optionStr edit`; if( `size $info` ) $edit = $info[0];
+	$info = `zooGetFlagArguments $optionStr slot`; if( `size $info` ) $slot = $info[0];
+	string $attrs[] = `zooListAssetAttrs $slot`;
+
+	if( $val == 2 ) $val = !`getAttr -l ( $node +".ast"+ $slot +"_"+ $attrs[0] )`;
+	if( $edit ) for( $attr in $attrs ) setAttr -l $val ( $node +".ast"+ $slot +"_"+ $attr );
+	else $val = `getAttr -l ( $node +".ast"+ $slot +"_"+ $attrs[0] )`;
+
+	return $val;
+	}
+
+
+//------
+//handles making changes to global data
+//------
+global proc zooSetGlobalAttrData( string $attr, string $data ) {
+	string $node = `zooGetAssetNode 1`;
+	string $default = `zooGetGlobalAttrDefault $attr`;
+
+	//this section is an optional formatting section - if you want strict formatting
+	//of attr data, put in a case for the attr name, and proceed to format the data
+	switch( $attr ) {
+		case "prefix":
+			$data = `zooReplaceChars $data "" "_"`;
+			break;
+
+		case "path":
+			$data = `zooScrubPath $data`;
+			if( $data != "" && `match "/$" $data` == "" ) $data += "/";
+			break;
+		}
+
+	if( $data == $default || $data == "" ) {
+		//if the data is being set to the default value, delete the attribute as its no longer needed
+		if( `objExists ( $node+".global"+$attr )` ) deleteAttr ( $node+".global"+$attr );
+		return;
+		}
+
+	if( !`objExists ( $node+".global"+$attr )` ) addAttr -dt "string" -ln( "global"+$attr ) $node;
+	setAttr -type "string" ( $node+".global"+$attr ) $data;
+	}
+
+
+//------
+//gets global info located on the assets node
+//------
+global proc string zooGetGlobalAttrData( string $attr ) {
+	string $node = `zooGetAssetNode 0`;
+	string $info = `zooGetGlobalAttrDefault $attr`;
+
+	if( !`objExists $node` ) return "";
+	if( `objExists ( $node +".global"+ $attr )` ) {
+		string $data = `getAttr ( $node +".global"+ $attr )`;
+		if( $data != "" ) $info = $data;
+		}
+	return $info;
+	}
+
+
+//------
+//returns default values for a given attr name - not all attrs have default values,
+//but if you want to add a default value, simply add a new if test to this proc
+//------
+global proc string zooGetGlobalAttrDefault( string $attr ) {
+	string $default = "";
+
+	if( $attr == "path" ) $default = "c:/temp/";
+	if( $attr == "fullNames" ) $default = "0";
+
+	return $default;
+	}
+
+
+//------
+//duplicates a slot and all data associated with it - the slot number of the
+//duplicated slot is returned
+//------
+global proc int zooDuplicateAsset( int $slot ) {
+	string $node = `zooGetAssetNode 0`;
+	if( !`objExists $node` ) return -1;
+
+	string $attrs[] = `zooListAssetAttrs $slot`;
+	string $orgName = `zooGetAttrData $slot name`;
+	string $obj = `zooGetAssetObj $slot`;
+	int $newSlot = `zooCreateAsset $obj`;
+
+	for( $a in $attrs ) zooSetAttrData $newSlot $a `zooGetActualAttrData $slot $a`;
+	zooSetAttrData $newSlot name ( $orgName +"_dupe" );
+	return $newSlot;
+	}
+
+
+//------
+//unManages an entire object - disconnects the object from all slots, and deletes
+//the attributes associated with those slots
+//------
+global proc zooRemoveAssetObject( string $obj ) {
+	string $node = `zooGetAssetNode 0`;
+	int $slots[] = `zooGetObjAssets $obj`;
+
+	for( $slot in $slots ) zooRemoveAsset $slot;
+	}
+
+
+//------
+//deletes a given slot - disconnects the object from the slot, and deletes all
+//slot attributes
+//------
+global proc zooRemoveAsset( int $slot ) {
+	string $node = `zooGetAssetNode 0`;
+	string $attrs[] = `zooListAssetAttrs $slot`;
+
+	if( `getAttr -l ( $node +".ast"+ $slot )`) { warning( "slot "+ $slot +" is locked - please unlock before attempting to delete" ); return; }
+	if( `objExists ( $node +".ast"+ $slot )`) deleteAttr ( $node +".ast"+ $slot );
+	for( $attr in $attrs ) if( `objExists ( $node +".ast"+ $slot +"_"+ $attr )`) deleteAttr ( $node +".ast"+ $slot +"_"+ $attr );
+	}
+
+
+//------
+//creates an asset slot for an object
+//------
+global proc int zooCreateAsset( string $obj ) {
+	string $node = `zooGetAssetNode 1`;
+	string $defaultName = `file -q -sn`;
+	int $slot = `zooGetNextFreeSlot`;
+
+	$defaultName = `basename $defaultName ".ma"`;
+	if( !`objExists ($node+".ast"+$slot)` ) addAttr -ln ( "ast"+$slot ) -at bool $node;
+	zooSetAssetObj $slot $obj;
+	zooSetAttrData $slot name $defaultName;
+	zooSetAttrData $slot start `zooGetAttrDefault $slot start`;
+	zooSetAttrData $slot end `zooGetAttrDefault $slot end`;
+
+	return $slot;
+	}
+
+
+//------
+//returns a list of objects being managed
+//------
+global proc string[] zooListManagedObjs() {
+	string $node = `zooGetAssetNode 0`;
+	int $slots[] = `zooListAssets`;
+	string $objs[] = {};
+
+	for( $a in $slots ) $objs[( `size $objs` )] = `zooGetAssetObj $a`;
+	$objs = `stringArrayRemoveDuplicates $objs`;
+
+	return $objs;
+	}
+
+
+//------
+//returns all the slots an object is managed by.  An empty array is returned if
+//the object isn't being managed at all
+//------
+global proc int[] zooGetObjAssets( string $obj ) {
+	string $node = `zooGetAssetNode 0`;
+	int $allSlots[] = `zooListAssets`;
+	int $objSlots[] = {};
+
+	for( $a in $allSlots ) {
+		string $objPath = `connectionInfo -sfd ( $node +".ast"+ $a )`;
+		string $objName = `match "^[^.]+" $objPath`;
+		if( $objName == $obj ) $objSlots[( `size $objSlots` )] = $a;
+		}
+	return $objSlots;
+	}
+
+
+//------
+//returns the object being managed by a given slot.  returns an empty string if
+//the slot isn't managing an object
+//------
+global proc string zooGetAssetObj( int $slot ) {
+	string $node = `zooGetAssetNode 0`;
+
+	if( !`objExists ( $node +".ast"+ $slot )` ) return "";
+	string $objPath = `connectionInfo -sfd ( $node +".ast"+ $slot )`;
+	string $obj = `match "^[^.]+" $objPath`;
+	if( `objExists $obj` ) return $obj;
+	return "";
+	}
+
+
+//------
+//sets the current object being managed by a given asset slot
+//------
+global proc zooSetAssetObj( int $slot, string $obj ) {
+	string $node = `zooGetAssetNode 0`;
+
+	if( !`objExists ($node+".ast"+$slot)` ) error "slot doesn't exist - use: \"zooCreateAsset objectName\"; to create an asset";
+	if( `objExists $obj` ) if( $obj != `zooGetAssetObj $slot` ) if( !`getAttr -l ( $node +".ast"+ $slot )`) connectAttr -f ( $obj +".message" ) ( $node +".ast"+ $slot );
+	}
+
+
+//------
+//returns whether a slot is being used or not.  -1 returned if the slot doesn't exist
+//------
+global proc int zooIsSlotUsed( int $slot ) {
+	string $node = `zooGetAssetNode 0`;
+	if( !`objExists ( $node +".ast"+ $slot )` ) return -1;
+
+	string $input = `connectionInfo -sfd ( $node +".ast"+ $slot )`;
+	string $path = `zooGetActualAttrData $slot name`;
+	if( $path != "" || `objExists $input` ) return 1;  //consider the slot "used" if the path name has been set or the presence of an connected object
+	return 0;
+	}
+
+
+//------
+//returns an un-used slot number.  this proc is very simple - it simply grabs
+//the last slot in the slot list, and adds one.  The commented out section is
+//will alter the behaviour of this proc.  If uncommented, the proc will return
+//the smallest available slot, not the largest
+//------
+global proc int zooGetNextFreeSlot() {
+	int $slots[] = `zooListAssets`;
+
+	if( !`size $slots` ) return 0;
+	else return ( $slots[( `size $slots`-1 )]+1 );
+	//for( $a in $slots ) if( !`zooIsSlotUsed $a` ) return $a;
+	//if( `size $slots`>1 ) for( $n=1; $n<`size $slots`; $n++ ) if( $slots[$n-1]+1 != $slots[$n] ) return ( $slots[$n-1]+1 );
+	//return ( $slots[( `size $slots`-1 )]+1 );
+	}
+
+
+//------
+//this proc returns an ordered list of slots - the way the slots are ordered
+//depends on the $orderMode.  the orderMode variable can be one of the following:
+// slot  - this method simply returns the slots in an ascending order
+// range - this method returns the slots in an ascending start range order - ie from the slot with the lowest start, to the highest start
+// colour  - this method returns a list of slots based on their colour.  if no slots have colour, then they're arranged in slot order.  the colour order is chromatic ascending
+// name  - sorts slots based on their asset name
+//------
+global proc int[] zooOrderAssets( string $orderMode ) {
+	string $pref = `optionVar -ex zooAssetsOrderMode`? `optionVar -q zooAssetsOrderMode`: "slot";
+	string $slotsStr[] = {};
+	int $slots[] = `zooListAssets`;
+	int $orderedSlots[] = {};
+	int $numSlots = `size $slots`;
+
+	if( $orderMode == "" ) $orderMode = $pref;
+	for( $slot in $slots ) $slotsStr[( `size $slotsStr` )] = $slot;
+	switch( $orderMode ){
+		case "slot":
+			return $slots;
+			break;
+
+		case "range":
+			int $starts[] = {};
+
+			for( $slot in $slots ) $starts[( `size $starts` )] = (int)`zooGetAttrData $slot start`;
+			$slotsStr = `zooOrderArrayUsing_str $slotsStr $starts`;
+			for( $a in $slotsStr ) $orderedSlots[( `size $orderedSlots` )] = $a;
+			return $orderedSlots;
+			break;
+
+		case "colour":
+			string $colourOrders[] = { "red","orange","yellow","green","blue","purple" };
+			int $colourIndicies[] = {};
+
+			for( $n=0; $n<$numSlots; $n++ ) for( $x=0; $x<`size $colourOrders`; $x++ ) {
+				string $colour = `zooGetAttrData $slots[$n] colour`;
+				if( $colour == "" ) $colourIndicies[$n] = `size $colourOrders`;
+				else if( $colour == $colourOrders[$x] ) $colourIndicies[$n] = $x;
+				}
+
+			$slotsStr = `zooOrderArrayUsing_str $slotsStr $colourIndicies`;
+			for( $a in $slotsStr ) $orderedSlots[( `size $orderedSlots` )] = $a;
+			return $orderedSlots;
+			break;
+
+		case "name":
+			string $alphabet[] = { "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z" };
+			string $names[] = {};
+			int $weights[] = {};
+
+			//$alphabet = `zooReverseArray_str $alphabet`;
+			for( $n=0; $n<$numSlots; $n++ ) $names[$n] = `zooGetAttrData $slots[$n] name`;
+			for( $n=0; $n<$numSlots; $n++ ) {
+				string $str1, $str2, $str3;
+				int $w1, $w2, $w3;
+
+				$str1 = `substring $names[$n] 1 1`;
+				$str2 = `substring $names[$n] 2 2`;
+				$str3 = `substring $names[$n] 3 3`;
+				for( $i=0; $i<26; $i++ ) if( $str1 == $alphabet[$i] ) { $w1 = $i; break; }
+				for( $i=0; $i<26; $i++ ) if( $str2 == $alphabet[$i] ) { $w2 = $i; break; }
+				for( $i=0; $i<26; $i++ ) if( $str3 == $alphabet[$i] ) { $w3 = $i; break; }
+
+				$w1 *= (pow(26,3));
+				$w2 *= (pow(26,2));
+				$weights[$n] = $w1 + $w2 + $w3;
+				}
+
+			$slotsStr = `zooOrderArrayUsing_str $slotsStr $weights`;
+			for( $a in $slotsStr ) $orderedSlots[( `size $orderedSlots` )] = $a;
+			return $orderedSlots;
+			break;
+		}
+
+	return $slots;
+	}
+
+
+//------
+//returns an list of all slot numbers
+//NOTE: it doesn't return USED slots, just created slots.  if a slot is created,
+//and the object it manages is deleted, the slot will still remain.
+//------
+global proc int[] zooListAssets() {
+	string $node = `zooGetAssetNode 0`;
+	if( !`objExists $node` ) return {};
+
+	string $attrs[] = `listAttr -ud $node`;
+	string $slotNames[] = {};
+	int $slots[] = {};
+
+	for( $a in $attrs ) if( `match "^ast[0-9]+$" $a` == $a ) $slots[( `size $slots` )] = `match "[0-9]+$" $a`;
+	$slots = `sort $slots`;
+
+	return $slots;
+	}
+
+
+//------
+//returns a list of all attributes associated with an asset
+//------
+global proc string[] zooListAssetAttrs( int $slot ) {
+	string $node = `zooGetAssetNode 0`;
+	if( !`objExists $node` ) return {};
+
+	string $attrs[] = `listAttr -ud $node`;
+	string $assetAttrs[] = {};
+
+	for( $attr in $attrs ) if( `match ( "^ast"+ $slot +"_" ) $attr` != "" ) {
+		string $name = `substitute ( "^ast"+ $slot +"_" ) $attr ""`;
+		if( $name != "" ) $assetAttrs[( `size $assetAttrs` )] = $name;
+		}
+	return $assetAttrs;
+	}
+
+
+//------
+//creates the management node - makes sure one doesn't already exist.  there
+//should only ever be one management node in a scene
+//------
+global proc string zooGetAssetNode( int $forceCreate ) {
+	string $selObjs[] = `ls -sl`;
+	string $node = `zooGetExistingAssetNode`;
+
+	if( $forceCreate ) if( !`objExists $node` ) {
+		$node = `createNode time`;
+		$node = `rename $node "assetsNode"`;
+		addAttr -ln zooAssetNode -at bool $node;
+		zooSetGlobalAttrData creator `getenv user`;
+		}
+
+	select $selObjs;
+	return $node;
+	}
+
+
+//------
+//returns the name of the first management node found in the scene
+//------
+global proc string zooGetExistingAssetNode() {
+	string $nodes[] = `ls -type time`;
+	string $node = "";
+	int $referencedNodesExist = 0;
+
+	for( $a in $nodes ) if( `objExists ( $a +".zooAssetNode" )` ) {
+		if( !`reference -inr $a` ) $node = $a;
+		else $referencedNodesExist = 1;
+		}
+
+	return $node;
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

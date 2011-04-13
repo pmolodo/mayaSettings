@@ -1,0 +1,115 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//create curves spanning a loft between selected edge loops
+global proc string zenCurvesBetweenEdges(float $spans, int $degree)
+{
+	string	$sel[]=`ls -sl -fl`;
+	string	$curveNode[];
+	string	$obj[]=`ls -sl -o`;
+	string	$tr[]=`listRelatives -p $obj[0]`;
+	string	$curveGroup=`createNode -n "curveSpans#" transform`;
+	
+	string	$curveFromIsoparm[];
+	
+	int	$progress;
+		
+		if($spans>0)
+		{
+			select	$sel;
+			string	$nurbsSurface[]=`zenLoftBetweenEdgeLoopPathRings $degree`;
+				$rebuildNode=$nurbsSurface[0];
+				$surfaceTr=$nurbsSurface[1];
+				
+				if($spans>5)
+				{
+					progressWindow -title "Working" -status "Creating Surface History" -progress 0 -ii 1 -max ($spans);
+					$progress=1;
+				}
+				
+				for($i=0;$i<$spans;$i++)
+				{
+					$curveFromIsoparm[$i]=`createNode curveFromSurfaceIso`;
+					$curveNode[$i]=`createNode -n "shaveCurve#" -p $curveGroup nurbsCurve`;
+					connectAttr ($rebuildNode+".outputSurface") ($curveFromIsoparm[$i]+".inputSurface");
+					setAttr ($curveFromIsoparm[$i]+".isoparmDirection") 1;
+					setAttr ($curveFromIsoparm[$i]+".isoparmValue") ($i/($spans-1));
+					connectAttr ($curveFromIsoparm[$i]+".outputCurve") ($curveNode[$i]+".create");
+					if(`objExists $nurbsSurface[1]`) delete $nurbsSurface[1];
+					
+					if($progress)
+					{
+						progressWindow -e -s 1;
+						if(`progressWindow -q -ic`)
+						{
+							progressWindow -ep;
+							error "User Interupt.";
+						}
+					}
+				}
+				
+				if($progress)
+					progressWindow -ep;
+		}
+		else
+		{
+			string	$curves[];
+			string	$edgeLoops[]=`zenLoopRing $sel`;
+			string 	$edgeLoop[];
+				$edgeLoops=`stringArrayRemoveDuplicates $edgeLoops`;
+				$edgeLoops=`stringArrayRemove {""} $edgeLoops`;
+				
+				if(size($edgeLoops)>5)
+				{
+					progressWindow -title "Working" -status "Creating Curve History" -progress 0 -ii 1 -max (size($edgeLoops));
+					$progress=1;
+				}
+				
+				for($i=0;$i<size($edgeLoops);$i++)
+				{
+					$edgeLoop=`stringToStringArray $edgeLoops[$i] ","`;
+					$curves[$i]=`zenEdgeCurveNode $edgeLoop $degree`;
+					$curveNode[$i]=`createNode -n ($curveGroup+"Shape#") -p $curveGroup nurbsCurve`;
+					connectAttr ($curves[$i]+".outputCurve") ($curveNode[$i]+".create");
+					
+					if($progress)
+					{
+						progressWindow -e -s 1;
+						if(`progressWindow -q -ic`)
+						{
+							progressWindow -ep;
+							error "User Interupt.";
+						}
+					}
+
+				}
+					
+				if($progress)
+					progressWindow -ep;				
+		}
+	
+		setAttr -lock true ($curveGroup+".tx");
+		setAttr -lock true ($curveGroup+".ty");
+		setAttr -lock true ($curveGroup+".tz");
+		setAttr -lock true ($curveGroup+".rx");
+		setAttr -lock true ($curveGroup+".ry");
+		setAttr -lock true ($curveGroup+".rz");
+		setAttr -lock true ($curveGroup+".sx");
+		setAttr -lock true ($curveGroup+".sy");
+		setAttr -lock true ($curveGroup+".sz");
+		
+		setAttr ($curveGroup+".inheritsTransform") 0;
+		
+	return $curveGroup;
+}

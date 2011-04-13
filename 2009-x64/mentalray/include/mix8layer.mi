@@ -1,0 +1,200 @@
+#author: ctrl-studio
+#modified: May 20, 2005
+#note:: mi file for mix8layer mentalray shader
+
+
+declare shader
+
+	color "mix8layer"
+		(
+			integer "f_nSlots", #:default 1 min 0 max 7
+
+			string	"layerName_0",
+			string	"layerName_1",
+			string	"layerName_2",
+			string	"layerName_3",			
+			string	"layerName_4",
+			string	"layerName_5",
+			string	"layerName_6",
+			string	"layerName_7",
+
+			boolean	"f_enableLayer_0", 
+			boolean	"f_enableLayer_1", #:default 1
+			boolean	"f_enableLayer_2",
+			boolean	"f_enableLayer_3",			
+			boolean	"f_enableLayer_4",
+			boolean	"f_enableLayer_5",
+			boolean	"f_enableLayer_6",
+			boolean	"f_enableLayer_7",
+
+			color	"f_colorLayer_0",	#:default 0.54 0.87 1.00
+			color	"f_colorLayer_1",	#:default 1.0 0.0 0.0
+			color	"f_colorLayer_2",	#:default 1.0 0.8 0.2
+			color	"f_colorLayer_3",	#:default 1.0 0.5 0.1
+			color	"f_colorLayer_4",	#:default 1.0 0.5 0.6
+			color	"f_colorLayer_5",	#:default 0.5 0.5 0.7
+			color	"f_colorLayer_6",	#:default 1.0 0.5 0.8
+			color	"f_colorLayer_7",	#:default 0.4 1.0 1.0
+
+			scalar "f_opacityLayer_0",	#:default 1 softmin 0.0 softmax 1.0	
+			scalar "f_opacityLayer_1",	#:default 1 softmin 0.0 softmax 1.0			
+			scalar "f_opacityLayer_2",	#:default 1 softmin 0.0 softmax 1.0	
+			scalar "f_opacityLayer_3",	#:default 1 softmin 0.0 softmax 1.0			
+			scalar "f_opacityLayer_4",	#:default 1 softmin 0.0 softmax 1.0	
+			scalar "f_opacityLayer_5",	#:default 1 softmin 0.0 softmax 1.0			
+			scalar "f_opacityLayer_6",	#:default 1 softmin 0.0 softmax 1.0	
+			scalar "f_opacityLayer_7",	#:default 1 softmin 0.0 softmax 1.0
+
+			integer "f_blendMode_0",	#:default 1 	
+			integer "f_blendMode_1",	#:default 1 			
+			integer "f_blendMode_2",	#:default 1 
+			integer "f_blendMode_3",	#:default 1 		
+			integer "f_blendMode_4",	#:default 1 
+			integer "f_blendMode_5",	#:default 1 		
+			integer "f_blendMode_6",	#:default 1 
+			integer "f_blendMode_7",	#:default 1 
+
+#local c.c
+
+			scalar "f_layerWpow_0",	#:default 1 min 0.01 softmax 2.0
+			scalar "f_layerWpow_1",	#:default 1 min 0.01 softmax 2.0		
+			scalar "f_layerWpow_2",	#:default 1 min 0.01 softmax 2.0
+			scalar "f_layerWpow_3",	#:default 1 min 0.01 softmax 2.0		
+			scalar "f_layerWpow_4",	#:default 1 min 0.01 softmax 2.0
+			scalar "f_layerWpow_5",	#:default 1 min 0.01 softmax 2.0		
+			scalar "f_layerWpow_6",	#:default 1 min 0.01 softmax 2.0
+			scalar "f_layerWpow_7",	#:default 1 min 0.01 softmax 2.0
+
+			boolean	"f_layerAlpha_0",
+			boolean	"f_layerAlpha_1",
+			boolean	"f_layerAlpha_2",
+			boolean	"f_layerAlpha_3",			
+			boolean	"f_layerAlpha_4",
+			boolean	"f_layerAlpha_5",
+			boolean	"f_layerAlpha_6",
+			boolean	"f_layerAlpha_7",
+
+			boolean	"f_layerInvAlpha_0",
+			boolean	"f_layerInvAlpha_1",
+			boolean	"f_layerInvAlpha_2",
+			boolean	"f_layerInvAlpha_3",			
+			boolean	"f_layerInvAlpha_4",
+			boolean	"f_layerInvAlpha_5",
+			boolean	"f_layerInvAlpha_6",
+			boolean	"f_layerInvAlpha_7",
+
+			boolean	"f_layerInvert_0",
+			boolean	"f_layerInvert_1",
+			boolean	"f_layerInvert_2",
+			boolean	"f_layerInvert_3",			
+			boolean	"f_layerInvert_4",
+			boolean	"f_layerInvert_5",
+			boolean	"f_layerInvert_6",
+			boolean	"f_layerInvert_7",
+
+			scalar "f_layerHue_0",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerHue_1",	#:default 0 min -1.0 softmax 1.0		
+			scalar "f_layerHue_2",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerHue_3",	#:default 0 min -1.0 softmax 1.0		
+			scalar "f_layerHue_4",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerHue_5",	#:default 0 min -1.0 softmax 1.0		
+			scalar "f_layerHue_6",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerHue_7",	#:default 0 min -1.0 softmax 1.0
+
+			scalar "f_layerSat_0",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerSat_1",	#:default 0 min -1.0 softmax 1.0		
+			scalar "f_layerSat_2",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerSat_3",	#:default 0 min -1.0 softmax 1.0		
+			scalar "f_layerSat_4",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerSat_5",	#:default 0 min -1.0 softmax 1.0		
+			scalar "f_layerSat_6",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerSat_7",	#:default 0 min -1.0 softmax 1.0
+
+			scalar "f_layerVal_0",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerVal_1",	#:default 0 min -1.0 softmax 1.0		
+			scalar "f_layerVal_2",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerVal_3",	#:default 0 min -1.0 softmax 1.0		
+			scalar "f_layerVal_4",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerVal_5",	#:default 0 min -1.0 softmax 1.0		
+			scalar "f_layerVal_6",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_layerVal_7",	#:default 0 min -1.0 softmax 1.0
+
+			scalar	"f_layerAlphaBias_0",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaBias_1",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaBias_2",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaBias_3",	#:default 0.5 softmin 0.01 softmax 1.0			
+			scalar	"f_layerAlphaBias_4",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaBias_5",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaBias_6",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaBias_7",	#:default 0.5 softmin 0.01 softmax 1.0
+
+			scalar	"f_layerAlphaGain_0",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaGain_1",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaGain_2",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaGain_3",	#:default 0.5 softmin 0.01 softmax 1.0			
+			scalar	"f_layerAlphaGain_4",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaGain_5",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaGain_6",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar	"f_layerAlphaGain_7",	#:default 0.5 softmin 0.01 softmax 1.0
+
+			scalar	"f_layerAlphaContrast_0",	#:default 1.0 softmin 0.0 softmax 2.0
+			scalar	"f_layerAlphaContrast_1",	#:default 1.0 softmin 0.0 softmax 2.0
+			scalar	"f_layerAlphaContrast_2",	#:default 1.0 softmin 0.0 softmax 2.0
+			scalar	"f_layerAlphaContrast_3",	#:default 1.0 softmin 0.0 softmax 2.0			
+			scalar	"f_layerAlphaContrast_4",	#:default 1.0 softmin 0.0 softmax 2.0
+			scalar	"f_layerAlphaContrast_5",	#:default 1.0 softmin 0.0 softmax 2.0
+			scalar	"f_layerAlphaContrast_6",	#:default 1.0 softmin 0.0 softmax 2.0
+			scalar	"f_layerAlphaContrast_7",	#:default 1.0 softmin 0.0 softmax 2.0
+
+
+#global c.c
+			boolean	"f_colorCorrection",
+
+			scalar "f_cHue",	#:default 0 min -1.0 softmax 1.0
+			scalar "f_cSat",	#:default 0 min -1.0 max 1.0
+			scalar "f_cVal",	#:default 0 min -1.0 max 1.0
+
+			scalar "f_cGamma",	#:default 1 softmin 0.0 softmax 2.0
+			scalar "f_cBias",	#:default 0.5 softmin 0.01 softmax 1.0
+			scalar "f_cGain",	#:default 0.5 softmin 0.01 softmax 1.0
+
+			boolean	"f_cBound",
+			boolean	"f_cScale",
+
+			color	"f_transparency",	#:default 1.0 1.0 1.0
+			
+			boolean "f_onlyframebuffer",
+			
+#framebuffers
+			boolean	"f_framebuffer_0",
+			boolean	"f_framebuffer_1",
+			boolean	"f_framebuffer_2",
+			boolean	"f_framebuffer_3",			
+			boolean	"f_framebuffer_4",
+			boolean	"f_framebuffer_5",
+			boolean	"f_framebuffer_6",
+			boolean	"f_framebuffer_7",
+			
+			boolean	"f_fbisolate_0",
+			boolean	"f_fbisolate_1",
+			boolean	"f_fbisolate_2",
+			boolean	"f_fbisolate_3",			
+			boolean	"f_fbisolate_4",
+			boolean	"f_fbisolate_5",
+			boolean	"f_fbisolate_6",
+			boolean	"f_fbisolate_7",
+			
+			integer	"f_fbrenumber_0",
+			integer	"f_fbrenumber_1",	#:default 1
+			integer	"f_fbrenumber_2",	#:default 2
+			integer	"f_fbrenumber_3",	#:default 3		
+			integer	"f_fbrenumber_4",	#:default 4
+			integer	"f_fbrenumber_5",	#:default 5
+			integer	"f_fbrenumber_6",	#:default 6
+			integer	"f_fbrenumber_7"	#:default 7		
+			
+		)
+	apply material
+	version 1
+	#:nodeid 1543386184
+end declare

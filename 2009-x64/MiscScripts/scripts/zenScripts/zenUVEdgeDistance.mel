@@ -1,0 +1,111 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//returns the edge distances from the initial $uvPoint as an integer array
+global proc int[] zenUVEdgeDistance(string $uvPoint, string $uvPoints[])
+{
+	global 	int $zenOptions_safeUVLoop;
+
+	int	$distance[];
+	string	$obj[]=`ls -o $uvPoint`;
+	string	$sel[]=`ls -sl`;
+	string	$intersector=`stringArrayIntersector`;
+	
+		//Maya 8 optomization
+		if(`getApplicationVersionAsFloat`>=8 && $zenOptions_safeUVLoop==0)
+		{
+			int	$pointA=`zenCompID $uvPoint`;
+				for($i=0;$i<size($uvPoints);$i++)
+				{
+					int	$pointB=`zenCompID $uvPoints[$i]`;
+					int	$edgeIDs[]=`polySelect -spu $pointA $pointB $obj[0]`;
+						$distance[$i]=(size($edgeIDs));
+				}
+				select $sel;
+			return	$distance;
+		}
+		
+	undoInfo -swf 0;
+	//get the shell
+		select	$uvPoint;
+		polySelectConstraint -t 0x0010 -m 2 -sh 1;
+		polySelectConstraint -dis;		
+	int	$sizeShell=size(`ls -sl -fl`);
+	int	$countTo=sqrt($sizeShell);
+		select $sel;
+	
+	//start progress window
+		progressWindow -isInterruptable 1 -title "Working" -max $countTo -progress 0 -status "Sorting";
+		if(`progressWindow -q -progress`>`progressWindow -q -max`) progressWindow -e -progress 0;
+		
+	string 	$allUVs[]={$uvPoint};
+	string 	$nextUVs[];
+	string	$uvEdges[];
+	string	$uvFaces[];
+	int	$found;
+		for($i=0;$i<$sizeShell;$i++)
+		{
+			progressWindow -e -s 1;
+		
+		//expand to face edges by intersecting face and edge expansion
+			$uvEdges=`polyListComponentConversion -te $allUVs`;
+			$uvEdges=`polyListComponentConversion -tuv $uvEdges`;
+			$uvEdges=`ls -fl $uvEdges`;
+			$uvFaces=`polyListComponentConversion -tf $allUVs`;
+			$uvFaces=`polyListComponentConversion -tuv $uvFaces`;
+			$uvFaces=`ls -fl $uvFaces`;
+		
+		//check to see if any of the expanded uv's are the second given uv
+			stringArrayIntersector -e -r $intersector;
+			stringArrayIntersector -e -i $uvFaces $intersector;
+			stringArrayIntersector -e -i $uvEdges $intersector;
+			
+			$nextUVs=`stringArrayIntersector -q $intersector`;
+			//$nextUVs=`zenStringArrayIntersect $uvFaces $uvEdges`;
+			//$nextUVs=`stringArrayRemoveDuplicates $nextUVs`;
+			for($n=0;$n<size($uvPoints);$n++)
+			{
+				if(`stringArrayContains $uvPoints[$n] $nextUVs`)
+				{
+					if($distance[$n]==0)
+					{
+						$found++;
+						$distance[$n]=$i+1;
+					}					
+				}
+			}
+			
+			if($found==size($uvPoints))
+			{
+				progressWindow -endProgress;
+				undoInfo -swf 1;
+				deleteUI $intersector;
+				return $distance;
+			}
+			
+			if(size($nextUVs)==size($allUVs))
+			{
+				progressWindow -endProgress;
+				undoInfo -swf 1;
+				deleteUI $intersector;
+				error("UV's must be in the same shell.");
+			}
+			
+			$allUVs=$nextUVs;
+		}
+		deleteUI $intersector;
+		progressWindow -endProgress;
+		undoInfo -swf 1;
+		return {};
+}

@@ -1,0 +1,38 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//Searches each progressive parent folder for 
+//"workspace.mel", then sets the workspace.
+global proc string zenFindWorkspace()
+{
+	string	$currentRoot=`workspace -q -rd`;
+	string 	$path=(dirname(`file -q -loc`));
+	int	$folderHierarchySize=(size(`stringToStringArray $path "/"`));
+	string	$root=$currentRoot;
+
+		for($i=0;$i<$folderHierarchySize;$i++)
+		{
+			if(`file -q -ex ($path+"/workspace.mel")`)
+			{
+				$root=$path;
+				break;
+			}
+			else $path=(dirname($path));
+		}
+		
+		if(!(gmatch($root,($currentRoot+"*"))) && `file -q -ex $root`)
+			workspace -o $root;
+		
+	return 	$root;
+}

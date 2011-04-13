@@ -1,0 +1,178 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+requires "closestPointOnMesh";
+
+//create a nurbs surface between two or more edge loop paths
+global proc string[] zenLoftBetweenEdgeLoopPathRings(int $degree)
+{
+	//holds a list of used edges
+	
+	string	$curveNode[];
+	string	$obj[]=`ls -sl -o`;
+	string	$tr[]=`listRelatives -p $obj[0]`;
+	string	$curveFromIsoparm[];
+	string	$curves[];
+	string	$edgeLoops[]=zenLoopRing(`ls -sl -fl`);
+	string 	$edgeLoop[];
+	int 	$wrap=0;
+	int	$progress;
+		
+		if((strip($edgeLoops[0]))==(strip($edgeLoops[size($edgeLoops)-1])))
+		{
+			$wrap=1;
+		}
+		else
+		{
+			$edgeLoops=`stringArrayRemoveDuplicates $edgeLoops`;
+		}
+			
+		$edgeLoops=`stringArrayRemove {""} $edgeLoops`;
+		
+		if(size($edgeLoops)>5)
+		{
+			progressWindow -title "Working" -status "Creating History" -progress 0 -ii 1 -max (size($edgeLoops)*4);
+			$progress=1;
+		}
+		
+		for($i=0;$i<size($edgeLoops);$i++)
+		{
+			$edgeLoop=`stringToStringArray $edgeLoops[$i] ","`;
+			$curves[$i]=`zenEdgeCurveNode $edgeLoop $degree`;
+			
+			if($progress)
+			{
+				progressWindow -e -s 3;
+				if(`progressWindow -q -ic`)
+				{
+					progressWindow -ep;
+					error "User Interupt.";
+				}
+			}
+		}
+		
+	string	$outputCurves[];
+	string	$loftNode;
+		catch($loftNode=`createNode loft`);
+		setAttr ($loftNode+".uniform") 0;
+		setAttr ($loftNode+".degree") 1;
+	int 	$count=0;
+	int	$plug=0;
+	
+		for($i=0;$i<size($curves);$i++)
+		{
+			connectAttr ($curves[$i]+".outputCurve") ($loftNode+".inputCurve["+(string($plug))+"]");
+			
+			if($wrap && $i==size($curves)-1)
+				connectAttr -f ($curves[0]+".outputCurve") ($loftNode+".inputCurve["+(string($plug))+"]");
+				
+			if($i==0 || $i==size($curves)-1)
+			{
+				if($count<1)
+				{
+					$count++;
+					$i--;
+				}
+				else
+				{
+					$count=0;
+				}
+			}
+			$plug++;
+			
+			if($progress)
+			{
+				progressWindow -e -s 1;
+				if(`progressWindow -q -ic`)
+				{
+					progressWindow -ep;
+					error "User Interupt.";
+				}
+			}
+		}
+		
+	string	$rebuildNode=`createNode rebuildSurface`;
+	string	$surfaceNodeTr=`createNode -n "loftedEdges#" transform`;
+	string	$surfaceNodeSh=`createNode -n ($surfaceNodeTr+"Shape") -p $surfaceNodeTr nurbsSurface`;
+	string	$surfaceNodeTr=zenReturnFirstStringItem(`listRelatives -p $surfaceNodeSh`);
+		
+		connectAttr ($loftNode+".outputSurface") ($surfaceNodeSh+".create");
+		setAttr ($surfaceNodeTr+".inheritsTransform") 0;
+		setAttr ($surfaceNodeTr+".r") 0 0 0;
+		setAttr ($surfaceNodeTr+".t") 0 0 0;
+		setAttr ($surfaceNodeTr+".s") 1 1 1;
+		connectAttr -f ($loftNode+".outputSurface") ($rebuildNode+".inputSurface");
+		connectAttr -f ($rebuildNode+".outputSurface") ($surfaceNodeSh+".create");
+		setAttr ($rebuildNode+".keepControlPoints") 1;
+		setAttr ($rebuildNode+".endKnots") 1;
+		setAttr ($rebuildNode+".keepRange") 0;
+		setAttr ($rebuildNode+".spansU") `getAttr ($surfaceNodeSh+".spansU")`;
+		setAttr ($rebuildNode+".spansV") `getAttr ($surfaceNodeSh+".spansV")`;
+		setAttr ($rebuildNode+".direction") 0;
+		setAttr ($rebuildNode+".rebuildType") 0;
+		setAttr ($rebuildNode+".degreeU") $degree; 
+		setAttr ($rebuildNode+".degreeV") $degree; 
+		setAttr ($surfaceNodeSh+".fixTextureWarp") 1;
+		
+	
+		setAttr -lock true ($surfaceNodeTr+".tx");
+		setAttr -lock true ($surfaceNodeTr+".ty");
+		setAttr -lock true ($surfaceNodeTr+".tz");
+		setAttr -lock true ($surfaceNodeTr+".rx");
+		setAttr -lock true ($surfaceNodeTr+".ry");
+		setAttr -lock true ($surfaceNodeTr+".rz");
+		setAttr -lock true ($surfaceNodeTr+".sx");
+		setAttr -lock true ($surfaceNodeTr+".sy");
+		setAttr -lock true ($surfaceNodeTr+".sz");
+		
+	//determine if flipping is necessary
+	string	$reverseSurfaceNode=`createNode reverseSurface`;
+		connectAttr -f ($loftNode+".outputSurface") ($reverseSurfaceNode+".inputSurface");
+		connectAttr -f ($reverseSurfaceNode+".outputSurface") ($rebuildNode+".inputSurface");
+		setAttr ($reverseSurfaceNode+".nodeState") 1;
+			
+	string	$pointOnSurfaceInfoNode=`createNode pointOnSurfaceInfo`;
+	string	$closestPointOnMeshNode=`createNode closestPointOnMesh`;
+		connectAttr ($rebuildNode+".outputSurface") ($pointOnSurfaceInfoNode+".inputSurface");
+		connectAttr ($obj[0]+".worldMesh[0]") ($closestPointOnMeshNode+".inMesh");
+		setAttr ($pointOnSurfaceInfoNode+".parameterU") .5;
+		setAttr ($pointOnSurfaceInfoNode+".parameterV") .5;
+	float	$pointLoc[]=`getAttr ($pointOnSurfaceInfoNode+".position")`;
+		setAttr ($closestPointOnMeshNode+".inPosition") $pointLoc[0] $pointLoc[1] $pointLoc[2];
+	float	$meshNormalX=`getAttr ($closestPointOnMeshNode+".normalX")`;
+	float	$meshNormalY=`getAttr ($closestPointOnMeshNode+".normalY")`;
+	float	$meshNormalZ=`getAttr ($closestPointOnMeshNode+".normalZ")`;
+	float	$surfaceNormalX=`getAttr ($pointOnSurfaceInfoNode+".normalX")`;
+	float	$surfaceNormalY=`getAttr ($pointOnSurfaceInfoNode+".normalY")`;
+	float	$surfaceNormalZ=`getAttr ($pointOnSurfaceInfoNode+".normalZ")`;
+	float	$normalDifference=mag(<<$surfaceNormalX,$surfaceNormalY,$surfaceNormalZ>>-<<$meshNormalX,$meshNormalY,$meshNormalZ>>);
+
+		if($normalDifference>1)
+		{
+			setAttr ($reverseSurfaceNode+".nodeState") 0;
+		}
+
+		delete $pointOnSurfaceInfoNode $closestPointOnMeshNode;
+		
+	//assign default shader
+		catch(`sets -e -in initialShadingGroup $surfaceNodeSh`);
+		
+		if($wrap) delete ($curves[(size($curves)-1)]);
+		
+		progressWindow -ep;
+		
+	string	$returnVal[]=`stringArrayCatenate {$rebuildNode,$surfaceNodeTr} $edgeLoops`;
+		
+		return $returnVal;
+}

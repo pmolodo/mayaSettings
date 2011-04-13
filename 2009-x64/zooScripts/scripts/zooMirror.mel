@@ -1,0 +1,66 @@
+// zooMirror
+//
+// Created by Hamish McKenzie zootoolbox@googlegroups.com
+// Created : 07 August 2004
+//
+// Hamish McKenzie ©2007...
+
+
+zooAlign "-load 1";
+zooAnimStoreUtils;
+zooArrays_str;
+zooBrandTools;
+zooStrUtils;
+zooCSTPrimitives;
+
+
+global proc zooMirror() {
+	string $windowName = "zooMirrorWindow";
+	string $windowTitle = "mirror tools";
+	int $width = 300;
+	int $height = 50;
+
+	if( `window -ex $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -rtf 0 -maximizeButton 0 -sizeable 1 $windowName;
+		menuBarLayout;
+			menu -l "File";
+
+		string $form = `formLayout`;
+			string $scroll = `scrollLayout -cr 1 -hst 0 -vst 1`;
+				columnLayout -adjustableColumn 1 explorerAssetList;
+				setParent ..;
+			setParent ..;
+
+	formLayout -e
+		-af $filterLbl "top" 3
+		-af $filterLbl "left" 5
+		-an $filterLbl "right"
+		$form;
+
+	showWindow $windowName;
+	window -e -wh $width $height $windowName;
+	}
+
+
+
+global proc string[] zooMirrorDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $iconDependencies[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooAlign";
+	$melDependencies[( `size $melDependencies` )] = "zooAnimStoreUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_str";
+	$melDependencies[( `size $melDependencies` )] = "zooBrandTools";
+	$melDependencies[( `size $melDependencies` )] = "zooCSTPrimitives";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooStrUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+
+	if( $mode == "-scripts" ) return $melDependencies;
+	if( $mode == "-icons" ) return $iconDependencies;
+	return {};
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

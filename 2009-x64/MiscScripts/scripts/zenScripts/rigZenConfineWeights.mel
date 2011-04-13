@@ -1,0 +1,61 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc int rigZenConfineWeights(int $recursive)
+{
+	float	$tol=.0001;
+
+	//find selected vertices	
+	
+	string	$vertices[]=`polyListComponentConversion -tv`;
+		
+	//find skin
+	
+	string	$objects[]=stringArrayRemoveDuplicates(`ls -o $vertices`);
+	
+		if(size($objects)>1) error("Vertices must be on the same mesh.");
+
+	string	$obj=$objects[0];
+	string	$skin=zenReturnFirstStringItem(`ls -type skinCluster (listHistory($obj))`);
+			
+	//find selected influences
+	
+	string	$influences[]=stringArrayCatenate(ls("-sl"),listRelatives("-s",(ls("-sl"))));
+	
+		if($recursive) $influences=stringArrayCatenate(ls("-sl"),stringArrayCatenate(`listRelatives -ad (ls("-sl"))`,listRelatives("-s",`listRelatives -ad (ls("-sl"))`)));
+				
+		$influences=`stringArrayRemoveDuplicates $influences`;
+		
+	string	$allInfluences[]=`listConnections -s 1 -d 0 ($skin+".matrix")`;
+
+	string	$zeroInfluences[]=stringArrayRemove($influences,$allInfluences);
+					
+	//clear out all other influences
+	
+	int	$normalizeWeights=`getAttr ($skin+".normalizeWeights")`;
+	
+		setAttr ($skin+".normalizeWeights") true;
+	
+	string	$command;		
+
+		$command="skinPercent -nrm true ";
+		
+		for($z in $zeroInfluences) $command=$command+"-tv "+$z+" 0 ";
+		
+		eval($command+$skin+" "+(zenReturnStringArrayFormat($vertices)));
+							
+		setAttr ($skin+".normalizeWeights") $normalizeWeights;
+				
+	return	1;
+}

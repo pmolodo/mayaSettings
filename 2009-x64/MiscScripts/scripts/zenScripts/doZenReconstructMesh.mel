@@ -1,0 +1,41 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//Reconstructs a polygon mesh or mesh's by creating a new mesh, 
+//connecting the original shape's outMesh to the new inMesh and 
+//deleting the original.
+global proc doZenReconstructMesh()
+{
+	string	$sel[]=stringArrayCatenate(`ls -sl`,`listRelatives -ad`);
+		$sel=`ls -type mesh $sel`;
+		$sel=`stringArrayRemoveDuplicates $sel`;
+		
+		if(!(size($sel)))
+			error "You must select one or more polygon meshes.";
+		
+	string	$tr[]=`listRelatives -p $sel`;
+	string	$newMesh[];
+		
+	int	$i;
+		for($mesh in $sel)
+		{
+			$newMesh[$i]=`createNode -p $tr[$i] mesh`;
+			connectAttr -f ($mesh+".outMesh") ($newMesh[$i]+".inMesh");
+			delete -ch $newMesh[$i] $mesh;
+			delete $mesh;
+			rename $newMesh[$i] $mesh;
+		}
+		
+		print "Finished";
+}

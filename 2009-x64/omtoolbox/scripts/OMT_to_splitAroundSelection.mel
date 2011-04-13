@@ -1,0 +1,1035 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	OMT_to_splitAroundSelection.mel					///
+///  AUTHOR: 	Jakob Welner (jakob@welner.dk)					///
+///										///
+///  UDTATE LOG:		
+///	9th of June: 0.5.2 by Jakob Welner
+///	- enabled optional autoactivation of selectionDragger
+///
+///	21th of october: 0.5.1 by Jakob Welner					///
+///	- removed auto-activate selectionDragger after split			///
+///	[date of update]: 0.5 by Jakob Welner					///
+///										///
+///  DEPENDENCIES:								///
+///   	None									///
+///										///
+///  PURPOSE & USE:								///
+///										///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Alias Maya toolbox			///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 								///
+///	output: 								///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_face2Edge(string $theFace)
+{
+	
+	string $buffer[];
+	string $listEdge[] = `polyInfo -fe $theFace`;
+	tokenize $theFace "." $buffer;
+	string $ObjectName = $buffer[0];
+	int $nbEdge = tokenize($listEdge[0] ,$buffer);
+	$nbEdge -= 2;
+	string $listEdgeName[];
+	for ($i=2;$i<size($buffer);$i++)
+	{
+	   $listEdgeName[$i-2] = ($ObjectName + ".e["+$buffer[$i]+"]");
+	}
+	return $listEdgeName;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 								///
+///	output: 								///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_vertex2Edge(string $theVtx)
+{
+	
+	string $buffer[];
+	string $listEdge[];
+	string $listEdge[] = `polyInfo -ve $theVtx`;
+	tokenize $theVtx "." $buffer;
+	string $ObjectName = $buffer[0];
+	int $nbVertex = tokenize($listEdge[0] ,$buffer);
+	$nbVertex -= 2;
+	string $listEdgeName[];
+	for ($i=2;$i<size($buffer);$i++)
+	{
+	   $listEdgeName[$i-2] = ($ObjectName + ".e["+$buffer[$i]+"]");
+	}
+	return $listEdgeName;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 								///
+///	output: 								///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_subtractStringArray (string $array1[], string $array2[])
+{
+	string $x;
+	string $y;
+	string $newArray[];
+	int $itemFound = 0;
+
+
+	for ($x in $array2)
+	{
+	   $itemFound = 0;
+	   for ($y in $array1)
+	   {
+		if ($x == $y) {$itemFound = 1;}
+	   }
+	   if ($itemFound == 0) {$newArray[size($newArray)] = $x;}
+	}
+
+	return ($newArray);
+}
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	2 Arrays						///
+///	Output: 	String array with every component that the two arrays	///
+///			have in common 						///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_ArrayIntersector(string $array1[] ,string $array2[] )
+{
+	
+    string $myIntersector = `stringArrayIntersector`;
+    stringArrayIntersector -edit -intersect $array1 $myIntersector;
+    stringArrayIntersector -edit -intersect $array2 $myIntersector;
+    string $result[] = `stringArrayIntersector -query $myIntersector`;
+    stringArrayIntersector -edit -reset $myIntersector;
+    return $result;
+    
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Indput selection	 				///
+///	Output: 	String: Object name			 		///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string OM_objectName(string $objSelection)
+{
+	string	$name[];
+	
+	tokenize $objSelection "." $name;
+	
+	return $name[0];
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 								///
+///	output: 								///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_inverseArray( string $list[])
+{
+	
+	string $result[];
+	for ( $i = size($list)-1; $i > - 1; --$i )
+	{
+	   $result[ size($result) ] = $list[$i];
+	}
+	return $result;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Selection						///
+///	Output: 	Returns a list of edges adjacent to indput		///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_getEdges()
+{
+    	string $edges[]=`polyListComponentConversion -te`;
+ 	select -r $edges;
+    	string $result[]=`filterExpand -ex true -sm 32`;
+    	return $result;
+}
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Selection						///
+///	output: 	List of vertices adjacent to any current selection	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_getVerts()
+{
+    	string $verts[]=`polyListComponentConversion -tv`;
+ 	select -r $verts;
+    	string $result[]=`filterExpand -ex true -sm 31`;
+    	return $result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge array on adjacent faces				///
+///	output: 	connects the array edges and returns the polySplit 	///
+///			node name						///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_splitEdges(string $splitEdges[])
+{
+	
+	int $int;
+	string $dump[];
+	string 	$object = `OM_objectName($splitEdges[0])`;
+	string $splitCommand = "polySplit -ch on -s 1 ";
+	
+ 	for ($int = 0 ; $int <= (size($splitEdges) -1) ; $int++)
+   	{
+   	   tokenize $splitEdges[$int] "[]" $dump;
+   	   $splitCommand = $splitCommand + "-ep " + $dump[1] + " 0.5 ";	
+   	}
+	string $shapeName[] = `ls -sl "*Shape"`;
+   	$splitCommand = ($splitCommand + $shapeName[0]);
+   	return (eval($splitCommand));
+   	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge array on adjacent faces				///
+///	output: 	connects the array edges and returns the polySplit 	///
+///			node name						///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_splitEdges(string $splitEdges[])
+{
+	
+	int $int;
+	string $dump[];
+	string 	$object = `OM_objectName($splitEdges[0])`;
+	string $splitCommand = "polySplit -ch on -s 1 ";
+	
+ 	for ($int = 0 ; $int <= (size($splitEdges) -1) ; $int++)
+   	{
+   	   tokenize $splitEdges[$int] "[]" $dump;
+   	   $splitCommand = $splitCommand + "-ep " + $dump[1] + " 0.5 ";	
+   	}
+	string $shapeName[] = `ls -sl "*Shape"`;
+   	$splitCommand = ($splitCommand + $shapeName[0]);
+   	return (eval($splitCommand));
+   	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge			 				///
+///	Output: 	returns a string Array with the two faces adjacent 	///
+///			to the input edge					///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_edge2face(string $edge)
+{
+	string	$dump[];
+	string 	$token[];
+	string 	$object = `OM_objectName($edge)`;
+	string $return[];
+	
+	$token = `polyInfo -ef $edge`;
+	tokenize ($token[0], $dump);
+	
+	$return[0] = $object + ".f[" + $dump[2] + "]";
+	$return[1] = $object + ".f[" + $dump[3] + "]";
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge			 				///
+///	Output: 	returns an array with the two vertices adjacent to 	///
+///			input edge						///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_edge2vtx(string $edge)
+{
+	string	$dump[];
+	string 	$token[];
+	string 	$object = `OM_objectName($edge)`;
+	string 	$return[];
+	
+	$token = `polyInfo -ev $edge`;
+	tokenize ($token[0], $dump);
+	
+	$return[0] = $object + ".vtx[" + $dump[2] + "]";
+	$return[1] = $object + ".vtx[" + $dump[3] + "]";
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 								///
+///	output: 								///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc int OM_IsEdgeBorder( string $Edge ) 
+{
+	
+	string $result = 0;
+	string $faces[] = OM_edge2face($Edge);
+	if ( size($faces) < 2 ){ $result = 1 ;}
+	return $result ;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 								///
+///	output: 								///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string OM_inverseFacefromEdge( string $Face, string $Edge ) 
+{
+	
+	string $result ;
+	string $FaceOfEdgeList[] = OM_edge2face($Edge);
+	if ($Face == $FaceOfEdgeList[0]  ) $result = $FaceOfEdgeList[1];
+	else $result = $FaceOfEdgeList[0];
+	return $result;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 								///
+///	output: 								///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string OM_inverseVertexFromEdge(string $Vertex, string $Edge)
+{
+	
+	string $Verts[] = OM_edge2vtx($Edge);
+	if ( $Verts[0] == $Vertex ) return $Verts[1]; 
+	else return $Verts[0];
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 								///
+///	output: 								///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string OM_NextEdgeOnFace( string $Face, string $Edge, string $EdgeList[] )
+{
+	
+	string $Result = "";
+
+	string $Edges[] = OM_ArrayIntersector( OM_face2Edge($Face), $EdgeList );
+
+	if ( size( $Edges ) == 2 ) 
+	{
+
+	   if ( $Edges[0] == $Edge ) $Result = $Edges[1];
+	   else $Result = $Edges[0];
+	}
+	
+	return $Result;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 								///
+///	output: 								///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string OM_getNextEdge ( string $Edge, string $vertices[], string $Face )
+{
+
+	string $Verts[] = OM_ArrayIntersector($vertices, OM_edge2vtx($Edge));
+	string $V = $Verts[0];
+
+	int $stop = 0;
+	while ( $stop != 1 )
+	{
+	   $V = OM_inverseVertexFromEdge( $V, $Edge );
+	   string $VArray[] = {$V};
+	   if ( size(OM_ArrayIntersector( $VArray, $vertices ) ) == 1 )
+	   { 
+	   	$stop = 1; return $Edge; 
+	   }
+	   string $EdgeA[] = {$Edge};
+	   string $EdgeA2[] = OM_ArrayIntersector(OM_subtractStringArray($EdgeA, OM_vertex2Edge($V)), OM_face2Edge($Face));
+	   $Edge = $EdgeA2[0];
+	}
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 								///
+///	output: 								///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_OrderEdges( string $EdgeList[] )
+{
+	string $faces[] = OM_edge2face($EdgeList[0]);
+	string $NewEdgeList[];
+	$NewEdgeList[0] = $EdgeList[0];
+
+	string $loopFace = $faces[0];
+	string $loopEdge = $EdgeList[0];
+
+	int $i = 1;
+	int $stop = 0;
+	int $loop = 0;
+
+	while ( $stop != 1 )
+	{
+
+	   $loopEdge = OM_NextEdgeOnFace( $loopFace, $loopEdge, $EdgeList);
+	   if ( $loopEdge == "" ) { $stop = 1; break;}
+	   $NewEdgeList[$i++] = $loopEdge;
+	   if ( OM_IsEdgeBorder($loopEdge) ) { $stop = 1; break;}
+	   if ( $loopEdge == $NewEdgeList[0] ) { $loop = 1; $stop = 1; break;}
+	   $loopFace = OM_inverseFacefromEdge( $loopFace, $loopEdge );
+
+	}
+
+	if ( size($faces) == 2 ) 
+	{
+	   if ( $loop == 0 )
+	   {
+	   	$loopFace = $faces[1];
+	   	$loopEdge = $EdgeList[0];
+	   	$NewEdgeList = OM_inverseArray($NewEdgeList);
+	   	$stop = 0;
+
+	   	while ( $stop != 1 ) 
+	   	{
+		   $loopEdge = OM_NextEdgeOnFace( $loopFace, $loopEdge, $EdgeList);
+		   if ( $loopEdge == "" ) { $stop = 1; break; }
+		   $NewEdgeList[$i++] = $loopEdge;
+
+		   if ( OM_IsEdgeBorder($loopEdge) ) { $stop = 1; break; }
+
+		   $loopFace = OM_inverseFacefromEdge( $loopFace, $loopEdge );
+	   	}
+	   }
+	}
+	
+	return $NewEdgeList;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 								///
+///	output: 								///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_splitAroundVertsOrder(string $VertexList[])
+{
+	
+	select $VertexList;
+	string $edges[] = OM_getEdges();
+
+	string $EdgeList[];
+	$EdgeList[0] = $edges[0];
+
+	string $Verts[]   = OM_getVerts();
+	string $loopEdge  = $edges[0];
+	string $faces[]   = OM_edge2face($edges[0]);
+	string $loopFace  = $faces[0];
+	string $loopFace2 = $faces[1];
+	int $stop         = 0;
+	int $Border       = 0;
+	int $i            = 1;
+
+
+	while ( $stop != 1 )
+	{
+	   $loopEdge = OM_getNextEdge( $loopEdge, $VertexList, $loopFace );
+	   $EdgeList[$i++] = $loopEdge;
+	   if ( OM_IsEdgeBorder($loopEdge) ) { $stop = 1; $Border = 1; break; }
+	   if ( $loopEdge == $EdgeList[0] ) { $stop = 1; break; }
+
+	   $loopFace = OM_inverseFacefromEdge( $loopFace, $loopEdge );
+	}
+
+
+	if ( $Border == 1 )
+	{
+
+	   string $loopEdge = $EdgeList[0];
+	   string $loopFace = $loopFace2;
+
+	   string $EdgeList[] = OM_inverseArray($EdgeList);
+
+
+	   while ( $stop != 1 )
+	   {
+		$loopEdge = OM_getNextEdge( $loopEdge, $VertexList, $loopFace );
+		$EdgeList[$i++] = $loopEdge;
+		if ( OM_IsEdgeBorder($loopEdge) ) { $stop = 1; break; }
+		if ( $loopEdge == $EdgeList[0] ) { $stop = 1; break; }
+
+		$loopFace = OM_inverseFacefromEdge( $loopFace, $loopEdge );
+	   }
+
+	}
+	return $EdgeList;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Selection						///
+///	Function: 	Split around selected vertices				///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc OM_splitAroundVerts()
+{
+
+	global string 	$partials[];
+	clear 	$partials;
+
+	string 	$nodeName[];
+	string 	$splitEdges[];
+	
+	string	$vertexContainer[];
+	int	$indexCount;
+
+		undoInfo -swf 0;
+
+	string 	$selection[] = `filterExpand -sm 31`;
+	string 	$object = `OM_objectName($selection[0])`;
+	
+	if (size($selection) == 0) error "You need to select at least one vertex";
+	else 
+	{
+
+	   $splitEdges = OM_splitAroundVertsOrder($selection);
+
+	   // Gets the count of vertices on the active object
+	   select -r $object;
+	   ConvertSelectionToVertices;
+	   $vertexContainer = `filterExpand -sm 31`;
+	   $indexCount = (size($vertexContainer));
+
+		undoInfo -swf 1;
+
+   	   $nodeName = OM_splitEdges($splitEdges);
+	   rename $nodeName[0] "splitAroundVertices"; 
+
+		undoInfo -swf 0;	   
+
+	   // Gets the new count of vertices and finds the added vertices
+	   select -r $object;
+	   ConvertSelectionToVertices;
+	   $vertexContainer = `filterExpand -sm 31`;
+	   string $vertexString;
+	   $vertexString = $object + ".vtx[" + $indexCount + ":" + (size($vertexContainer)-1) + "]";
+	   
+	   // converts the new vertices to edges to get the newly added split
+	   hilite $object;
+
+		undoInfo -swf 1;
+
+	   select -r `polyListComponentConversion -in -te $vertexString`;
+
+	}
+
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Selection						///
+///	Function: 	Split around selected edges				///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc OM_splitAroundEdges()
+{
+
+	global string 	$partials[];
+	clear $partials;
+
+	string 	$nodeName[];
+	
+	string	$vertexContainer[];
+	int	$indexCount;	
+
+		undoInfo -swf 0;
+	
+	string 	$selection[] = `filterExpand -sm 32`;
+	string 	$object = `OM_objectName($selection[0])`;
+	
+	if (size($selection) == 0) error "You need to select at least one edge";
+	else 
+	{
+
+
+	   OM_getVerts(); OM_getEdges();
+	   select -d $selection;
+	   string $splitEdges[] = OM_OrderEdges(`ls -sl -fl`);
+
+	   // Gets the count of vertices on the active object
+	   select -r $object;
+	   ConvertSelectionToVertices;
+	   $vertexContainer = `filterExpand -sm 31`;
+	   $indexCount = (size($vertexContainer));
+
+		undoInfo -swf 1;
+
+   	   $nodeName = OM_splitEdges($splitEdges);
+	   rename $nodeName[0] "splitAroundVertices"; 
+
+		undoInfo -swf 0;	   
+
+	   // Gets the new count of vertices and finds the added vertices
+	   select -r $object;
+	   ConvertSelectionToVertices;
+	   $vertexContainer = `filterExpand -sm 31`;
+	   string $vertexString;
+	   $vertexString = $object + ".vtx[" + $indexCount + ":" + (size($vertexContainer)-1) + "]";
+	   
+	   // converts the new vertices to edges to get the newly added split
+	   hilite $object;
+
+		undoInfo -swf 1;
+
+	   select -r `polyListComponentConversion -in -te $vertexString`;
+
+	}	
+
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Selection						///
+///	Function: 	Split around selected faces				///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc OM_splitAroundFaces()
+{
+	global string 	$partials[];
+	clear $partials;
+
+	string 	$nodeName[];
+	string 	$splitEdges[];
+
+	string	$vertexContainer[];
+	int	$indexCount;	
+
+		undoInfo -swf 0;
+
+	OM_getEdges();
+	string $selection[] = `filterExpand -sm 32`;
+	string 	$object = `OM_objectName($selection[0])`;
+
+	
+	if (size($selection) == 0) error "You need to select at least one face";
+	else 
+	{
+
+
+	   OM_getVerts(); OM_getEdges(); select -d $selection;
+	   $splitEdges = OM_OrderEdges(`ls -sl -fl`);
+
+	   // Gets the count of vertices on the active object
+	   select -r $object;
+	   ConvertSelectionToVertices;
+	   $vertexContainer = `filterExpand -sm 31`;
+	   $indexCount = (size($vertexContainer));
+
+		undoInfo -swf 1;
+
+   	   $nodeName = OM_splitEdges($splitEdges);
+	   rename $nodeName[0] "splitAroundVertices"; 
+
+		undoInfo -swf 0;	   
+
+	   // Gets the new count of vertices and finds the added vertices
+	   select -r $object;
+	   ConvertSelectionToVertices;
+	   $vertexContainer = `filterExpand -sm 31`;
+	   string $vertexString;
+	   $vertexString = $object + ".vtx[" + $indexCount + ":" + (size($vertexContainer)-1) + "]";
+	   
+	   // converts the new vertices to edges to get the newly added split
+	   hilite $object;
+
+		undoInfo -swf 1;
+
+	   select -r `polyListComponentConversion -in -te $vertexString`;
+
+	}
+	
+
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///					TOOL					///
+///	Indput: 	Selection						///
+///	Function: 	Split around selection					///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OMT_to_splitAroundSelection()
+{
+	
+	if 	( size(`filterExpand -sm 31`) > 0 ) OM_splitAroundVerts();
+	else if ( size(`filterExpand -sm 32`) > 0 ) OM_splitAroundEdges();
+	else if ( size(`filterExpand -sm 34`) > 0 ) OM_splitAroundFaces();
+	else warning "Need selected poly components";
+	
+	
+	///	Auto drag handler:
+	if (`optionVar -q "OMTSettings_autoActivateDrag"`)
+	{
+		OMT_to_selectionDragger;
+	}
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////

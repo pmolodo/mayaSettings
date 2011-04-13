@@ -1,0 +1,1415 @@
+// Copyright (C) 1997-2004 Alias Systems Corp.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias license agreement, without fee.
+//
+// ALIAS DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+
+//  Alias|Wavefront Script File
+//  MODIFY THIS AT YOUR OWN RISK
+//
+//  Creation Date:  Dec 3, 1996
+//
+//
+//  Description:
+//      This script describes the contents of the context sensitive menus.
+//
+//  Input Arguments:
+//      None.
+//
+//  Return Value:
+//      None.
+//
+
+proc optionalDagMenuProc( string $parent, string $item )
+{
+	// Look at the shape child of this object
+	//
+	string $object[] = `listRelatives -path -s $item`;
+	string $shape = "";
+	int $gotVisible = 0;
+
+	if( size($object) < 1 ) return;
+
+	for( $i=0; $i<size($object); $i+=1) {
+		if( (0 == getAttr($object[$i] + ".io")) &&
+			getAttr($object[$i] + ".v") ) {
+			$shape = $object[$i];
+			$gotVisible = 1;
+			break;
+		}
+	}
+
+	if( !$gotVisible ) {
+		for( $i=0; $i<size($object); $i+=1) {
+			if( 0 == getAttr($object[$i] + ".io")) {
+				$shape = $object[$i];
+				break;
+			}
+		}
+	}
+
+	if( "" != $shape ) {
+		string $nt = `nodeType $shape`;
+		switch( $nt ) {
+		  case "subdiv":
+			subdOptionalDagMenuProc( $parent, $item );
+			menuItem -d true;
+			break;
+
+		  default:
+			break;
+		}
+	}
+}
+
+proc int objectIsTrimmed(string $item)
+// Return true if this is a trimmed surface
+{
+	string $command = ("getAttr -size " + $item + ".trimFace");
+	int $trimCount = eval($command);
+
+	return ($trimCount != 0);
+}
+
+
+proc string getControlledHandle(string $item)
+{
+	string $handle;
+	if (size(`ls ($item+".ikBlend")`)) {
+		string $connHandles[] =
+			`listConnections -type ikHandle ($item+".ikBlend")`;
+		if (size($connHandles)) {
+			$handle = $connHandles[0];
+		}
+	}
+	return $handle;
+}
+
+proc int isIKcontroller(string $item)
+{
+	string $handle = getControlledHandle($item);
+	return (size($handle) > 0);
+}
+
+proc checkForSkinInfluenceItem(string $item, string $quadrant)
+{
+	int $isJoint = (nodeType($item) == "joint");
+
+	// Check if the current context is the skinPaint context
+	// and the the joint is connected to a skinCluster
+	//
+	string  $currContext = `currentCtx`;
+	string  $currTool    = `contextInfo -c $currContext`;
+	if ( $currTool == "artAttrSkin" ) {
+		string $whichTool = `artAttrCtx -q -whichTool $currContext`;
+		if ( $whichTool == "skinWeights" )  {
+			string $connL[] = `listConnections ($item+".worldMatrix")`;
+			string $conn;
+			for($conn in $connL) {
+				if (`nodeType $conn` == "skinCluster")
+				{
+					// select the surface (not the joint) and set
+					// the joint as the current influence
+					//
+					string $currSel[] = `ls -sl`;
+					string $currSelString;
+					if (size($currSel) > 0) {
+						string $currObj;
+						$currSelString = "select -r ";
+						for ($currObj in $currSel) {
+							$currSelString += ($currObj+" ");
+						}
+					}
+					menuItem -l "Paint Weights"
+						-echoCommand true
+						-c ($currSelString+"; setSmoothSkinInfluence " + $item)
+						-rp $quadrant
+						paintWeightItem;
+					break;
+				}
+			}
+		}
+	}		// menu for skinCluster paint
+	// Check if the current context is the clusterPaint context
+	// and the the joint is connected to a jointCluster
+	//
+	else if ( $isJoint && ($currTool == "artAttr") ) {
+		string $whichTool = `artAttrCtx -q -whichTool $currContext`;
+		if ( $whichTool == "general" )  {
+			string $connL[] = `listConnections ($item+".worldMatrix")`;
+			string $conn;
+			for($conn in $connL) {
+				if (`nodeType $conn` == "jointCluster")
+				{
+					string $artCommand = "artAttrCtx" ;
+					string $attribute = "cluster." + $conn +  ".weights" ;
+					menuItem -l "Paint Weights"
+						-echoCommand true
+						// the following command doesnot update the UI hence we use the next one
+						//-c ("artAttrCtx -e -pas \"cluster." + $conn +  ".weights\" `currentCtx`")
+						-c ("artSetToolAndSelectAttr( \"" + $artCommand + "\", \"" + $attribute + "\" )")
+						-rp "N"
+						paintWeightItem;
+					break;
+				}
+			}
+		}
+	}
+	// menu for joint-set paint
+	// Check if the current context is the setPaint context
+	// and the the joint is connected to a objectSet via jointCluster
+	//
+	else if ( $isJoint && ($currTool == "artSetPaint") ) {
+		string $connL[] = `listConnections ($item+".worldMatrix")`;
+		string $conn;
+		for($conn in $connL) {
+			if (`nodeType $conn` == "jointCluster") {
+				string $connS[] = `listConnections ($conn+".message")`;
+				for($set in $connS) {
+					if (`nodeType $set` == "objectSet") {
+						menuItem -l "Paint Set Membership"
+							-echoCommand true
+							// the following command doesnot update the UI hence we use the next one
+							//-c ("artSetPaintCtx -e -settomodify " + $set + " `currentCtx`")
+							-c ("artSetPaintSelectSet( \"" + $set + "\" )")
+							-rp "N"
+							paintWeightItem;
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
+global proc string[] objectSelectMasks(string $item)
+// Returns the component selection masks that apply to this object
+{
+	string $maskList[];
+	string $shape = $item;
+	int $i;
+
+	// Look at the shape child of this object
+	//
+	string $object[] = `listRelatives -path -s $item`;
+	int $gotVisible = 0;
+
+	for ($i = 0; $i < size($object); ++$i) {
+		if( (0 == getAttr($object[$i] + ".io")) &&
+			getAttr($object[$i] + ".v") ) {
+			$shape = $object[$i];
+			$gotVisible = 1;
+			break;
+		}
+	}
+
+	if( !$gotVisible ) {
+		for ($i = 0; $i < size($object); ++$i)
+		{
+			if (getAttr($object[$i] + ".io") == 0)
+			{
+				$shape = $object[$i];
+				break;
+			}
+		}
+	}
+
+	string $nt = `nodeType $shape`;
+
+	switch ($nt) {
+		case "lattice":
+			$maskList[0] = "latticePoint";
+			break;
+		case "locator":
+			$maskList[0] = "locator";
+			break;
+		case "nurbsCurve":
+			$maskList[0] = "curveParameterPoint";
+			$maskList[1] = "controlVertex";
+			$maskList[2] = "editPoint";
+			$maskList[3] = "hull";
+			break;
+		case "nurbsSurface":
+			$maskList[0] = "isoparm";
+			$maskList[1] = "controlVertex";
+			$maskList[2] = "surfaceParameterPoint";
+			$maskList[3] = "hull";
+			$maskList[4] = "surfaceFace";
+			if (objectIsTrimmed($shape)) {
+				$maskList[5] = "surfaceEdge";
+			}
+			break;
+		case "mesh":
+			$maskList[0] = "edge";
+			$maskList[1] = "vertex";
+			$maskList[2] = "facet";
+			$maskList[3] = "puv";
+			$maskList[4] = "pvf";
+			break;
+		case "joint":
+			$maskList[0] = "joint";		// special case
+			break;
+		case "ikHandle":
+			$maskList[0] = "ikHandle";	// special case
+			break;
+		case "particle":
+			$maskList[0] = "particle";	// only one choice
+			break;
+		case "spring":
+			$maskList[0] = "springComponent";	// only one choice
+			break;
+		case "subdiv":
+ 			$maskList[0] = "subdivMeshPoint";
+ 			$maskList[1] = "subdivMeshEdge";
+ 			$maskList[2] = "subdivMeshFace";
+ 			$maskList[3] = "subdivMeshUV";
+			break;
+	}
+
+	if (isIKcontroller($item)) {
+		$maskList[size($maskList)] = "ikfkHandle";
+	}
+
+	return $maskList;
+}
+
+global proc createSelectMenuItems(string $parent, string $item)
+// Create a menu that shows the dag parenting for this object
+{
+	string $maskList[] = `objectSelectMasks($item)`;
+	string $radialPosition[];
+	string $uiName;
+
+	int $i;
+	int $isNurbObject     = false;
+	int $isPolyObject     = false;
+	int $isLatticeObject  = false;
+	int $isJointObject    = false;
+	int $isIkHandleObject = false;
+	int $isIkFkHandleObject = false;
+	int $isParticleObject = false;
+	int $isSpringObject   = false;
+	int $isSubdivObject   = false;
+	int $isLocatorObject  = false;
+	int $hasComponents	  = false;
+
+	//	Work around for bug #143031.
+	//	Comparing an element in an empty array will increase the array
+	//	to accomodate that element.
+	//
+	//	To avoid this, first test the size of the array before comparing
+	//	elements that may not exist.
+	//
+	if (1 <= size($maskList)) {
+		$isLatticeObject = ($maskList[0] == "latticePoint");
+		$isJointObject = ($maskList[0] == "joint");
+		$isIkHandleObject = ($maskList[0] == "ikHandle");
+		$isParticleObject = ($maskList[0] == "particle");
+		$isSpringObject = ($maskList[0] == "springComponent");
+		$isSubdivObject = ($maskList[0] == "subdivMeshPoint");
+		$isLocatorObject = ($maskList[0] == "locator");
+	}
+	if (2 <= size($maskList)) {
+		$isNurbObject = ($maskList[1] == "controlVertex");
+		$isPolyObject = ($maskList[1] == "vertex");
+	}
+
+	// $maxRadialPos keeps track of how many octants of the
+	// RMB marking menu will be populated
+	//
+	int $maskSize = size($maskList);
+	int $maxRadialPos = size($maskList);
+
+	if (($maskSize > 0) && ($maskList[$maskSize-1] == "ikfkHandle")) {
+		$isIkFkHandleObject = true;
+		$maxRadialPos--; // ikfkHandle does not populate like other masks
+	}
+
+	$hasComponents = $isLatticeObject ||
+					 $isParticleObject ||
+					 $isSubdivObject ||
+					 $isSpringObject ||
+					 $isNurbObject ||
+					 $isPolyObject;
+
+	// NOTE:
+	//			If the object has selectable components, then the
+	//		radial position "NE" will be used for the menuItem:
+	//		"Revert back to object mode."
+	//
+	setParent -menu $parent;
+	$radialPosition[0] = "N";
+	$radialPosition[1] = "W";
+	$radialPosition[2] = "S";
+	$radialPosition[3] = "E";
+	$radialPosition[4] = "SW";
+	$radialPosition[5] = "SE";
+	$radialPosition[6] = "NW";
+	$radialPosition[7] = "NE";
+
+	if ($isNurbObject) {
+		for ($i = 0; $i < size($maskList); $i++) {
+			switch ($maskList[$i]) {
+				case "surfaceParameterPoint":
+					$uiName = "Surface Point";
+					break;
+				case "curveParameterPoint":
+					$uiName = "Curve Point";
+					break;
+				case "surfaceEdge":
+					$uiName = "Trim Edge";
+					break;
+				case "surfaceFace":
+					$uiName = "Surface Patch";
+					break;
+				default:
+					$uiName = `interToUI $maskList[$i]`;
+			}
+
+			if ($maskList[$i] != "ikfkHandle") {
+				menuItem -l $uiName
+					-ecr false
+					-c ( "doMenuNURBComponentSelection(\"" +
+						 $item + "\", \"" +  $maskList[$i] + "\")")
+					-rp $radialPosition[$i];
+			}
+		}
+	} else if ($isPolyObject) {
+
+		for ($i = 0; $i < size($maskList); $i++) {
+
+			switch ($maskList[$i]) {
+			  case "puv":
+				$uiName = "UV";
+				break;
+			  case "facet":
+				$uiName = "Face";
+				break;
+			  case "pvf":
+				$uiName = "Vertex Faces";
+				break;
+			  default:
+				$uiName = `interToUI $maskList[$i]`;
+				break;
+			}
+
+			if ($maskList[$i] != "ikfkHandle") {
+				menuItem -l $uiName
+					-ecr false
+					-c ( "doMenuComponentSelection(\"" +
+						 $item + "\", \"" +  $maskList[$i] + "\")")
+					-rp $radialPosition[$i];
+			}
+		}
+	} else if ($isLatticeObject) {
+		for ($i = 0; $i < size($maskList); $i++) {
+			if ($maskList[$i] != "ikfkHandle") {
+				$uiName = `interToUI $maskList[$i]`;
+				menuItem -l $uiName
+					-ecr false
+					-c ( "doMenuLatticeComponentSelection(\"" +
+						 $item + "\", \"" +  $maskList[$i] + "\")")
+					-rp $radialPosition[$i];
+			}
+		}
+	} else if ($isJointObject) {
+		menuItem -l "Set Preferred Angle"
+			-echoCommand true
+			-c (`performSetPrefAngle 2` + " " + $item)
+			-rp "W"
+			setPrefAngleItem;
+
+		menuItem -l "Assume Preferred Angle"
+			-echoCommand true
+			-c (`performAssumePrefAngle 2` + " " + $item)
+			-rp "E"
+			assumePrefAngleItem;
+
+		// Check if the current context is the skinPaint context
+		// and the the joint is connected to a skinCluster. If so, add
+		// Paint Skin Weights to north ("N") quadrant
+		//
+		checkForSkinInfluenceItem($item, "N");
+
+	} else if ($isLocatorObject) {
+
+		// Check if the current context is the skinPaint context
+		// and the the joint is connected to a skinCluster. If so, add
+		// Paint Skin Weights to north ("N") quadrant
+						//
+		checkForSkinInfluenceItem($item, "N");
+
+	} else if ($isIkHandleObject) {
+		menuItem -l "Set Preferred Angle"
+			-annotation "Set Preferred: Select ikHandles or joints"
+			-echoCommand true
+			-c (`performSetPrefAngle 2` + " " + $item)
+			-rp "W"
+			setPrefAngleItem;
+
+		menuItem -l "Assume Preferred Angle"
+			-annotation "Assume Preferred: Select ikHandles or joints"
+			-echoCommand true
+			-c (`performAssumePrefAngle 2` + " " + $item)
+			-rp "E"
+			assumePrefAngleItem;
+
+		menuItem -l "Enable ikHandle"
+			-annotation "Enable IK Handles: Select ikHandles"
+			-echoCommand true
+			-c ("ikHandle -e -eh " + $item)
+			-rp "N"
+			enableIKHandlesItem;
+
+		menuItem -l "Disable ikHandle"
+			-annotation "Disable IK Handles: Select ikHandles"
+			-echoCommand true
+			-c ("ikHandle -e -dh " + $item)
+			-rp "S"
+			disableIKHandlesItem;
+
+		menuItem -l "Enable Snap"
+			-annotation "Enable IK Handle Snapping: Select ikHandles"
+			-echoCommand true
+			-c ("ikHandle -e -see " + $item + ";" +
+				"ikHandle -e -shf on " + $item)
+			-rp "SE"
+			enableIKHandlesSnapItem;
+
+		menuItem -l "Disable Snap"
+			-annotation "Disable IK Handle Snapping: Select ikHandles"
+			-echoCommand true
+			-c ("ikHandle -e -shf off " + $item)
+			-rp "SW"
+			disableIKHandlesSnapItem;
+
+		$maxRadialPos = 6;
+	} else if ($isParticleObject) {
+		for ($i = 0; $i < size($maskList); $i++) {
+			switch ($maskList[$i]) {
+				case "particle":
+					$uiName = "Particle";
+					break;
+				default:
+					$uiName = `interToUI $maskList[$i]`;
+			}
+			menuItem -l $uiName
+				-ecr false
+				-c ( "doMenuParticleComponentSelection(\"" +
+					$item + "\", \"" +  $maskList[$i] + "\")")
+				-rp $radialPosition[$i];
+		}
+	} else if ($isSpringObject) {
+		for ($i = 0; $i < size($maskList); $i++) {
+			switch ($maskList[$i]) {
+				case "springComponent":
+					$uiName = "Spring";
+					break;
+				default:
+					$uiName = `interToUI $maskList[$i]`;
+			}
+			menuItem -l $uiName
+				-ecr false
+				-c ( "doMenuSpringComponentSelection(\"" +
+					$item + "\", \"" +  $maskList[$i] + "\")")
+				-rp $radialPosition[$i];
+		}
+	} else if ($isSubdivObject) {
+		subdDagMenuProc( 0, $item, $maskList );
+	} else {
+		for ($i = 0; $i < size($maskList); $i++) {
+			if ($maskList[$i] == "ikfkHandle") {
+				continue;
+			}
+
+			$uiName = `interToUI $maskList[$i]`;
+			menuItem -l $uiName
+				-ecr false
+				-c ( "doMenuComponentSelection(\"" +
+					$item + "\", \"" +  $maskList[$i] + "\")")
+				-rp $radialPosition[$i];
+		}
+	}
+
+	// If components are present, provide the ability to
+	// get back to object mode...
+	//
+	if ($hasComponents) {
+		menuItem -l "Object Mode"
+				-ecr false
+				-c ( "hilite -unHilite " + $item + "; string $selection[] = `ls -sl`;"
+					+ "changeSelectMode -object; select -r $selection;" )
+				-rp "NE";
+	}
+
+	// Since any object can be an ikfk handle, we only populate the ikfk items
+	// in slots that are not already in use.
+	//
+	if ($isIkFkHandleObject) {
+		string $handle = getControlledHandle($item);
+
+		if ($maxRadialPos < 8) {
+			menuItem -label "Set IK/FK Key"
+				-echoCommand true
+				-annotation "Set keys on selected joint chains and handles."
+				-rp $radialPosition[7]
+				-command ("select -r "+$item+"; SetIKFKKeyframe");
+		}
+
+		if ($maxRadialPos < 7) {
+			menuItem -label "Move IK to FK"
+				-echoCommand true
+				-annotation "Select an IK handle or IK/FK connected object."
+				-rp $radialPosition[6]
+				-command ("select -r "+$item+"; MoveIKtoFK");
+		}
+
+		if ($maxRadialPos < 5) {
+			menuItem -l "Disable ikHandle"
+				-annotation "Disable IK Handle"
+				-echoCommand true
+				-c ("ikHandle -e -dh " + $handle)
+				-rp $radialPosition[5];
+
+			menuItem -l "Enable ikHandle"
+				-annotation "Enable IK Handle"
+				-echoCommand true
+				-c ("ikHandle -e -eh " + $handle)
+				-rp $radialPosition[4];
+		}
+	}
+
+
+//	for ($i = 0; $i < size($maskList); $i++) {
+//       $itemName = "SELM" + string($i);
+//			setParent -menu $parent;
+//			menuItem
+//				-c ("doMenuComponentSelection(\"" +
+//					$item + "\", \"" +  $maskList[$i] + "\")")
+//				-l $maskList[$i]
+//				-rp $radialPosition[$i]
+//				$itemName;
+//	}
+	setParent -menu $parent;
+}
+
+global proc doMenuNURBComponentSelection(string $item, string $mask)
+//
+// Change the selection/display state to allow selection of NURB components
+//
+{
+	string $selectCmd;
+
+	if (`selectMode -q -object`) {
+		hilite $item;
+		selectType -ocm -alc false;
+		$selectCmd = "selectType -ocm -" + $mask + " true;";
+	} else {
+		selectType -ocm -alc false;
+		$selectCmd = "selectType -" + $mask + " true;";
+		if (`selectMode -q -preset`) {
+			$selectCmd = $selectCmd +"selectPriority -allComponents 1;";
+			$selectCmd = $selectCmd +"selectPriority -isoparm 2;";
+			$selectCmd = $selectCmd +"selectPriority -" + $mask + " 3;";
+			switch ($mask) {
+				case "editPoint":
+					$selectCmd = $selectCmd +
+						"toggle -state true -" + $mask + " " + $item +";";
+					$selectCmd = $selectCmd +
+						"toggle -state false -hull " + $item + ";";
+					$selectCmd = $selectCmd +
+						"toggle -state false -controlVertex " + $item + ";";
+					break;
+				case "controlVertex":
+					$selectCmd = $selectCmd +
+						"toggle -state true -" + $mask + " " + $item +";";
+					$selectCmd = $selectCmd +
+						"toggle -state false -hull " + $item + ";";
+					$selectCmd = $selectCmd +
+						"toggle -state false -editPoint " + $item + ";";
+					break;
+				case "hull":
+					$selectCmd = $selectCmd +
+						"toggle -state true -" + $mask + " " + $item + ";";
+					$selectCmd = $selectCmd +
+						"toggle -state false -controlVertex " + $item + ";";
+					$selectCmd = $selectCmd +
+						"toggle -state false -editPoint " + $item + ";";
+					break;
+				default:
+					$selectCmd = $selectCmd +
+						"toggle -state false -hull " + $item + ";";
+					$selectCmd = $selectCmd +
+						"toggle -state false -controlVertex " + $item + ";";
+					$selectCmd = $selectCmd +
+						"toggle -state false -editPoint " + $item + ";";
+					break;
+			}
+		} else {
+			$selectCmd = $selectCmd + "hilite " + $item + ";";
+		}
+	}
+
+	eval $selectCmd;
+}
+
+global proc doMenuLatticeComponentSelection(string $item, string $mask)
+//
+// Changes the selection/display state on this object to allow
+// selection of the Lattice control points
+{
+	string $selectCmd;
+
+	if (`selectMode -q -object`) {
+		hilite $item;
+		selectType -ocm -alc false;
+		$selectCmd = "selectType -ocm -" + $mask + " true;";
+	} else {
+		selectType -ocm -alc false;
+		$selectCmd = "selectType -" + $mask + " true;";
+		if (!`selectMode -q -preset`) {
+			$selectCmd = $selectCmd + "hilite " + $item + ";";
+		} else {
+			$selectCmd = $selectCmd + "toggle -" + $mask + ";";
+		}
+	}
+	eval $selectCmd;
+}
+
+
+global proc doMenuParticleComponentSelection(string $item, string $mask)
+//
+// Change the selection/display state to allow selection of particle
+// components
+//
+{
+	string $selectCmd;
+
+	if (`selectMode -q -object`) {
+		hilite $item;
+		selectType -ocm -alc false;
+		$selectCmd = "selectType -ocm -" + $mask + " true;";
+	} else {
+		selectType -ocm -alc false;
+		$selectCmd = "selectType -" + $mask + " true;";
+		if (`selectMode -q -preset`) {
+			$selectCmd = $selectCmd +"selectPriority -allComponents 1;";
+			$selectCmd = $selectCmd +"selectPriority -particle 2;";
+			$selectCmd = $selectCmd +"selectPriority -" + $mask + " 3;";
+			switch ($mask) {
+				case "particle":
+					$selectCmd = $selectCmd +
+						"toggle -state true -" + $mask + " " + $item +";";
+					break;
+				default:
+					$selectCmd = $selectCmd +
+						"toggle -state false -particle " + $item + ";";
+					break;
+			}
+		} else {
+			$selectCmd = $selectCmd + "hilite " + $item + ";";
+		}
+	}
+
+	eval $selectCmd;
+}
+
+
+global proc doMenuSpringComponentSelection(string $item, string $mask)
+//
+// Change the selection/display state to allow selection of spring
+// components
+//
+{
+	string $selectCmd;
+
+	if (`selectMode -q -object`) {
+		hilite $item;
+		selectType -ocm -alc false;
+		$selectCmd = "selectType -ocm -" + $mask + " true;";
+	} else {
+		selectType -ocm -alc false;
+		$selectCmd = "selectType -" + $mask + " true;";
+		if (`selectMode -q -preset`) {
+			$selectCmd = $selectCmd +"selectPriority -allComponents 1;";
+			$selectCmd = $selectCmd +"selectPriority -springComponent 2;";
+			$selectCmd = $selectCmd +"selectPriority -" + $mask + " 3;";
+			switch ($mask) {
+				case "springComponent":
+					$selectCmd = $selectCmd +
+						"toggle -state true -" + $mask + " " + $item +";";
+					break;
+				default:
+					$selectCmd = $selectCmd +
+						"toggle -state false -springComponent " + $item + ";";
+					break;
+			}
+		} else {
+			$selectCmd = $selectCmd + "hilite " + $item + ";";
+		}
+	}
+
+	eval $selectCmd;
+}
+
+
+global proc doMenuComponentSelection(string $item, string $mask)
+//
+// Changes the selection/display state on this object to allow
+// selection of the specified selection mask type.
+{
+	string $selectCmd;
+
+	if (`selectMode -q -object`) {
+		hilite $item;
+		selectType -ocm -alc false;
+		$selectCmd = "selectType -ocm -" + $mask + " true;";
+	} else {
+		selectType -ocm -alc false;
+		$selectCmd = "selectType -" + $mask + " true;";
+		if (!`selectMode -q -preset`) {
+			$selectCmd = $selectCmd + "hilite " + $item + ";";
+		}
+	}
+	eval $selectCmd;
+}
+
+global proc undoMenuComponentSelection(string $item, string $mask)
+{
+	string $selectCmd;
+
+	if (`selectMode -q -object`) {
+		$selectCmd = "selectType -ocm -" + $mask + " false;";
+	} else {
+		$selectCmd = "selectType -" + $mask + " false;";
+	}
+
+	eval $selectCmd;
+}
+
+global proc toggleBoundingBoxDisplay ( string $parent )
+//
+// For each shape under the selected parent object, toggle the
+// state of bounding box display mode.
+//
+{
+	string $shapes[] = `listRelatives -shapes $parent`;
+	string $shape;
+
+	for ( $shape in $shapes ) {
+		int $overrideOn = `getAttr ( $shape + ".overrideEnabled")`;
+		int $lodMode =    `getAttr ( $shape + ".overrideLevelOfDetail")`;
+		int $enabled =     $overrideOn && $lodMode == 1;
+
+		if ( $enabled ) {
+			// Don't reset the overrideEnabled attribute. It
+			// is used for more than just bounding box display
+			// and turning if off will mess things up of you
+			// have temporarily enabled bounding box display
+			// of an object in a layer.
+			setAttr ( $shape + ".overrideLevelOfDetail" ) 0;
+		} else {
+			setAttr ( $shape + ".overrideEnabled") 1;
+			setAttr ( $shape + ".overrideLevelOfDetail") 1;
+		}
+
+	}
+}
+
+global proc createActionsMenuItems(string $parent, string $item)
+//
+// Creates a menu with common operations to perform on an object
+//
+{
+	popupMenu -e -dai $parent;
+	setParent -menu $parent;
+
+	menuItem -l "Template" -c ("toggle -template -state on " + $item);
+	menuItem -l "Untemplate" -c ("toggle -template -state off " + $item);
+	menuItem -l "Unparent" -c ("parent -w " + $item);
+	menuItem -l "Bounding Box" -c ("toggleBoundingBoxDisplay " + $item);
+}
+
+
+global proc showSG(string $item)
+//
+//	Display the Attribute Editor and show the tab for the
+//	shading group that is on the object $item.
+//
+//  If would have been nicer to be able to use the
+//	showShadingGroupAttributeEditor command, but it only
+//  acts on the	selected object.
+//
+{
+	//check selection list for faces (polys, subds, nurbs)
+	string $shader = "";
+	string $selection[] = `filterExpand -sm 34 -sm 38 -sm 72`;
+
+	// If there are components selected, try to find a component shader
+	if( size( $selection ) > 0)
+	{
+		string $nameBuffer[];
+
+		int $numComps = size( $selection );
+		int $comp;
+		for( $comp = 0; $comp < $numComps; $comp++)
+		{
+			tokenize $selection[ $comp] "." $nameBuffer;
+
+			//if the selected component is on the object under the pointer
+			//get it's shader
+			if ($nameBuffer[0] == $item) {
+				$shader = `getComponentShader $selection[$comp]`;
+
+				//check if the shader is already selected - only toggle
+				//selection if it is not selected
+				string $shaderSelected[] = `ls -selection $shader`;
+				if ( size( $shaderSelected ) == 0){
+					select -tgl $shader;
+
+				}
+				break;
+			}
+		}
+	}
+
+	// If we didn't find a component level shader, try for an object level one
+	if( size( $shader ) == 0 ) {
+		string $allNodes[] = (`listHistory -f true $item` );
+		string $node = "";
+		for ($node in $allNodes) {
+			if(`nodeType $node` == "shadingEngine") {
+
+				$shader = $node;
+				break;
+			}
+		}
+	}
+
+	// If we found a shader, show it
+	if( size( $shader ) > 0)
+	{
+		showEditor $shader;
+	}
+}
+
+global proc showBakeSets(string $item, string $type)
+//
+//	Display the Attribute Editor and show the tab for the
+//	first bake set of the specified $type that the object $item is in.
+//  If there is no this $type of bake set in the scene, creates the
+//  initial bake set of this type and show it in the attribute editor.
+//
+//  If would have been nicer to be able to use the
+//	showBakeSetAttributeEditor command, but it only
+//  acts on the	selected object.
+//
+{
+	string $possibleBakeSets[] = (`listHistory -f true $item` );
+	string $node = "";
+    int $bakeSetExists = false;
+	for ($node in $possibleBakeSets) {
+		if(`nodeType $node` == $type)
+        {
+			showEditor $node;
+            $bakeSetExists = true;
+			break;
+		}
+	}
+
+    // If no bake set exists for the $item, then create the
+    // initial bake set of that $type and assign it to the $item.
+    //
+    if (!$bakeSetExists)
+    {
+        string $initialBakeSet = "";
+		if($type == "vertexBakeSet")
+        {
+            $initialBakeSet = "initialVertexBakeSet";
+        }
+        else if($type == "textureBakeSet")
+        {
+            $initialBakeSet = "initialTextureBakeSet";
+		}
+        else
+        {
+            error   -showLineNumber true
+                ("Bake set type "+$type + " does not exist.");
+            return;
+        }
+
+        // Create it if it does not exist yet.
+        //
+        if  ( size(`ls $initialBakeSet`) < 1)
+        {
+            createBakeSet($initialBakeSet, $type);
+        }
+
+        // Assign the initial bake set to the item.
+        //
+        assignBakeSet($initialBakeSet, $item);
+
+        // Show the initial bake set.
+        //
+        showBakeSetAE($initialBakeSet);
+    }
+}
+
+global proc createShaderMenuItems(string $parent, string $item)
+//
+//	Create the Shader menus for the RMB popup menu.
+//
+{
+	popupMenu -e -deleteAllItems $parent;
+	setParent -menu $parent;
+
+	menuItem -l "Material Attributes..." -c ("showSG " + $item);
+	menuItem -d true;
+
+	buildShaderMenus($item);
+}
+
+// Description:  This procedure is called to refresh the baking
+//  attribute menu items.
+//
+global proc refreshBakingAttributeMenu (string $parent, string $item)
+{
+    setParent -menu $parent;
+
+    int $suitable = bakeSetTypeSuitableForItem("textureBakeSet", $item);
+    menuItem -edit -enable $suitable textureBakingAttributeItem;
+    $suitable = bakeSetTypeSuitableForItem("vertexBakeSet", $item);
+    menuItem -edit -enable $suitable vertexBakingAttributeItem;
+}
+
+// Description:  This procedure is called to create the
+//  baking attribute menu.
+//
+proc createBakingAttributeMenu(string $parent, string $item)
+{
+    setParent -menu $parent;
+
+	menuItem -l "Edit Attributes..."
+        -subMenu true
+        -tearOff true
+        -postMenuCommand ("refreshBakingAttributeMenu \""
+                            +$parent+"|editAttributeItem\" \""
+                            +$item+"\"")
+        editAttributeItem;
+
+
+        menuItem -l "texture"
+            -c ("showBakeSets \""+$item+"\" \"textureBakeSet\"")
+            textureBakingAttributeItem;
+        menuItem -l "vertex"
+            -c ("showBakeSets \""+$item+"\" \"vertexBakeSet\"")
+            vertexBakingAttributeItem;
+
+    setParent -menu ..;
+}
+
+// Description:  This procedure is called to create the baking
+//  menu items.
+//
+global proc createBakingMenuItems(string $parent, string $item)
+//
+//	Create the Baking menus for the RMB popup menu.
+//
+{
+	popupMenu -e -deleteAllItems $parent;
+	setParent -menu $parent;
+
+    createBakingAttributeMenu($parent, $item);
+	menuItem -d true;
+
+	if (!`about -evalVersion`) {
+		buildBakingMenus($item);
+	}
+}
+
+// Description:  This procedure is called to create the switch proxy
+//  menu items.
+//
+global proc createSwitchProxyMenuItems(string $parent, string $item, string $refNode)
+//
+//	Create the switch proxy submenu for the RMB popup menu.
+//
+{
+	popupMenu -e -deleteAllItems $parent;
+	setParent -menu $parent;
+
+	string $proxyNodes[] = `getRelatedProxies $refNode`;
+	int $i;
+	string $proxyLabel;
+	string $proxyTag;
+	for( $i=0; $i<size($proxyNodes); $i+=1) {
+		$proxyTag = `getAttr ($proxyNodes[$i] + ".proxyTag")`;
+
+		menuItem -l $proxyTag -c ("proxySwitch " + $proxyNodes[$i]);
+	}
+}
+
+global proc createHistoryMenuItems(string $parent, string $item)
+//
+// Creates a menu on the toolbar that shows a list of
+// all operations that took place to create/modify
+// the currently selected object.  Note that the list
+// is not being filtered yet to get rid of things that
+// users won't really care about, nor are the operations
+// being listed as operations - their DG node names are
+// simply being stuck into the menu.  This should
+// change.
+//
+// Also note that the chain of operations limit is being
+// hardcoded to 20 here, for the sake of speed.
+//
+{
+	//
+	// Delete all menu entries currently in the popup
+	//
+	popupMenu -e -dai $parent;
+	setParent -menu $parent;
+
+	historyPopupFill( $item, false, 1 );
+}
+
+global proc createFutureMenuItems(string $parent, string $item)
+//
+// Creates a menu on the toolbar that shows a list of
+// all operations that took place to create/modify
+// the currently selected object.  Note that the list
+// is not being filtered yet to get rid of things that
+// users won't really care about, nor are the operations
+// being listed as operations - their DG node names are
+// simply being stuck into the menu.  This should
+// change.
+//
+// Also note that the chain of operations limit is being
+// hardcoded to 20 here, for the sake of speed.
+//
+{
+	//
+	// Delete all menu entries currently in the popup
+	//
+	popupMenu -e -dai $parent;
+	setParent -menu $parent;
+
+	historyPopupFill( $item, true, 1 );
+}
+
+global proc string objectHandlesUvSets(string $item)
+{
+	string $maskList[];
+	string $shape = $item;
+	int $i;
+
+	// Look at the shape child of this object
+	//
+	string $object[] = `listRelatives -path -s $item`;
+	int $gotVisible = 0;
+
+	for ($i = 0; $i < size($object); ++$i) {
+		if( (0 == getAttr($object[$i] + ".io")) &&
+			getAttr($object[$i] + ".v") ) {
+			$shape = $object[$i];
+			$gotVisible = 1;
+			break;
+		}
+	}
+
+	if( !$gotVisible ) {
+		for ($i = 0; $i < size($object); ++$i)
+		{
+			if (getAttr($object[$i] + ".io") == 0)
+			{
+				$shape = $object[$i];
+				break;
+			}
+		}
+	}
+	string $nt = `nodeType $shape`;
+
+	if ($nt == "mesh")
+		return $shape;
+	return "";
+}
+
+global proc createUVsetMenuItems(string $parent, string $item,
+								 string $shape)
+{
+	popupMenu -e -dai $parent;
+	setParent -menu $parent;
+
+	string $cmd = "polyUVSet -currentUVSet -uvSet ";
+	string $curSet[] = `polyUVSet -q -currentUVSet $shape`;
+	string $names[] = `polyUVSet -q -auv $shape`;
+
+	string $allProjects[] = `polyUVSet -pr -q $shape`;
+	string $setClearCmd = "";
+	if (size($allProjects))
+	{
+		$setClearCmd = "select -d ";
+		for ($p=0; $p<size($allProjects); $p++)
+			$setClearCmd += (" " + $allProjects[$p]);
+		$setClearCmd += ";";
+	}
+
+	int $numNames = size($names);
+
+	// Add in a menu to do uv-linking
+	if ($numNames > 0)
+	{
+		string $ann = `getRunTimeCommandAnnotation "UVCentricUVLinkingEditor"`;
+		string $cmd = "UVCentricUVLinkingEditor; " + "select -r " + $item;
+		menuItem -l "UV Linking..."
+			-c $cmd
+			-annotation $ann;
+		menuItem -divider true;
+	}
+
+	for ($i=0; $i<$numNames; $i++)
+	{
+		string $uvEditname = ("\"" + $names[$i] + "\"");
+		string $uvname = $names[$i];
+		string $setCurCmd = $cmd + $uvEditname + " " + $shape + ";";
+
+		// Find any projections associated with the uvset
+		string $projs[];
+		$projs = `polyUVSet -pr -uvs $uvname -q $shape`;
+		string $projCmd;
+
+		// Add a divider between items
+		if ($i > 0)
+			menuItem -divider true;
+
+		if ($uvname == $curSet[0])
+		{
+			menuItem -l ($uvname) -c $setClearCmd -checkBox true;
+			for ($j=0; $j<size($projs); $j++)
+			{
+				$projCmd = ($setClearCmd + "select -add "+ $projs[$j] + ";setToolTo ShowManips;");
+				menuItem -l $projs[$j] -c $projCmd;
+				if ($j >= 5)
+					break;
+			}
+		}
+		else
+		{
+			menuItem -l ($uvname) -c ($setClearCmd + $setCurCmd) -checkBox false;
+			for ($j=0; $j<size($projs); $j++)
+			{
+				$projCmd = ($setCurCmd + $setClearCmd + "select -add "+ $projs[$j] + ";setToolTo ShowManips;");
+				menuItem -l $projs[$j] -c $projCmd;
+				if ($j >= 5)
+					break;
+			}
+		}
+	}
+}
+
+global proc createArtAttrMenuItems(
+	string 		$parent,
+	string 		$item
+)
+//
+//	Description:
+// 		Creates a menu that shows all the paintable attributes.
+//
+//	NOTE: paintAttr are sorted by the paintable node type.
+//
+{
+	popupMenu -e -dai $parent;
+	setParent -menu $parent;
+
+	menuItem -p $parent -label "Paint Select" -command "ArtPaintSelectToolOptions" ;
+	menuItem -p $parent -label "3D Paint" -command "Art3dPaintToolOptions" ;
+
+	// Get all paintable attributes
+	string $paintAttr = `artBuildPaintMenu $item`;
+
+	if ($paintAttr != "")
+	{
+		// if the menu item has not been created, create it.
+		if( $parent == "" )
+			$parent = `menuItem -subMenu true -aob true -l "Paint"`;
+
+
+		// Create the menu.
+		artAttrCreateMenuItems( $parent, $paintAttr );
+
+		// artAttrCreateMenuItems currently does not use $object
+		// hence we are making a seperate call to this function to handle
+		// cloth objects. We need the object name to select the object and detect
+		// dynamic attributes available for painting.
+		//
+		createPaintingMenuItems( $parent, $item );
+	}
+}
+
+// This has been called because a menu press happened on a DAG object
+// So find the Object submenu and add the DAG specific items to it.
+//
+global proc dagMenuProc(string $parent, string $object)
+{
+	string $mode = "All";
+
+	if (`optionVar -exists currentMenuBarTab`) {
+		$mode = `optionVar -q currentMenuBarTab`;
+	} else {
+		optionVar -sv currentMenuBarTab $mode;
+	}
+
+	if (`popupMenu -e -exists $parent`) {
+		setParent -m $parent;
+
+		// label the object
+		string $shortName = `substitute ".*|" $object ""`;
+		menuItem -l ($shortName + "...") -c ("showEditor "+$object);
+		menuItem -divider true;
+		menuItem -divider true;
+
+		// Create the list of selection masks
+		createSelectMenuItems($parent, $object);
+
+		menuItem -d true;
+
+		menuItem -l "Select" -c ("select -r " + $object);
+
+    	menuItem -d true;
+
+		//call the zooObjMenu script, to add any object specific commands to the rmb
+		zooObjMenu $parent $object;
+
+		optionalDagMenuProc( $parent, $object );
+
+		// create the history menu
+		//
+		string $menu = `menuItem -subMenu true -aob true -l "Inputs"`;
+		menu -e
+			-pmc ( "createHistoryMenuItems \""+$menu+"\" "+$object ) $menu;
+		setParent -m $parent;
+
+		$menu = `menuItem -subMenu true -aob true -l "Outputs"`;
+		menu -e -pmc ( "createFutureMenuItems \""+$menu+"\" "+$object ) $menu;
+		setParent -m $parent;
+
+	 	// Look at the shape child of this object
+	 	//
+ 		string $shapes[] = `listRelatives -path -s $object`;
+
+		string $paintParent = "" ;
+
+ 		int $i;
+ 		for ($i = 0; $i < size($shapes); ++$i)
+		{
+			string $nodeType = `nodeType $shapes[$i]` ;
+
+			if ( ( $nodeType == "nurbsSurface") ||
+				 ( $nodeType == "mesh") ||
+				 ( $nodeType == "subdiv"))
+			{
+				$paintParent = `menuItem -subMenu true -aob true -l "Paint"`;
+				menu -e	-pmc ( "createArtAttrMenuItems \""+ $paintParent +"\" "+$object ) $paintParent ;
+				setParent -m $parent;
+				break ;
+			}
+		}
+
+	    $menu = `menuItem -subMenu true -l "Actions"`;
+		menu -e -pmc ( "createActionsMenuItems \""+$menu+"\" "+$object ) $menu;
+		setParent -m $parent;
+
+		// If the object can handle uv sets then add the uvset menu
+		//
+		string $shape = objectHandlesUvSets( $object );
+		if ($shape != "")
+		{
+			$menu = `menuItem -subMenu true -l "UV Sets"`;
+			menu -e
+				-pmc ( "createUVsetMenuItems \""+$menu+"\" " +$object + " "+
+					  $shape )
+				$menu;
+			setParent -m $parent;
+		}
+
+		// Shader menu to be able to quickly assign existing shaders
+		// to the object under the pointer.
+		//
+    	menuItem -d true;
+
+ 		$menu = `menuItem -subMenu true -l "Materials"`;
+ 		menu -e
+			-pmc ( "createShaderMenuItems \""+$menu+"\" "+$object )
+			$menu;
+ 		setParent -m $parent;
+
+		int $mentalIsLoaded = 0;
+		string $renderer;
+	    for ($renderer in `renderer -query -namesOfAvailableRenderers`) {
+			if( $renderer == "mentalRay" ) {
+				$mentalIsLoaded = 1;
+				break;
+			}
+		}
+
+		if ($mentalIsLoaded) {
+ 			$menu = `menuItem -subMenu true -l "Baking"`;
+ 			menu -e
+				-pmc ( "createBakingMenuItems \""+$menu+"\" "+$object )
+				$menu;
+ 			setParent -m $parent;
+		}
+
+//		{
+// 			$menu = `menuItem -subMenu true -l "Paint"`;
+//			menu -e
+//				-pmc ( "createPaintingMenuItems \""+$menu+"\" "+$object )
+//				$menu;
+// 			setParent -m $parent;
+//		}
+
+		if ($mode == "Dynamics") {
+			menuItem -d true;
+			menuItem -l "Connect Field" -c ("connectDynamic -f " + $object);
+			menuItem -l "Connect Emitter" -c ("connectDynamic -em " + $object);
+			menuItem -l "Connect Collision" -c ("connectDynamic -c " + $object);
+		}
+
+		// is there a reference associated with the object ?
+		// and if so, is it in a loaded or unloaded state?
+		string $refNode = `getRelatedReference $object`;
+		if( size($refNode) > 0) {
+			menuItem -d true;
+			if( `file -rfn $refNode -q -dr` ) {
+				menuItem -l "Load Related Reference" -c ("loadRelatedReference " + $object);
+			} else {
+				menuItem -l "Reload Related Reference" -c ("loadRelatedReference " + $object);
+				menuItem -l "Unload Related Reference" -c ("unloadRelatedReference " + $object);
+			}
+			// Is this reference a proxy? If so, add proxy switch submenu
+			//
+			string $proxyNodes[] = `getRelatedProxies $refNode`;
+			if(size($proxyNodes) > 0) {
+				$menu = `menuItem -subMenu true -l "Reload Proxy As"`;
+				menu -e
+					-pmc ( "createSwitchProxyMenuItems \""+$menu+"\" "+$object + " " + $refNode )
+					$menu;
+				setParent -m $parent;
+			}
+		}
+
+		setParent -m $parent;
+
+	} else {
+		warning("Menu " + $parent + " doesn't exist.");
+	}
+}

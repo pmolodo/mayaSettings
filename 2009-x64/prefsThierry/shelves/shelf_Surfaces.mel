@@ -1,0 +1,560 @@
+global proc shelf_Surfaces () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "NURBS Sphere: Create a NURBS sphere on the grid" 
+        -align "center" 
+        -label "NURBS Sphere" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "sphere.xpm" 
+        -image1 "sphere.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreateNURBSSphere" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreateNURBSSphereOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "NURBS Cube: Create a NURBS cube on the grid" 
+        -align "center" 
+        -label "NURBS Cube" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "cube.xpm" 
+        -image1 "cube.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreateNURBSCube" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreateNURBSCubeOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "NURBS Cylinder: Create a NURBS cylinder on the grid" 
+        -align "center" 
+        -label "NURBS Cylinder" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "cylinder.xpm" 
+        -image1 "cylinder.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreateNURBSCylinder" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreateNURBSCylinderOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "NURBS Cone: Create a NURBS cone on the grid" 
+        -align "center" 
+        -label "NURBS Cone" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "cone.xpm" 
+        -image1 "cone.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreateNURBSCone" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreateNURBSConeOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "NURBS Plane: Create a NURBS plane on the grid" 
+        -align "center" 
+        -label "NURBS Plane" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "plane.xpm" 
+        -image1 "plane.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreateNURBSPlane" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreateNURBSPlaneOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "NURBS Torus: Create a NURBS torus on the grid" 
+        -align "center" 
+        -label "NURBS Torus" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "torus.xpm" 
+        -image1 "torus.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreateNURBSTorus" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreateNURBSTorusOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Revolve: Select curve(s), isoparm(s) or trim edge(s)" 
+        -align "center" 
+        -label "Revolve" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "revolve.xpm" 
+        -image1 "revolve.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Revolve" 
+        -sourceType "mel" 
+        -doubleClickCommand "RevolveOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Loft: Select curve(s), isoparm(s) or trim edge(s)" 
+        -align "center" 
+        -label "Loft" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "skin.xpm" 
+        -image1 "skin.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Loft" 
+        -sourceType "mel" 
+        -doubleClickCommand "LoftOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Planar: Select curve(s), isoparm(s) or trim edge(s) (that together form one or more closed regions)" 
+        -align "center" 
+        -label "Planar" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "planarTrim.xpm" 
+        -image1 "planarTrim.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Planar" 
+        -sourceType "mel" 
+        -doubleClickCommand "PlanarOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Extrude: Select curve(s), isoparm(s) or trim edge(s).  Select the path last" 
+        -align "center" 
+        -label "Extrude" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "extrude.xpm" 
+        -image1 "extrude.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Extrude" 
+        -sourceType "mel" 
+        -doubleClickCommand "ExtrudeOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Birail 1 Tool: Select curve(s), isoparm(s) or trim edge(s)" 
+        -align "center" 
+        -label "Birail 1 Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "birail1Gen.xpm" 
+        -image1 "birail1Gen.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Birail1" 
+        -sourceType "mel" 
+        -doubleClickCommand "Birail1Options" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Bevel Plus: Select curve(s), isoparm(s) or trim edge(s) or CoS" 
+        -align "center" 
+        -label "Bevel Plus" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "bevelPlus.xpm" 
+        -image1 "bevelPlus.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "BevelPlus" 
+        -sourceType "mel" 
+        -doubleClickCommand "BevelPlusOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Project Curve on Surface: Select curve(s), isoparm(s) or trim edge(s) and a target surface" 
+        -align "center" 
+        -label "Project Curve on Surface" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "projectCurve.xpm" 
+        -image1 "projectCurve.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ProjectCurveOnSurface" 
+        -sourceType "mel" 
+        -doubleClickCommand "ProjectCurveOnSurfaceOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Intersect Surfaces: Select two or more surfaces - the last surface intersects all the other ones" 
+        -align "center" 
+        -label "Intersect Surfaces" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "srfIntersect.xpm" 
+        -image1 "srfIntersect.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "IntersectSurfaces" 
+        -sourceType "mel" 
+        -doubleClickCommand "IntersectSurfacesOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Trim Tool: Select a surface with a curve on it" 
+        -align "center" 
+        -label "Trim Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "trim.xpm" 
+        -image1 "trim.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "TrimTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "TrimToolOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Untrim Surfaces: Select a trimmed surface" 
+        -align "center" 
+        -label "Untrim Surfaces" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "untrim.xpm" 
+        -image1 "untrim.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "UntrimSurfaces" 
+        -sourceType "mel" 
+        -doubleClickCommand "UntrimSurfacesOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Attach Surfaces: Select two surfaces" 
+        -align "center" 
+        -label "Attach Surfaces" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "align.xpm" 
+        -image1 "align.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "AttachSurfaces" 
+        -sourceType "mel" 
+        -doubleClickCommand "AttachSurfacesOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Detach Surfaces: Select isoparm(s)" 
+        -align "center" 
+        -label "Detach Surfaces" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "detach.xpm" 
+        -image1 "detach.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "DetachSurfaces" 
+        -sourceType "mel" 
+        -doubleClickCommand "DetachSurfacesOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Open/Close Surfaces: Select surface(s) or isoparm(s) to give direction" 
+        -align "center" 
+        -label "Open/Close Surfaces" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "openCloseSurface.xpm" 
+        -image1 "openCloseSurface.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "OpenCloseSurfaces" 
+        -sourceType "mel" 
+        -doubleClickCommand "OpenCloseSurfacesOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Insert Isoparms: Select isoparm(s)" 
+        -align "center" 
+        -label "Insert Isoparms" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "insert.xpm" 
+        -image1 "insert.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "InsertIsoparms" 
+        -sourceType "mel" 
+        -doubleClickCommand "InsertIsoparmsOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Extend Surfaces: " 
+        -align "center" 
+        -label "Extend Surfaces" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "extendSurface.xpm" 
+        -image1 "extendSurface.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ExtendSurfaces" 
+        -sourceType "mel" 
+        -doubleClickCommand "ExtendSurfacesOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Rebuild Surfaces: Select surface(s)" 
+        -align "center" 
+        -label "Rebuild Surfaces" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "rebuildSurface.xpm" 
+        -image1 "rebuildSurface.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "RebuildSurfaces" 
+        -sourceType "mel" 
+        -doubleClickCommand "RebuildSurfacesOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Sculpt Geometry Tool: Sculpt a geometry object" 
+        -align "center" 
+        -label "Sculpt Geometry Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "putty.xpm" 
+        -image1 "putty.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "SculptGeometryTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "SculptGeometryToolOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Surface Editing Tool: Select a surface" 
+        -align "center" 
+        -label "Surface Editing Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "surfaceEditor.xpm" 
+        -image1 "surfaceEditor.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "SurfaceEditingTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "SurfaceEditingToolOptions" 
+        -actionIsSubstitute 0
+    ;
+
+} 

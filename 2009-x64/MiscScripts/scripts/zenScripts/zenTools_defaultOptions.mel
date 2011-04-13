@@ -1,0 +1,121 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc zenTools_defaultOptions()
+{
+	string	$sep=`zenSeparatorString`;
+
+		//zenAttachSurface
+		global 	int	$zenOptions_attachSurfaceDegree,
+				$zenOptions_attachSurfaceShave;
+				
+				$zenOptions_attachSurfaceDegree=2;
+
+		//zenAttachSpans
+		global 	int	$zenOptions_attachSpansDegree,
+				$zenOptions_attachSpansCount,
+				$zenOptions_attachSpansShave;
+				
+				$zenOptions_attachSpansDegree=2;
+				$zenOptions_attachSpansCount=0;
+
+		//zenAttachCurves 
+		global 	int	$zenOptions_attachCurvesDegree;
+		
+				$zenOptions_attachCurvesDegree=2;
+
+		//zenLoft
+		global 	int	$zenOptions_loftDistribution,
+				$zenOptions_keepLoftedSurface;
+				
+				$zenOptions_loftDistribution=2;//uniform
+				$zenOptions_keepLoftedSurface=0;
+
+		//zenPatchUV
+		global	int	$zenOptions_patchUVDistribution;
+		
+				$zenOptions_patchUVDistribution=1;//chord length
+
+		//zenLoopUV
+		global 	int	$zenOptions_zenLoopUVcurveType,
+				$zenOptions_zenLoopUVDistributionType,
+				$zenOptions_safeUVLoop;
+
+				$zenOptions_zenLoopUVcurveType=1;//arc
+				$zenOptions_zenLoopUVDistributionType=3;
+				$zenOptions_safeUVLoop=0;
+				
+		//zenLoop
+		global 	int	$zenOptions_curveType,
+				$zenOptions_loopDistributionType,
+				$zenOptions_keepCurve;
+
+				$zenOptions_curveType=1;//arc
+				$zenOptions_loopDistributionType=1;
+				$zenOptions_keepCurve=0;
+				
+		//zenReflectUV
+		global 	int	$zenOptions_reflectUVReferenceAxis;
+		global 	float	$zenOptions_reflectUVuAxisOffset;
+		
+				$zenOptions_reflectUVReferenceAxis=1;
+				$zenOptions_reflectUVuAxisOffset=.5;
+
+		//zenReflectUV
+		global 	int 	$zenOptions_setAttrNonRecursive=0;
+
+		//scripts menu
+		global	string	$zenOptionString_scriptsFolders,
+				$zenOptionString_scriptsFoldersAddCommands,
+				$zenOptionString_scriptsFolderLabels,
+				$zenOptionString_prefixExclude;				
+				
+				$zenOptionString_prefixExclude=("zen"+$sep+"db"+$sep+"ab"+$sep+"riess"+$sep+"dora"+$sep);
+
+		//zenTransferUV
+		global	int	$zenOptions_transferUVSpace,
+				$zenOptions_transferUVaccurateEval;
+				
+				$zenOptions_transferUVaccurateEval=0;
+				$zenOptions_transferUVSpace=1;//object space
+				
+		//rigZenMirrorInfluences
+		global	int	$zenOptions_mirrorInfluencesAxis,
+				$zenOptions_mirrorInfluencesPosNeg;
+		global	float	$zenOptions_tol;
+	
+				$zenOptions_mirrorInfluencesAxis=1;
+				$zenOptions_mirrorInfluencesPosNeg=1;
+				$zenOptions_tol=.01;
+		
+		//rigZenConfineWeights
+		global 	int	$zenOptions_confineWeightsHierarchy;
+		
+				$zenOptions_confineWeightsHierarchy=1;
+				
+		//rigZenMuscle
+		global	int	$zenOptions_muscleReflect,
+				$zenOptions_muscleReflectAxis,
+				$zenOptions_muscleJiggle,
+				$zenOptions_muscleScript;
+		
+				$zenOptions_muscleReflect=1;
+				$zenOptions_muscleReflectAxis=1;
+				$zenOptions_muscleJiggle=0;
+				$zenOptions_muscleScript=0;
+				
+		//debugging
+		global	int	$zenOptions_debugging;
+				$zenOptions_debugging=false;	
+}

@@ -1,0 +1,30 @@
+/* XPM */
+static char *loopOff[] = {
+/* columns rows colors chars-per-pixel */
+"43 20 4 1",
+"  s bg c green",
+". c gray100",
+"o c black",
+"O c gray100",
+/* pixels */
+"  .......................................  ",
+" .                                       . ",
+".                                         .",
+".                                         .",
+".                                          ",
+".          o                               ",
+".          o                               ",
+".          o                               ",
+".          o      ooo   ooo  oooo          ",
+".          o     o   o o   o o   o         ",
+".          o     o   o o   o o   o         ",
+".          o     o   o o   o o   o         ",
+".          o     o   o o   o o   o         ",
+".          ooooo  ooo   ooo  oooo          ",
+".                            o             ",
+".                            o             ",
+".                                          ",
+".                                         o",
+" o                                       o ",
+"  ooooooooooooooooooooooooooooooooooooooo  "
+};

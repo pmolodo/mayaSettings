@@ -1,0 +1,1907 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: China Marker
+''    Author:  
+''    Last Updated: Oct 22, 2006
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/interface_display/4348.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+/*
+    chinaMarker.mel
+    Descr:	This is a quick hack to simulate a colored china marker interface in Maya
+    
+    Revised: Ron Bublitz (rbublitz_at_yahoo_dot_com)
+    (based on code from Jason Schleifer (ver 4 - Aug 2005))
+				
+*/
+    
+/*
+
+Revision History:
+Oct 2006        Added colored lines and storable frames
+                        Revised GUI layout
+
+
+Jason Schliefer notes: 
+  Aug 14, 2005 - Fixes
+  --------------------
+  		o Added Edit/Lock button which will let the user "erase" curves if they need to
+		o Fixed bug with crashing when on frame 1
+		o Added checking for system os, if on windows it should look
+		  for bmp files, otherwise it should look for iff
+		o additional misc fixes
+
+  May 22, 2005 - Fixes
+  --------------------
+		o fixed size of planes for orthographic views
+
+  April 30, 2005 - Additions
+  --------------------------
+		o added post frame ghosting
+		o added warning for pre-frame 1 errors
+		o made it so when you store a frame, it automatically removes it from the timed frames
+		o removed Trans and Scale fields, added ability to select frames instead
+		o added ability to shift frames up and down
+		o can now select "stored" frames
+		o can now toggle template and visibility of "stored" frames
+
+	April 27, 2005 - Additions
+	--------------------------
+		o Added ability to change timing of drawings
+		o New cleaner interface which shows what frames drawings are on
+		o Snap to drawing by clicking on item in interface
+		o Remembers previous camera
+		o Visibility toggle
+		o Curves are no longer stored under the camera
+		o Can scale and translate plane
+		o can turn on and off the ghosting
+		o added ability to store frames so they stay throughout the shot
+		
+
+		To Do:
+		------
+		 o Add ability to modify thickness
+*/
+
+
+proc string chinaMarker_getIconPath() {
+    // get the user icon path
+    $path = `internalVar -ubd`;
+    return ($path + "chinaMarkerIcons/");
+    
+    }
+
+    
+global proc string chinaMarker_IconExt() {
+	// it seems that windows needs to display bmp files.. and mac needs iff files..
+	// so hopefully this will take care of it.  If on windows, then it'll pick bmp..
+	// otherwise, it'll use iff.
+
+	string $ext;
+	$system = `about -os`;
+	if (($system == "nt") || ($system == "win64") ) {
+		$ext = "XPM";
+	    }
+    else if ($system == "linux") {
+        $ext = "xpm";
+        }
+	else {
+		$ext = "xpm";
+	    }	
+	return $ext;
+    }
+
+    
+// this procedure will create a window which will prompt the user to create
+// a Sketch Layer
+global proc chinaMarker_CreateSketchLayerWin() {
+	
+	$win = "chinaMarker_CreateSketchLayerWindow";
+	if (`window -exists $win`)
+		deleteUI $win;
+
+	window -title "Create Sketch Layer" $win;
+	
+	$f1 = `formLayout -nd 100`;
+	$tfg = `textFieldGrp -l "Layer Name:" -adj 2 -cw 1 100 -tx "NewLayer" chinaMarker_NewLayerTFG`; 
+	// create an option menu which shows all the cameras
+	$om = `optionMenuGrp -cw 1 100 -adj 2 -ad2 1 -cal 1 "right" -l "Camera:" gp_om`;
+
+	// check for the optionVar
+		string $prevCam;
+		if (`optionVar -exists "chinaMarker_CameraOptionVar"`) {
+			$prevCam = `optionVar -q "chinaMarker_CameraOptionVar"`;
+            }
+		$cameras = `ls -type camera`;
+		for ($cam in $cameras) {
+			$p = `listRelatives -p $cam`;
+			menuItem -l $p[0];
+			if ($prevCam != "") {
+				if ($p[0] == $prevCam) {
+					optionMenuGrp -e -v $prevCam $om;
+                    }
+                }
+            }
+
+	$createButton = `button -l "Create" -c ("chinaMarker_CreateSketchLayer \""+$win+"\"")`;
+	$cancelButton = `button -l "Cancel" -c ("deleteUI " + $win)`;
+
+
+	formLayout -e
+		-af $tfg top 5
+		-af $tfg left 5
+		-af $tfg right 5
+	
+		-af $om left 5
+		-af $om right 5
+		-ac $om top 5 $tfg
+
+		-af $createButton left 5
+		-ap $createButton right 0 50
+		-af $createButton bottom 5
+
+		-af $cancelButton right 5
+		-ap $cancelButton left 0 50
+		-af $cancelButton bottom 5
+		$f1;
+	showWindow $win;
+    }
+
+
+global proc chinaMarker_ShiftFrames(string $direction, int $type) {
+	// This procedure will shift all frames from the current one on either up or down, unless $type is 0.  If $type is
+	// then only the currently selected frame will move.
+	// the first frame will not go above frame 1.
+	// inputs are "up" and "down"
+	// first get the camera and curGP
+	$layer = `textScrollList -q -si chinaMarker_LayerTSL`;
+	$cam = $layer[0];
+	if (`objExists ($cam +"_gpGrp")`) 	{
+		// get a list of all the items in the textScrollList
+		// then get the selected item number
+		string $items[] = `textScrollList -q -ai chinaMarker_TSL`;
+		int $sel[] = `textScrollList -q -sii chinaMarker_TSL`;
+		if (size($sel) > 0) {		
+			$size = size($items);
+			if (($sel[0] == 1) && ($direction == "up") && ($items[0] == 1)) {
+				confirmDialog -m ("Sorry, can't go up past frame 1!");
+                }
+			else 	{
+				int $exit=0;
+				//print ("Sel[0] = "+$sel[0] + "\n");
+				if (($sel[0]-2) >= 0) {
+					int $curItem = $items[($sel[0]-1)];
+					int $prevItem = $items[($sel[0]-2)];
+					if (($direction == "up") && (($curItem-1) == $prevItem)) {
+						confirmDialog -m ("You can't go past this value!");
+						$exit = 1;	
+                        }
+					// check and see if the item selected is the last item in the list.  
+					// if not, make sure it's isn't being asked to move past the next item.
+					if ($sel[0] == $size) {
+                        } 
+					else 	{
+						int $nextItem = $items[($sel[0])];
+						if (($direction == "down") && ($type == 0) && (($nextItem-1) == $curItem)) {
+							confirmDialog -m ("You can't go past this value!");
+							$exit = 1;
+                            }
+                        }
+                    }
+				
+				if ($exit == 0) {
+					if ($direction == "down") {
+						if ($type == 1) {
+							for ($x = ($size-1); $x >=($sel[0]-1); $x--) {
+								$name = ("gp_"+$cam+"_"+$items[$x]);
+								
+								$dir = 1;
+								int $newValue = (int($items[$x]) + 1);
+								$newName = ("gp_"+$cam+"_"+$newValue);
+								rename $name $newName;
+                                }
+                            }
+						else 	{
+							$curItem = $items[($sel[0]-1)];
+							$name = ("gp_"+$cam+"_"+$curItem);
+							int $newValue = (int($curItem) + 1);
+							$newName = ("gp_"+$cam+"_"+$newValue);
+							rename $name $newName;
+                            }
+                        }	
+					else 	{
+						if ($type == 1) {
+							for ($x = ($sel[0]-1); $x < $size; $x++) 	{
+								$name = ("gp_"+$cam+"_"+$items[$x]);
+								int $newValue = (int($items[$x]) -1);
+								$newName = ("gp_"+$cam+"_"+$newValue);
+								rename $name $newName;
+                                }		
+                            }
+						else 	{
+							$curItem = $items[($sel[0]-1)];
+							$name = ("gp_"+$cam+"_"+$curItem);
+							int $newValue = (int($curItem) - 1);
+							$newName = ("gp_"+$cam+"_"+$newValue);
+							rename $name $newName;
+							
+                            }
+                        }
+					chinaMarker_updateGPVis $cam;
+					chinaMarker_sortFramesList $cam;
+					//chinaMarker_pmUpdateInterface;
+					// now select the item
+					textScrollList -e -sii $sel[0] chinaMarker_TSL;
+					chinaMarker_goSelectedFrame;
+					
+                    }		
+                }		
+			                
+            }		
+        }
+    }
+    
+    
+global proc chinaMarker_sortFramesList(string $layer) {
+	// given the layer, it will sort the list of frames
+	string $children[0];
+	$children = `chinaMarker_getGPList $layer`;
+	$framesTSL = "chinaMarker_TSL";
+	int $ordered[0];
+	int $num = 0;
+
+	textScrollList -e -ra $framesTSL;
+	for ($item in $children) {
+		string $break[0];
+		tokenize ($item, "_", $break);
+		$ordered[$num++] = $break[2];
+        }
+	$ordered = `sort $ordered`;
+	for ($number in $ordered) 	{
+		textScrollList -e -a $number $framesTSL;
+	    }
+    }
+    
+    
+global proc string chinaMarker_getCurGP( string $camera) {
+	$curFrame = `currentTime -q`;
+	// first check and see if the frame exists
+	
+	$cmPlane = ("gp_"+$camera + "_" + $curFrame);
+
+	return $cmPlane;
+    }
+    
+    
+global proc chinaMarker_addChinaMarkerFrame( string $camera, 
+            string $frame ) {
+	// this procedure will add a cm pencil plane for the current frame for the given camera
+
+	// first check to see if we're on a frame less than frame 1.  If so, return a warning.
+	if (`currentTime -q` < 1) {
+		confirmDialog -m ("The China Marker script does not work on any frames less than 1.");	
+        }
+	else 	{
+		string $cmPlane;
+		if ($frame == "cur")
+			$cmPlane = `chinaMarker_getCurGP $camera`;
+		else
+			$cmPlane = ("gp_"+$camera+"_1");
+		string $camGrp = ($camera + "_gpGrp");	
+	
+		if (`objExists $cmPlane`)	{
+			// it already exists, do nothing
+            }
+		else {
+			// create the plane
+			$plane = `nurbsPlane -p 0 0 0 -ax 0 1 0 -w 1 -lr 1 -d 3 -u 1 -v 1 -ch 0`;
+			$cmPlane = `rename $plane $cmPlane`;
+	
+			// parent the cmPlane to the camGrp
+			parent $cmPlane ("chinaMarkerGroup|"+$camGrp);
+
+			// set the attributes
+			setAttr ($cmPlane + ".tx") 0;
+			setAttr ($cmPlane + ".ty") 0;
+			setAttr ($cmPlane + ".tz") -1;
+			setAttr ($cmPlane + ".rx") 90;
+			setAttr ($cmPlane + ".ry") 0;
+			setAttr ($cmPlane + ".rz") 0;
+			setAttr ($cmPlane + ".v") 1;
+			if (`getAttr ($camGrp + ".orthographic")`) {
+				setAttr ($cmPlane + ".sx") 32;
+				setAttr ($cmPlane + ".sy") 1;
+				setAttr ($cmPlane + ".sz") 20;
+                }
+			else 	{
+				setAttr ($cmPlane + ".sx") 3;
+				setAttr ($cmPlane + ".sy") 1;
+				setAttr ($cmPlane + ".sz") 2;
+                }	
+			// get the shape
+			$shape = `listRelatives -f -s $cmPlane`;
+	
+			setAttr ($shape[0] + ".overrideEnabled") 1;
+			setAttr ($shape[0] + ".overrideShading") 0;
+			// leave the object in normal selection mode so we can manipulate the colour
+			setAttr ($shape[0] + ".overrideDisplayType") 2;
+			}
+	
+		chinaMarker_updateGPVis $camera;
+		//chinaMarker_setGPLive $camera;
+	    }
+    }
+
+    
+// this proc will create the scriptJob that makes it so every time the frame changes and stops, the
+// approriate visible gpf will be active
+global proc int chinaMarker_createGPFScriptJob(string $camera) {
+	
+	global int $gDrawToolOn;
+
+	print "China Marker Tool: ON";
+	$gDrawToolOn = 1;
+	$job = `scriptJob -cf "playingBack" ("chinaMarker_setGPLive " + $camera )`;
+    // script job that will set the right curve color for new curves that are drawn
+    $dagJob = `scriptJob -e "DagObjectCreated" "chinaMarker_setCurveColor()"`;
+    // set the selection draw to be black
+    //displayColor -active lead 1;
+    //selectType -cos 0;
+    refresh;
+	scriptJob -event "ToolChanged" ("chinaMarker_removeGPFScriptJob " + $job +" " + $dagJob ) -ro 1;
+	return $job;
+    }
+
+    
+// this will find the currently active gp for the camera & make it live
+global proc chinaMarker_setGPLive(string $camera) {
+
+	// first, we have to have a hilighted layer, otherwise we don't know which
+	// layer to make live..
+	//print ("make live\n");
+	string $items[0];
+	$items = `textScrollList -q -si chinaMarker_LayerTSL`;
+	if (size($items) > 0) 	{
+		string $camGrp;
+		$camGrp = `chinaMarker_getCamGrp $camera`;
+		
+		//print ("camera: "  +$camGrp + "\n");
+		string $gp;
+		//$gp = `chinaMarker_findVisGPS $camera`;
+		$gp = `chinaMarker_findVisGPS $camGrp`;
+
+		if ($gp == "") {
+			warning "No cm pencil planes available for this camera.  Creating one..";
+			chinaMarker_addChinaMarkerFrame $camera "cur";
+			$gp = `chinaMarker_findVisGPS $camGrp`;
+			}
+            
+		//print ("gp: " + $gp + "\n");
+		select $gp;
+		makeLive;
+		select -d;
+        }
+	else 	{
+		warning ("There are no sketch layers selected.");
+		select -d;
+		makeLive;
+    	}
+    }
+
+
+global proc string chinaMarker_findVisGPS(string $camera) {
+	string $gp;
+	string $children[];
+	$children = `listRelatives -c -type "transform" $camera`;
+	string $child;
+	for ($child in $children) {
+		string $break[0];
+		tokenize ($child, "_", $break);
+		if ($break[0] == "gp") {
+			// check and see if it's visible.
+			if ((`getAttr ($child + ".v")`) && (!`getAttr ($child + ".template")`)) {
+				$gp = $child;
+                }
+            }
+        }
+	return $gp;
+    }
+
+    
+global proc chinaMarker_removeGPFScriptJob(int $job, int $dagJob) {
+	global int $gDrawToolOn;
+    
+    // hack this so the tool stays on if we're still in pencilContext
+    $currentCtx = `currentCtx`;
+    if ($currentCtx != "pencilContext") {
+        string $objs[0];
+        $objs = `ls -sl`;
+        print "China Marker Tool: OFF";
+        $gDrawToolOn = 0;
+        scriptJob -kill $job;  
+        scriptJob -kill $dagJob;
+	$jobs = `scriptJob -lj`;
+	string $job;
+	for ($job in $jobs) {
+		if (`gmatch $job "*chinaMarker_setGPLive*"`) {
+			string $tmp[0];
+			tokenize ($job, ":", $tmp);
+			int $jobNum = (int($tmp[0]));
+			scriptJob -kill $jobNum;
+            }
+        }
+ 
+        //displayColor -active lead 19;
+        //selectType -cos 0;
+
+        select -d;
+        makeLive;
+        select $objs;
+        }
+    }
+
+    
+// This procedure sets the tool to the pencil
+global proc chinaMarker_setGPTool(string $camera) {
+	
+	// first, we need to set the tool:
+	curveSketchToolScript 4;	
+	curveSketchCtx -e -d 1 `currentCtx`;
+	refresh;
+    // check that the clipping plane is right
+    chinaMarker_clippingPlaneCheck();
+    
+	// now start the scriptJobs
+	chinaMarker_createGPFScriptJob $camera;
+	chinaMarker_setGPLive $camera;
+	}
+
+    
+global proc chinaMarker_SelectFrame() {
+	string $frame;
+	$frame = `chinaMarker_GetSelectedFrame`;
+	if ($frame != "")
+		select $frame;
+	else
+		warning ("Cannot select " +$frame+ " because it doesn't exist..\n");
+    }
+    
+    
+global proc chinaMarker_SelectStoredFrame() {
+	string $items[] = `textScrollList -q -si chinaMarker_StoredFramesTSL`;
+	if (size($items) > 0)	{
+		$layer = `textScrollList -q -si chinaMarker_LayerTSL`;
+		$cam = $layer[0];
+		setToolTo "selectSuperContext";
+		$name = ("stored_gp_"+$cam+"_"+$items[0]);
+		if (`objExists $name`)
+			select $name;
+		else
+			warning ("Cannot select " +$name+ " because it doesn't exist..\n");
+        }
+    }
+    
+    
+
+    
+// this proc will remove a gp from the selected frame in the
+// cmPencilwindow
+global proc chinaMarker_removeGPFrame(string $camera) {
+	
+	string $items[] = `textScrollList -q -si chinaMarker_TSL`;
+	if (size($items) > 0)	{
+		// attempt to delete it
+		$cmPlane = ("gp_"+$camera+"_"+$items[0]);
+
+		if (`objExists $cmPlane`) {
+			// it exists, delete it
+			delete $cmPlane;
+			chinaMarker_updateGPVis $camera;
+			chinaMarker_setGPLive $camera;
+			//$gp = `chinaMarker_findVisGPS $camera`;
+			//print ("Current Vis: " + $gp + "\n");
+            }
+        }
+	chinaMarker_pmUpdateInterface;
+    }
+
+    
+// this proc will remove a stored frame from the selected frame in the
+// cmPencilwindow
+global proc chinaMarker_removeGPStoredFrame(string $camera) {
+
+	string $items[] = `textScrollList -q -si chinaMarker_StoredFramesTSL`;
+	if (size($items) > 0) {
+		// attempt to delete it
+		$cmPlane = ("stored_gp_"+$camera+"_"+$items[0]);
+
+		if (`objExists $cmPlane`) {
+			// it exists, delete it
+			delete $cmPlane;
+			chinaMarker_updateGPVis $camera;
+			chinaMarker_setGPLive $camera;
+			//$gp = `chinaMarker_findVisGPS $camera`;
+			//print ("Current Vis: " + $gp + "\n");
+            }
+        }
+
+	chinaMarker_pmUpdateInterface;
+    }
+        
+    
+global proc chinaMarker_makeFrameActive(string $camera) {
+	chinaMarker_addChinaMarkerFrame $camera "cur";
+
+	$cmPlane = `chinaMarker_getCurGP $camera`;
+	select $cmPlane;
+	makeLive();
+    }
+    
+    
+global proc chinaMarker_makeFrameNotActive(string $camera){
+	select -d;
+	makeLive;
+    }
+    
+    
+global proc int chinaMarker_GetValidReturn( string $camera, 
+            int $initial){
+	int $return = $initial;
+	string $result = "good";
+	string $text;
+	int $enteredValue;
+	string $value;
+	string $newValue;
+	
+	// this proc will query the user for a new number to enter.  It will return
+	// the number as long as it doesn't match another pre-existing frame, other
+	// than the one that they started with
+
+	do {
+		$return = $initial;
+		$result = "good";
+		$text = "";
+		$enteredValue = 0;
+		$value = "";
+		$newValue = "";
+		$value = `promptDialog
+			-title "Set New Frame"
+			-message "New Frame #"
+			-button "OK" -button "Cancel"
+			-defaultButton "OK" -cancelButton "Cancel"
+			-text $initial
+			-dismissString "Cancel" `;
+
+		if ($value == "OK") {
+			$newValue = `promptDialog -q -text `;
+			$enteredValue = $newValue;
+
+			if ($enteredValue == $initial) {
+				$result = "good";
+				$return = $initial;
+                }
+			else {
+				// now we have to check all the other items in the list to make
+				// sure it doesn't match one of those.
+				string $items[] = `textScrollList -q -ai chinaMarker_TSL`;
+				for ($item in $items) {
+					// now check the newValue and see if it matches an
+					// item.. 
+					if ($enteredValue == $item) {
+						$result = "bad";
+						confirmDialog -m "Ooops! You already have a drawing on this frame!";
+                        }
+                    }
+				if ($result == "good")
+					$return = $enteredValue;
+
+                }
+            }
+		else 	{
+			$result = "good";
+			$return = $initial;
+            }
+        }  while ($result == "bad");
+	// ("Returning: " + $return + "\n");
+	return $return;
+    }
+  
+    
+global proc chinaMarker_createChinaMarkerWindow(string $win) {
+		
+    $iconPath = chinaMarker_getIconPath();
+    string $ext;
+	$ext = `chinaMarker_IconExt`;	
+    
+	window -title "China Marker v2.0"  $win;
+	
+	$f = `formLayout -nd 100 chinaMarker_mainFL`;
+
+    // help button
+    $helpButton = `iconTextButton -w 57 -h 23 -st "iconOnly" -mw 0
+        -i ($iconPath+"chinaMarker_helpButton.xpm")
+        -ann "Launch Help Page" -c "chinaMarker_launchDocs()"`;
+        
+    // title bar
+    string $titleImagePath = ($iconPath+"chinaMarker_title.png");
+    $titleImage = `image -w 800 -h 50 `;
+    if(`filetest -r $titleImagePath`)
+        image -e -i  $titleImagePath $titleImage;
+  
+	$layerForm = `formLayout -nd 100`;
+		// create a textScrollList for the cm pencil layers
+		$layerText = `text -align "left" -l "Sketch Layers:" -fn "boldLabelFont"`;
+		$layerTSL  = `textScrollList -ams 0 -nr 10 -sc "chinaMarker_pmUpdateInterface" chinaMarker_LayerTSL`;
+		$layerAddB = `iconTextButton -mw 0 -w 32 -h 32
+            -i ($iconPath+"chinaMarker_addButton."+$ext) 
+            -ann "Add Sketch Layer" -c "chinaMarker_CreateSketchLayerWin" chinaMarker_NewLayerB`;
+		
+        $layerDelB = `iconTextButton -enable 0 -w 32 -h 32 -mw 0
+            -i ($iconPath+"chinaMarker_delButton."+$ext) 
+            -ann "Delete Sketch Layer" -c "chinaMarker_DeleteSketchLayer" chinaMarker_DelLayerB`;
+		
+		$vb = `symbolCheckBox  -enable 0  -w 32 -h 32 
+            -ann "Visibility" 
+            -i ($iconPath+"chinaMarker_visOn."+$ext) 
+            -onc ("symbolCheckBox -e -i \""+$iconPath+"chinaMarker_visOn."+$ext+"\" chinaMarker_VisIconTextButton") 
+            -ofc ("symbolCheckBox -e -i \""+$iconPath+"chinaMarker_visOff."+$ext+"\" chinaMarker_VisIconTextButton") 
+            chinaMarker_VisIconTextButton`;
+		
+        $tb = `symbolCheckBox  -enable 0 -w 32 -h 32 
+            -ann "Template Layer" 
+            -i ($iconPath+"chinaMarker_tmpOn." +$ext)
+			-onc ("symbolCheckBox -e -i \""+$iconPath+"chinaMarker_tmpOn."+$ext+"\" chinaMarker_TemplateIconTextButton") 
+			-ofc ("symbolCheckBox -e -i \""+$iconPath+"chinaMarker_tmpOff."+$ext+"\" chinaMarker_TemplateIconTextButton") 
+			chinaMarker_TemplateIconTextButton`;
+		
+        $gb1 = `symbolCheckBox -enable 0 -h 32 -w 32
+            -ann "Enable Ghost Post" 
+            -i ($iconPath+"chinaMarker_ghostPostOn."+$ext) 
+            -onc "chinaMarker_Ghost 1 1" 
+            -ofc "chinaMarker_Ghost 1 0" chinaMarker_PostGhostIconTextButton`;
+		
+        $gb2 = `symbolCheckBox -enable 0 -h 32 -w 32 
+            -ann "Enable Ghost Pre" 
+            -i ($iconPath+"chinaMarker_ghostPreOn."+$ext) 
+            -onc "chinaMarker_Ghost 2 1" 
+            -ofc "chinaMarker_Ghost 2 0" chinaMarker_PreGhostIconTextButton`;
+		
+		formLayout -e 
+			-af $layerText top 5
+			-af $layerText left 5
+			-af $layerText right 0
+
+			-ac $layerTSL top 0 $layerText
+			-ap $layerTSL right 0 80
+			-af $layerTSL left 5
+			-af $layerTSL bottom 0
+
+			-ac $layerAddB left 5 $layerTSL
+			-ac $layerAddB top 0 $layerText
+			//-af $layerAddB right 0 
+
+            -ac $layerDelB top 10 $layerAddB
+			-ac $layerDelB left 5 $layerTSL
+            //-af $layerDelB right 0
+			
+            -ac $vb top 10 $layerDelB
+			-ac $vb left 5 $layerTSL
+            //-af $vb right 0
+            
+            -ac $tb top 10 $vb
+			-ac $tb left 5 $layerTSL
+            //-af $tb right 0
+            
+            -ac $gb1 top 10 $tb
+			-ac $gb1 left 5 $layerTSL
+            //-af $gb1 right 0
+						
+			-ac $gb2 top 10 $gb1
+			-ac $gb2 left 5 $layerTSL
+			//-af $gb2 right 0
+            $layerForm;
+
+	setParent $f;
+
+	$framesForm = `formLayout -nd 100`;
+
+
+		// create a textScrollList, this will show all the frames for the current
+		// sketch layer
+		$frameText = `text -align "left" -l "Frames:" -fn "boldLabelFont"`;
+		$tsl = `textScrollList 
+			-nr 10
+			-dcc "chinaMarker_DoubleClickTSL"
+			-sc "chinaMarker_goSelectedFrame"
+			chinaMarker_TSL`;
+
+		// add a checkbox for visibility
+		//$cbg = `checkBoxGrp -cw 1 50 -cal 1 "right" -l "Vis:" -ncb 1 chinaMarker_pmCheckBoxGrp`;
+		//$gbg = `checkBoxGrp -cw 1 50 -cw 2 50 -cw 3 50 -l "Ghost:" -l1 "Pre" -l2 "Post" -ncb 2 -on1 "chinaMarker_Ghost 1 1" -of1 "chinaMarker_Ghost 1 0" -on2 "chinaMarker_Ghost 2 1" -of2 "chinaMarker_Ghost 2 0" -cal 1 "right" chinaMarker_pmGhostCheckBoxGrp`;
+	
+		$b2 = `iconTextButton -enable 0 -w 32 -h 32 -mw 0
+            -i ($iconPath+"chinaMarker_addButton."+$ext) 
+            -ann "Add Frame" -c "chinaMarker_pmAddFrame" chinaMarker_AddFrameB`;
+		
+        $b3 = `iconTextButton -enable 0 -w 32 -h 32 -mw 0
+            -i ($iconPath+"chinaMarker_delButton."+$ext) 
+            -ann "Delete Frame" -c "chinaMarker_pmDelFrame" chinaMarker_DelFrameB`;
+		
+        $b7a = `iconTextButton -enable 0  -w 32 -h 32 -mw 0
+            -i ($iconPath+"chinaMarker_down."+$ext) 
+            -ann "Shift Frame Down" -c "chinaMarker_ShiftFrames down 0" chinaMarker_DownThisFrame`;
+		
+        $b8a = `iconTextButton -enable 0 -w 32 -h 32 -mw 0
+            -i ($iconPath+"chinaMarker_up."+$ext) 
+            -ann "Shift Frame Down" -c "chinaMarker_ShiftFrames up 0" chinaMarker_UpThisFrame`;
+		
+        $b7 = `iconTextButton -enable 0 -w 32 -h 32 -mw 0
+            -i ($iconPath+"chinaMarker_downAll."+$ext) 
+            -ann "Shift Frames Down" -c "chinaMarker_ShiftFrames down 1" chinaMarker_DownFrame`;
+		
+        $b8 = `iconTextButton -enable 0 -w 32 -h 32 -mw 0
+            -i ($iconPath+"chinaMarker_upAll."+$ext) 
+            -ann "Shift Frames Up" -c "chinaMarker_ShiftFrames up 1" chinaMarker_UpFrame`;
+		
+        $b9 = `iconTextButton -enable 0 -w 32 -h 32 -mw 0
+            -i ($iconPath+"chinaMarker_selButton."+$ext) 
+            -ann "Select hilighted frame" -c "chinaMarker_SelectFrame" chinaMarker_SelectFrameB`;
+		
+        $drawToolButton = `iconTextButton -enable 0 -w 32 -h 32 -mw 0
+            -i ($iconPath+"chinaMarker_drawTool." +$ext)
+            -ann "Use Draw Tool" -c "chinaMarker_pmDrawToolGo()" chinaMarker_UseDrawToolB`;
+        
+        $colorButton = `canvas -enable 0 -w 28 -h 28 -rgb 0 0 0
+            -ann "Open color selector" 
+            -pc "chinaMarker_colorSelector" chinaMarker_colorSelectorB`;
+            
+        $colorIndex = `text -l "1" chinaMarker_colorIndex`;
+        
+        $b10 = `symbolCheckBox -enable 0 -w 32 -h 32 
+            -i ($iconPath + "chinaMarker_offLock."+$ext)
+            -ann "Lock/Unlock hilighted frame" 
+            -onc "chinaMarker_ToggleRef" 
+            -ofc "chinaMarker_ToggleRef" chinaMarker_ToggleRefB`;
+            
+        $storeButton = `iconTextButton -enable 0 -w 32 -h 32 -mw 0
+            -i ($iconPath + "chinaMarker_storeButton." + $ext)
+            -ann "Store Selected Frame" -c "chinaMarker_SaveFrame()"
+            chinaMarker_storeFrameB`;
+		
+        formLayout -e
+			-af $frameText top 5
+			-af $frameText left 5
+			-af $frameText right 0
+
+			-af $tsl left 5
+			-ac $tsl top 0 $frameText
+			-ap $tsl right 0 80
+			-af $tsl bottom 0
+
+			-ac $b2 left 5 $tsl
+			-ac $b2 top 0 $frameText
+			//-af $b2 right 5
+
+			-ac $b3 left 5 $tsl
+			-ac $b3 top 10 $b2
+			//-af $b3 right 5
+
+			-ac $b7 left 5 $tsl
+			-ac $b7 top 10 $b8
+			//-af $b7 right 5
+			
+			-ac $b8a left 5 $tsl
+			-ac $b8a top 10 $b3
+			//-af $b8a right 5
+			
+			-ac $b7a left 5 $tsl
+			-ac $b7a top 10 $b8a
+			//-af $b7a right 5
+			
+			-ac $b8 left 5 $tsl
+			-ac $b8 top 10 $b7a
+			//-af $b8 right 5
+			
+			-ac $b9 left 5 $tsl
+			-ac $b9 top 10 $b7
+			//-af $b9 right 5
+
+            -ac $drawToolButton left 5 $tsl
+            -ac $drawToolButton top 10 $b9
+            
+            -ac $colorButton left 6 $tsl
+            -ac $colorButton top 10 $drawToolButton
+            
+            -ac $colorIndex left 6 $tsl
+            -ac $colorIndex top 10 $drawToolButton
+            
+			-ac $b10 left 4 $tsl
+			-ac $b10 top 10 $colorButton
+			
+            -ac $storeButton left 5 $tsl
+            -ac $storeButton top 10 $b10
+
+			$framesForm;
+	
+    
+    setParent $f;
+    // construct Stored Frame layout
+    $storedFramesFL = `frameLayout -bv 1 -bs "in" -h 24
+        -cll 1  -cl 1 
+        -cc "chinaMarker_StoredFrameCollapse()"
+        -ec "chinaMarker_StoredFrameExpand()"
+        -l "Stored Frames" -fn "boldLabelFont" chinaMarker_StoredFrame`;
+    $storedFramesForm = `formLayout -nd 100 `;
+    // create stored frames textScrollList
+    $storedFramesTSL = `textScrollList -nr 10 
+        -dcc ""
+        -sc "chinaMarker_enableStoredFrame()"    
+        chinaMarker_StoredFramesTSL`;
+        
+    $storedVisB = `symbolCheckBox  -enable 0  -w 32 -h 32 
+            -ann "Visibility" 
+            -i ($iconPath+"chinaMarker_visOn."+$ext) 
+            -onc ("symbolCheckBox -e -i \""+$iconPath+"chinaMarker_visOn."+$ext+"\" chinaMarker_StoredVisButton") 
+            -ofc ("symbolCheckBox -e -i \""+$iconPath+"chinaMarker_visOff."+$ext+"\" chinaMarker_StoredVisButton") 
+            chinaMarker_StoredVisButton`;
+		
+    $storedTemplateB = `symbolCheckBox  -enable 0 -w 32 -h 32 
+            -ann "Template" 
+            -i ($iconPath+"chinaMarker_tmpOn." +$ext)
+			-onc ("symbolCheckBox -e -i \""+$iconPath+"chinaMarker_tmpOn."+$ext+"\" chinaMarker_StoredTemplateButton") 
+			-ofc ("symbolCheckBox -e -i \""+$iconPath+"chinaMarker_tmpOff."+$ext+"\" chinaMarker_StoredTemplateButton") 
+			chinaMarker_StoredTemplateButton`;
+
+    $storedSelectB = `iconTextButton -enable 0 -w 32 -h 32 -mw 0
+            -i ($iconPath+"chinaMarker_selButton."+$ext) 
+            -ann "Select stored frame" -c "chinaMarker_SelectStoredFrame" 
+            chinaMarker_SelectStoredFrameB`;
+
+    $storedDeleteB = `iconTextButton -enable 0 -w 32 -h 32 -mw 0
+            -i ($iconPath+"chinaMarker_delButton."+$ext) 
+            -ann "Delete Stored Frame" -c "chinaMarker_DeleteStoredFrame" 
+            chinaMarker_DelStoredFrameB`;
+
+            
+    formLayout -e
+        -ap $storedFramesTSL top 4 0 
+        -ap $storedFramesTSL left 4 0
+        -ap $storedFramesTSL right 5 90
+        -ap $storedFramesTSL bottom 4 100
+        
+        -ap $storedVisB top 4 0
+        -ac $storedVisB left 5 $storedFramesTSL
+        
+        -ac $storedTemplateB top 10 $storedVisB
+        -ac $storedTemplateB left 5 $storedFramesTSL
+        
+        -ac $storedSelectB top 10 $storedTemplateB
+        -ac $storedSelectB left 5 $storedFramesTSL    
+        
+        -ac $storedDeleteB top 10 $storedSelectB
+        -ac $storedDeleteB left 5 $storedFramesTSL
+        $storedFramesForm;
+        
+    
+    // construct overall form layout
+	formLayout -e
+	   -ap $helpButton top 18 0
+       -ap $helpButton right 14 100
+       
+       -ap $titleImage top 4 0
+       -ap $titleImage left 4 0
+
+		-ac $layerForm top 4 $titleImage
+		-af $layerForm left 0
+		-ac $layerForm bottom 10 $storedFramesFL
+		-ap $layerForm right 5 50
+		
+		-ac $framesForm top 4 $titleImage
+		-af $framesForm right 0
+		-ac $framesForm bottom 10 $storedFramesFL
+		-ap $framesForm left 5 50
+        
+        //-ap $storedFramesFL top 10 $layerForm
+        -af $storedFramesFL left 0
+        -af $storedFramesFL right 0
+        -af $storedFramesFL bottom 0
+        
+		$f;
+
+	chinaMarker_UpdateLayersList;
+	//chinaMarker_pmUpdateInterface;
+    }
+
+    
+global proc chinaMarker_goSelectedFrame() {
+	
+    // set the curve on surface selection off
+    selectType -cos 0;
+    
+	$delFrameB = "chinaMarker_DelFrameB";
+	$dwnFrameB = "chinaMarker_DownFrame";
+	$upFrameB  = "chinaMarker_UpFrame";
+	$selFrame  = "chinaMarker_SelectFrameB";
+	$upThisFrameB = "chinaMarker_UpThisFrame";
+	$downThisFrameB = "chinaMarker_DownThisFrame";
+	$toggleRefB = "chinaMarker_ToggleRefB";
+    $drawToolB = "chinaMarker_UseDrawToolB";
+    $colorSwatch = "chinaMarker_colorSelectorB";
+    $toggleLockB = "chinaMarker_ToggleRefB";
+    $storeFrameB = "chinaMarker_storeFrameB";
+
+	string $items[] = `textScrollList -q -si chinaMarker_TSL`;
+	if (size($items) > 0)	{
+		currentTime -e $items[0];
+		// enable all the buttons
+		iconTextButton -e -enable 1 $delFrameB;
+		iconTextButton -e -enable 1 $dwnFrameB;
+		iconTextButton -e -enable 1 $upFrameB;
+		iconTextButton -e -enable 1 $selFrame;
+		iconTextButton -e -enable 1 $upThisFrameB;
+		iconTextButton -e -enable 1 $downThisFrameB;
+        iconTextButton -e -enable 1 $drawToolB;
+        control -e -enable 1 $colorSwatch;
+		symbolCheckBox -e -enable 1 $toggleRefB;
+        symbolCheckBox -e -enable 1 $toggleLockB;
+        iconTextButton -e -enable 1 $storeFrameB;
+		chinaMarker_ToggleRefCheck;
+        }
+	else {
+		// disable all the buttons
+		iconTextButton -e -enable 0 $delFrameB;
+		iconTextButton -e -enable 0 $dwnFrameB;
+		iconTextButton -e -enable 0 $upFrameB;
+		iconTextButton -e -enable 0 $selFrame;
+		iconTextButton -e -enable 0 $upThisFrameB;
+		iconTextButton -e -enable 0 $downThisFrameB;
+        iconTextButton -e -enable 0 $drawToolB;
+        control -e -enable 0 $colorSwatch;
+		symbolCheckBox -e -enable 0 $toggleRefB;
+        symbolCheckBox -e -enable 0 $toggleLockB;
+        iconTextButton -e -enable 0 $storeFrameB;
+
+        }
+    }
+
+
+// get the name that the person input and try and create a display layer
+// based on that name.
+global proc chinaMarker_CreateSketchLayer(string $win) {
+	
+	string $layerName;
+	string $cameraName;
+
+	$layerName = `textFieldGrp -q -tx chinaMarker_NewLayerTFG`;
+	if ((`objExists ($layerName + "_gpGrp")`) || (`objExists ("gp_"+$layerName+"_1")`)) {
+		confirmDialog -m ("An object already exists with the name " + $layerName + "\nPlease try a new one..");
+        }
+	else 	{
+		$cameraName = `optionMenuGrp -q -v "gp_om"`;
+	
+		// now create the layer group
+		chinaMarker_CreateSketchLayerGo $cameraName $layerName;
+		deleteUI $win;
+        }
+    }
+
+    
+// the user wants to delete a sketch layer.  Confirm that this is the case,
+// and then delete it
+global proc chinaMarker_DeleteSketchLayer() {
+		
+	// first get the name of the layer they want to delete
+	string $layer[0];
+	$layer = `textScrollList -q -si chinaMarker_LayerTSL`;
+	if (size($layer) > 0) {
+		// confirm with the user that they want to do this
+		$result = `confirmDialog -m ("Do you want to remove the layer " + $layer[0] + "?") -b "Delete" -b "Cancel" -db "Delete" -cb "Cancel"`;
+		if ($result == "Delete") {
+			// get the index number of the selected item
+			$index = `textScrollList -q -sii chinaMarker_LayerTSL`;
+
+			// now get the size
+			$size = `textScrollList -q -ni chinaMarker_LayerTSL`;
+			
+			if (`objExists ($layer[0] + "_gpGrp")`)
+				delete ($layer[0] + "_gpGrp");
+
+			// now re-draw the layers
+			chinaMarker_UpdateLayersList;
+
+			// next, select the next item.  If the user deleted item 2, then
+			// select what was item 3.
+			if ($index[0] == $size)
+				$index[0] = $size-1;
+			if ($index[0] > 0)
+				textScrollList -e -sii $index[0] chinaMarker_LayerTSL; 
+            }
+        }
+    }
+    
+    
+// this is now the first time we're creating a layer, so we'll want to
+// create the group itself based on the camera, and then create one plane
+global proc chinaMarker_CreateSketchLayerGo(string $camera,
+                 string $layer) {
+	
+	// first save the camera in the optionVar
+    optionVar -sv "chinaMarker_CameraOptionVar" $camera;
+	// ** create a group which will be point and orient constrained to the
+	// camera.  This group will be the thing that all planes are under
+	// first check and see if it already exists
+	
+	$dup = `duplicate $camera`;
+	delete `listRelatives -f -s $dup[0]`;
+	$camGrp = `rename $dup[0] ($layer + "_gpGrp")`;
+    parent $camGrp "chinaMarkerGroup";
+
+	addAttr -ln "orthographic" -at "bool" $camGrp;
+	connectAttr ($camera + ".orthographic") ($camGrp + ".orthographic");
+
+	// add attributes for ghosting, pre and post
+	addAttr -ln "preGhost" -at "bool" $camGrp;
+	addAttr -ln "postGhost" -at "bool" $camGrp;
+	
+	setAttr ($camGrp + ".preGhost") 1;
+	setAttr ($camGrp + ".postGhost") 1;	
+	
+	// make sure that all the group attributes are unlocked
+	string $attrs[] = {"tx", "ty", "tz", "rx", "ry", "rz", "sx", "sy", "sz", "v", "translate", "rotate", "scale" };
+	for ($at in $attrs) {
+		setAttr -l 0 ($camGrp +"." + $at);
+        }
+	setAttr ($camGrp + ".v") 1;
+	// now point and orientConstrain the camGrp to the camera
+	select $camera $camGrp;
+	pointConstraint;
+	orientConstraint;
+
+	chinaMarker_UpdateLayersList;
+
+	// we know that we've just added a new item to the list.. so now we should
+	// select the most recent item
+	$numItems = `textScrollList -q -ni chinaMarker_LayerTSL`;
+	if ($numItems > 0)
+		textScrollList -e -si ($layer) chinaMarker_LayerTSL; 
+
+	chinaMarker_addChinaMarkerFrame $layer "1";
+	chinaMarker_pmUpdateInterface();
+    }
+    
+    
+global proc chinaMarker_UpdateLayersList() {
+	// first remove all layers from the list
+	textScrollList -e -ra chinaMarker_LayerTSL;
+
+	string $layers[0];
+	string $layer;
+	$layers = `ls "*_gpGrp"`;
+	if (size($layers) > 0) 	{
+		for ($layer in $layers) {
+			$layer = `substitute "_gpGrp" $layer "" `;
+			textScrollList -e -a $layer chinaMarker_LayerTSL;
+            }
+        }
+    }
+    
+    
+// one of the items in the layer list was selected.  
+global proc chinaMarker_pmUpdateInterface() {
+	
+	// to update the interface, first we must disable everything, then we'll
+	// start seeing what we can add.
+	
+    global int $gDrawToolOn;
+	$layerTSL  = "chinaMarker_LayerTSL";
+	$layerDelB = "chinaMarker_DelLayerB";
+	$framesTSL = "chinaMarker_TSL";
+    $storedFramesTSL = "chinaMarker_StoredFramesTSL";
+    
+	$addFrameB = "chinaMarker_AddFrameB";
+	$delFrameB = "chinaMarker_DelFrameB";
+	$dwnFrameB = "chinaMarker_DownFrame";
+	$upFrameB  = "chinaMarker_UpFrame";
+	$selFrame  = "chinaMarker_SelectFrameB";
+	$ghostPreB = "chinaMarker_PreGhostIconTextButton";
+	$ghostPostB= "chinaMarker_PostGhostIconTextButton";
+	$visB      = "chinaMarker_VisIconTextButton";
+	$tempB     = "chinaMarker_TemplateIconTextButton";
+	$drawB	   = "chinaMarker_UseDrawToolB";
+    $colorSelector = "chinaMarker_colorSelectorB";
+    $storeFrameB = "chinaMarker_storeFrameB";
+    //stored frame buttons
+    $storedVisB = "chinaMarker_StoredVisButton";
+    $storedTemplateB = "chinaMarker_StoredTemplateButton";
+    $storedSelectB = "chinaMarker_SelectStoredFrameB";
+    $storedDeleteB = "chinaMarker_DelStoredFrameB";
+
+	// set everything disabled
+	textScrollList -e -enable 0 -ra $framesTSL;
+    textScrollList -e -enable 0 -ra $storedFramesTSL;
+    
+	string $ext;
+	$ext = `chinaMarker_IconExt`;	
+    $iconPath = chinaMarker_getIconPath();
+  
+	iconTextButton -e -enable 0 $layerDelB;
+	iconTextButton -e -enable 0 $addFrameB;
+	iconTextButton -e -enable 0 $delFrameB;
+	iconTextButton -e -enable 0 $dwnFrameB;
+	iconTextButton -e -enable 0 $upFrameB;
+	iconTextButton -e -enable 0 $selFrame;
+    iconTextButton -e -enable 0 $drawB;
+    control -e -enable 0 $colorSelector;
+    iconTextButton -e -enable 0 $storeFrameB;
+	symbolCheckBox -e -enable 0 -v 0 $ghostPreB;
+	symbolCheckBox -e -enable 0 -v 0 $ghostPostB;
+	symbolCheckBox -e -enable 0 -i ($iconPath+"chinaMarker_visOff."+$ext) -v 0 $visB;
+	symbolCheckBox -e -enable 0 -i ($iconPath+"chinaMarker_tmpOff."+$ext) -v 0 $tempB;
+    symbolCheckBox -e -enable 0 -i ($iconPath + "chinaMarker_visOff."+$ext) -v 0 $storedVisB;
+    symbolCheckBox -e -enable 0 -i ($iconPath+"chinaMarker_tmpOff."+$ext) -v 0 $storedTemplateB;
+    control -e -enable 0 $storedSelectB;
+    control -e -enable 0 $storedDeleteB;
+    
+	// updates the interface based on the selected item in the layer TSL
+	string $sel[0];
+	$sel = `textScrollList -q -si $layerTSL`;
+    
+	if (size($sel) > 0) 	{
+		$item = ($sel[0] + "_gpGrp");
+       
+		// now we start enabling things.  First, we enable the other layer
+		// buttons
+		iconTextButton -e -enable 1 $layerDelB;
+		symbolCheckBox -e -enable 1 $ghostPreB;
+		symbolCheckBox -e -enable 1 $ghostPostB;
+		symbolCheckBox -e -enable 1 $visB;
+		symbolCheckBox -e -enable 1 $tempB;
+        //iconTextButton -e -enable 1 $drawB;
+		textScrollList -e -enable 1 $framesTSL;
+		iconTextButton -e -enable 1 $addFrameB;
+        iconTextButton -e -enable 1 $storeFrameB;
+		
+		// now we have to set the state of the layer buttons
+		if (`objExists $item`) {
+			connectControl $visB ($item + ".v");
+			if (`getAttr ($item + ".v")`)
+				symbolCheckBox -e -i ($iconPath+"chinaMarker_visOn."+$ext) $visB;
+			connectControl $tempB ($item + ".template");
+			if (`getAttr ($item + ".template")`)
+				symbolCheckBox -e -i ($iconPath+"chinaMarker_tmpOn."+$ext) $tempB;
+			connectControl $ghostPreB ($item + ".preGhost");
+			connectControl $ghostPostB ($item + ".postGhost");
+
+			// now fill the textScrollList with frame numbers
+			string $children[0];
+			$children = `chinaMarker_getGPList $sel[0]`;
+			int $ordered[0];
+			
+			for ($item in $children) {
+				string $break[0];
+				tokenize ($item, "_", $break);
+				$ordered[size($ordered)] = $break[2];
+			    }
+			$ordered = `sort $ordered`;
+			for ($number in $ordered) {
+				textScrollList -e -a $number $framesTSL;
+			    }			
+                
+            // now fill in any stored frames
+            $children = chinaMarker_getStoredGPList($sel[0]);
+            string $orderedS[];
+            if(size($children)) {
+                textScrollList -e -enable 1 $storedFramesTSL;
+                for ($item in $children) {
+                    string $break[];
+                    tokenize ($item, "_", $break);
+                    $orderedS[size($orderedS)]  = $break[3];
+                    }
+                $orderedS = `sort $orderedS`;
+                
+                for($item in $orderedS) {
+                    textScrollList -e -a $item $storedFramesTSL;
+                    }
+                }  
+		    }
+            
+		
+		if ($gDrawToolOn)
+			chinaMarker_setGPLive $sel[0];
+        }
+    }
+
+    
+// this proc will check the selected TSL and see if it should turn on or off the
+// checkboxes for the hilighted stored plane
+global proc chinaMarker_StoredTSLSel() {
+	
+	string $sel[0];
+	$sel = `textScrollList -q -si chinaMarker_StoredFramesTSL`;
+	if (size($sel) > 0) {
+		checkBoxGrp -e -enable 1 chinaMarker_pmStoredCheckBoxGrp;
+		checkBoxGrp -e -enable 1 chinaMarker_pmStoredTemplateCheckBoxGrp;
+	
+		string $om = "gp_om";
+		$cam = `optionMenuGrp -q -v $om`;
+		
+		$name = ("stored_gp_"+$cam+"_"+$sel[0]);
+		if (`objExists $name`) {
+			connectControl -index 2 chinaMarker_pmStoredCheckBoxGrp ($name + ".v");
+			connectControl -index 2 chinaMarker_pmStoredTemplateCheckBoxGrp ($name + ".template");
+            }	
+        }
+	else 	{
+		checkBoxGrp -e -v1 0 -enable 0 chinaMarker_pmStoredCheckBoxGrp;
+		checkBoxGrp -e -v1 0 -enable 0 chinaMarker_pmStoredTemplateCheckBoxGrp;
+        }
+    }
+    
+    
+// set the value of the checkbox either on or off
+global proc chinaMarker_Ghost(int $cb, int $value) {
+		
+	// first get the camera
+	string $item[0];
+	$item = `textScrollList -q -si chinaMarker_LayerTSL`;
+	
+	// now get the camGrp
+	$camGrp = ($item[0] + "_gpGrp");
+	
+	// set the value of ghost
+	if ($cb == 2) {
+		setAttr ($camGrp + ".preGhost") $value;
+		//checkBoxGrp -e -v1 $value $cbg;
+        }
+	else 	{
+		setAttr ($camGrp + ".postGhost") $value;
+		//checkBoxGrp -e -v2 $value $cbg;
+        }	
+	chinaMarker_updateGPVis $item[0];
+    }
+    
+    
+// if the textScrollList is double-clicked, that means the user may want to
+// change the frame number that the image is currently on.
+global proc chinaMarker_DoubleClickTSL() {
+	
+	// first, get the camera
+	string $tsl = "chinaMarker_TSL";
+	string $cam;
+	string $item;
+	string $items[];
+
+	$layer = `textScrollList -q -si chinaMarker_LayerTSL`;
+	$cam = $layer[0];
+
+	// now find out what was selected
+	$items = `textScrollList -q -si $tsl`;
+	$item = $items[0];
+	// pop up a box which will ask the user to enter a new frame number
+	$result = `chinaMarker_GetValidReturn $cam $item`;
+	
+	// now we have a result.. check and see if the result is the same as the
+	// $item.  If so, do nothing.. if not, re-order things!  woo!
+	if ($result != $item) 	{
+		// create a new name for the item
+		$newName = ("gp_"+$cam+"_"+$result);
+
+		// the old name is
+		$oldName = ("gp_"+$cam+"_"+$item);
+
+		// rename it
+		rename $oldName $newName;
+
+		// now update everything
+		chinaMarker_updateGPVis $cam;
+		chinaMarker_setGPLive $cam;
+		chinaMarker_pmUpdateInterface;
+
+		// now go to that frame
+		textScrollList -e -si $result chinaMarker_TSL;
+		currentTime -e $result;
+        }
+    }
+    
+    
+global proc chinaMarker_pmAddFrame(){
+	// get the current value in the camera pullDown
+	$sel = `textScrollList -q -si chinaMarker_LayerTSL`;	
+	chinaMarker_addChinaMarkerFrame $sel[0] "cur";
+	chinaMarker_pmUpdateInterface;
+    }
+    
+    
+global proc chinaMarker_pmDelFrame(){
+	// get the current value in the camera pullDown
+	$layer = `textScrollList -q -si chinaMarker_LayerTSL`;
+	$cam = $layer[0];
+	chinaMarker_removeGPFrame $cam;
+    }
+
+    
+global proc chinaMarker_DeleteStoredFrame(){
+	$layer = `textScrollList -q -si chinaMarker_LayerTSL`;
+	$cam = $layer[0];	
+	chinaMarker_removeGPStoredFrame $cam;
+    }
+    
+    
+global proc chinaMarker_pmDrawToolGo(){
+	// get the current value in the camera pullDown
+    string $cam[0];
+	$cam = `textScrollList -q -si chinaMarker_LayerTSL`;
+	chinaMarker_setGPTool $cam[0];
+    }
+    
+
+global proc string chinaMarker_createExtrudeCircle(string $grp){
+	// create a circle and connect it to the camGrp
+	string $circle[0];
+	$circle = `circle -radius .005`;
+	hide $circle;
+
+	addAttr -ln "gp_ExtrudeCircle" -at "message" $grp;
+	connectAttr ($circle[0] + ".message") ($grp + ".gp_ExtrudeCircle");
+	return ($circle[0]);
+    }
+    
+    
+global proc string chinaMarker_getExtrudeCircle(string $camGrp){
+	$tmp = `listConnections ($camGrp + ".gp_ExtrudeCircle")`;
+	return ($tmp[0]);
+    }   
+
+
+global proc string chinaMarker_getCamGrp(string $camera){
+	string $camGrp;
+	string $items[] = `textScrollList -q -si chinaMarker_LayerTSL`;
+	$camGrp = ($items[0] + "_gpGrp");
+	return $camGrp;
+    }
+
+
+global proc string[] chinaMarker_getStoredGPList( string $item ){
+	// get a list of all the gps for the current selected layer item
+	string $list[0];
+	int $count = 0;
+	string $itemGrp;
+	$itemGrp = ($item + "_gpGrp");
+	string $children[];
+	$children = `listRelatives -c -type "transform" $itemGrp`;
+	string $child;
+	for ($child in $children) {
+		string $break[0];
+		tokenize ($child, "_", $break);
+		if ($break[0] == "stored") {
+			$list[$count++] = $child;
+		    }
+	    }
+	
+	return $list;
+    }
+    
+    
+// get a list of all the gps for the current selected item
+global proc string[] chinaMarker_getGPList( string $item ){
+	
+	string $list[0];
+	int $count = 0;
+	string $itemGrp;
+	$itemGrp = ($item + "_gpGrp");
+	string $children[0];
+	$children = `listRelatives -c -type "transform" $itemGrp`;
+	string $child;
+	for ($child in $children) {
+		string $break[0];
+		tokenize ($child, "_", $break);
+		if ($break[0] == "gp") {
+			$list[$count++] = $child;
+            }
+        }
+	
+	return $list;
+    }
+    
+    
+// this procedure will duplicate the hilighted frame and "store" it for
+// later use.
+global proc chinaMarker_SaveFrame(){
+	
+	// first find out which one is selected
+	    
+    $layer = `textScrollList -q -si chinaMarker_LayerTSL`;
+	$cam = $layer[0];
+
+	// now find out what was selected
+	$item = chinaMarker_GetSelectedFrame();
+
+	if ($item != "") {
+		// prompt the user for a name
+		$result = `promptDialog -t "New Stored Frame" -m "What would you like to call this frame?" -b "Store it" -b "Cancel" -db "Store it" -cb "Cancel" `;
+		
+		if ($result == "Store it") 	{
+			$value = `promptDialog -q -text`;	
+			
+			// duplicate it
+			string $dup[0];
+			$dup = `duplicate $item`;
+
+
+			$newName = `rename $dup[0] ("stored_gp_"+$cam+"_"+$value)`;
+			
+			// now remove the drawing so it's not part of the animated bit
+			chinaMarker_pmDelFrame;
+			chinaMarker_pmUpdateInterface;
+            }
+        }
+    }
+    
+    
+global proc chinaMarker_updateGPVis(string $camera){
+	// first get a list of all the cm pencils in the list
+	string $camGrp;
+	string $children[0];
+	string $gps[0];
+	int $frames[0];
+	int $count = 0;
+	int $count2 = 0;
+	int $count3 = 0;
+
+	$camGrp = `chinaMarker_getCamGrp $camera`;
+	//$children = `listRelatives -c -type "transform" $camera`;
+	$children = `listRelatives -c -type "transform" $camGrp`;
+	string $child;
+	for ($child in $children) {
+		string $break[0];
+		tokenize ($child, "_", $break);
+		if ($break[0] == "gp") {
+			$frames[$count++] = $break[size($break)-1];
+            }
+        }
+
+	$frames = `sort $frames`;
+	int $preGhost = `getAttr ($camGrp + ".preGhost")`;
+	int $postGhost = `getAttr ($camGrp + ".postGhost")`;
+
+	////print ("Setting up visibility ... \n");
+	//print ("-----------------------------------------\n");	
+	for ($x = 0; $x < size($frames); $x++) {
+		
+		// first delete all the keys on the visibility for the gp
+		$gp = ("gp_" + $camera + "_" + $frames[$x]);
+		//print ("\nWorking on " + $gp + "\n");
+		if (`objExists $gp`)
+			catch (`cutKey -at "visibility" -at "template" $gp`);
+
+		// now, set a key for the value of 0 at $x before this current value, unless $x = 0;
+		if ($x > 0) {
+			// make sure that all visibility is off first
+			
+			$cmd = ("setKeyframe -at \"visibility\" -v 0  -ott \"step\" -t (0) \""+$gp+"\"");
+			//$cmd = ("setKeyframe -at \"visibility\" -v 0  -ott \"step\" -t (0) -t ("+$frames[$x+1+$postGhost]+") \""+$gp+"\"");
+			//print ($cmd + "\n");
+			eval $cmd;
+			}
+		else {
+			// turn on visibility for the first item
+			$cmd = ("setKeyframe -at \"visibility\" -v 1 -ott \"step\" -t 0 \""+$gp+"\"");	
+			//print ($cmd + "\n");
+			eval $cmd;
+            }
+
+		// now set a key for it to be on at this frame
+		if (`objExists $gp`) {
+			//print ("Now set up when the drawing should be turned on and off\n");
+			if ($x > 0) {
+				//setKeyframe -at "visibility" -v 1 -ott "step" -t ($frames[$x-$preGhost]) $gp;
+				$cmd = ("setKeyframe -at \"visibility\" -v 1 -ott \"step\" -t ("+($frames[$x - $postGhost])+") \""+$gp+"\"");
+				//print ($cmd + "\n");
+				eval $cmd;
+				$cmd = ("setKeyframe -at \"visibility\" -v 0 -ott \"step\" -t ("+($frames[$x +1+ $preGhost])+") \""+$gp+"\"");
+				//print ($cmd + "\n");
+				eval $cmd;
+				setKeyframe -at "template" -v 1 -ott "step" -t ($frames[$x - $postGhost]) $gp;
+				setKeyframe -at "template" -v 0 -ott "step" -t ($frames[$x]) $gp;
+                }
+			else 	{
+				if ((size($frames)) > 1 ) {
+					if ((size($frames)) == 2) {
+						if ($preGhost == 0)	{
+							$cmd = ("setKeyframe -at \"visibility\" -v 0 -ott \"step\" -t ("+($frames[($x +1)])+") \""+$gp+"\"");
+							//print ($cmd + "\n");
+							eval $cmd;
+                            }
+                        }
+					else 	{
+						$cmd = ("setKeyframe -at \"visibility\" -v 0 -ott \"step\" -t ("+($frames[($x +1+ $preGhost)])+") \""+$gp+"\"");
+						//print ($cmd + "\n");
+						eval $cmd;
+                        }
+					setKeyframe -at "template" -v 0 -ott "step" -t ($frames[$x]) $gp;
+                    }
+				else
+					setKeyframe -at "template" -v 0 -ott "step" -t ($frames[$x]) $gp;
+                }	
+			setKeyframe -at "template" -v 1 -ott "step" -t ($frames[$x+1]) $gp;
+            }
+        }
+    }
+
+
+// this provides a quick way to "erase" drawings.. it's not a true eraser, but it sorta works.
+global proc string chinaMarker_GetSelectedFrame() {
+	string $frame;
+
+	string $items[] = `textScrollList -q -si chinaMarker_TSL`;
+	if (size($items) > 0)	{
+		$layer = `textScrollList -q -si chinaMarker_LayerTSL`;
+		$cam = $layer[0];
+		setToolTo "selectSuperContext";
+		$name = ("gp_"+$cam+"_"+$items[0]);
+		if (`objExists $name`)
+			$frame = $name;
+        }
+	return $frame;
+	}
+
+
+global proc string chinaMarker_getSelectedStoredFrame() {
+    string $frame;
+    string $items[] = `textScrollList -q  -si chinaMarker_StoredFramesTSL`;
+    if(size($items) ) {
+        $layers = `textScrollList -q -si chinaMarker_LayerTSL`;
+        $curLayer = $layers[0];
+        $name = ("stored_gp_"+$curLayer+"_"+$items[0]);
+        if(`objExists $name`) $frame = $name;       
+        }
+    
+    return $frame;
+    }
+    
+    
+//check if the frame is locked or normal 
+global proc chinaMarker_ToggleRefCheck() {
+	// check the hilighted frame to see if it's referenced or not.  If it is referenced, then set the chinaMarker_ToggleRefB
+	// to show that it can be turned to non-referenced, otherwise set the chinaMarker_ToggleRefB to show that it can be set to 
+	// Edit.
+    // if it's not referenced then set the curve on surface selectType on
+
+    string $iconPath = chinaMarker_getIconPath();
+	string $button = "chinaMarker_ToggleRefB";
+	string $frame;
+	int $currentState;
+	
+	$frame = `chinaMarker_GetSelectedFrame`;
+	if ($frame != "") 	{	
+		$shape = `listRelatives -f -s $frame`;
+		$currentState = `getAttr ($shape[0] + ".overrideDisplayType")`;
+		if ($currentState == 2) {
+            symbolCheckBox -e -v 1 -i ($iconPath+"chinaMarker_onLock.xpm") $button;
+			selectType -cos 0;
+            //button -e -l "Edit" $button;
+            }
+		else 	{
+            symbolCheckBox -e -v 0 -i ($iconPath+"chinaMarker_offLock.xpm") $button;
+			selectType -cos 1;
+            //button -e -l "Lock" $button;
+            }	
+        }    
+    }
+
+    
+// will toggle the currently selected frame between editable and not
+global proc chinaMarker_ToggleRef(){
+	
+	string $frame;
+	int $currentState;
+	int $newState;
+	$frame = `chinaMarker_GetSelectedFrame`;
+	if ($frame != "") 	{	
+		$shape = `listRelatives -f -s $frame`;
+		$currentState = `getAttr ($shape[0] + ".overrideDisplayType")`;
+		if ($currentState == 2)
+			setAttr ($shape[0] + ".overrideDisplayType") 0;
+		else
+			setAttr ($shape[0] + ".overrideDisplayType") 2;
+		
+		chinaMarker_ToggleRefCheck ;
+        }
+    }
+
+    
+//////////////////////
+// stored frame commands
+
+global proc chinaMarker_StoredFrameExpand() {
+    // windows handles the expand natively
+    $system = `about -os`;
+    if (($system == "nt") || ($system == "win64") ) 
+        return;
+    
+    $win = "chinaMarker_cmPencilWin";
+    $frame = "chinaMarker_StoredFrame";
+    $curWinHeight = `window -q -h $win`;
+    $curFrameHeight = `control -q -h $frame`;
+    
+    window -e -h ($curWinHeight + 75) $win;    
+    control -e -h ($curFrameHeight + 75) $frame;
+    
+    }
+    
+global proc chinaMarker_StoredFrameCollapse() {
+    // windows handles the collapse natively
+    $system = `about -os`;
+    if (($system == "nt") || ($system == "win64") ) 
+        return;
+    
+    $win = "chinaMarker_cmPencilWin";
+    $frame = "chinaMarker_StoredFrame";
+    $curHeight = `window -q -h $win`;
+    $curFrameHeight = `control -q -h $frame`;    
+    
+    window -e -h ($curHeight-75) $win;
+    control -e -h ($curFrameHeight-75) $frame;
+    }
+
+
+global proc chinaMarker_enableStoredFrame() {
+    string $ext = chinaMarker_IconExt();	
+    string $iconPath = chinaMarker_getIconPath();
+    
+    $storedVisB = "chinaMarker_StoredVisButton";
+    $storedTemplateB = "chinaMarker_StoredTemplateButton";
+    $storedSelectB = "chinaMarker_SelectStoredFrameB";
+    $storedDeleteB = "chinaMarker_DelStoredFrameB";
+    symbolCheckBox -e -enable 1 -i ($iconPath+"chinaMarker_visOff."+$ext) $storedVisB;
+    symbolCheckBox -e -enable 1 -i ($iconPath+"chinaMarker_tmpOff."+ $ext) $storedTemplateB;
+    control -e -enable 1 $storedSelectB;
+    control -e -enable 1 $storedDeleteB;
+   
+    string $curStoredFrame = chinaMarker_getSelectedStoredFrame();
+    
+    if(`objExists $curStoredFrame`) {
+        connectControl $storedVisB ($curStoredFrame+ ".v");
+        if(`getAttr($curStoredFrame+".v")`) 
+            symbolCheckBox -e -v 1 -i ($iconPath+"chinaMarker_visOn."+$ext) $storedVisB;
+        connectControl $storedTemplateB ($curStoredFrame+".template");
+        if(`getAttr($curStoredFrame +".template")`)
+            symbolCheckBox -e -v 1 -i ($iconPath+"chinaMarker_tmpOn."+$ext) $storedTemplateB;
+        
+        }
+    }
+
+
+// check that the clipping plane hasn't been set farther back than
+// the China Marker drawing plane
+global proc chinaMarker_clippingPlaneCheck() {
+	
+    string $curView, $curCamera, $curCamAttrHolder, $dValue;
+	int $nearClipPlaneValue;
+ 
+    // get the layer name
+    $layer = `textScrollList -q -si chinaMarker_LayerTSL`;
+    // what camera is it constrained to
+    string $constObj[] = `listConnections -s 1 ($layer[0]+"_gpGrp.tx")`;
+    string $constAttrs[] = `listAttr $constObj[0]`;
+    for($x in $constAttrs) {
+        if(`gmatch $x "*W0"`) {
+            
+            $curCamera = `substring $x 1 (size($x)-2)`;   
+            break;
+            }        
+        }        
+ 	
+	 
+	 //find the value of the near clippling plane on the current camera
+	 $curCamAttrHolder = $curCamera + ".nearClipPlane";
+	 $nearClipPlaneValue = `getAttr $curCamAttrHolder`;
+
+	 
+	 if($nearClipPlaneValue >= 1) {
+		  $dValue = `confirmDialog
+    	                      -title "Clipping Plane Warning"
+			      -messageAlign "center"
+    	                      -message ("Your near clipping plane is greater than 1,"+
+                                    "which will not work with the tool.  Should it be changed?")
+    	                      -button "Change Clipping Plane"
+                              -defaultButton "Change Clipping Plane"
+    	                      -button "Cancel"
+    	                      -cancelButton "Cancel"
+			      -parent "MayaWindow"
+    	                      -dismissString "Cancel"`;
+		
+		if($dValue == "Change Clipping Plane") {
+			setAttr $curCamAttrHolder .1;
+		    }
+		else return;
+        }
+    }
+    
+    
+///////////////////////
+//  color procs
+
+// these are the color values for the object overrides colors
+proc float[] chinaMarker_getColorValues() {
+    
+    // get prefs dir
+    string $path = `internalVar -upd`;
+    $path = ($path + "paletteColors.mel");
+    if(! `filetest -r $path`) return {};
+    
+    $fileId = `fopen $path "r"`;
+    string $fileContents[];
+    string $nextLine = `fgetline $fileId`;
+    while(size($nextLine) > 0) {
+        $fileContents[size($fileContents)] = $nextLine;
+        $nextLine = `fgetline $fileId`;        
+        }
+    fclose $fileId;
+        
+    float $rgbValues[];
+    for ($x in $fileContents) {
+        string $tok[];
+        tokenizeList($x, $tok);
+        
+        $rgbValues[size($rgbValues)] = float($tok[2]);
+        $rgbValues[size($rgbValues)] = float($tok[3]);
+        $rgbValues[size($rgbValues)] = float(`substring $tok[4] 1 (size($tok[4])-1) `);
+        
+        }
+    
+    return $rgbValues;
+    
+    }
+
+// create a selection gui to pick an override color
+global proc chinaMarker_colorSelector() {
+    int $colorIndex;
+    
+    string $canvasWid[];
+    float $rgbValues[] = chinaMarker_getColorValues();
+    
+    $winName = "chinaMarker_colorSelector";
+    if(`window -ex $winName`) deleteUI $winName;
+    
+    $win = `window -t "Color Selector" $winName`;
+    $scroll = `scrollLayout -hst 0`;
+    $fl = `formLayout -nd 100`;
+    
+    // create the canvas widgets
+    for($x=0; $x < size($rgbValues); $x=$x+3) {
+        
+        int $index = $x/3;
+        
+        string $widName = ("chinaMarker_color"+$index);
+        float $r = $rgbValues[$x];
+        float $g = $rgbValues[$x+1];
+        float $b = $rgbValues[$x+2];
+        string $wid = `canvas -rgbValue $r $g $b -w 75 -h 20 
+            -pc ("chinaMarker_colorSelected "+$index) $widName`;
+            
+        $label = `text -l ($index+1) -fn "boldLabelFont"`;
+        
+        formLayout -e
+            -af $wid top (10+($index*30))
+            -af $wid left 10
+            -ap $wid right 10 50
+            
+            -af $label top (10 + ($index*30))
+            -ac $label left 30 $wid
+            $fl;
+                
+        $canvasWid[$index] = $wid;    
+        }
+        
+    showWindow $win;
+    window -e -w 200 -h 250 $win;
+    }
+    
+    
+// set the color swatch to the new index and apply the color
+// to any selected curves
+global proc chinaMarker_colorSelected(int $index) {
+        
+    // change the swatch color in the GUI
+    string $swatch = "chinaMarker_colorSelectorB";
+    string $colorIndex = "chinaMarker_colorIndex";
+    
+    float $rgbValues[] = chinaMarker_getColorValues();
+    float $r = $rgbValues[$index*3];
+    float $g = $rgbValues[($index*3) +1];
+    float $b = $rgbValues[($index*3) +2];
+    canvas -e -rgb $r $g $b $swatch;
+    text -e -l $index $colorIndex;
+    
+    // are there any selected curves
+    string $objs[] = `ls -sl`;
+    for($obj in $objs) {        
+        // is it a nurbs curve
+        string $shapes[] = `listRelatives -ad -typ "nurbsCurve" $obj`;
+        $a = size($shapes); print $a;
+        // is it a nurbs surface
+        if(! size($shapes)) {
+            // get the surface shape node
+            string $children[] = `listRelatives -ad $obj`;
+            // get the shape node
+            $shapes = `listRelatives -ad -type "nurbsCurve" $children[0]`;            
+            }
+        
+        for($x in $shapes) {             
+            // enable overrides
+            setAttr($x+".overrideEnabled") 1;
+            // set the color index
+            setAttr($x+".overrideColor") ($index+1);
+            }
+        }
+    
+    }
+    
+    
+// called from scriptJob when new DAG object created; sets current
+// color on new curve
+global proc chinaMarker_setCurveColor() {
+    string $objs[] = `ls -sl`;
+    
+    // get current color index
+    string $colorIndex = "chinaMarker_colorIndex";
+    int $index = int(`text -q -l $colorIndex`);
+    
+    for($obj in $objs) {
+        // get the shape node
+        string $shapes[] = `listRelatives -s $obj`;
+        // is it a nurbs curve
+        string $type[]= `ls -st $shapes[0]`;
+        if($type[1] != "nurbsCurve") continue;
+        
+        setAttr ($shapes[0]+".overrideEnabled") 1;
+        setAttr ($shapes[0]+".overrideColor") ($index+1);
+        }
+   
+    }
+
+///////////////////////
+    
+global proc chinaMarker_launchDocs() {
+    string $scriptPath = `internalVar -usd`;
+    $scriptPath = ($scriptPath + "docs/ChinaMarkerDocs.mht");
+    print $scriptPath;
+    if(`filetest -r $scriptPath`){
+        print "here";
+        system("load "+ $scriptPath);
+        }
+    }
+    
+
+    
+//////////////////////
+//  launch the GUI
+global proc chinaMarker_GUI() {
+   
+	$win = "chinaMarker_cmPencilWin";
+    
+   // check if a node exists to stick China Marker objects under
+    if (!`objExists chinaMarkerGroup`) {
+        createNode "transform" -n "chinaMarkerGroup";
+	    }
+    	    
+
+    // create the window
+	if (`window -exists $win`)
+		deleteUI $win;
+
+	chinaMarker_createChinaMarkerWindow $win;
+    window -e -w 450 -h 700 $win;
+    
+	showWindow $win;
+    //chinaMarker_StoredFrameCollapse();
+   
+    }

@@ -1,0 +1,412 @@
+global proc shelf_General () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Learning Movies: Shows movies demonstrating basic concepts" 
+        -align "center" 
+        -label "Learning Movies" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "LearningMovies.xpm" 
+        -image1 "LearningMovies.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "mayaLearningMoviesPage" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Help" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "menuIconHelp.xpm" 
+        -image1 "menuIconHelp.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "checkHelpPrefs `about -uiLanguage`" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Tumble Tool: Rotate the point of view around the centre of interest (Alt + LMB)" 
+        -align "center" 
+        -label "Tumble Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "tumble.xpm" 
+        -image1 "tumble.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "TumbleTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "ToolSettingsWindow" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Track Tool: Track the camera (Alt + MMB)" 
+        -align "center" 
+        -label "Track Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "track.xpm" 
+        -image1 "track.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "TrackTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "ToolSettingsWindow" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Dolly Tool: Move the camera in and out (Alt + RMB)" 
+        -align "center" 
+        -label "Dolly Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "dolly.xpm" 
+        -image1 "dolly.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "DollyTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "ToolSettingsWindow" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Zoom Tool: Zoom the camera in and out" 
+        -align "center" 
+        -label "Zoom Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "boxZoom.xpm" 
+        -image1 "boxZoom.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ZoomTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "ToolSettingsWindow" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Undo: Undo the last action" 
+        -align "center" 
+        -label "Undo" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "undo.xpm" 
+        -image1 "undo.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Undo" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Redo: Redo the last undone action" 
+        -align "center" 
+        -label "Redo" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "redo.xpm" 
+        -image1 "redo.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Redo" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Delete: Delete the selected object(s)" 
+        -align "center" 
+        -label "Delete" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "deleteActive.xpm" 
+        -image1 "deleteActive.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Delete" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Group: Group the selected object(s)" 
+        -align "center" 
+        -label "Group" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "group.xpm" 
+        -image1 "group.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Group" 
+        -sourceType "mel" 
+        -doubleClickCommand "GroupOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Ungroup: Ungroup the selected object(s)" 
+        -align "center" 
+        -label "Ungroup" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "ungroup.xpm" 
+        -image1 "ungroup.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Ungroup" 
+        -sourceType "mel" 
+        -doubleClickCommand "UngroupOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Parent: Parent the selected object(s) to the last selected object" 
+        -align "center" 
+        -label "Parent" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "parent.xpm" 
+        -image1 "parent.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Parent" 
+        -sourceType "mel" 
+        -doubleClickCommand "ParentOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Unparent: Unparent the selected object(s)" 
+        -align "center" 
+        -label "Unparent" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "unparent.xpm" 
+        -image1 "unparent.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "Unparent" 
+        -sourceType "mel" 
+        -doubleClickCommand "UnparentOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Hypergraph: Display and edit relationships among nodes in your scene graphically" 
+        -align "center" 
+        -label "Hypergraph" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "hypergraph.xpm" 
+        -image1 "hypergraph.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "HypergraphWindow" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select by hierarchy and combinations" 
+        -align "center" 
+        -label "Select by Hierarchy" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "selectByHierarchy.xpm" 
+        -image1 "selectByHierarchy.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "changeSelectMode -hierarchical" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select by object type" 
+        -align "center" 
+        -label "Select by Object" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "selectByObject.xpm" 
+        -image1 "selectByObject.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "changeSelectMode -object" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select by component type" 
+        -align "center" 
+        -label "Select by Component" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "selectByComponent.xpm" 
+        -image1 "selectByComponent.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "changeSelectMode -component" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Paint Selection Tool: Paint selection of CVs, vertices, faces, and edges" 
+        -align "center" 
+        -label "Paint Selection Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "artSelect.xpm" 
+        -image1 "artSelect.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ArtPaintSelectTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "ArtPaintSelectToolOptions" 
+        -actionIsSubstitute 0
+    ;
+
+} 

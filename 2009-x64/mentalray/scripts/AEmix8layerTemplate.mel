@@ -1,0 +1,307 @@
+//author: francescaluce for Ctrl-studio
+//modified: 08.01.04
+//note:: mel template for mix8layer mentalray shader
+
+
+//blending modes
+global proc AEmix8L_bMode( string $attrName )
+{
+
+	setUITemplate -pst attributeEditorTemplate;
+
+	rowColumnLayout 
+		-nc 1
+    	-columnWidth 1 250;
+
+	attrEnumOptionMenuGrp 
+		-l "blending.mode" 
+		-at $attrName 
+			-ei 0 ")  alpha"
+			-ei 1 ")  normal.mix"
+			-ei 2 ")  add"
+			-ei 3 ")  multiply"
+			-ei 4 ")  substract"
+			-ei 5 ")  screen"
+			-ei 6 ")  darker"
+			-ei 7 ")  lighter"
+			-ei 8 ")  difference"
+			-ei 9 ")  average"  
+			-ei 10 ")  negation" 
+			-ei 11 ")  exclusion" 
+			-ei 12 ")  overlay" 
+			-ei 13 ")  hard.light" 
+			-ei 14 ")  soft.light" 
+			-ei 15 ")  color.dodge" 
+			-ei 16 ")  color.burn" 
+			-ei 17 ")  reflect"
+			-ei 18 ")  glow" 
+			-ei 19 ")  stamp" 
+			-ei 20 ")  freeze" 
+			-ei 21 ")  heat"
+			bcBlend_modeGrp;
+
+	setUITemplate -ppt;
+
+	AEmix8L_replace_bMode( $attrName );
+}
+
+global proc AEmix8L_replace_bMode( string $attrName )
+{
+
+	attrEnumOptionMenuGrp -e -at $attrName bcBlend_modeGrp;
+}
+
+//fb renumbering
+global proc AEmix8L_fbrn( string $attrName )
+{
+
+	setUITemplate -pst attributeEditorTemplate;
+
+	rowColumnLayout 
+		-nc 1
+    	-columnWidth 1 250;
+
+	attrEnumOptionMenuGrp
+		-l "re.number" 
+		-at $attrName 
+			-ei 0 " select.."
+			-ei 1 " user.1 "
+			-ei 2 " user.2 "
+			-ei 3 " user.3 "
+			-ei 4 " user.4 "
+			-ei 5 " user.5 "
+			-ei 6 " user.6 "
+			-ei 7 " user.7 " mix8_fbrn_modeGrp;
+
+	setUITemplate -ppt;
+
+	AEmix8L_fbrn_replace( $attrName );
+}
+
+global proc AEmix8L_fbrn_replace( string $attrName )
+{
+
+	attrEnumOptionMenuGrp -e -at $attrName mix8_fbrn_modeGrp;
+}
+
+
+//ghost cc
+global proc AEmix8l_chkCC( string $nodeName)
+{
+		if ((getAttr ($nodeName+".f_colorCorrection"))){
+			
+			editorTemplate -dc $nodeName "f_cHue" false;
+			editorTemplate -dc $nodeName "f_cSat" false;
+			editorTemplate -dc $nodeName "f_cVal" false;
+			editorTemplate -dc $nodeName "f_cGamma" false;
+			editorTemplate -dc $nodeName "f_cBias" false;
+			editorTemplate -dc $nodeName "f_cGain" false;
+			editorTemplate -dc $nodeName "f_cBound" false;
+			editorTemplate -dc $nodeName "f_cScale" false;
+			editorTemplate -dc $nodeName "f_enableTransp" false;
+			editorTemplate -dc $nodeName "f_transparency" false;
+		}else{
+
+			editorTemplate -dc $nodeName "f_cHue" true;
+			editorTemplate -dc $nodeName "f_cSat" true;
+			editorTemplate -dc $nodeName "f_cVal" true;
+			editorTemplate -dc $nodeName "f_cGamma" true;
+			editorTemplate -dc $nodeName "f_cBias" true;
+			editorTemplate -dc $nodeName "f_cGain" true;
+			editorTemplate -dc $nodeName "f_cBound" true;
+			editorTemplate -dc $nodeName "f_cScale" true;
+			editorTemplate -dc $nodeName "f_enableTransp" true;
+			editorTemplate -dc $nodeName "f_transparency" true;
+
+		}
+}
+
+global proc AEmix8_oFb( string $nodeName)
+{
+	if ((getAttr ($nodeName+".f_onlyframebuffer")))
+	{
+		setAttr ($nodeName+".f_colorCorrection") 0;
+		editorTemplate -dc $nodeName "f_colorCorrection" true;
+		
+	}else	editorTemplate -dc $nodeName "f_colorCorrection" false;	
+}
+
+
+global proc AEmix8l_chkMC( string $nodeName)
+{
+	if ((getAttr ($nodeName+".f_cBound")))setAttr ($nodeName+".f_cScale") 0;
+	if ((getAttr ($nodeName+".f_cScale")))setAttr ($nodeName+".f_cBound") 0;
+}
+
+global proc AEmix8layerTemplate( string $nodeName )
+{
+editorTemplate -beginScrollLayout;
+	editorTemplate -beginLayout "mix8layer" -collapse 0 -bn;
+
+	editorTemplate -beginLayout "global.options" -collapse 1 -bn;
+		editorTemplate -addSeparator;			
+		editorTemplate -l"Only FrameBuffers" -addControl "f_onlyframebuffer" "AEmix8_oFb";
+		editorTemplate -addSeparator;
+		editorTemplate -addSeparator;			
+		editorTemplate -l"Enable c.correction" -addControl "f_colorCorrection" "AEmix8l_chkCC";
+		
+
+		editorTemplate -beginLayout "g.methods" -collapse 1 -bn;
+			editorTemplate -addSeparator;
+			editorTemplate -l"bound.clipping" -addControl "f_cBound" "AEmix8l_chkMC";		
+			editorTemplate -addSeparator;
+			editorTemplate -l"scale.clipping" -addControl "f_cScale" "AEmix8l_chkMC";
+			editorTemplate -addSeparator;
+		editorTemplate -endLayout-en;
+
+		editorTemplate -beginLayout "g.hsv" -collapse 1 -bn;
+			editorTemplate -addSeparator;
+		
+			editorTemplate -addSeparator;
+			editorTemplate -l"saturation" -addControl "f_cSat";
+			editorTemplate -addSeparator;
+			editorTemplate -l"lightness" -addControl "f_cVal";
+		editorTemplate -endLayout-en;
+		
+		editorTemplate -beginLayout "g.correction" -collapse 1 -bn;
+			editorTemplate -addSeparator;
+			editorTemplate -l"gamma" -addControl "f_cGamma";			
+			editorTemplate -addSeparator;
+			editorTemplate -l"bias" -addControl "f_cBias";
+			editorTemplate -addSeparator;
+			editorTemplate -l"gain" -addControl "f_cGain";
+		editorTemplate -endLayout-en;
+
+		editorTemplate -beginLayout "g.opacity" -collapse 1 -bn;
+			editorTemplate -addSeparator;
+			editorTemplate -l"enable" -addControl "f_enableTransp";			
+			editorTemplate -addSeparator;
+			editorTemplate -l"opacity" -addControl "f_transparency";
+		editorTemplate -endLayout-en;
+	
+	editorTemplate -endLayout-en;
+
+		editorTemplate -addSeparator;
+		editorTemplate -addSeparator;
+		editorTemplate -l "n.layers" -addControl "f_nSlots";	
+		editorTemplate -addSeparator;
+
+		editorTemplate -beginLayout "base.options" -collapse 1 -bn;
+				editorTemplate -addSeparator;
+				editorTemplate -addSeparator;
+				editorTemplate -l "c.hue" -addControl "f_layerHue_0";
+				editorTemplate -l "c.sat" -addControl "f_layerSat_0";
+				editorTemplate -l "c.val" -addControl "f_layerVal_0";
+
+			editorTemplate -addSeparator;
+			editorTemplate -l "c.invert" -addControl "f_layerInvert_0";
+			editorTemplate -addSeparator;
+	
+		editorTemplate -endLayout-en;
+
+
+
+//hide base layer opacity attrs
+		editorTemplate -s "f_enableLayer_0";
+		editorTemplate -s "f_opacityLayer_0";
+		editorTemplate -s "f_blendMode_0";
+		editorTemplate -s "f_layerWpow_0";
+		editorTemplate -s "f_layerInvAlpha_0";
+		editorTemplate -s "f_layerAlpha_0";
+		editorTemplate -s "f_layerAlphaBias_0";
+		editorTemplate -s "f_layerAlphaGain_0";
+		editorTemplate -s "f_layerAlphaContrast_0";
+
+		editorTemplate -addSeparator;
+		editorTemplate -l"layerName_0" -addControl "layerName_0";
+		editorTemplate -addSeparator;
+		editorTemplate -l ":: base.color" -addControl "f_colorLayer_0";		
+		editorTemplate -addSeparator;	
+		editorTemplate -addSeparator;	
+
+
+//mix8.layer rollouts
+		//editorTemplate -beginLayout "mix.8layer" -collapse 0 -bn;
+		editorTemplate -addSeparator;
+
+
+			int $o;			
+			for ($o = 1; $o < 8; $o++){	
+
+				$rr = 1;
+				if ($o==1)$rr=0;	
+
+				editorTemplate -beginLayout ("layer."+$o) -collapse $rr -bn;
+
+	
+				editorTemplate -beginLayout ".options" -collapse 1 -bn;
+				
+					editorTemplate -beginLayout "..fb" -collapse 1 -bn;					
+						editorTemplate -addSeparator;
+						editorTemplate -l "put.in.framebuffer" -addControl ("f_framebuffer_"+$o);
+						editorTemplate -l "isolate" -addControl ("f_fbisolate_"+$o);
+						editorTemplate -s ("f_fbrenumber_"+$o);
+						editorTemplate -callCustom "AEmix8L_fbrn"
+									"AEmix8L_fbrn_replace" ("f_fbrenumber_"+$o) ;
+					editorTemplate -endLayout-en;
+					
+					editorTemplate -beginLayout "..cc" -collapse 1 -bn;
+						editorTemplate -addSeparator;
+						editorTemplate -addSeparator;
+						editorTemplate -l "hue" -addControl ("f_layerHue_"+$o);
+						editorTemplate -l "sat" -addControl ("f_layerSat_"+$o);
+						editorTemplate -l "val" -addControl ("f_layerVal_"+$o);
+						editorTemplate -addSeparator;
+						editorTemplate -l "c.invert" -addControl ("f_layerInvert_"+$o);
+						//editorTemplate -addSeparator;
+					editorTemplate -endLayout-en;
+
+					editorTemplate -beginLayout "..alpha" -collapse 1 -bn;
+						editorTemplate -addSeparator;
+						editorTemplate -addSeparator;
+						editorTemplate -l "gamma" -addControl ("f_layerWpow_"+$o);
+						editorTemplate -l "bias" -addControl ("f_layerAlphaBias_"+$o);
+						editorTemplate -l "gain" -addControl ("f_layerAlphaGain_"+$o);
+						editorTemplate -l "contrast" -addControl ("f_layerAlphaContrast_"+$o);
+						editorTemplate -addSeparator;
+						editorTemplate -l "alpha.invert" -addControl ("f_layerInvAlpha_"+$o);
+						editorTemplate -addSeparator;
+						editorTemplate -l "use alpha.channel" -addControl ("f_layerAlpha_"+$o);
+					editorTemplate -endLayout-en;
+												
+				editorTemplate -endLayout-en;
+
+
+					editorTemplate -addSeparator;
+					editorTemplate -l"Enable" -addControl ("f_enableLayer_"+$o);
+					editorTemplate -addSeparator;
+					editorTemplate -addSeparator;
+
+					editorTemplate -l("layerName_"+$o) -addControl ("layerName_"+$o);
+
+					editorTemplate -addSeparator;
+					editorTemplate -addSeparator;
+					editorTemplate -s ("f_blendMode_"+$o);
+					editorTemplate -callCustom "AEmix8L_bMode"
+									"AEmix8L_replace_bMode" ("f_blendMode_"+$o) ;
+					editorTemplate -addSeparator;
+					editorTemplate -l "o.factor." -addControl ("f_opacityLayer_"+$o);
+					editorTemplate -addSeparator;
+					editorTemplate -addSeparator;
+					editorTemplate -l(":: color."+$o) -addControl ("f_colorLayer_"+$o);
+					editorTemplate -addSeparator;
+					editorTemplate -addSeparator;				
+				editorTemplate -endLayout-en;	
+			}
+
+		//editorTemplate -endLayout-en;
+
+
+	editorTemplate -endLayout;
+editorTemplate -endLayout;
+
+AEdependNodeTemplate $nodeName;
+
+editorTemplate -addExtraControls;
+editorTemplate -endScrollLayout;
+}

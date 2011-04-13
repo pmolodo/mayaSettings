@@ -1,0 +1,35 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc int [] zenIntArrayRemove( int $items[], int $list[] )
+{
+	int	$item, $listItem, $result[];
+	int	$keep, $resultIndex = 0;
+	
+		for ($listItem in $list) 
+		{
+			$keep = 1;
+			for ($item in $items) 
+			{
+				if ($item == $listItem) 
+				{
+					$keep = 0;
+					break;
+				}
+			}
+			if ($keep) $result[$resultIndex++] = $listItem;
+		}
+	
+	return	$result;
+}

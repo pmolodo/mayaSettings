@@ -1,0 +1,74 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+global proc string layoutZenCurveSpans()
+{
+	global 	int	$zenOptions_attachSpansDegree,
+			$zenOptions_attachSpansCount,
+			$zenOptions_attachSpansShave,
+			$zenMinimumWindowWidth;
+	
+	string 	$parentLayout=`zenClearToolColumn`;
+	
+	string	$zenAttachColumn=`columnLayout -adj 1 -p $parentLayout`;
+	
+	global 	string $zenToolsWindow;
+	
+		window -e -w $zenMinimumWindowWidth -title "ZenTools : Curve Spans" $zenToolsWindow;
+				
+			intFieldGrp
+				-co2 2 2
+				-adj 2
+				-cw 1 50
+				-p $zenAttachColumn
+				-numberOfFields 1
+				-l "Degree"
+				-v1 $zenOptions_attachSpansDegree 
+				-cc "$zenOptions_attachDegree=`intFieldGrp -q -v1 zenOptions_attachSpansDegree`"
+				zenOptions_attachSpansDegree;
+
+			intFieldGrp
+				-co2 2 2
+				-adj 2
+				-cw 1 50
+				-p $zenAttachColumn
+				-l "Spans"
+				-en 1
+				-numberOfFields 1
+				-v1 $zenOptions_attachSpansCount
+				-cc "$zenOptions_attachSpansCount=`intFieldGrp -q -v1 zenOptions_attachSpansCount`"
+				zenOptions_attachSpansCount;
+
+			separator -p $zenAttachColumn -w $zenMinimumWindowWidth;
+
+			checkBox
+				-p $zenAttachColumn
+				-en `pluginInfo -q -l "shaveNode"`
+				-v $zenOptions_attachSpansShave
+				-al left
+				-l " Create Shave Hairs "
+				-cc "$zenOptions_attachShave=`checkBox -q -v zenOptions_attachSpansShave`"
+				zenOptions_attachSpansShave;
+
+			separator -p $zenAttachColumn;
+
+			button
+				-h 20
+				-p $zenAttachColumn
+				-label Apply
+				-command "doZenCommand doZenAttachSpans";
+
+	return	$zenAttachColumn;
+}

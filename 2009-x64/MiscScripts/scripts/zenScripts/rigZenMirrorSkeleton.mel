@@ -1,0 +1,108 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//Mirrors a skeleton from the root joint.  
+//Joints to be mirrored are determined by side labels, or naming if side labels are absent.
+
+global proc rigZenMirrorSkeleton
+(	
+	string	$axis, // XY,YZ,XZ
+	string	$root
+)
+{
+	string	$joints[]=zenReverseStringArray(`listRelatives -f -ad -type joint $root`);
+	string	$findString;
+	string	$replaceString;
+	string	$mirroredJoints[];
+	string	$jointToMirror[];
+		
+		for($j in $joints)
+		{
+			if(!`stringArrayContains $j $mirroredJoints`)
+			{
+				if(`gmatch $j "*[Ll][Ee][Ff][Tt]*"` || `getAttr ($j+".side")`==1)//joint is on left side
+				{
+					$findString="";
+					$replaceString="";
+				
+					$findString=match("[Ll][Ee][Ff][Tt]",$j);
+					
+					if(size($findString))
+					{
+						if(`substring $findString 1 1`=="L") 
+							$replaceString="R";
+						else
+							$replaceString="r";
+
+						if(`substring $findString 2 2`=="E") 
+							$replaceString=$replaceString+"IGHT";
+						else
+							$replaceString=$replaceString+"ight";
+							
+						mirrorJoint(("-mirror"+$axis),"-mirrorBehavior","-searchReplace",$findString,$replaceString,$j);
+					}
+					else										
+						mirrorJoint(("-mirror"+$axis),"-mirrorBehavior",$j);
+					
+					$mirroredJoints=stringArrayCatenate($mirroredJoints,`listRelatives -f -ad -type joint $j`);
+				}
+				else
+				if(`gmatch $j "*[Rr][Ii][Gg][Hh][Tt]*"` || `getAttr ($j+".side")`==2)//joint is on right side
+				{
+					$findString="";
+					$replaceString="";
+					
+					$findString=match("[Rr][Ii][Gg][Hh][Tt]",$j);
+
+					if(size($findString))
+					{
+						if(`substring $findString 1 1`=="R") 
+							$replaceString="L";
+						else
+							$replaceString="l";
+
+						if(`substring $findString 2 2`=="I") 
+							$replaceString=$replaceString+"EFT";
+						else
+							$replaceString=$replaceString+"eft";
+
+						mirrorJoint(("-mirror"+$axis),"-mirrorBehavior","-searchReplace",$findString,$replaceString,$j);
+					}
+					else					
+						mirrorJoint(("-mirror"+$axis),"-mirrorBehavior",$j);
+					
+					$mirroredJoints=stringArrayCatenate($mirroredJoints,`listRelatives -f -ad -type joint $j`);
+				}
+			}
+		}
+		
+	//change side attribute for mirrored joints & rename if they have non-unique names
+	string	$allJoints[]=`listRelatives -f -ad -type joint $root`;
+		$newJoints=`stringArrayRemove $joints $allJoints`;
+		
+		select $newJoints;
+		
+	string	$shortName;
+	int	$side;
+		
+		for($j in $newJoints)
+		{	
+			$side=`getAttr ($j+".side")`;
+			if($side==1) setAttr ($j+".side") 2;
+			if($side==2) setAttr ($j+".side") 1;
+			
+			$shortName=zenReturnLastStringItem(`stringToStringArray $j "|"`);
+			if(size(ls($shortName))>1) rename($j,`zenUniqueName $shortName`);
+		}
+}

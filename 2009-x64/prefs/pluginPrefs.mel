@@ -1,0 +1,7 @@
+//Maya Preference 2009 (Release 1)
+//
+//
+evalDeferred("autoLoadPlugin(\"\", \"Fur\", \"Fur\")");
+evalDeferred("autoLoadPlugin(\"\", \"DirectConnect\", \"DirectConnect\")");
+evalDeferred("autoLoadPlugin(\"\", \"ikSpringSolver\", \"ikSpringSolver\")");
+evalDeferred("autoLoadPlugin(\"\", \"Mayatomr\", \"Mayatomr\")");

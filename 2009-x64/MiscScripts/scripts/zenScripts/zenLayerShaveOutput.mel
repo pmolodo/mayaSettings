@@ -1,0 +1,34 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc zenLayerShaveOutput()
+{
+	string	$currentLoc=dirname(`getAttr shaveGlobals.hairFilenamePrefix`);
+		if($currentLoc=="") $currentLoc="shave";
+
+	string	$command=
+		(
+			"source zenTools;"+
+			"setAttr -type \"string\" shaveGlobals.hairFilenamePrefix "+
+			"(\""+$currentLoc+"/\"+`editRenderLayerGlobals -q -crl`);"
+		);
+		
+	string	$currentMEL=`getAttr defaultRenderGlobals.preRenderLayerMel`;
+	
+		if($currentMEL!="") $currentMEL=$currentMEL+";";
+	
+		setAttr -type "string" defaultRenderGlobals.preRenderLayerMel ($currentMEL+$command);
+		
+		print "Shave images will output images named by render layer.";
+}

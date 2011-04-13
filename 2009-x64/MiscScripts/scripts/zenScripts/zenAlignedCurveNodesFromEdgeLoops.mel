@@ -1,0 +1,52 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//create alligned curve nodes between given edge loops
+global proc string[] zenAlignedCurveNodesFromEdgeLoops(string $sel[],int $degree)
+{
+		$sel=`ls -fl $sel`;
+	string	$edgesString[]=`zenIsolateAllignedLoops $sel`;
+		$edgesString=`zenOrderLoopRings $edgesString`;
+	string	$newCurve[];
+	string	$commonEdges[];
+	string	$edges[];
+	int	$progress;
+	
+		if(size($edgesString)>3)
+		{
+			progressWindow -title "Working" -status "Creating Curve History" -progress 0 -ii 1 -max (size($edgesString));
+			$progress=1;
+		}
+		
+		for($i=0;$i<size($edgesString);$i++)
+		{
+			$edges=`stringToStringArray $edgesString[$i] ","`;
+			$newCurve[$i]=`zenEdgeCurveNode $edges $degree`;
+			
+			if($progress)
+			{
+				progressWindow -e -s 1;
+				if(`progressWindow -q -ic`)
+				{
+					progressWindow -ep;
+					error "User Interupt.";
+				}
+			}
+		}
+		
+		progressWindow -ep;
+		
+		$newCurve=`stringArrayRemove {""} $newCurve`;
+	return 	$newCurve;
+}

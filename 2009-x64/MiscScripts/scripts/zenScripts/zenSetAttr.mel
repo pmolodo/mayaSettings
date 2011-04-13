@@ -1,0 +1,49 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc zenSetAttr(string $attribute,string $value,int $recursive)
+{
+	global	int	$zenErr;
+
+	string	$sel[];
+	
+		if($recursive)
+			$sel=stringArrayRemoveDuplicates(stringArrayCatenate(`ls -sl`,`listRelatives -f -ad`));
+		else
+			$sel=stringArrayRemoveDuplicates(stringArrayCatenate(`ls -sl`,`listRelatives -f -s`));
+		
+	int	$err;
+			
+	string	$dataType;
+	
+		for($s in $sel)
+		{
+			if(`objExists ($s+"."+$attribute)`)
+			{
+				$dataType=`getAttr -type ($s+"."+$attribute)`;
+				
+				eval("$zenErr=catch(`setAttr "+$s+"."+$attribute+"  "+$value+"`)");			
+					
+				if($zenErr) 
+				{
+					eval("$zenErr=catch(`setAttr -type "+$dataType+" "+$s+"."+$attribute+" "+$value+"`)");
+					
+					if($zenErr)
+						print ("Unable to set value for "+$s+".\n");
+				}
+			}
+		}
+		
+		print	("Finished.");
+}

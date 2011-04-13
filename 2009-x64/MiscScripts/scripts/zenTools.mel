@@ -1,0 +1,470 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+/*
+David Belais
+dbelais@gmail.com
+February 27, 2007
+*/
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//Utilities
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//reverse a string array
+global proc string[] zenReverseStringArray(string $array[])
+{
+	string	$arrayOut[];
+	
+		for($i=0;$i<size($array);$i++)
+		{
+			$arrayOut[$i]=$array[(size($array)-1-$i)];
+		}
+		
+	return 	$arrayOut;
+}
+
+global proc string zenSeparatorString()
+{
+	if(`about -os`=="nt" || `about -os`=="win64")
+		return ";";
+	else
+		return ":";
+}
+
+global proc string zenPluginExt()
+{
+	if(`about -os`=="nt" || `about -os`=="win64")
+		return ".mll";
+
+	if(`about -os`=="linux" || `about -os`=="linux64")
+		return ".so";
+
+	if(`about -os`=="mac")
+		return ".lib";
+		
+	return ".so";
+}
+
+//return the first item in a string array
+global proc string zenReturnLastStringItem(string $array[])
+{
+	if(size($array)>0)
+		return $array[size($array)-1];
+	else
+		return "";
+}
+
+//return the first item in a string array
+global proc string zenReturnFirstStringItem(string $array[])
+{
+	if(size($array)>0)
+		return $array[0];
+	else
+		return	"";
+	
+}
+
+//return an array which is comprised of the portion
+//beginning at $start and ending at $end
+global proc string[] zenStringArraySector(string $array[], int $start,int $end)
+{
+	int 	$n=0;
+	string 	$newArray[];
+	
+		for($i=$start;$i<=$end;$i++)
+		{
+			$newArray[$n]=$array[$i];
+			$n++;
+		}
+		
+	return 	$newArray;
+}
+
+//return an array which is comprised of the portion
+//beginning at $start and ending at $end
+global proc int[] zenIntArraySector(int $array[], int $start,int $end)
+{
+	int 	$n=0;
+	int 	$newArray[];
+	
+		for($i=$start;$i<=$end;$i++)
+		{
+			$newArray[$n]=$array[$i];
+			$n++;
+		}
+		
+	return 	$newArray;
+}
+
+//return an array which is comprised of the portion
+//beginning at $start and ending at $end
+
+global proc float[] zenFloatArraySector(float $array[], int $start,int $end)
+{
+	int 	$n=0;
+	float 	$newArray[];
+	
+		for($i=$start;$i<=$end;$i++)
+		{
+			$newArray[$n]=$array[$i];
+			$n++;
+		}
+		
+	return 	$newArray;
+}
+
+global proc float zenMayaVersion()
+{
+	return	(stringArrayToString(zenStringArraySector(stringToStringArray(`about -version`,"."),0,1),"."));
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//find the location of a procedure
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc string[] zenProcLocationList(string $procName)
+{
+		rehash;
+	
+	//find the correct separator for the OS
+	string 	$sep;
+	
+		if(`about -os`=="nt" || `about -os`=="win64")
+			$sep=";";
+		else
+			$sep=":";
+
+	//look in the path for the procedure
+	string	$results[];
+	string 	$location;
+	string 	$path[]=stringToStringArray(`getenv MAYA_SCRIPT_PATH`,$sep);
+	int	$id=0;
+	
+		for($p in $path)
+		{
+		    $location=searchPathArray(($procName+".mel"),{$p});
+		    if(size($location))
+			$results[$id++]=$location;
+		}
+
+	//see where it was sourced from
+	string	$verbose=`whatIs ($procName)`;
+	string	$verboseArray[]=`stringToStringArray $verbose ":"`;
+		$verboseArray=`stringArrayRemove {$verboseArray[0]} $verboseArray`;
+		$location=`stringArrayToString $verboseArray ":"`;
+		$location=`strip $location`;
+		
+		if(size($location))
+			$results[$id++]=$location;
+		
+		$results=`stringArrayRemoveDuplicates $results`;
+		
+	return	$results;				
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//find the location of the zenScripts folder
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc string[] zenScriptFolderLocationList( string $folderName, string $adjacentScript )
+{
+		rehash;
+	
+	//find the correct separator for the OS
+	string 	$sep;
+	
+		if(`about -os`=="nt" || `about -os`=="win64")
+			$sep=";";
+		else
+			$sep=":";
+
+	//look in the path for the procedure
+	string	$results[];
+	string 	$location;
+	string 	$path[]=stringToStringArray(`getenv MAYA_SCRIPT_PATH`,$sep);
+	int	$id=0;
+	
+		for($p in $path)
+		{
+		    $location=searchPathArray(($folderName),{$p});
+		    
+		    if(size($location))
+			$results[$id++]=$location;
+		}
+		
+	//search adjacent to this procedure
+	string	$verbose=`whatIs $adjacentScript`;
+	string	$verboseArray[]=`stringToStringArray $verbose ":"`;
+		$verboseArray=`stringArrayRemove {$verboseArray[0]} $verboseArray`;
+		$location=`stringArrayToString $verboseArray ":"`;
+		$location=`strip $location`;
+		$location=`dirname $location`+"/";
+		
+	string	$folderInLocation[]=`getFileList -fld $location -fs $folderName`;
+	
+		for($i=0;$i<size($folderInLocation);$i++)
+			$folderInLocation[$i]=$location+$folderInLocation[$i];	
+				
+		if(size($folderInLocation))
+			$results=`stringArrayCatenate $results $folderInLocation`;
+			
+		$results=`stringArrayRemoveDuplicates $results`;
+		
+	return	$results;				
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//source all scripts in a folder
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//mel
+global proc string zenLoadScriptsFolder(string $dir, int $reSource )
+{
+		$dir=$dir+"/";
+	
+	string	$loaded;
+	string	$scripts[];
+	string	$dir;
+	string	$command[];
+	int	$failed;
+			
+		$scripts=`getFileList -folder $dir -filespec "*.mel"`;
+		
+		if(!size($scripts)) return "";
+		
+	int	$scriptsToLoad=size($scripts);
+		if($reSource) $scriptsToLoad=$scriptsToLoad*2;
+		
+		if(`progressWindow -q -progress`==0)
+		{
+			progressWindow 
+				-isInterruptable 1
+				-title "Working" 
+				-status "Loading Scripts"
+				-max $scriptsToLoad;
+		}
+		
+		for($i=0;$i<size($scripts);$i++)
+		{
+			if($scripts[$i]!="userSetup.mel")
+			{
+				$failed=catchQuiet(`eval("source \""+$dir+$scripts[$i]+"\"")`);
+				if($failed)
+					$loaded=$loaded+($scripts[$i]+" failed to load.\n");
+				else
+					$loaded=$loaded+($scripts[$i]+" loaded.\n");					
+			}
+			
+			progressWindow -e -s 1;
+			
+			if(`progressWindow -q -ic`==1)
+			{
+				progressWindow -endProgress;
+				error "User Interupt.";
+			}
+		}
+		
+		if($reSource) 
+			$loaded=`zenLoadScriptsFolder $dir 0`;
+		
+		progressWindow -endProgress;
+		
+	return	$loaded;
+}
+
+//python
+global proc string zenLoadScriptsFolderPy(string $dir, int $reSource )
+{
+		python( "import sys" );
+		python( "sys.path.append('"+$dir+"')" );
+		python( "import maya.cmds as mc");
+
+
+	string	$loaded;
+	string	$scripts[];
+	string	$command[];
+	int	$failed;
+	
+	
+		$scripts=stringArrayCatenate(`getFileList -folder ($dir+"/") -filespec "*.py"`,`getFileList -folder ($dir+"/") -filespec "*.pyc"`);
+		
+		//strip the extension
+		for($i=0;$i<size($scripts);$i++)
+			$scripts[$i]=basenameEx($scripts[$i]);
+				
+		$scripts=stringArrayRemoveDuplicates($scripts);
+
+		if(!size($scripts)) return "";
+		
+	int	$scriptsToLoad=size($scripts);
+	
+		if($reSource) $scriptsToLoad=$scriptsToLoad*2;
+		
+		if(`progressWindow -q -progress`==0)
+		{
+			progressWindow 
+				-isInterruptable 1
+				-title "Working" 
+				-status "Loading Python Scripts"
+				-max $scriptsToLoad;
+		}
+		
+		for($i=0;$i<size($scripts);$i++)
+		{
+			if($scripts[$i]!="userSetup.py")
+			{
+				
+				
+				$failed=catchQuiet(`python("from "+$scripts[$i]+" import *")`);
+				
+				if($failed)
+					$loaded=$loaded+($scripts[$i]+" failed to load.\n");
+				else
+					$loaded=$loaded+($scripts[$i]+" loaded.\n");					
+			}
+			
+			progressWindow -e -s 1;
+			
+			if(`progressWindow -q -ic`==1)
+			{
+				progressWindow -endProgress;
+				error "User Interupt.";
+			}
+		}
+		
+		if($reSource) 
+			$loaded=`zenLoadScriptsFolder $dir 0`;
+		
+		progressWindow -endProgress;
+		
+	return	$loaded;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//load zenTools
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+global proc int zenScriptsFolder
+(
+	string	$scriptName,
+	string	$scriptFolderName,
+	string	$requiredPlugins[],
+	string	$versionSpecificPlugins[]//comma separated list beginning with version number, then each required plugin
+)
+{
+	global	int $zenToolsLoaded;
+	global	string $zenScriptsFolder;
+	global	int $zenOptions_debugging;
+					
+	//get the correct separator for the OS
+	string 	$sep=`zenSeparatorString`;
+	string	$pluginExt;	
+		
+	//find the maya version number and OS
+	string	$version=`about -version`;
+	string	$versionNum[]=`stringToStringArray $version "."`;
+		$version=$versionNum[0]+"."+$versionNum[1];
+		
+	string	$os=`about -os`;
+	
+		$zenScriptsFolder=zenReturnLastStringItem(`zenScriptFolderLocationList $scriptFolderName $scriptName`);
+
+	//add zenScripts folder to the scripts path
+	
+		putenv MAYA_SCRIPT_PATH (`getenv MAYA_SCRIPT_PATH`+$sep+$zenScriptsFolder);
+		
+	string	$procDir=(zenReturnLastStringItem(`zenProcLocationList zenTools`))+"/";
+		$procDir=`dirname $procDir`;
+		
+		putenv MAYA_SCRIPT_PATH (`getenv MAYA_SCRIPT_PATH`+$sep+$procDir);
+		
+		rehash;
+		
+	//load plugins
+	int	$err=0;
+	
+		progressWindow -title "Working" -status "Checking For Necessary Plugins..." -progress 0 -max (size($requiredPlugins)+1);
+		
+		for($plugin in $requiredPlugins)
+		{
+			if(!`pluginInfo -q -l $plugin`)
+				$err=catch(`loadPlugin $plugin`);
+				
+			progressWindow -e -s 1;
+		}
+		
+	string	$vsPlugins[];
+	
+		for($v in $versionSpecificPlugins)
+		{
+			$vsPlugins=`stringToStringArray $v ","`;
+		
+			if(!`pluginInfo -q -l closestPointOnMesh` && $version==$vsPlugins[0])
+			{
+				for($i=1;$i<size($vsPlugins);$i++)
+					$err=catch(`loadPlugin $vsPlugins[$i]`);
+			}
+		}
+			
+		progressWindow -e -s 1;
+		
+		if($err)
+			error "Not all necessary plugins are installed.";
+			
+		progressWindow -ep;
+		
+		if($zenOptions_debugging)
+			print ("Loading Scripts...\n"+`zenLoadScriptsFolder ($zenScriptsFolder) 1`);
+		
+	//add zenScripts folder to PYTHONPATH and import python scripts
+		
+		if( getApplicationVersionAsFloat() >= 8.5 )
+			print(`zenLoadScriptsFolderPy ($zenScriptsFolder) 0`);
+
+	//load user options
+	
+		rehash;
+		
+	global 	int $userOptionsExist;
+	
+		$userOptionsExist=size(`zenProcLocationList zenTools_userOptions`);
+		
+	string	$optionsCommand="zenTools_defaultOptions;\n";
+	
+		if($userOptionsExist)
+			$optionsCommand=$optionsCommand+"eval(\"source zenTools_userOptions\");\n";
+			
+		$optionsCommand=$optionsCommand+"zenScriptsMenu;\n";
+		
+		evalDeferred $optionsCommand;
+
+		print("zenTools loaded.\n");
+		
+		$zenToolsLoaded=1;
+		
+	return	1;
+}
+
+global proc zenTools()
+{
+	global	int $zenToolsLoaded;
+	
+		if(!$zenToolsLoaded) zenScriptsFolder zenTools zenScripts {"pointOnMeshInfo","decomposeMatrix"} {"7.0,closestPointOnMesh"};
+	
+		evalDeferred "zenUserInterface \"\"";
+}
+
+//run zenScriptsFolder when zenTools is sourced to make all procedures available
+if(!$zenToolsLoaded) zenScriptsFolder zenTools zenScripts {"pointOnMeshInfo","decomposeMatrix"} {"7.0,closestPointOnMesh"};

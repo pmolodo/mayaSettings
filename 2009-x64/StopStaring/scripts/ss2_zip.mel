@@ -1,0 +1,285 @@
+global proc ss2_zip (){
+	print"";
+}
+print "ss2_zip : sourced\n";
+
+
+proc string[] ss2_zip_isLoop (string $point1, string $point2){
+
+	string $output[];
+	string $sel[] = `ls -sl`;
+
+	select $point1;
+	select `polyListComponentConversion -fromVertex -toEdge`;
+	string $edges1[] = `ls -sl -flatten`;
+
+	select $point2;
+	select `polyListComponentConversion -fromVertex -toEdge`;
+	string $edges2[] = `ls -sl -flatten`;
+
+	int $smallest = 9999999;
+
+	for ($e1 in $edges1){
+
+		for ($e2 in $edges2){
+			
+			select $e1 $e2;
+
+			polySelectConstraint -type 0x8000 -propagate 4  -m2a 180 -m3a 180;
+			ConvertSelectionToVertices;
+
+			string $thisLoop[] = `ls -sl -flatten`;
+
+			int $thisSize = size($thisLoop);
+
+			if ($thisSize > 0 && $thisSize < $smallest){
+				clear $output;
+				$smallest = $thisSize;
+				$output = $thisLoop;
+			}
+		}
+	}
+
+	resetPolySelectConstraint;
+	select $sel;
+	return $output;
+}
+
+proc int ss2_zip_getMaxGrow (int $maxGrow, string $point1, string $point2){
+
+	string $sel[] = `ls -sl`;
+
+	int $grow = 0;
+	int $intersect = 0;
+
+	string $grow1[] = {$point1};
+	string $grow2[] = {$point2};
+
+	for ($grow = 0; $grow < $maxGrow; $grow++){
+
+		select $grow1;
+		PolySelectTraverse 1;
+		$grow1 = `ls -sl -flatten`; 
+
+		select $grow2;
+		PolySelectTraverse 1;
+		$grow2 = `ls -sl -flatten`;
+
+		for ($g in $grow1){
+
+			if (`stringArrayCount $g $grow2`){
+
+				$intersect++;
+
+				break;
+
+			}
+
+		}
+
+		if ($intersect)
+			break;
+
+	}
+
+	select $sel;
+
+	return ($grow);
+}
+
+global proc ss2_zip_growPreview (string $maxGrow, int $allowOverlap){
+
+	int $grow = 0;
+
+	string $sel[] = `ls -sl -flatten`;
+
+	if ($allowOverlap){
+		$grow = $maxGrow;
+	}else{
+		$grow = `ss2_zip_getMaxGrow $maxGrow $sel[0] $sel[1]`;
+	}
+
+	for ($i = 0; $i < $grow; $i++)
+		PolySelectTraverse 1;
+
+	warning ("crawl = "+$grow);
+}
+
+
+proc string[] ss2_zip_followCurve (string $vert){
+
+	select $vert;
+
+	select `polyListComponentConversion -fromVertex -toEdge $vert`;
+
+	string $edges[] = `ls -sl -flatten`;
+
+	string $tokens[];
+	tokenize $edges[0] "." $tokens;
+	string $origObject = $tokens[0];
+	tokenize $edges[0] "[]" $tokens;
+	float $edge = $tokens[1];
+
+	string $curveFromMeshEdge = `createNode curveFromMeshEdge`;
+	string $nurbsCurve = `createNode nurbsCurve`;
+	string $parent[] = `listRelatives -parent $nurbsCurve`;
+
+	setAttr ($curveFromMeshEdge+".isHistoricallyInteresting") 1;
+	setAttr ($curveFromMeshEdge+".edgeIndex[0]") $edge;
+
+	connectAttr -f ($origObject + ".worldMesh") ($curveFromMeshEdge + ".inputMesh");
+	connectAttr -f ($curveFromMeshEdge + ".outputCurve") ($nurbsCurve+ ".create");
+
+	//This is just a far too sloppy test for which end of the line to stick to
+	float $pos[] = `xform -q -ws -t $vert`;
+	float $pos0[] = `xform -q -ws -t ($nurbsCurve+".cv[0]")`;
+	float $pos1[] = `xform -q -ws -t ($nurbsCurve+".cv[1]")`;
+
+	if ((abs($pos0[0]-$pos[0])+abs($pos0[1]-$pos[1])+abs($pos0[2]-$pos[2])) < (abs($pos1[0]-$pos[0])+abs($pos1[1]-$pos[1])+abs($pos1[2]-$pos[2]))){
+		return {$parent[0], "0"};
+	}else{
+		return {$parent[0], "1"};
+	}
+}
+
+
+global proc ss2_zip_run (int $maxGrow, int $smooth, int $allowOverlap, int $attemptSharpen){
+
+	warning ("Max grow : "+$maxGrow+"\nSmooth : "+$smooth+"\nAllow Overlap : "+$allowOverlap+"\nSharpen : "+$attemptSharpen);
+
+	ConvertSelectionToVertices;
+
+	string $sel[] = `ls -sl -flatten`;
+
+	if (size($sel) != 2) error ("ss2_zip_run : Select two vertices on the same object");
+
+	string $tokens[];
+	tokenize $sel[0] "." $tokens;
+
+	string $origObject = $tokens[0];
+
+	string $blendShape = `ss2_search_byType "blendShape" {$origObject}`;
+
+	if (!`objExists $blendShape`) error ("No blendshape found");
+		string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 1`;
+
+	int $num = 0;
+
+	int $grow = 0;
+
+	if ($allowOverlap){
+		$grow = $maxGrow;
+	}else{
+		$grow = `ss2_zip_getMaxGrow $maxGrow $sel[0] $sel[1]`;
+	}
+
+	string $grpPrnt = `group -em`;
+
+	for ($s in $sel){
+
+		string $curve[] = `ss2_zip_followCurve $s`;
+		string $curve1[] = `duplicate $curve[0]`;
+
+		string $nurbsBlends[] = `ss2_blend_bakeWeights_run $origObject $curve[0] $blendShape $blendShapeWeight 0`;
+
+		string $bs[] = `blendShape $nurbsBlends $curve1[0]`;
+
+		int $size = size($blendShapeWeight);
+
+		for ($i = 0; $i < $size; $i++)
+			catch(`connectAttr -f ($blendShape+"."+$blendShapeWeight[$i]) ($bs[0]+"."+$nurbsBlends[$i])`);
+
+		float $pos[] = `xform -q -ws -t $s`;
+
+		select $s;
+		for ($i = 0; $i < $grow; $i++)
+			PolySelectTraverse 1;
+		
+		string $softModMe[] = `ls -sl`;
+		
+		string $softMod[] = `softMod -falloffCenter $pos[0] $pos[1] $pos[2] -before $softModMe`;
+		setToolTo selectSuperContext;
+
+		select $origObject;
+		artSetToolAndSelectAttr( "artAttrCtx", ("softMod."+$softMod[0]+".weights") );
+		artAttrCtx -e -opacity 1 `currentCtx`;
+		artAttrCtx -e -accopacity 1 `currentCtx`;
+		artAttrPaintOperation artAttrCtx Smooth;
+
+		for ($i = 0; $i < $smooth; $i++)
+			artAttrCtx -e -clear `currentCtx`;
+
+		if ($attemptSharpen){
+			string $sharedEdges[] = `ss2_zip_isLoop $sel[0] $sel[1]`;
+			if (size($sharedEdges)){
+				select $sharedEdges;
+				ConvertSelectionToVertices;
+				artSetToolAndSelectAttr( "artAttrCtx", ("softMod."+$softMod[0]+".weights") );
+				artAttrPaintOperation artAttrCtx Replace;
+					artAttrCtx -e -value 1 `currentCtx`;
+					artAttrCtx -e -clear `currentCtx`;
+				artAttrPaintOperation artAttrCtx Smooth;
+					artAttrCtx -e -clear `currentCtx`;
+			}else{
+				warning "ss2_zip_run : Cannot automatically sharpen edges, selected points don't share an edge loop";
+			}
+		}
+
+		selectMode -object;
+		setToolTo selectSuperContext;
+
+		setAttr ($softMod[1]+".sy") 0;
+		setAttr ($softMod[0]+".falloffInX") 0;
+		setAttr ($softMod[0]+".falloffInZ") 0;
+		setAttr ($softMod[0]+".falloffAroundSelection") 0;
+		catch(`setAttr ($softMod[0]+".falloffMode") 1`);
+		setAttr ($softMod[1]+".v") 0;
+
+		string $grp = `group -em`;
+
+		string $motionPath = `pathAnimation -fractionMode true -follow false -startTimeU 0 -endTimeU  1 -name ($origObject+"ZipPath") $grp $curve1[0]`;
+		delete `listConnections -destination 0 ($motionPath+".positionMarkerTime")`;
+
+		pointConstraint $grp $softMod[1];
+		connectAttr ($grp+".translate") ($softMod[0]+".falloffCenter");
+
+		float $temp = $curve[1];
+		setAttr ($motionPath+".uValue") $temp;
+
+		delete $nurbsBlends $curve[0];
+
+		addAttr -ln ("falloff"+$num) -k 1 -dv 0.001 -min 0.001 -max 25 -at "double" $origObject;
+		connectAttr -f ($origObject+".falloff"+$num) ($softMod[0]+".falloffRadius");
+
+		parent $softMod[1] $curve1[0] $grp $grpPrnt;
+
+		$num++;
+	}
+	select $origObject;
+}
+
+global proc ss2_zip_shelf (){
+
+	if (`window -exists "ss2_zipWin"`) deleteUI ss2_zipWin;
+	string $window = `window -title "ss2_zipWin" -resizeToFitChildren 1 ss2_zipWin`;
+
+	string $main = `columnLayout`;
+	string $opFrame = `frameLayout -labelVisible 0 -parent $main`;
+	string $opRow = `rowColumnLayout -nc 2 -parent $opFrame`;
+	string $goFrame = `frameLayout -labelVisible 0 -parent $main`;
+	string $goRow = `columnLayout -parent $goFrame`;
+
+
+	text -label "crawl" -parent $opRow;
+	text -label "smooth" -parent $opRow;
+
+	string $crawl = `intField -v 20 -parent $opRow`;
+	string $smooth = `intField -v 20 -parent $opRow`;
+	string $overlap = `checkBox -label "allow overlap" -v 0 -parent $opRow`;
+	string $sharpen = `checkBox -label "sharpen lip" -v 0 -parent $opRow`;
+	button -w 200 -label "paint attributes" -command "string $sel[] = `ls -sl`; string $softMod = `ss2_search_byType softMod $sel`; ArtPaintAttrTool; toolPropertyWindow; artSetToolAndSelectAttr( \"artAttrCtx\", (\"softMod.\"+$softMod+\".weights\") );" -parent $goRow;
+	button -w 200 -label "preview crawl" -command ("int $icrawl = `intField -q -v "+$crawl+"`; int $ioverlap = `checkBox -q -v "+$overlap+"`; ss2_zip_growPreview $icrawl $ioverlap") -parent $goRow;
+	button -w 200 -label "zip lips" -command ("int $icrawl = `intField -q -v "+$crawl+"`; int $ismooth = `intField -q -v "+$smooth+"`; int $ioverlap = `checkBox -q -v "+$overlap+"`; int $isharpen = `checkBox -q -v "+$sharpen+"`; ss2_zip_run $icrawl $ismooth $ioverlap $isharpen") -parent $goRow;
+
+	showWindow $window;
+}

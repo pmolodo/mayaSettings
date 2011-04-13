@@ -1,0 +1,45 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//find the userSetup file and write "source zenTools" in it if it is not already as such.
+global proc int zenWriteStartup()
+{
+	string	$userSetup=zenReturnFirstStringItem(`zenProcLocationList userSetup`);
+	string	$line;
+	int	$id;
+	
+		if(size($userSetup))
+		{
+			$userSetup=strip($userSetup);
+			$line=`zenGetLine "zenTools" $userSetup`;
+			
+			if(size($line))
+			{
+				return 1;
+			}
+			
+			$id=`fopen $userSetup "a"`;
+		}
+		else
+		{
+			$userSetup=`internalVar -usd`+"userSetup.mel";
+			$id=`fopen $userSetup "w"`;
+		}
+
+		fprint $id "\nsource zenTools;";
+		
+		fclose $id;
+		
+	return 1;
+}

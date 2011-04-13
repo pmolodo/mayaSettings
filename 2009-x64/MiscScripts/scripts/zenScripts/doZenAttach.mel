@@ -1,0 +1,36 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//execute zenAttach, store the command, and add it to the repeatLast command list
+global proc doZenAttachSurface()
+{
+	global 	int	$zenOptions_attachSurfaceDegree;
+	global 	int	$zenOptions_attachSurfaceShave;
+	global 	int	$zenOptions_attachShave;
+			
+		string	$command=
+		(
+			"zenAttachSurface "+
+			(string($zenOptions_attachSurfaceDegree))+" "+
+			(string($zenOptions_attachSurfaceShave))
+		);
+								
+		$err=catch(`evalEcho($command)`);
+				
+		if($err)
+		{
+			progressWindow -ep;
+			undoInfo -swf 1;
+		}
+}

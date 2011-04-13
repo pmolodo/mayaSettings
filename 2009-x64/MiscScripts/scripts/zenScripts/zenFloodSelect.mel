@@ -1,0 +1,138 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//takes a selection of edges and vertices or faces, and selects  
+//the region inside the edges corresponding to the location of 
+//the vertex or face selection
+global proc string[] zenFloodSelect()
+{
+	//turn off warning messages
+	int	$sw=`scriptEditorInfo -q -sw`;
+		scriptEditorInfo -sw 0;
+		
+	string	$sel[]=`ls -sl -fl`;
+		
+	string	$objects[]=`ls -o $sel`;
+	
+		$objects=stringArrayRemoveDuplicates($objects);
+		
+		if(size($objects)!=1)
+			error("Selections region must be on exactly one polygon object.");
+		
+	string	$obj=$objects[0];
+	
+	//create a temporary duplicate
+	
+	string	$dupObjTr=zenReturnFirstStringItem(`duplicate -rc $obj`);
+	
+	//make sure if any errors occur the duplicate is still deleted
+	
+		zenDeferCommand("if(`objExists "+$dupObjTr+"`) delete "+$dupObjTr+";");
+	
+	int	$vertCount=zenReturnFirstIntegerItem(`polyEvaluate -v $obj`);
+	
+	string	$tempStringArray[];
+	
+		$tempStringArray=`listRelatives -s -ni $dupObjTr`;
+		$tempStringArray=stringArrayRemoveDuplicates($tempStringArray);		
+		
+	//just in case there is a subdivision proxy in the transform 
+	//find the shape with the same vertex count
+	
+	string	$dupObj;
+
+		if(size($tempStringArray)==1)
+		{
+			$dupObj=$tempStringArray[0];
+		}
+		else
+		if(size($tempStringArray)>1)
+		{
+			for($o in $tempStringArray)
+			{
+				if(`nodeType $o`=="mesh")
+				{
+					if(zenReturnFirstIntegerItem(`polyEvaluate -v $o`)==$vertCount)
+						$dupObj=$o;
+				}
+			}
+		}
+		else error("ZenTools is confused");
+
+	//transfer the selection to the duplicate
+		
+	string	$edgeSel[]=zenMimicSelection(`polyListComponentConversion -fe -te $sel`,$dupObj);
+	string	$vertSel[]=zenMimicSelection(`polyListComponentConversion -fv -tv $sel`,$dupObj);
+	string	$faceSel[]=zenMimicSelection(`polyListComponentConversion -ff -tf $sel`,$dupObj);
+
+		if(!size($edgeSel)) error "Improper selection.";
+	
+/*
+	string	$preHist[]=`listHistory $obj`;
+
+	//create a temporary uv set	
+	string	$currentUVSet=zenReturnFirstStringItem(`polyUVSet -q -cuv $obj`);
+	string	$tempUVSet=zenReturnFirstStringItem(`polyUVSet -create -uvSet "uvSet" $obj`);
+			
+		polyUVSet -currentUVSet -uvs $tempUVSet $obj;
+*/
+	//give it unshared uv's, then cut out the selection region
+	
+	string	$tempProj[]=`polyPlanarProjection $dupObj`;
+	
+		polyMapCut $edgeSel;		
+
+	//select the uv shell corresponding to the selection region
+	
+	string	$sel[];
+	
+		if(size($vertSel))
+		{
+			$vertSel=`polyListComponentConversion -fv -tuv $vertSel`;
+			select	$vertSel;
+			polySelectBorderShell 0;
+			$vertSel=`polyListComponentConversion -fuv -tv`;
+		}
+		
+		if(size($faceSel))
+		{
+			$faceSel=`polyListComponentConversion -ff -tuv $faceSel`;
+			select	$faceSel;
+			polySelectBorderShell 0;
+			$faceSel=`polyListComponentConversion -fuv -tf`;
+		}
+		
+/*
+	//delete the temporary uv set and return to the previously used uv set
+		polyUVSet -delete -uvs $tempUVSet $dupObj;
+		polyUVSet -cuv -uvs $currentUVSet $dupObj;
+*/
+		
+				
+	//restore warning message settings
+		scriptEditorInfo -sw $sw;
+		
+	string	$newSel[];
+
+		$newSel=zenMimicSelection(stringArrayCatenate($vertSel,$faceSel),$obj);
+		
+		select $newSel;
+	
+	//delete tempObj
+	
+		delete $dupObjTr;
+		//delete (stringArrayRemove($preHist,`listHistory $dupObj`));
+
+	return	$newSel;
+}

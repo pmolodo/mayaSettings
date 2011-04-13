@@ -1,0 +1,28 @@
+global proc string[] zooBGBlasterDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $includeFiles[] = {};
+	string $helpDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $return[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_str";
+	$melDependencies[( `size $melDependencies` )] = "zooAttrUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooGreaseMonkeyUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooPresetManager";
+	$melDependencies[( `size $melDependencies` )] = "zooRegister";
+	$melDependencies[( `size $melDependencies` )] = "zooShaders";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+
+	if( $mode == "-deps" ) return $melDependencies;
+	if( $mode == "-docs" ) return $helpDependencies;
+	if( $mode == "-icons" ) return $iconDependencies;
+	if( $mode == "-scripts" ) {
+		$return = $melDependencies;
+		$return = `zooAddArray_str $return $includeFiles`;
+		$return = `stringArrayRemoveDuplicates $return`;
+		}
+
+	return $return;
+	}

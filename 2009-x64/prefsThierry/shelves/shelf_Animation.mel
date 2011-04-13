@@ -1,0 +1,597 @@
+global proc shelf_Animation () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Set Key: Select object(s) to key" 
+        -align "center" 
+        -label "Set Key" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "setKeyframe.xpm" 
+        -image1 "setKeyframe.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "SetKey" 
+        -sourceType "mel" 
+        -doubleClickCommand "SetKeyOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Attach to Motion Path: Select object(s) to animate along a motion path, followed by the motion path curve" 
+        -align "center" 
+        -label "Attach to Motion Path" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "motionPath.xpm" 
+        -image1 "motionPath.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "AttachToPath" 
+        -sourceType "mel" 
+        -doubleClickCommand "AttachToPathOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Set Motion Path Key: Select object to key a motion path" 
+        -align "center" 
+        -label "Set Motion Path Key" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "motionPathKey.xpm" 
+        -image1 "motionPathKey.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "SetKeyPath" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Motion Trail: Select object(s) to generate a motion trail over time" 
+        -align "center" 
+        -label "Motion Trail" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "motionTrail.xpm" 
+        -image1 "motionTrail.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreateMotionTrail" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreateMotionTrailOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Ghosting: Display ghosts for objects" 
+        -align "center" 
+        -label "Ghosting" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "ghost.xpm" 
+        -image1 "ghost.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "GhostObject" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "No Ghosting: Do not display ghosts for objects" 
+        -align "center" 
+        -label "No Ghosting" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "ghostOff.xpm" 
+        -image1 "ghostOff.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "UnghostObject" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Joint Tool: Click to place joint, click on existing joint to add to skeleton, click/drag to position joint" 
+        -align "center" 
+        -label "Joint Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "kinJoint.xpm" 
+        -image1 "kinJoint.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "JointTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "JointToolOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "IK Handle Tool: Create IK handle on joint chain" 
+        -align "center" 
+        -label "IK Handle Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "kinHandle.xpm" 
+        -image1 "kinHandle.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "IKHandleTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "IKHandleToolOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Connect Joint: Select two joints to connect" 
+        -align "center" 
+        -label "Connect Joint" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "kinConnect.xpm" 
+        -image1 "kinConnect.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ConnectJoint" 
+        -sourceType "mel" 
+        -doubleClickCommand "ConnectJointOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Disconnect Joint: Select a joint to disconnect" 
+        -align "center" 
+        -label "Disconnect Joint" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "kinDisconnect.xpm" 
+        -image1 "kinDisconnect.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "DisconnectJoint" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Reroot Skeleton: Select a joint to be the new root" 
+        -align "center" 
+        -label "Reroot Skeleton" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "kinReroot.xpm" 
+        -image1 "kinReroot.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "RerootSkeleton" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Remove Joint: Select a joint to remove" 
+        -align "center" 
+        -label "Remove Joint" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "kinRemove.xpm" 
+        -image1 "kinRemove.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "RemoveJoint" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Mirror Joint: Select a joint to mirror" 
+        -align "center" 
+        -label "Mirror Joint" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "kinMirrorJoint_S.xpm" 
+        -image1 "kinMirrorJoint_S.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "MirrorJoint" 
+        -sourceType "mel" 
+        -doubleClickCommand "MirrorJointOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Orient Joint: Select a joint to orient" 
+        -align "center" 
+        -label "Orient Joint" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "orientJoint.xpm" 
+        -image1 "orientJoint.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "OrientJoint" 
+        -sourceType "mel" 
+        -doubleClickCommand "OrientJointOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "IK Spline Handle Tool: Create IK spline handle on joint chain" 
+        -align "center" 
+        -label "IK Spline Handle Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "kinSplineHandle.xpm" 
+        -image1 "kinSplineHandle.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "IKSplineHandleTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "IKSplineHandleToolOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Smooth Bind: Smooth bind skin" 
+        -align "center" 
+        -label "Smooth Bind" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "smoothSkin.xpm" 
+        -image1 "smoothSkin.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "SmoothBindSkin" 
+        -sourceType "mel" 
+        -doubleClickCommand "SmoothBindSkinOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Mirror Skin Weights: Mirror skin weights" 
+        -align "center" 
+        -label "Mirror Skin Weights" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "mirrorSkinWeight.xpm" 
+        -image1 "mirrorSkinWeight.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "MirrorSkinWeights" 
+        -sourceType "mel" 
+        -doubleClickCommand "MirrorSkinWeightsOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Copy Skin Weights: Copy skin weights" 
+        -align "center" 
+        -label "Copy Skin Weights" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "copySkinWeight.xpm" 
+        -image1 "copySkinWeight.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CopySkinWeights" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Export Skin Weight Maps: Export skin weight maps" 
+        -align "center" 
+        -label "Export Skin Weight Maps" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "exportSmoothSkin.xpm" 
+        -image1 "exportSmoothSkin.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ExportSkinWeightMaps" 
+        -sourceType "mel" 
+        -doubleClickCommand "ExportSkinWeightMapsOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Import Skin Weight Maps: Import skin weight maps" 
+        -align "center" 
+        -label "Import Skin Weight Maps" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "importSmoothSkin.xpm" 
+        -image1 "importSmoothSkin.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ImportSkinWeightMaps" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Paint Skin Weights Tool: Paint weights on smooth bound skins" 
+        -align "center" 
+        -label "Paint Skin Weights Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "paintSkinWeights.xpm" 
+        -image1 "paintSkinWeights.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ArtPaintSkinWeightsTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "ArtPaintSkinWeightsToolOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Locator: Create a locator object on the grid" 
+        -align "center" 
+        -label "Locator" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "locator.xpm" 
+        -image1 "locator.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreateLocator" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Point Constraint: Point constraint" 
+        -align "center" 
+        -label "Point Constraint" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "posConstraint.xpm" 
+        -image1 "posConstraint.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "PointConstraint" 
+        -sourceType "mel" 
+        -doubleClickCommand "PointConstraintOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Aim Constraint: Aim constraint" 
+        -align "center" 
+        -label "Aim Constraint" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "aimConstraint.xpm" 
+        -image1 "aimConstraint.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "AimConstraint" 
+        -sourceType "mel" 
+        -doubleClickCommand "AimConstraintOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Orient Constraint: Orient constraint" 
+        -align "center" 
+        -label "Orient Constraint" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "orientConstraint.xpm" 
+        -image1 "orientConstraint.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "OrientConstraint" 
+        -sourceType "mel" 
+        -doubleClickCommand "OrientConstraintOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Parent Constraint: Parent constraint" 
+        -align "center" 
+        -label "Parent Constraint" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "parentConstraint.xpm" 
+        -image1 "parentConstraint.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ParentConstraint" 
+        -sourceType "mel" 
+        -doubleClickCommand "ParentConstraintOptions" 
+        -actionIsSubstitute 0
+    ;
+
+} 

@@ -1,0 +1,81 @@
+----Scripting zooXferAnim----
+You can access zooXferAnim's functionality externally easily.  The two main commands to use are zooXferBlindTransfer and zooXferBatch.  Both commands have the same syntax, however zooXferBatch requires that the source obejct list and the target object list are already ordered.  Ie the first source object is mapped to the first target object.  zooXferBlindTransfer will do an automatic name match on the objects before doing the transfer.
+
+The syntax of the commands are:
+zooXferBatch optionStr { "sourceObj1", "sourceObj2"... } { "targetObj1", "targetObj2"... };
+zooXferBlindTransfer optionStr { "sourceObj1", "sourceObj2"... } { "targetObj1", "targetObj2"... };
+
+the optionStr is simply a string containing flags to control the behaviour of xferAnim.
+
+So remember, if you've already matched the source objects to the target objects, use zooXferBatch.  If you want zooXferAnim to do automatically match source objects to target objects, use zooXferBlindTransfer.  For a list of flags to use with both of these commands, see the "zooXferAnim Transfer Command Flags" section below.
+
+
+----zooXferAnim Transfer Command Flags----
+
+-mode [int]			the following are valid modes for the transfer
+	0 duplicate/instance
+	1 copy/paste
+	2 trace
+	3 file import
+-keys [int]			this is a boolean to trace keys only - mode 2 only
+-matchRo [int]		boolean to match rotation order
+-range [float] [float]	start and end time ranges - mode 2 only
+-instance [int]		boolean to instance animation - mode 0 only
+-filename [string]		the path to the .znm file to import
+-offset [float]		time offset to apply to imported animation
+-world [int]	turns on world space importing/exporting - only used in mode 3
+
+
+-mode 0:  This is duplicate/instance animation mode.  You can use the -instance and -matchRo flags with this command.  example:  "-mode 0 -instance 0 -matchRo 1"  which means no instancing, but match rotation orders
+
+-mode 1  This is copy/paste mode.  You can use the -matchRo flag with this command.  example: "-mode 1 -matchRo 0"
+
+-mode 2  This is trace mode.  You can use the -keys -matchRo -range flags to control this command.  For the -keys flag, 0 traces every frame within the range, 1 traces all keys, and 2 traces only keys within the range.  An example of a trace xferModeString would be:  "-mode 2 -keys 2 -matchRo 0 -range 1 50"
+
+This example would trace keys within a range, without match rotation orders, starting at time 1 and ending at time 50
+
+-mode 3  This is import from file mode.  You can use the -filename and -offset flags to control this command.  The filename flag is mandatory.  example:  "-mode 3 -offset 1 -matchRo 1 -filename c:/temp/test_anim.znm"
+
+
+----Aligning Objects----
+zooXferAnim uses a proc called zooAlign when tracing animation.  This proc, like most functionality in zooXferAnim, is externally accessible.  The proc aligns two objects exactly, regardless of rotation order of the two objects.  It does this by applying a parentConstraint to an intermediate object (a duplicate of the target), copies the values from the intermediate to the target, and then deletes the constraint, and the intermediate object.  This should result in an exact alignment of the two objects.
+
+
+----zooAlign Command Flags----
+
+-src [string]		this is the source object
+-tgt [string]		this is the target object
+-key [bool]		should the target be keyed after aligning
+-time [float]		frame to align on.  defaults to currentTime
+
+So so align a cube to a sphere, key the target object after aligning, on frame 10.  example:
+zooAlign "-src nurbsSphere1 -tgt pCube1 -key 1 -time 10";
+
+if you wanted to assign the align command to a hotkey, you might just want to align two objects, not key them on the current frame:
+string $selObjs[] = `ls -sl`;
+zooAlign ( "-src "+ $selObjs[0] +" -tgt "+ $selObjs[1] );
+
+
+----Animation/Pose Libraries----
+zooXferAnim can be used to build up animation/pose libraries for characters.  Using the write and load file features, animation clips, and poses can easily be loaded on to your character.  And using the zooXferAnim commands, you can easily create shelf buttons in order to quickly load commonly used poses, or animation clips.  For example:
+
+zooXferBlindTransfer "-mode 3 -filename c:/temp/char_run.znm" {} `sets -q char_controls`;
+
+the source object list can be empty because the script loads the source objects automatically when you choose to transfer from a file.
+
+
+----Name Matching----
+the name matching script that comes with zooXferAnim, zooMatchNames, uses a reasonably simple algorithm.  If you want to change the name matcher, feel free to do so.  It requires a two input arrays, a list of names to match (the source list), and a list of names to choose from (the target list).  It returns an array the same size as the source list.  For example:
+zooMatchNames { "bill_head_ctrl", "bill_hips", "bill_face_animation_control" } { "bob_hip_controller", "bob_face_con", "bob_jaw", "bob_headRotate" } "";
+
+returns the list of matches:
+{ "bob_headRotate", "bob_hip_controller", "bob_face_con" }
+
+The following flags can be used with zooMatchNames
+-strip [bool]  If this is true, any path or namespace will be stripped from the names before matching is done
+
+-parity [bool]  This defaults to false - turning on means only names with the same parity will be matched - parity is the _L or _R suffix that specifies which side of a character a control pertains to
+
+-threshold [int]  You can specify a minimum number of tokens that must be matched - setting this to -1 results in a match only if all source tokens are matched
+
+-sort [bool]  Turning this on will sort the source and target list before doing the name match.  This can result in more accurate matches

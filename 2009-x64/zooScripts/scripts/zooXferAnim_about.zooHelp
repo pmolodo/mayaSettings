@@ -1,0 +1,53 @@
+----Overview----
+zooXferAnim is an animation transfer script, that will transfer the animation from a bunch of "source" objects onto a bunch of "target" objects.  The script gives control over the "mapping" of the animation, ie which object "source" object equals which "target" object.
+
+It allows you to do moderately simple animation re-targeting for quickly sharing animation between character rigs for those with short deadlines, or non animators.  It also does pose/animation saving and loading which can be used to build up an animation asset library.
+
+
+----Usage----
+Make a selection, and either go to Load Items->Load Source to load the source objects.  Loading objects can also be done through the use of quick selection sets.  Also present are rmb popup menus on the text "Source Objects" and "Target Objects".
+
+Once the source objects are loaded, then load the target objects.  Now with both source and targets loaded, selecting an object in the source panel will highlight the object the script thinks its target should be, in the target pane.  Now, the script aint too smart, and will often get the mapping wrong, in which case you can select the target you want it mapped to instead.
+
+To change the mapping, select the source object you wish to change, and select the new target in the target pane.  At this time, you can only map a source object to a single target object.  To delete an object mapping, make sure the target object pane has focus, and press delete.  Double clicking a target object will select it in maya.
+
+Once correct mapping has been determined, hit the xfer button to actually transfer the animation.  The unLoad references button can then remove all referenced files in a scene, if you have referenced a file to transfer animation from.
+
+
+----Xfer Mode----
+There are three types of transfer modes, duplicate, copy and trace.
+
+*Duplicate
+Duplicate works by copying the actual anim curve nodes that make up an animation.  When duplicate option is selected, the instance checkbox is enabled.  If instance is turned on, then the curve nodes aren't actually duplicated, their output is just plugged into the target attributes as well as the source. So, if you change the target the source will update, and vice-versa.
+
+*Copy/Paste Key Mode
+This mode will actually copy the keys, and paste them onto the target's timeline, without destroying any animation that was there previously.  This method uses maya's copy/paste functionality.
+
+*Trace Mode
+Trace mode works not only on keys, but also on frames/poses.  Its basically like snapping each target to its source, and is therefore great for matching single poses.
+
+Tracing can be done in either local or world space.  Local space tracing matches attribute values, whereas world space tracing actually matches world space positions.  World space tracing can be useful for transferring animation between differently proportioned characters.  Its also great for re-positioning a pose.  If you have a great pose, but need it rotated around, then you can make a temporary duplicate of your character, re-position the duplicate using its world controls, and world space trace the duplicate object's pose on to the original.
+
+You can trace single frames, a sequence of frames, or trace only only the frames where the source object has been keyed.
+
+NOTE: currently a minor bug exists with trace.  The source objects must have a keyframe on them for trace to work.
+
+
+----Match Rotate Order----
+If the rotation order of source and target objects differs, the resulting animation can look vastly different if the source object is close to gimbal lock.  Rotation order on an object can be changed at any time, and doesn't have to be done at xfer time, but it's easiest to let the script do it for you.  Leaving it on, should guarantee that the resulting animation on the target matches the source exactly.
+
+
+----Working with Files----
+Animation can be exported to files.  This allows animation to be transferred without the original objects being present in a scene.  To do so, select all objects you wish to export animation for, and go to File->Write File to write an entire animation, or File->Write Pose, to write just the current pose to file.  You will then be prompted for a filepath.  On windows systems, you must use forward slashes instead of backslashes in your path, and the file extension should be .znm.  Ie:  //networkDrive/animExports/test.znm
+
+To import animation from a file, use the File->Load File option.  This loads all objects contained in the .znm file into the source objects pane.  From this point on, the script works exactly the same way as if you had the objects present in the scene.
+
+When you load a file, the options at the bottom of the script change.  You can now change the import mode to either: "absolute" or "current time offest".  Absolute mode imports keys at exactly the same times they were when exported, while current time offset will offset the imported key times by the current time.  This is only a dumb offset however.  So if you exported keys starting at time 500, then setting the current time to 50 in maya, would import keys starting at 550.
+
+
+----Exporting Animation----
+zooXferAnim can export animation data with a variety of different options.  Most importantly, key times can now be exported either relatively (relative to the first key) or absolutely.  Relative mode looks for the first key (or the first key after the time specified) and all key times are exported relative to that.  When the animation is imported, the current time offset can be used to place the exported animation exactly at the current time.
+
+
+----World Space Importing/Exporting----
+as of v3.6.1 zooXferAnim now enables the import and export of animation in world space.  However, world space operations (importing and exporting) can take considerably longer than exporting pure animation.  To help minimise the amount of time it takes to import and export world space animation data, make sure you only work animation on objects you absolutely need as world space data.  For character rigs, this often means only export animation on limb, root, eye and perhaps pole vector controls.  Of course, you can export animation for as many objects as you need, but the more objects you have, the longer xferAnim will take to do the operation.

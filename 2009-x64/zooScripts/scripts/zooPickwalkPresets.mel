@@ -1,0 +1,78 @@
+zooArrays_str;
+zooPresetManager;
+zooStrUtils;
+
+
+global proc zooPickwalkPresets() {
+	return;
+	}
+
+
+global proc zooImportPickwalk( string $locale, string $name ) {
+	string $sel[] = `ls -sl`;
+	string $namespace = `zooGetNamespace $sel[0]`;
+	string $dir = `zooGetPresetDirectory $locale zooPickwalk`;
+	string $preset = $dir + $name;
+	string $contents[] = {};
+
+	if( !`size $sel` ) return;
+	if( !`filetest -r $preset`) return;
+	$contents = `zooReadFile $preset "-strip 1"`;
+	for( $line in $contents ) {
+		string $temp[] = {};
+		tokenize $line "," $temp;
+
+		string $src = $namespace + $temp[0];
+		if( !`objExists $src` ) continue;
+
+		string $up = $namespace + $temp[1];
+		string $left = $namespace + $temp[2];
+		string $right = $namespace + $temp[3];
+		string $down = $namespace + $temp[4];
+		//print( $src +" connecting to up: "+ $up +" left: "+ $left +" right: "+ $right +" down: "+ $down +"\n" );
+		if( `objExists $up` ) zooSetPickwalkObj $src $up "-dir up -reciprocal 0";
+		if( `objExists $left` ) zooSetPickwalkObj $src $left "-dir left -reciprocal 0";
+		if( `objExists $right` ) zooSetPickwalkObj $src $right"-dir right -reciprocal 0";
+		if( `objExists $down` ) zooSetPickwalkObj $src $down "-dir down -reciprocal 0";
+		}
+	}
+
+
+global proc zooExportPickwalk( string $locale, string $name ) {
+	string $sel[] = `ls -sl`;
+	string $dir = `zooGetPresetDirectory $locale zooPickwalk`;
+
+	if( !`size $sel` ) return;
+	zooPrepPresetDirectory zooPickwalk;
+
+	string $fileContents = "";
+	string $walks[] = `zooListAllPickwalking`;
+	for( $obj in $walks ) {
+		string $up = `zooGetPickwalkObj $obj up`;
+		string $left = `zooGetPickwalkObj $obj left`;
+		string $right = `zooGetPickwalkObj $obj right`;
+		string $down = `zooGetPickwalkObj $obj down`;
+
+		//if there is no object in that dir, we must have something in the list, so put a dummy string
+		if( !`objExists $up` ) $up = "!";
+		if( !`objExists $left` ) $left = "!";
+		if( !`objExists $right` ) $right = "!";
+		if( !`objExists $down` ) $down = "!";
+
+		//strip namespaces from exported object names
+		$obj = `match "[^:]+$" $obj`;
+		$up = `match "[^:]+$" $up`;
+		$left = `match "[^:]+$" $left`;
+		$right = `match "[^:]+$" $right`;
+		$down = `match "[^:]+$" $down`;
+
+		$fileContents += $obj +","+ $up +","+ $left +","+ $right +","+ $down +"\n";
+		}
+
+	int $fileID = `fopen ( $dir + $name +".preset" ) "w"`;
+	fwrite $fileID $fileContents;
+	fclose $fileID;
+	}
+
+
+//zoo.end

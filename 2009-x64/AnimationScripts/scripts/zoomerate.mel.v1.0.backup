@@ -1,0 +1,123 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zoomerator.mel v1.0
+''    Author: Jeremie Talbot
+''    Last Updated: November 9, 2001
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=interface#1348
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+// Zoomer v0.9
+
+//Author: Jeremie Talbot
+//www.talbotsite.com
+//all complaints go to jeremie@talbotsite.com
+//Date: 11.9.01
+
+//creates a handy interface to zoom the camera for tracking and other purposes
+//It uses the common horizontal and vertical film offsets in conjunction with overscan
+//
+//It is very useful for trackers to get in close without spending time typing in fields and guessing.
+//It is also useful for lighters and animators to quickly see if their imagePlane is lined up.
+
+//To Run, type zoomerate in the command line, the usage is self explanatory
+
+
+global proc zoomerate()
+{
+
+	string $pane = `getPanel -wf`;
+
+	//figure out the camera in the current view in order to use its values in the window
+	string $whichCam = `modelPanel -q -camera $pane`;
+	string $whichCamShape[] = `ls -dag -shapes -ap $whichCam`;
+
+	//figure out what cameras to use when building the menu
+	string $cameras[] = `ls -ca`;
+	string $diffCams[] = stringArrayRemove($whichCamShape, $cameras);
+
+			
+      if (`window -ex  zoomerWin2`)
+          deleteUI zoomerWin2;
+      window -s 0 -ip -in "zoomer" -w 400 -h 180 -title "Camera zoomerator v1.0" zoomerWin2;
+   
+      //build gui
+	columnLayout;
+		frameLayout -borderVisible true -labelVisible true -labelAlign "center" -label "Zoom Options" -marginWidth 5 -marginHeight 5;
+			columnLayout;
+                  	optionMenuGrp -label "Camera to Zoom"  -columnWidth 2 80 whichCam;
+				menuItem -label $whichCamShape[0];
+				int $i;
+				for ( $i = 0; $i < size($diffCams); $i++ )
+					{
+					menuItem -label $cameras[$i];
+					}
+				$whichCamAttr = $whichCamShape[0] + ".horizontalFilmOffset";
+     				floatSliderGrp -label "Horizontal"  -v `getAttr $whichCamAttr` -min -3 -max 3 -pre 3 -step 0.001 -dc "zoomIt" -cc "zoomIt" -field true offX;
+				$whichCamAttr = $whichCamShape[0] + ".verticalFilmOffset";
+				floatSliderGrp -label "Vertical"  -v `getAttr $whichCamAttr`  -min -3 -max 3 -pre 3 -step 0.001 -dc "zoomIt" -cc "zoomIt" -field true offY;
+				$whichCamAttr = $whichCamShape[0] + ".overscan";
+				floatSliderGrp -label "Depth"  -v `getAttr $whichCamAttr`  -min 0.01 -max 3 -pre 2 -step 0.02 -dc "zoomIt" -cc "zoomIt" -field true offZ;
+				button -label "Reset" -c "resetCam";
+
+			setParent ..;
+		setParent ..;
+	setParent ..;
+
+	showWindow zoomerWin2;
+}
+
+global proc zoomIt()
+{
+	//This part actually changes the values of the offset and overscan attributes
+	string $cam = `optionMenuGrp -q -v whichCam`;
+	string $buffer;
+
+	float $offsetX = `floatSliderGrp -q -v offX`;
+	float $offsetY = `floatSliderGrp -q -v offY`;
+	float $offsetZ =  `floatSliderGrp -q -v offZ`;
+	string $buffer = $cam + ".horizontalFilmOffset";
+	setAttr $buffer $offsetX;
+	string $buffer = $cam + ".verticalFilmOffset";
+	setAttr $buffer $offsetY;
+	string $buffer = $cam + ".overscan";
+	setAttr $buffer $offsetZ;	
+}
+
+global proc resetCam()
+{
+	//This proc resets the values back to 0, and 1 for the overscan
+	string $resetCam = `optionMenuGrp -q -v whichCam`;
+	string $resetBuffer;
+	string $resetBuffer = $resetCam + ".horizontalFilmOffset";
+	setAttr $resetBuffer 0;
+	string $resetBuffer = $resetCam + ".verticalFilmOffset";
+	setAttr $resetBuffer 0;
+	string $resetBuffer = $resetCam + ".overscan";
+	setAttr $resetBuffer 1;
+
+	floatSliderGrp -e -v 0 offX;
+	floatSliderGrp -e -v 0 offY;
+	floatSliderGrp -e -v 1 offZ;
+		
+}
+
+	
+	
+
+
+zoomerate;
+
+
+
+
+
+
+
+ 

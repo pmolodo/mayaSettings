@@ -1,0 +1,189 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//return given loop rings in order of adjacency
+global proc string[] zenOrderLoopRings( string $loopRings[] )
+{
+		if(size($loopRings)<2) return $loopRings;
+		
+	string	$obj=zenReturnFirstStringItem
+		(
+			stringToStringArray
+			(
+				zenReturnFirstStringItem
+				(
+					stringToStringArray
+					(	
+						$loopRings[0],
+						","
+					)
+				),
+				"."
+			)
+		);
+
+	string	$edges[];
+	string	$verts[];
+	string	$endVerts[];
+	string	$tempStringArray[];
+	
+	string	$allignVerts[];
+	
+	string	$startEdges[];
+	string	$startEdgesExpanded[];
+	string	$startEdgesFiltered[];
+	
+	string	$endEdges[];
+	string	$endEdgesExpanded[];
+	string	$endEdgesFiltered[];
+	
+	string	$edgesExpanded[];
+
+	int	$err;
+	
+	int	$contiguous[];
+	
+		for($i=0;$i<size($loopRings);$i++)
+		{
+			$contiguous[$i]=false;         
+			
+			$edges=ls( "-fl", stringToStringArray($loopRings[$i],",") );
+			$tempStringArray=`zenFindEdgeSelectionEndVerts $edges`;
+			
+			if(!size($tempStringArray))//if there are no end verts ( it is a contiguous loop )
+			{
+				$contiguous[$i]=true;
+				
+				if(!size($allignVerts))
+				{
+					$startEdges=ls
+					(
+						"-fl", 
+						zenCompFromID
+						(
+							$obj,
+							"e",
+							zenIntArrayRemove({0},polySelect("-ns","-er",zenCompID($edges[0]),$obj))
+						) 
+					);
+					$startEdgesExpanded=zenExpandAlongLoop( 1, $startEdges );
+					
+					$endEdges=ls
+					(
+						"-fl",
+						zenCompFromID
+						(
+							$obj,
+							"e",
+							zenIntArrayRemove({0},polySelect("-ns","-er", zenCompID($edges[size($edges)-1]),$obj))
+						) 
+					);					
+					$endEdgesExpanded=zenExpandAlongLoop( 1, $endEdges );
+
+					$startEdgesFiltered=stringArrayRemoveDuplicates(stringArrayRemove({""},zenStringArrayIntersect($startEdges,$endEdgesExpanded)));
+					$endEdgesFiltered=stringArrayRemoveDuplicates(stringArrayRemove({""},zenStringArrayIntersect($endEdges,$startEdgesExpanded)));
+
+					$err=catch
+					(
+						$allignVerts=stringArrayCatenate
+						(
+							$allignVerts,
+							zenStringArrayIntersect
+							(
+								ls("-fl",polyListComponentConversion("-tv",$startEdgesFiltered)),
+								ls("-fl",polyListComponentConversion("-tv",$endEdgesFiltered))
+							)
+						)
+					);
+					
+					if($err)
+					{
+						print("\nsizeStart:"+size( $startEdges )+" sizeEnd:"+size( $endEdges ));
+						print("\n"+stringArrayToString($startEdgesFiltered,",\n")+"\n");
+						error("-sl","error");
+					}
+					
+					$allignVerts=stringArrayRemoveDuplicates($allignVerts);
+				}
+				$tempStringArray=zenStringArrayIntersect
+				(
+					ls("-fl",`polyListComponentConversion -fe -tv $edges`),
+					$allignVerts
+				);
+				if(!size($tempStringArray) )
+				{
+					select $startEdgesFiltered;
+					select -add $endEdgesFiltered;
+					select -add $allignVerts;
+					print("\n"+stringArrayToString($startEdgesFiltered,",")+"\n");
+					print("\n"+stringArrayToString($endEdgesFiltered,",")+"\n");
+					error("error");
+				}
+			}
+			
+			$endVerts[$i]=stringArrayToString($tempStringArray,",");
+			$verts=stringArrayCatenate($verts,$tempStringArray);
+		}
+					
+		$verts=zenSortVertsByDistance(`zenFindEndVert $verts`,$verts);
+		
+	string	$usedVerts[];
+	string	$orderedLoopRings[];
+	int	$firstIndex;
+	string	$tempVertArray[];
+	string	$vertLoop[];
+	string	$rearrangedEdgeLoop[];
+	string	$tempEdgeArray[];
+	string	$lastEdge;
+	string	$nextToLastVert;
+	string	$alignRing[];
+		
+		for($i=0;$i<size($verts);$i++)
+		{
+			for($n=0;$n<size($endVerts);$n++)
+			{
+				$tempStringArray=stringToStringArray($endVerts[$n],",");
+
+				if( `stringArrayContains ($verts[$i]) $tempStringArray` && !`stringArrayContains ($verts[$i]) $usedVerts`)
+				{
+					if($contiguous[$n])//dissect tempArray to line up rings
+					{
+						$tempEdgeArray=stringToStringArray($loopRings[$n],",");						
+						$lastEdge=zenReturnFirstStringItem(zenStringArrayIntersect($tempEdgeArray,$endEdgesFiltered));
+						$tempEdgeArray=stringArrayRemove({$lastEdge},$tempEdgeArray);
+						$tempEdgeArray=stringToStringArray(zenReturnFirstStringItem(zenIsolateLoops($tempEdgeArray)),",");
+						
+						if(!stringArrayContains($tempEdgeArray[0],$startEdgesFiltered))
+							$tempEdgeArray=zenReverseStringArray($tempEdgeArray);
+						if(!stringArrayContains($tempEdgeArray[0],$startEdgesFiltered))
+							error -sl true "error";
+						
+						$tempEdgeArray[size($tempEdgeArray)]=$lastEdge;
+						
+						$loopRings[$n]=	stringArrayToString
+						(
+							$tempEdgeArray,
+							","
+						);
+					}
+										
+					$orderedLoopRings[(size($orderedLoopRings))]=$loopRings[$n];
+					$usedVerts=stringArrayCatenate($usedVerts,$tempStringArray);
+					break;
+				}
+			}
+		}
+		
+	return	$orderedLoopRings;
+}

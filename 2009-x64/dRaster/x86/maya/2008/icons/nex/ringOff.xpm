@@ -1,0 +1,30 @@
+/* XPM */
+static char *ringOff[] = {
+/* columns rows colors chars-per-pixel */
+"43 20 4 1",
+"  s bg c green",
+". c gray100",
+"o c black",
+"O c gray100",
+/* pixels */
+"  .......................................  ",
+" .                                       . ",
+".                                         .",
+".                                         .",
+".                                          ",
+".           ooooo   o                      ",
+".           o    o                         ",
+".           o    o                         ",
+".           o    o  o o oo   oooo          ",
+".           ooooo   o oo  o o   o          ",
+".           o    o  o o   o o   o          ",
+".           o    o  o o   o o   o          ",
+".           o    o  o o   o o   o          ",
+".           o    o  o o   o  oooo          ",
+".                               o          ",
+".                           oooo           ",
+".                                          ",
+".                                         o",
+" o                                       o ",
+"  ooooooooooooooooooooooooooooooooooooooo  "
+};

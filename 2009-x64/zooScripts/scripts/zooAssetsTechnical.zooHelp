@@ -1,0 +1,59 @@
+----Using Assets With Your Exporter----
+Assets can be used with absolutely any Maya asset exporter provided that exporter plugin can be controlled via MEL.  It has been used successfully with RenderWare and at least one other proprietary exporter.
+
+Its pretty easy really, and there's only one procedure that you have to modify.  The procedure is called zooExportAsset and resides in the zooAssetsUtils script.  There is already a lot of code in the procedure for gathering the basic data from an asset (such as where to export it to, the name of the exported file, the start and end time for the asset etc...) so all you really need to do is add the actual export command to the procedure and thats it.
+
+If you're using RenderWare then things are a little trickier.  There is a script that comes with zooAssets that can make life easier for you.  Its called zooAssets_RWExtension.mel and it contains 2 procedures and some code to add to the zooExportAsset procedure.  It should allow the export process to work using RenderWare, but you'll still need to add support for the RenderWare templates to the zooAssets interface (which is very easy to do).
+
+
+----Storing Data On An Asset----
+You can store any sort of data you want with an asset.  For example, if you were trying to use the zooAssets script in conjunction with the RenderWare exporter, you'd probably need to add support for different templates.  For example, you might want to have one asset using a bindpose template, another using a lit mesh template and yet another using a level template.
+
+To do so, you simply need to alter the procedure in the zooAssets script called zooBuildAssetMenu.  This procedure is responsible for building the menu that pops up when you right click on an asset in the interface.  Its through this menu that most interaction occurs.  So just say you wanted to add a template option to the right click menu.  You could add code like this:
+
+string $template = `zooGetAttrData $slot template`;
+menuItem -l "template" -sm 1;
+menuItem -l "bindpose" -cb( $template == "RW Template.rwt" ) -c( "zooSetAttrData "+ $slot +" template \"RW Template.rwt\"" );
+menuItem -l "lit mesh" -cb( $template == "RW Other Template.rwt" ) -c( "zooSetAttrData "+ $slot +" template \"RW Other Template.rwt\"" );
+menuItem -l "level" -cb( $template == "RW Level.rwt" ) -c( "zooSetAttrData "+ $slot +" template \"RW Level.rwt\"" );
+
+Thats as simple as it needs to be.  Although you might want to set a default value for the template attribute by altering the zooGetAttrDefault procedure.
+
+
+----Attribute Defaults----
+You can give any attribute a default value simply by altering the zooGetAttrDefault procedure found in the zooAssetsUtils script.  If you want to add a new attribute to an asset and set a default value for it, then simply copy one of the existing lines, and change the attribute name, and set a default value.
+
+
+----Management Node Flags----
+The two most useful commands in zooAssets are the attr query and editing commands:  zooGetAttrData and zooSetAttrData
+
+zooGetAttrData $slot attrName;
+zooSetAttrData $slot attrName newData;
+
+The following attributes are coded into the present UI:
+
+start		this is the start frame for the asset
+
+end		this is the end frame for the asset
+
+name		this is the asset name.  The asset name can only contain letters, numbers and underscores, just like a normal maya node name
+
+colour		this flag enables colouring of slots in the viewport.  changing a slot's colour is purely a visual UI thing, and has no effect on anything else.  valid choices are: red, green, yellow etc...
+
+notes			this flag is used to store miscellaneous notes
+
+pre		this is the pre-export MEL command
+
+post		this is the post-export MEL command
+
+path		this is the custom export path for the asset
+
+
+There are also global attributes that the assets node stores.  These attributes are queried and set using the following commands:
+
+zooGetGlobalAttr attrName;
+zooSetGlobalAttr attrName newData;
+
+path			this is the path to which files are exported.  All files will be exported to this directory
+
+fullNames	stores whether to display full asset names in the UI or not

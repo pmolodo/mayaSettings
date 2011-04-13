@@ -1,0 +1,35 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc string zenGetLine(string $searchString, string $filePath)
+{
+	int	$id=`fopen $filePath "r"`;
+	float	$startTime=`timerX`;
+	string	$line="\n";
+	
+		for($i=0;size($line)>0;$i++)
+		{
+			$line=`fgetline $id`;
+			
+			if(`gmatch $line ("*"+$searchString+"*")`)
+			{
+				fclose $id;
+				return $line;
+			}
+		}
+		
+		fclose $id;
+		
+	return	"";
+}

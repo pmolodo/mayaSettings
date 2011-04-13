@@ -1,0 +1,63 @@
+// From http://www.persistentvisions.com/IndexFramesetJam.htm?Tutorials_Main/mayaTips/UVtip.htm~mainFrame
+
+global proc spFaceCam_Work_Proc()
+{
+if (`objExists faceCam`)
+	delete faceCam;
+string $current[]=`ls -sl`;
+string $object[]=`ls -hl`;
+string $locator[]=`spaceLocator`;
+select $current;
+ConvertSelectionToVertices;
+string $cluster[]=`cluster`;
+pointConstraint $cluster[1] $locator[0];
+string $camera[]=`camera`;
+string $camConstraint[]=`pointConstraint $locator[0] $camera[0]`;
+delete $camConstraint;
+parent $camera[0] $locator[0];
+select $object[0];
+select -add $locator[0];
+normalConstraint -aimVector 0 0 1 -upVector 0 1 0 -worldUpType "vector" -worldUpVector 0 1 0;
+setAttr ($camera[0]+".tz") 5;
+parent -w $camera[0];
+rename $camera[0] faceCam;
+delete $locator;
+delete $cluster;
+//floatSliderGrp -e -v 5 spFaceCam_zoomSlider;
+//connectControl spFaceCam_zoomSlider ("faceCam.translateZ");
+select $current;
+hilite -r $object;
+lookThroughModelPanel faceCam (`getPanel -wf`);
+}
+
+global proc spFaceCam_drawUIcontrols()
+{
+frameLayout -l "spFaceCam" -cll 1 -cl 0 spFaceCam_frameLayout;
+	formLayout spFaceCamForm;
+		button -l "make cam!" -c ("spFaceCam_Work_Proc()") spFaceCamButton;
+//		floatSliderGrp -f 1 -l "camZoom" -cat 1 "right" 0 -cw3 50 35 80 -adj 3 spFaceCam_zoomSlider;
+	setParent ..;
+formLayout -e
+	-af spFaceCamButton "right" 0
+	-af spFaceCamButton "left" 0
+
+//	-af spFaceCam_zoomSlider "right" 0
+//	-af spFaceCam_zoomSlider "left" 0
+//	-af spFaceCam_zoomSlider "bottom" 0
+spFaceCamForm;
+}
+
+
+
+global proc spFaceCam()
+{
+if (`window -ex spFaceCam`)
+	deleteUI -wnd spFaceCam;
+window spFaceCam;
+tabLayout spFaceCamTab;
+spFaceCam_drawUIcontrols();
+tabLayout -e -tl spFaceCam_frameLayout "spFaceCam" spFaceCamTab;
+showWindow spFaceCam;
+}
+
+spFaceCam();

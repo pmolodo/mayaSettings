@@ -1,0 +1,386 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: Auto Save
+''    Author:  
+''    Last Updated: Aug 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/interface_display/3962.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//
+//  Nicolas Pastrana Script File
+//  site: http://n.pastrana.free.fr
+//  help: http://n.pastrana.free.fr/mel/
+//  mail: n.pastrana@free.fr
+//
+// I DISCLAIM ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL I BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.                  
+//
+//  Creation Date:  February, 2006
+//  
+//  Description:
+//  	This script adds the auto-save on Maya.
+//  	
+//		After activate it on the options, specify:
+//		General Options
+//			Hour(s)		|
+//			Minutes(s)	|	Specify the time between two saves
+//			Seconds(s)	|
+//		Advanced Options
+//			Confirm: 		enable a confirm box on saving
+//			Run script on: 	specify the event used by the script Job
+//		
+//  
+//  Instalation:
+//  
+//  	Put the file:
+//  		- NPautoSave.mel
+//  	
+//  	on your mel scripts folder:
+//  	
+//  		(Windows)	 <drive>:\Documents and Settings\username\My Documents\maya\scripts
+//  		(Mac OS X)	 Users/username/Library/Preferences/Alias/maya/x.0/scripts
+//  		(IRIX and Linux) ~username/maya/scripts
+//
+//		create or locate your userSetup.mel, by default on this folder:
+//
+//			(Windows) <drive>:\Documents and Settings\<username>\My Documents\maya\<Version>\scripts
+//			(Mac) ~/Library/Preferences/Alias/maya/<version>/scripts
+//			(Linux) ~/maya/<version>/scripts
+//		
+//		or, if you use the BonusTool, in the script folder of it.
+//		
+//			(Windows) <drive>:\Program Files\Alias\Maya<Version>\BonusTools 
+//			(Mac) /Users/Shared/Alias/maya/<Version>
+//			(Linux) /usr/aw/maya<Version>/BonusTools
+//		
+//		and put the command:
+//			source NPautoSave;
+//  	
+//  	and restart maya...
+//
+//	Setup:
+//		
+//		The Auto Save Options menu is located on the standard File menu.
+//			
+//  
+//  warning: DON'T CHANGE THE NAMES AND THE HIERARCHY !
+//
+//  more informations on: http://n.pastrana.free.fr/mel/
+//
+//  MODIFY THIS AT YOUR OWN RISK
+//
+
+proc int convertToSeconds (int $h, int $m, int $s)
+{
+	return ($h*60*60+$m*60+$s);
+}
+
+proc int[] convertToDate (float $seconds)
+{
+	float $min = $seconds / 60;
+	float $hour = $min / 60;
+	int $hourI = (int)$hour;
+	int $minI = (int)$min;
+	if ($hourI>=1) 
+	{
+		$minI -= $hourI*60;
+		$seconds -= $hourI*60*60;
+	}
+	if ($minI>=1) 
+		$seconds -= $minI*60;
+	return {$hourI, $minI, (int)$seconds};
+}
+
+global proc NPcheckAutoSave ()
+{
+	float $currentTime = `timerX`;
+	if (($currentTime >= `optionVar -q _NP_autoSaveTime`) && (`file -q -amf`))
+	{
+		string $confirm = "Yes";
+		if (`optionVar -q _NP_autoSaveConfirm`==1)
+			$confirm = `confirmDialog 
+					-title "Confirm" 
+					-message "Want you save your work?"
+			 		-button "Yes" -button "No" 
+			 		-defaultButton "Yes" -cancelButton "No" -dismissString "No"`;
+
+ 		if ($confirm == "Yes") FileMenu_SaveItem();
+ 		float $seconds = `optionVar -q _NP_autoSaveSeconds`;
+		optionVar -floatValue _NP_autoSaveTime ($seconds+$currentTime);
+	}
+}
+
+proc int scriptJobID ()
+{
+		string $jobList[] = `scriptJob -listJobs`;
+		string $job, $match, $id;
+		for ($job in $jobList)
+			if (`match "NPcheckAutoSave" $job`!="")
+				$id = `match "[0-9]+" $job`;
+		if ($id == "") $id = 0;
+
+		return ((int)$id);
+}
+
+proc string scriptJobEvent ()
+{
+		string $jobList[] = `scriptJob -listJobs`;
+		string $job, $match;
+		string $event = "SelectionChanged";
+		for ($job in $jobList)
+			if (`match "NPcheckAutoSave" $job`!="")
+				if (`match "RecentCommandChanged" $job`!="")
+				$event = "RecentCommandChanged";
+
+		return $event;
+}
+
+global proc NPautoSave ()
+{
+	int $active = `optionVar -q _NP_autoSaveActive`;
+	int $id = scriptJobID();
+	
+	if ($active)
+	{
+		float $seconds = `optionVar -q _NP_autoSaveSeconds`;
+		float $startTime = `timerX`;
+		optionVar -floatValue _NP_autoSaveTime ($seconds+$startTime);
+		
+		int $eventVar = `optionVar -q _NP_autoSaveEvent`;
+		string $event = "SelectionChanged";
+		if ($eventVar == 2) $event = "RecentCommandChanged";
+		
+		$eventJob = scriptJobEvent();
+		string $job = "scriptJob -protected -event "+$event+" (\"NPcheckAutoSave()\");";
+
+		if ($id==0) 
+			eval $job;
+		else if ($eventJob != $event) {
+				scriptJob -kill $id -force;
+				eval $job;
+			}
+	} else if ($id!=0) scriptJob -kill $id -force;
+}
+
+proc addAutoSaveMenuItem ()
+{
+	global string $gMainFileMenu;
+	string $menuItem[] = `menu -q -ia $gMainFileMenu`;
+    if(size($menuItem)==0)
+    {
+        print "No menu items!";
+        buildFileMenu;
+        $menuItem = `menu -q -ia $gMainFileMenu`;        
+    }
+	if (stringArrayCount("NPautoSave", $menuItem)==0)
+	{
+		//setParent -menu $gMainFileMenu;
+		menuItem -p $gMainFileMenu
+            -label "Auto Save Options"
+				-annotation "Enable//Disable the Auto Save"
+				-command    ("perform_NP_autoSave(1)")
+				-dragMenuCommand        ("perform_NP_autoSave(2)")
+				-dragDoubleClickCommand ("perform_NP_autoSave(1)")
+                -ia $menuItem[6]
+				NPautoSave;
+		//setParent -m ..;
+	}
+}
+
+proc setOptionVars (int $forceFactorySettings)
+{
+	if ($forceFactorySettings || !`optionVar -exists _NP_autoSaveActive`) {
+		optionVar -intValue _NP_autoSaveActive 0;
+	}
+	if ($forceFactorySettings || !`optionVar -exists _NP_autoSaveConfirm`) {
+		optionVar -intValue _NP_autoSaveConfirm 1;
+	}
+	if ($forceFactorySettings || !`optionVar -exists _NP_autoSaveEvent`) {
+		optionVar -intValue _NP_autoSaveEvent 1;
+	}
+	if ($forceFactorySettings || !`optionVar -exists _NP_autoSaveSeconds`) {
+		optionVar -floatValue _NP_autoSaveSeconds 1800;
+	}
+	if ($forceFactorySettings || !`optionVar -exists _NP_autoSaveTime`) {
+		optionVar -floatValue _NP_autoSaveTime 3600;
+	}
+}
+
+global proc _NP_autoSaveSetup (string $parent, int $forceFactorySettings)
+{
+	setParent $parent;
+	setOptionVars ($forceFactorySettings);
+	
+	checkBoxGrp -e -v1 `optionVar -q _NP_autoSaveActive` 
+		active;
+	int $date[] = convertToDate (`optionVar -q _NP_autoSaveSeconds`);
+	intSliderGrp -e -v $date[0] 
+		hField;
+	intSliderGrp -e -v $date[1] 
+		mField;
+	intSliderGrp -e -v $date[2] 
+		sField;
+	radioButtonGrp -e -sl `optionVar -q _NP_autoSaveEvent`
+		eventField;
+	checkBoxGrp -e -v1 `optionVar -q _NP_autoSaveConfirm` 
+		confirm;
+	columnLayout -e -en `optionVar -q _NP_autoSaveActive` 
+		activable;
+}
+
+global proc _NP_autoSaveCallback (string $parent, int $doIt)
+{
+	setParent $parent;
+	
+	optionVar -intValue _NP_autoSaveActive
+		`checkBoxGrp -query -v1 active`;
+	
+	float $seconds = convertToSeconds (
+						`intSliderGrp -query -v hField`,
+						`intSliderGrp -query -v mField`,
+						`intSliderGrp -query -v sField`);
+	optionVar -floatValue _NP_autoSaveSeconds $seconds;
+
+	optionVar -intValue _NP_autoSaveConfirm
+		`checkBoxGrp -query -v1 confirm`;
+	
+	optionVar -intValue _NP_autoSaveEvent
+		`radioButtonGrp -q -sl eventField`;
+	if ($doIt) {
+		perform_NP_autoSave 0; 
+	}
+}
+
+proc _NP_autoSaveOptions()
+{
+	string $commandName = "_NP_autoSave";
+	string $callback = ($commandName + "Callback");
+	string $setup = ($commandName + "Setup");
+	string $layout = getOptionBox();
+	
+	setParent $layout;
+	setOptionBoxCommandName($commandName);
+	setUITemplate -pushTemplate DefaultTemplate;
+	waitCursor -state on;
+	tabLayout -tv false -scr 1;
+	string $parent = `columnLayout -adjustableColumn 1`;
+		checkBoxGrp
+			-label "Active"
+			-numberOfCheckBoxes 1
+			-on1 "columnLayout -e -en 1 activable;"
+			-of1 "columnLayout -e -en 0 activable"
+			active;
+		columnLayout -adjustableColumn 1 activable;
+			frameLayout 
+				-label "General Options"
+				-labelAlign "center"
+				-borderStyle "etchedIn"
+				-collapsable 0;
+				columnLayout -adjustableColumn 1;
+					intSliderGrp 
+						-l "Hour(s)"
+						-minValue 0 -maxValue 23
+						-fieldMinValue 0 -fieldMaxValue 23
+						hField;
+					intSliderGrp 
+						-l "Minutes(s)"
+						-minValue 0 -maxValue 59
+						-fieldMinValue 0 -fieldMaxValue 59
+						mField;
+					intSliderGrp 
+						-l "Second(s)"
+						-minValue 0 -maxValue 59
+						-fieldMinValue 0 -fieldMaxValue 59
+						sField;
+					setParent..;setParent..;
+			frameLayout 
+				-label "Advanced Options"
+				-labelAlign "center"
+				-borderStyle "etchedIn"
+				-collapsable 0;
+				columnLayout -adjustableColumn 1;
+					checkBoxGrp
+						-label "Confirm"
+						-numberOfCheckBoxes 1
+						confirm;
+					radioButtonGrp 
+						-label "Run script on" 
+						-numberOfRadioButtons 2
+						-labelArray2 	"Selection Changed" 
+										"Recent Command Changed"
+						-cw3 170 120 200
+						-select 1
+						eventField;
+
+	setUITemplate -popTemplate;
+	
+	string $applyBtn = getOptionBoxApplyBtn();
+	button -e
+		-label "Create"
+		-command ($callback + " " + $parent + " " + 1)
+		$applyBtn;
+	string $saveBtn = getOptionBoxSaveBtn();
+	button -e 
+		-command ($callback + " " + $parent + " " + 0 + "; hideOptionBox")
+		$saveBtn;
+	string $resetBtn = getOptionBoxResetBtn();
+	button -e 
+		-command ($setup + " " + $parent + " " + 1)
+		$resetBtn;
+	setOptionBoxTitle("Auto Save Options");
+	
+	string $helpArg = "-a \"http://n.pastrana.free.fr/mel/\"";
+	if (getApplicationVersionAsFloat() >= 8.0)
+		$helpArg = "";
+	setOptionBoxHelpTag($helpArg);
+
+	eval (($setup + " " + $parent + " " + 0));	
+	showOptionBox();
+	waitCursor -state off;
+}
+
+
+proc string assembleCmd()
+{
+	string $cmd;
+	$cmd = "NPautoSave ()";
+	return $cmd;
+}
+
+
+global proc string perform_NP_autoSave (int $action)
+{
+	string $cmd = "";
+
+	switch ($action) {
+		case 0:
+			setOptionVars(false);
+			$cmd = `assembleCmd`;
+			evalEcho($cmd);
+			break;
+
+		case 1:
+			_NP_autoSaveOptions;
+			break;
+
+		case 2:
+			setOptionVars (false);
+			$cmd = `assembleCmd`;
+			break;
+	}
+	return $cmd;
+}
+
+addAutoSaveMenuItem;
+perform_NP_autoSave 0;

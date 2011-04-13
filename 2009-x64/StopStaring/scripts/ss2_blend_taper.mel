@@ -1,0 +1,64 @@
+global proc ss2_blend_taper (){
+	print"";
+}
+print "ss2_blend_taper : sourced\n";
+
+proc ss2_blend_taper_placeTapers (string $base, string $tapers[]){
+
+	string $attrs[] = {"tx","ty","tz"};
+
+	for ($a in $attrs){
+		setAttr -k 1 -l 0 ($tapers[0]+"."+$a);
+		setAttr -k 1 -l 0 ($tapers[1]+"."+$a);
+	}
+
+	float $pos[] = `xform -q -ws -t $base`;	
+	float $bBoxSize[] = `getAttr ($base+".boundingBoxSize")`;
+
+	xform -ws -t $pos[0] $pos[1] $pos[2] $tapers;
+
+	move -r 0 ( $bBoxSize[1] * -1 ) 0 $tapers;
+	move -r ( $bBoxSize[0] * -0.5 ) 0 0 $tapers[0];
+	move -r ( $bBoxSize[0] * 0.5 ) 0 0 $tapers[1];
+
+}
+
+global proc ss2_blend_taper_shelf (){
+
+	string $sel[] = `ls -sl`;
+
+	string $blendShape = `ss2_search_byType blendShape {$sel[0]}`;
+
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 1 `;
+
+	string $tapers[];
+
+	for ($b in $blendShapeWeight)
+		catch(`setAttr ($blendShape+"."+$b) 0`);
+
+	for ($b in $blendShapeWeight){
+
+		catch(`setAttr ($blendShape+"."+$b) 1`);
+
+		$tapers[size($tapers)] = `ss2_cleanDupe $sel[0] ("l"+$b)`;
+
+		catch(`setAttr ($blendShape+"."+$b) 0`);
+
+	}
+
+	ss2_blend_targetWeights_run $blendShape $blendShapeWeight 1 0 ;
+
+	for ($b in $blendShapeWeight){
+
+		setAttr ($blendShape+"."+$b) 1;
+
+		$tapers[size($tapers)] = `ss2_cleanDupe $sel[0] ("r"+$b)`;
+
+		setAttr ($blendShape+"."+$b) 0;
+	}
+
+	ss2_blend_targetWeights_run $blendShape $blendShapeWeight 1 0 ;
+
+	select $tapers;
+
+}

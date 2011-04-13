@@ -1,0 +1,172 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc zenMuscleExecute()
+{
+	global	int	$zenOptions_muscleReflect,
+			$zenOptions_muscleReflectAxis,
+			$zenOptions_muscleJiggle,
+			$zenOptions_muscleScript;
+			
+	global	string	$zenMuscleSelections[];
+			
+	int	$axis;
+			
+		if($zenOptions_muscleReflect)
+			$axis=$zenOptions_muscleReflectAxis;
+		else
+			$axis=0;
+		
+		rigZenMuscle $zenMuscleSelections $axis $zenOptions_muscleJiggle $zenOptions_muscleScript;
+}
+
+global proc zenMuscleAddSelectionGroup(string $column)
+{
+	global	string	$zenMuscleSelections[];
+	global	string	$zenMuscleSelectionButtons[];
+	
+	int	$buttonNum=size($zenMuscleSelectionButtons);
+	
+	string	$command=
+		(
+		
+			"$zenMuscleSelections["+(string($buttonNum))+"]=stringArrayToString(`ls -sl`,\",\");\n"+
+			
+			"if(size(`ls -sl`))\n"+
+			"{\n"+
+
+			//check selection validity
+			
+			"	if\n"+
+			"	(\n"+
+			"		size\n"+
+			"		(\n"+
+			"			stringArrayCatenate\n"+
+			"			(\n"+
+			"				polyListComponentConversion\n"+
+			"				(\n"+
+			"					\"-fe\",\n"+
+			"					\"-te\",\n"+
+			"					stringArrayRemove(stringArrayCatenate(`ls -type transform`,`ls -type shape`),`ls -sl`)\n"+
+			"				),\n"+
+			"				stringArrayCatenate\n"+
+			"				(\n"+
+			"					(ls(\"-type\",\"nurbsCurve\",`listRelatives -s -ni`)),\n"+
+			"					`ls -type nurbsCurve -sl`\n"+
+			"				)\n"+
+			"			)\n"+
+			"		) &&\n"+
+			"		size(`ls -type joint -sl`)\n"+
+			"	)\n"+
+			"		button -e -l \"Selection Group "+(string($buttonNum+1))+" Set\" $zenMuscleSelectionButtons["+(string($buttonNum))+"];\n"+
+			"	else\n"+
+			"		button -e -l \"Selection Group "+(string($buttonNum+1))+" is Invalid\" $zenMuscleSelectionButtons["+(string($buttonNum))+"];\n"+
+			"}\n"+
+			"else\n"+
+			"	button -e -l \"Selection Group "+(string($buttonNum+1))+" is empty\" $zenMuscleSelectionButtons["+(string($buttonNum))+"];\n"+
+
+			"if("+(string($buttonNum+1))+"==size($zenMuscleSelectionButtons))\n"+
+			"	zenMuscleAddSelectionGroup "+$column+";"		
+		);
+				
+		$zenMuscleSelectionButtons[$buttonNum]=`button -p $column -l "Add Selection Group" -c $command`;
+		
+		separator -p $column;
+}
+
+global proc layoutZenMuscle()
+{
+	global	int	$zenOptions_muscleReflect,
+			$zenOptions_muscleReflectAxis,
+			$zenOptions_muscleJiggle,
+			$zenOptions_muscleScript;
+				
+	global 	int 	$zenMinimumWindowWidth;
+
+	global 	string 	$zenToolsWindow;
+	
+	string	$mainLayout=`zenClearToolColumn`;
+	
+		window -e -title "ZenTools : Create Muscle" $zenToolsWindow;
+		
+		layout -e -h 1 -w 400 $mainLayout;
+		
+		checkBox
+			-p $mainLayout
+			-label "Create Jiggle"
+			-align left
+			-v $zenOptions_muscleJiggle
+			-cc "$zenOptions_muscleJiggle=`checkBox -q -v zenOptions_muscleJiggle`"
+			zenOptions_muscleJiggle;
+	
+		separator -p $mainLayout -w $zenMinimumWindowWidth;
+		
+		checkBox
+			-p $mainLayout
+			-label "Create Script"
+			-align left
+			-v $zenOptions_muscleScript
+			-cc "$zenOptions_muscleScript=`checkBox -q -v zenOptions_muscleScript`"
+			zenOptions_muscleScript;
+	
+		separator -p $mainLayout -w $zenMinimumWindowWidth;
+		
+		checkBox
+			-p $mainLayout
+			-label "Mirror Muscle"
+			-align left
+			-v $zenOptions_muscleReflect
+			-cc 
+			(
+				"$zenOptions_muscleReflect=`checkBox -q -v zenOptions_muscleReflect`;\n"+
+				"radioButtonGrp -e -en $zenOptions_muscleReflect zenOptions_muscleReflectAxis"
+			)
+			zenOptions_muscleReflect;
+	
+		separator -p $mainLayout -w $zenMinimumWindowWidth;
+		
+		text -p $mainLayout -align left "Mirror Axis";
+			
+		radioButtonGrp
+			-p $mainLayout
+			-en $zenOptions_muscleReflect
+			-cw3 ($zenMinimumWindowWidth/3) ($zenMinimumWindowWidth/3) ($zenMinimumWindowWidth/3)
+			-numberOfRadioButtons 3
+			-l1 "x" 
+			-l2 "y" 
+			-l3 "z"
+			-select $zenOptions_muscleReflectAxis
+			-cc "$zenOptions_muscleReflectAxis=int(`radioButtonGrp -q -sl zenOptions_muscleReflectAxis`)"
+			zenOptions_muscleReflectAxis;	
+			
+		separator -p $mainLayout;
+		
+	string	$selectionButtonsColumn=`columnLayout -p $mainLayout -adj 1`;
+	
+	global	string	$zenMuscleSelections[];
+	global	string	$zenMuscleSelectionButtons[];
+	
+		clear $zenMuscleSelections;
+		clear $zenMuscleSelectionButtons;
+		
+		zenMuscleAddSelectionGroup $selectionButtonsColumn;
+		
+		button -p $mainLayout -c zenMuscleExecute -l "Create Muscle";
+}
+
+		
+		
+		
+		
+

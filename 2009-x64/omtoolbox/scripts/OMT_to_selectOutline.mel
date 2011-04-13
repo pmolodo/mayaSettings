@@ -1,0 +1,157 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	OMT_to_selectOutline.mel					///
+///  AUTHOR: 	Henry Korol (henrykorol@yahoo.com)				///
+///										///
+///  UDTATE LOG:								///
+///	8th of november: 1.21 by Jakob Welner					///
+///	- Fixed syntax error only occuring under linux				///
+///	- Fixed optionbox to work under linux					///
+///										///
+///	18th of april: 1.20 by Jakob Welner					///
+///	- Fixed vertex & edge support and selection mask			///
+///										///
+///	16th of april: 1.10 by Jakob Welner					///
+///	- Added optionBox							///
+///										///
+///  DEPENDENCIES:								///
+///   	None									///
+///										///
+///  PURPOSE & USE:								///
+///	Selects the border of current polygon face selection.			///
+///	Optionbox to enable/diable border selecting.				///
+///										///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Alias Maya toolbox			///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+global proc OMT_to_selectOutlineOptWin()
+{
+   if (`window -exists borderSelectOptWin`)
+      deleteUI borderSelectOptWin;
+
+   window -widthHeight 400 380 -title "Tool Settings" -sizeable false borderSelectOptWin;
+      string $mainForm = `formLayout`;
+         columnLayout -rowSpacing 10;
+            rowLayout -numberOfColumns 1 -columnWidth 1 380;
+	    text -label "                 Select: Outline";
+               setParent ..;
+
+            string $mainTab = `tabLayout`;
+               string $tabFrame = `frameLayout -label "Select: Outline Options" -width 380 -collapsable 1 -collapse 1 -borderStyle "etchedIn"`;
+                  columnLayout -columnAlign "left";
+                     tabLayout -e -tabLabel $tabFrame "Tool Defaults" $mainTab;
+                     checkBox
+                        -label "Select border outlines"
+			-width 380
+                        -value `optionVar -q OMT_selectOutlineBorderSelect`
+                        -onc "optionVar -iv OMT_selectOutlineBorderSelect 1"
+                        -ofc "optionVar -iv OMT_selectOutlineBorderSelect 0"
+			selectBorderSettings;
+                     setParent ..;
+                  setParent ..;
+               setParent ..;
+            setParent ..;
+
+
+         string $resetButton =
+            `button
+               -label "Reset Tool"
+               -command "optionVar -iv OMT_selectOutlineBorderSelect 1; checkBox -edit -value 1 selectBorderSettings;"`;
+
+         string $closeButton =
+            `button
+               -label "Close"
+               -command "deleteUI borderSelectOptWin"`;
+
+      formLayout -edit
+         -attachForm $resetButton "bottom" 6
+         -attachForm $resetButton "left" 6
+         -attachPosition $resetButton "right" 0 46
+      $mainForm;
+
+      formLayout -edit
+         -attachForm $closeButton "bottom" 6
+         -attachControl $closeButton "left" 6 $resetButton
+         -attachForm $closeButton "right" 6
+      $mainForm;
+
+   showWindow borderSelectOptWin;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///					TOOL					///
+///	Indput: 	Selection and a int to set border selection on/off	///
+///	Function: 	Selects the outline, if any				///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OMT_to_selectOutline()
+{
+	int $Border = `optionVar -q OMT_selectOutlineBorderSelect`;
+	
+	select -r `polyListComponentConversion -in -tf`;
+	string $SelFaces[] = `filterExpand -ex 0 -sm 34`;
+		
+	 if(`size($SelFaces)`)
+	 { 
+	    string $BorderEdgeArray[] = `polyListComponentConversion -te -bo`;
+	    if(!$Border)
+	    {
+	     SelectEdgeMask;
+	     select -r $BorderEdgeArray; 
+	    }
+	    else
+	    {
+	     string $EdgeArray[] = `polyListComponentConversion -te`;
+	     SelectEdgeMask;
+	     select -r $EdgeArray;
+	     $RestoreConstraintsCmd = `polySelectConstraint -q -sts`;
+	     resetPolySelectConstraint;
+	     polySelectConstraint -t 0x8000 -m 2 -w 1;
+	     polySelectConstraint -m 0 -w 0;
+	     eval ($RestoreConstraintsCmd);   
+	     select -add $BorderEdgeArray; 
+	    }
+	 }
+	 	 
+	 else warning "Need to select at least one polygonal component";
+}
+
+///////////////////////////////////////////////////////////////////////////////////

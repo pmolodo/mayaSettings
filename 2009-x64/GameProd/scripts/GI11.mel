@@ -1,0 +1,438 @@
+//
+//
+//	GLOBAL ILLUMINATION V1.1
+//	AUTHOR : MARC DUBROIS
+//	
+//
+//
+//
+GI11();
+
+proc MakeWin()
+{
+	
+	if (`window -exists "GI11"`) deleteUI "GI11";
+	
+	
+	
+	window
+		-title " - [Global Illumination | V1.1] - "
+		-sizeable true
+		-titleBar true
+		-minimizeButton true
+		-maximizeButton false
+		-menuBarVisible false "GI11";
+
+	formLayout -numberOfDivisions 100 "Form1";
+
+		button -label "Render View" -align "center" -height 25 -command "RenderViewWindow;" "Rview";
+
+		button -label "Render Globals" -align "center" -height 25 -command "RenderGlobalsWindow;" "Rglobals";
+		
+		button -label "SELECT G I " -align "center" -height 25 -command "select GI" "selGI";
+		
+		button -label "DELETE G I " -align "center" -height 25 -command "delete GI" "delGI";
+
+		frameLayout -label "GLOBAL ILLUMINATION SETUP" -labelAlign "center" -collapsable false -borderStyle "etchedIn" "FrmMain";
+			scrollLayout -horizontalScrollBarThickness 0 -verticalScrollBarThickness 12 -childResizable true "ScrMain";
+				columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 5 "ColMain";
+	
+	
+}
+
+
+proc MakeFeet()
+{
+	formLayout -edit
+	
+		-attachForm     "FrmMain"        "top"    5
+		-attachForm     "FrmMain"        "left"   5
+		-attachControl  "FrmMain"        "bottom" 5 "selGI" 
+		-attachForm     "FrmMain"        "right"  5
+		
+		-attachNone 	"selGI"     	"top"	 
+		-attachForm  	"selGI"     	"left"   5
+		-attachControl  "selGI"     	"bottom" 5 "Rglobals"
+		-attachPosition "selGI"     	"right"  5 50
+
+		-attachNone 	"delGI"     	"top"
+		-attachControl 	"delGI"     	"left"   5 "selGI"
+		-attachControl  "delGI"     	"bottom" 5 "Rview"
+		-attachForm 	"delGI"     	"right"  5
+		
+		-attachNone  	"Rglobals" 	"top"	 
+		-attachForm     "Rglobals" 	"left"   5
+		-attachForm 	"Rglobals" 	"bottom" 5
+		-attachPosition	"Rglobals" 	"right"  5 50
+
+		-attachNone 	"Rview"     	"top"	 
+		-attachControl  "Rview"     	"left"   5 "Rglobals"
+		-attachForm 	"Rview"     	"bottom" 5
+		-attachForm     "Rview"     	"right"  5
+		
+		
+		
+		"Form1";
+}
+
+proc MakeEXTRA()
+{
+	frameLayout -label "EXTRA CONTROL" -labelAlign "center" -collapsable true  -collapse false -borderStyle "etchedIn" FrmEXTRA;
+		columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 5 "ColFrm";
+
+
+// Scale, visibility
+			columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 5 "ColExtra";
+			
+				global string $up = "up_Light_grp";
+				global string $down = "down_Light_grp";
+				global string $key = "Key_Light";
+				global string $gi = "GI";
+// Scale of Global Illum Sphere
+				attrFieldSliderGrp -l "Global Scale" 
+					-cal 1 "left" -cw 1 100 -cw 2 60 -cw 3 140 -cw 4 30
+					-min 0 -max 10 -s 1 -attribute ("GI.sx");
+				separator -h 5 -style "out";
+// checkbox visibility of GI, KeyLight, UpGrp, DownGrp
+				checkBoxGrp -numberOfCheckBoxes 2 -label "Visibility" -labelArray2 "Global Illum" "Key Light" -cal 1 "left" -cw 1 80 -cw 2 80 -cw 3 80 -cw 3 80
+					-on1 ("setAttr " + $gi + ".visibility" + " on")
+					-on2 ("setAttr " + $key + ".visibility" + " on")
+					-of1 ("setAttr " + $gi + ".visibility" + " off")
+					-of2 ("setAttr " + $key + ".visibility" + " off")
+					-v1 (eval("getAttr " + $gi + ".visibility"))
+					-v2 (eval("getAttr " + $key + ".visibility"));
+		             	checkBoxGrp -numberOfCheckBoxes 2 -label "Visibility" -labelArray2 "Up Light" "Down Light" -cal 1 "left" -cw 1 80 -cw 2 80 -cw 3 80 -cw 3 80
+					-on1 ("setAttr " + $up + ".visibility" + " on")
+					-on2 ("setAttr " + $down + ".visibility" + " on")
+					-of1 ("setAttr " + $up + ".visibility" + " off")
+					-of2 ("setAttr " + $down + ".visibility" + " off")
+					-v1 (eval("getAttr " + $up + ".visibility"))
+					-v2 (eval("getAttr " + $down + ".visibility"));
+				separator -h 5 -style "out";
+			setParent ..;
+		setParent ..;
+	setParent ..;
+// Fin EXTRA
+}
+//////////////////////////////////////////
+
+//////////////////////////////////////////
+
+
+proc MakeKEY()
+{
+	frameLayout -label "KEY LIGHT CONTROL" -labelAlign "center" -collapsable true  -collapse false -borderStyle "etchedIn" FrmKEY;
+		columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 5 "ColFrm";
+
+		global string $key = "Key_Light";
+		
+
+
+// Color & Intensity
+			columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 2 "ColColor";
+				attrColorSliderGrp 	-label "Color" -columnAlign 1 "left" -adjustableColumn 3 -showButton true
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($key+".color");
+
+				attrFieldSliderGrp 	-label "Intensity" -columnAlign 1 "left" -adjustableColumn 3
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($key+".intensity");
+
+				separator -h 5 -style "out" "SepColor1";
+			setParent ..;
+
+
+// Shadows
+			columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 2 "ColShadows";
+				attrColorSliderGrp 	-label "Shadow Color" -columnAlign 1 "left" -adjustableColumn 3 -showButton true
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($key+".shadowColor");
+
+				attrFieldSliderGrp 	-label "Shadow Resolution" -columnAlign 1 "left" -adjustableColumn 3
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($key+".dmapResolution");
+
+				attrFieldSliderGrp 	-label "Shad Filter Size" -columnAlign 1 "left" -adjustableColumn 3
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($key+".dmapFilterSize");
+
+				separator -h 5 -style "out" "SepShadows1";
+			setParent ..;
+
+
+// Attributes
+			formLayout -numberOfDivisions 60 "FormAttributes";
+
+				text -label "Shadow Attribute" -align "left" -height 20 "LblShadow";
+				text -label "Light Attribute" -align "left" -height 20 "LblLight";
+
+				checkBox -label "Use Shadow" -height 20 -value (eval("getAttr " + $key + ".useDepthMapShadows")) -onCommand ("setAttr " + $key + ".useDepthMapShadows" + " on") -offCommand ("setAttr " + $key + ".useDepthMapShadows" + " off") "ChkUse";
+				checkBox -label "ReUse Shadow" -height 20 -value (eval("getAttr " + $key + ".reuseDmap")) -onCommand ("setAttr " + $key + ".reuseDmap" + " on") -offCommand ("setAttr " + $key + ".reuseDmap" + " off") "ChkReUse";
+
+				checkBox -label "Emit Diffuse" -height 20 -value (eval("getAttr " + $key + ".emitDiffuse")) -onCommand ("setAttr " + $key + ".emitDiffuse" + " on") -offCommand ("setAttr " + $key + ".emitDiffuse" + " off") "ChkEmitD";
+				checkBox -label "Emit Specular" -height 20 -value (eval("getAttr " + $key + ".emitSpecular")) -onCommand ("setAttr " + $key + ".emitSpecular" + " on") -offCommand ("setAttr " + $key + ".emitSpecular" + " off") "ChkEmitS";
+
+				separator -h 5 -style "out" "SepAttr1";
+				
+				attrEnumOptionMenu -label "DECAY RATE" -attribute ($key + ".decayRate") "keydecay";
+				
+				separator -h 5 -style "out" "SepAttr2";
+				
+				button -label "SELECT KEY LIGHT " -align "center" -height 25 -command ("select -r" + " $key") "selkey";
+				
+
+			formLayout -edit
+				-attachForm     "LblShadow"   "top"    0
+				-attachForm     "LblShadow"   "left"   5
+				-attachNone     "LblShadow"   "bottom"
+				-attachPosition "LblShadow"   "right"  5 20
+
+				-attachForm     "ChkUse"      "top"    0
+				-attachControl  "ChkUse"      "left"   5 "LblShadow"
+				-attachNone     "ChkUse"      "bottom"
+				-attachPosition "ChkUse"      "right"  5 40
+
+				-attachForm     "ChkReUse"    "top"    0
+				-attachControl  "ChkReUse"    "left"   5 "ChkUse"
+				-attachNone     "ChkReUse"    "bottom"
+				-attachForm     "ChkReUse"    "right"  5
+
+				-attachControl  "LblLight"    "top"    5 "LblShadow"
+				-attachForm     "LblLight"    "left"   5
+				-attachNone     "LblLight"    "bottom"
+				-attachPosition "LblLight"    "right"  5 20
+
+				-attachControl  "ChkEmitD"    "top"    5 "ChkUse"
+				-attachControl  "ChkEmitD"    "left"   5 "LblLight"
+				-attachNone     "ChkEmitD"    "bottom"
+				-attachPosition "ChkEmitD"    "right"  5 40
+
+				-attachControl  "ChkEmitS"    "top"    5 "ChkReUse"
+				-attachControl  "ChkEmitS"    "left"   5 "ChkEmitD"
+				-attachNone     "ChkEmitS"    "bottom"
+				-attachForm     "ChkEmitS"    "right"  5
+				
+				-attachControl  "SepAttr1"    "top"    2 "LblLight"
+				-attachForm     "SepAttr1"    "left"   5
+				-attachNone     "SepAttr1"    "bottom"
+				-attachForm     "SepAttr1"    "right"  5
+				
+				-attachControl  "keydecay"    "top"    5 "SepAttr1"
+				-attachPosition "keydecay"    "left"   5 10
+				-attachNone     "keydecay"    "bottom"
+				-attachForm     "keydecay"    "right"  5
+				
+				-attachControl  "SepAttr2"    "top"    2 "keydecay"
+				-attachForm     "SepAttr2"    "left"   5
+				-attachNone     "SepAttr2"    "bottom"
+				-attachForm     "SepAttr2"    "right"  5
+				
+				-attachControl  "selkey"      "top"    5 "SepAttr2"
+				-attachForm  "selkey"      "left"   5
+				-attachForm     "selkey"      "bottom" 5
+				-attachForm     "selkey"      "right"  5
+
+				"FormAttributes";
+
+			setParent ..;
+		setParent ..;
+	setParent ..;
+// Fin KEY
+}
+
+//////////////////////////////////////////
+
+//////////////////////////////////////////
+
+proc MakeUP()
+{
+	frameLayout -label "UP LIGHT CONTROL" -labelAlign "center" -collapsable true  -collapse false -borderStyle "etchedIn" FrmUP;
+		columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 5 "ColFrm";
+
+		global string $up = "up_Light_grp";
+		
+// Color & Intensity
+			columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 2 "ColColor";
+				attrColorSliderGrp 	-label "Color" -columnAlign 1 "left" -adjustableColumn 3 -showButton true
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($up+".up_Color");
+
+				attrFieldSliderGrp 	-label "Intensity" -columnAlign 1 "left" -adjustableColumn 3
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($up+".up_int");
+
+				separator -h 5 -style "out" "SepColor1";
+			setParent ..;
+
+
+// Shadows
+			columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 2 "ColShadows";
+				attrColorSliderGrp 	-label "Shadow Color" -columnAlign 1 "left" -adjustableColumn 3 -showButton true
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($up+".up_ShadowColor");
+
+				attrFieldSliderGrp 	-label "Shadow Resolution" -columnAlign 1 "left" -adjustableColumn 3
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($up+".up_shadow_Res");
+
+				attrFieldSliderGrp 	-label "Shad Filter Size" -columnAlign 1 "left" -adjustableColumn 3
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($up+".up_Filter_Size");
+
+				separator -h 5 -style "out" "SepShadows1";
+			setParent ..;
+
+
+// Attributes
+			formLayout -numberOfDivisions 60 "FormAttributes";
+
+				text -label "Shadow Attribute" -align "left" -height 20 "LblShadow";
+				
+
+				checkBox -label "Use Shadow" -height 20 -value (eval("getAttr " + $up + ".up_shadow")) -onCommand ("setAttr " + $up + ".up_shadow" + " on") -offCommand ("setAttr " + $up + ".up_shadow" + " off") "ChkUse";
+				checkBox -label "ReUse Shadow" -height 20 -value (eval("getAttr " + $up + ".up_reuse_shadow")) -onCommand ("setAttr " + $up + ".up_reuse_shadow" + " on") -offCommand ("setAttr " + $up + ".up_reuse_shadow" + " off") "ChkReUse";
+
+				separator -h 5 -style "out" "SepAttr1";
+								
+
+			formLayout -edit
+				-attachForm     "LblShadow"   "top"    0
+				-attachForm     "LblShadow"   "left"   5
+				-attachNone     "LblShadow"   "bottom"
+				-attachPosition "LblShadow"   "right"  5 20
+
+				-attachForm     "ChkUse"      "top"    0
+				-attachControl  "ChkUse"      "left"   5 "LblShadow"
+				-attachNone     "ChkUse"      "bottom"
+				-attachPosition "ChkUse"      "right"  5 40
+
+				-attachForm     "ChkReUse"    "top"    0
+				-attachControl  "ChkReUse"    "left"   5 "ChkUse"
+				-attachNone     "ChkReUse"    "bottom"
+				-attachForm     "ChkReUse"    "right"  5
+								
+				-attachControl  "SepAttr1"    "top"    2 "ChkUse"
+				-attachForm     "SepAttr1"    "left"   5
+				-attachNone     "SepAttr1"    "bottom"
+				-attachForm     "SepAttr1"    "right"  5				
+				
+				"FormAttributes";
+
+			setParent ..;
+		setParent ..;
+	setParent ..;
+// Fin UP
+}
+
+//////////////////////////////////////////
+
+//////////////////////////////////////////
+
+proc MakeDOWN()
+{
+	frameLayout -label "DOWN LIGHT CONTROL" -labelAlign "center" -collapsable true  -collapse false -borderStyle "etchedIn" FrmDOWN;
+		columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 5 "ColFrm";
+
+		global string $down = "down_Light_grp";
+		
+// Color & Intensity
+			columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 2 "ColColor";
+				attrColorSliderGrp 	-label "Color" -columnAlign 1 "left" -adjustableColumn 3 -showButton true
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($down+".down_Color");
+
+				attrFieldSliderGrp 	-label "Intensity" -columnAlign 1 "left" -adjustableColumn 3
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($down+".down_int");
+
+				separator -h 5 -style "out" "SepColor1";
+			setParent ..;
+
+
+// Shadows
+			columnLayout -adjustableColumn true -columnAlign "left" -columnOffset "both" 5 -rowSpacing 2 "ColShadows";
+				attrColorSliderGrp 	-label "Shadow Color" -columnAlign 1 "left" -adjustableColumn 3 -showButton true
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($down+".down_ShadowColor");
+
+				attrFieldSliderGrp 	-label "Shadow Resolution" -columnAlign 1 "left" -adjustableColumn 3
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($down+".down_shadow_Res");
+
+				attrFieldSliderGrp 	-label "Shad Filter Size" -columnAlign 1 "left" -adjustableColumn 3
+								-columnWidth 1 100 -columnWidth 2 60 -columnWidth 3 140 -columnWidth 4 30
+								-columnAttach 1 "both" 2 -columnAttach 1 "both" 2 -columnAttach 2 "both" 2 -attribute ($down+".down_Filter_Size");
+
+				separator -h 5 -style "out" "SepShadows1";
+			setParent ..;
+
+
+// Attributes
+			formLayout -numberOfDivisions 60 "FormAttributes";
+
+				text -label "Shadow Attribute" -align "left" -height 20 "LblShadow";
+				
+
+				checkBox -label "Use Shadow" -height 20 -value (eval("getAttr " + $down + ".down_shadow")) -onCommand ("setAttr " + $down + ".down_shadow" + " on") -offCommand ("setAttr " + $down + ".down_shadow" + " off") "ChkUse";
+				checkBox -label "ReUse Shadow" -height 20 -value (eval("getAttr " + $down + ".down_reuse_shadow")) -onCommand ("setAttr " + $down + ".down_reuse_shadow" + " on") -offCommand ("setAttr " + $down + ".down_reuse_shadow" + " off") "ChkReUse";
+
+				separator -h 5 -style "out" "SepAttr1";
+								
+
+			formLayout -edit
+				-attachForm     "LblShadow"   "top"    0
+				-attachForm     "LblShadow"   "left"   5
+				-attachNone     "LblShadow"   "bottom"
+				-attachPosition "LblShadow"   "right"  5 20
+
+				-attachForm     "ChkUse"      "top"    0
+				-attachControl  "ChkUse"      "left"   5 "LblShadow"
+				-attachNone     "ChkUse"      "bottom"
+				-attachPosition "ChkUse"      "right"  5 40
+
+				-attachForm     "ChkReUse"    "top"    0
+				-attachControl  "ChkReUse"    "left"   5 "ChkUse"
+				-attachNone     "ChkReUse"    "bottom"
+				-attachForm     "ChkReUse"    "right"  5
+								
+				-attachControl  "SepAttr1"    "top"    2 "ChkUse"
+				-attachForm     "SepAttr1"    "left"   5
+				-attachNone     "SepAttr1"    "bottom"
+				-attachForm     "SepAttr1"    "right"  5				
+				
+				"FormAttributes";
+
+			setParent ..;
+		setParent ..;
+	setParent ..;
+// Fin DOWN
+}
+
+//////////////////////////////////////////
+
+//////////////////////////////////////////
+
+
+global proc GI11()
+{
+	if (`objExists"GI"`)
+		{}
+	else
+		{string $domeLight = `file -import -type "mayaAscii" -options "v=0" "D:/My Documents/maya/7.0/scripts/GI.ma"`;};
+		
+	MakeWin();
+	
+	MakeFeet();
+	
+	MakeEXTRA();
+	
+	MakeKEY();
+	
+	MakeUP();
+	
+	MakeDOWN();
+	
+	showWindow GI11;
+}
+
+

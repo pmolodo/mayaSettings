@@ -1,0 +1,415 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+if(`zenMayaVersion` < 8.5) requires "closestPointOnMesh";
+
+proc string[] zenOppositeVerts(string $verts[], int $axis, string $coordinateSpaceObject)
+{		
+		$obj=zenReturnFirstStringItem(`ls -o $verts`);
+		
+	string	$tr=zenReturnFirstStringItem(`listRelatives -p $obj`);
+	
+	float	$tol=.0001;
+
+	string	$vertices[]=ls("-fl",$verts);
+		
+	float	$xyz[];
+	
+	int	$useOldCPNode;
+	
+	int	$id;
+		
+		if(`zenMayaVersion` < 8.5) $useOldCPNode=1;
+		
+	//create a pointMatrixMultiplier node for converting coordinates if a coordinate space object is specified
+	
+	string	$pointMatrixMultNode1;
+	string	$pointMatrixMultNode2;
+	
+	int	$coordinateSpace;//0==local, 1==world, 2==custom
+	
+	float	$axisOffset;
+			
+		if(`objExists ($coordinateSpaceObject+".worldInverseMatrix[0]")`)
+		{
+			switch($axis)
+			{
+				case 1:
+					$axisOffset=`getAttr ($coordinateSpaceObject+".tx")`-`getAttr ($tr+".tx")`;
+					break;
+
+				case 2:
+					$axisOffset=`getAttr ($coordinateSpaceObject+".ty")`-`getAttr ($tr+".ty")`;
+					break;
+
+				case 3:
+					$axisOffset=`getAttr ($coordinateSpaceObject+".tz")`-`getAttr ($tr+".tz")`;
+					break;
+			}
+			
+			if
+			(
+				$axisOffset>$tol ||
+				`getAttr ($coordinateSpaceObject+".rx")`!=`getAttr ($tr+".rx")` ||
+				`getAttr ($coordinateSpaceObject+".ry")`!=`getAttr ($tr+".ry")` ||
+				`getAttr ($coordinateSpaceObject+".rz")`!=`getAttr ($tr+".rz")`
+				
+			)
+			{
+			
+				$pointMatrixMultNode1=`createNode pointMatrixMult`;			
+				setAttr ($pointMatrixMultNode1+".vectorMultiply")  true;				
+				connectAttr ($coordinateSpaceObject+".worldInverseMatrix[0]") ($pointMatrixMultNode1+".inMatrix");
+
+				$pointMatrixMultNode2=`createNode pointMatrixMult`;			
+				setAttr ($pointMatrixMultNode2+".vectorMultiply")  true;				
+				connectAttr ($coordinateSpaceObject+".worldMatrix[0]") ($pointMatrixMultNode2+".inMatrix");
+			}
+			else	$coordinateSpace=0;
+		}
+		else
+		if($coordinateSpaceObject=="world")
+			$coordinateSpace=1;
+		else	$coordinateSpace=0;
+		
+	string	$closestPointOnMeshNode=`createNode closestPointOnMesh`;
+
+		if($coordinateSpace)
+			connectAttr ($obj+".worldMesh[0]") ($closestPointOnMeshNode+".inMesh");
+		else
+			connectAttr ($obj+".outMesh") ($closestPointOnMeshNode+".inMesh");
+			
+	//progress window
+	
+		progressWindow -isInterruptable 1 -title "Working" -status "Sorting Vertices" -max (size($vertices)/2) -progress 0;
+					
+	//find reflected vertices
+	
+	string	$closeVerts[];
+	
+	vector	$testCoordinates;
+	vector	$pointCoordinates;
+	
+	float	$vertDistance;
+	float	$closestDistance;
+	
+	string	$closestVert;
+	
+	string	$returnVal[];
+		
+		for($i=0;$i<size($vertices);$i++)
+		{
+			switch($coordinateSpace)
+			{
+				case 0:
+					$xyz=`pointPosition -l ($vertices[$i])`;
+
+					switch($axis)
+					{
+						case 1:
+							$xyz[0]=-$xyz[0];
+							break;
+
+						case 2:
+							$xyz[1]=-$xyz[1];
+							break;
+
+						case 3:
+							$xyz[2]=-$xyz[2];
+							break;				
+					}
+
+					break;
+
+				case 1:
+
+					$xyz=`pointPosition -w ($vertices[$i])`;
+
+					switch($axis)
+					{
+						case 1:
+							$xyz[0]=-$xyz[0];
+							break;
+
+						case 2:
+							$xyz[1]=-$xyz[1];
+							break;
+
+						case 3:
+							$xyz[2]=-$xyz[2];
+							break;				
+					}
+
+					break;
+
+				case 2:
+				
+					//find custom object space coordinates
+
+					$xyz=`pointPosition -w ($vertices[$i])`;
+
+					setAttr ($pointMatrixMultNode1+".inPoint") ($xyz[0]) ($xyz[1]) ($xyz[2]);
+
+						$xyz=`getAttr ($pointMatrixMultNode1+".output")`;
+
+					switch($axis)
+					{
+						case 1:
+							$xyz[0]=-$xyz[0];
+							break;
+
+						case 2:
+							$xyz[1]=-$xyz[1];
+							break;
+
+						case 3:
+							$xyz[2]=-$xyz[2];
+							break;				
+					}						
+
+					setAttr ($pointMatrixMultNode2+".inPoint") ($xyz[0]) ($xyz[1]) ($xyz[2]);
+					
+					$xyz=`getAttr ($pointMatrixMultNode1+".output")`;
+
+					break;
+			}
+			
+			setAttr ($closestPointOnMeshNode+".inPosition") ($xyz[0]) ($xyz[1]) ($xyz[2]);
+			
+			if($useOldCPNode)
+			{
+				$closeVerts=ls
+				(
+					"-fl",
+					(
+						polyListComponentConversion
+						(
+							"-tv",
+							(
+								$obj
+								+".f["
+								+(string(`getAttr ($closestPointOnMeshNode+".closestFaceIndex")`))
+								+"]"
+							)
+						)
+					)
+				);
+									
+				$closestDistance=99999999999;
+				
+				$closestVert=$closeVerts[0];
+				
+				for($v in $closeVerts)
+				{
+					$pointCoordinates=<<($xyz[0]),($xyz[1]),($xyz[2])>>;
+					$testCoordinates=zenArrayToVector(`pointPosition -w $v`);
+					
+					$vertDistance=mag($testCoordinates-$pointCoordinates);
+					
+					if($vertDistance<$closestDistance)
+					{
+						$closestDistance=$vertDistance;
+						$closestVert=$v;
+					}						
+				}
+			}
+			else
+			{
+				$closestVert=$obj+".vtx["+(string(`getAttr ($closestPointOnMeshNode+".closestVertexIndex")`))+"]";
+
+			}
+			
+			$returnVal[$i]=$closestVert;
+
+			//check for user interupt
+
+			if(`progressWindow -q -ic`)
+			{
+				undoInfo -swf 1;
+				delete $closestPointOnMeshNode;
+				if($coordinateSpace==2) delete $pointMatrixMultNode1 $pointMatrixMultNode2;
+				progressWindow -ep;
+				error "User Interupt.";
+			}
+			
+			progressWindow -e -s 1;	
+		}
+		
+		progressWindow -ep;
+		
+		delete $closestPointOnMeshNode;
+		
+		if($coordinateSpace==2) delete $pointMatrixMultNode1 $pointMatrixMultNode2;
+		
+	return	$returnVal;
+}
+
+global proc string[] zenReturnOppositeVerts(int $axis,string $verts[],string $spaceObj)
+{
+		//undoInfo -swf 0;
+	
+	string	$objects[]=stringArrayRemoveDuplicates(`ls -o $verts`);
+	
+		if(size($objects)>1) error("Incorrect selection.");
+		
+	string	$obj=$objects[0];
+	
+	string	$skinClusterNode=zenReturnFirstStringItem(ls("-type","skinCluster",`listHistory $obj`));
+	string	$inputGeometry=$obj;
+	
+		if(objExists($skinClusterNode))
+		{
+			$inputGeometry=zenReturnFirstStringItem(ls("-type","mesh",(listHistory(listConnections($skinClusterNode+".input")))));
+			$verts=`zenMimicSelection $verts $inputGeometry`;
+		}
+		
+	int	$intermediateObj=getAttr($inputGeometry+".intermediateObject");
+		
+		setAttr ($inputGeometry+".intermediateObject") 0;
+	
+	//first see if the mesh has a symmetry table attached
+	
+	int	$blindDataID=zenBlindDataTemplate_opposingVert();
+
+		string	$symNode;
+	
+	string	$polyBlindDataNodes[]=`ls -type polyBlindData (listConnections($inputGeometry))`;
+	
+		for($p in $polyBlindDataNodes)
+		{
+			if(getAttr($p+".typeId")==$blindDataID)
+			{
+				$symNode=$p;
+				break;
+			}
+		}
+				
+	string	$historyMeshes[];
+
+		if(!objExists($symNode))
+		//look in history for symmetry nodes
+		{
+			$historyMeshes=stringArrayRemoveDuplicates(ls("-type","mesh",stringArrayCatenate(`listHistory $inputGeometry`,`listHistory -f true $inputGeometry`)));
+		
+			for($h in $historyMeshes)
+			{
+				$polyBlindDataNodes=`ls -type "polyBlindData" (listConnections($h))`;
+								
+				if(size($polyBlindDataNodes))
+				{
+					if
+					(
+						zenReturnFirstIntegerItem(`polyEvaluate -v $inputGeometry`)==zenReturnFirstIntegerItem(`polyEvaluate -v $h`) &&
+						zenReturnFirstIntegerItem(`polyEvaluate -e $inputGeometry`)==zenReturnFirstIntegerItem(`polyEvaluate -e $h`) &&
+						zenReturnFirstIntegerItem(`polyEvaluate -f $inputGeometry`)==zenReturnFirstIntegerItem(`polyEvaluate -f $h`)
+					)
+					{						
+						for($p in $polyBlindDataNodes)
+						{
+							if(getAttr($p+".typeId")==$blindDataID)
+							{
+								$symNode=$p;
+								connectAttr -na ($symNode+".message") ($obj+".blindDataNodes");
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		$verts=`ls -fl $verts`;
+		
+	string	$oppositeVerts[];
+	
+	int	$err=false;
+	string	$closestPointNode;
+	string	$pointOnMeshInfo;
+	
+	int	$vertCount;
+
+		if(!objExists($symNode))
+		{
+			$vertCount=zenReturnFirstIntegerItem(`polyEvaluate -v $inputGeometry`);
+			
+			if(size($verts)>($vertCount/4))
+			{
+				$err=catch(zenVertexSymmetryNode( 0, $axis, $inputGeometry, $spaceObj ));
+				
+				$polyBlindDataNodes=`ls -type polyBlindData (listConnections($inputGeometry))`;
+			
+				for($p in $polyBlindDataNodes)
+				{
+					if(getAttr($p+".typeId")==$blindDataID)
+					{
+						$symNode=$p;
+						break;
+					}
+				}
+			}
+		}
+		
+	int	$oppositeIDs[];
+
+		if(objExists($symNode) && !$err)
+		{
+			progressWindow -isInterruptable 1 -title "Working" -status "Sorting Vertices" -max (size($verts)) -progress 0;
+			
+			for($i=0;$i<size($verts);$i++)
+			{
+				$oppositeIDs[$i]=getAttr($symNode+".vertexBlindData["+(zenCompID($verts[$i]))+"].opposite");
+					
+				//check for user interupt
+
+				if(`progressWindow -q -ic`)
+				{
+					progressWindow -ep;
+					error "User Interupt.";
+				}
+				
+				progressWindow -e -s 1;	
+			}
+						
+			for($i=0;$i<size($verts);$i++)
+				$oppositeVerts[$i]=$obj+".vtx["+(string(abs($oppositeIDs[$i])))+"]";
+			
+			progressWindow -ep;
+		}
+		else
+		{
+			$err=catch($oppositeVerts=zenOppositeVerts($verts,$axis,$spaceObj));
+		}
+		
+		if($obj!=$inputGeometry) $oppositeVerts=`zenMimicSelection $oppositeVerts $obj`;
+		
+		setAttr ($inputGeometry+".intermediateObject") $intermediateObj;
+		
+		//undoInfo -swf 1;
+		
+		if($err)		
+			return {};
+		else
+			return $oppositeVerts;
+}
+/*
+select
+(
+	zenReturnOppositeVerts
+	(
+		1,
+		`ls -sl`,
+		"root"
+	)
+)
+*/

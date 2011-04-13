@@ -1,0 +1,575 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	OMT_to_splitLoop.mel						///
+///  AUTHOR: 	Jakob Welner (jakob@welner.dk)					///
+///										///
+///  UDTATE LOG:	
+///	9th of June: 0.5.2 by Jakob Welner
+///	- Enabled optional autoactivation of selectionDragger
+///
+///	21th of october: 0.5.1 by Jakob Welner					///
+///	- removed auto-activate selectionDragger after split
+///
+///	[date of update]: 0.5 by Jakob Welner					///
+///	  - Added a new slider							///
+///	  - Made it independent of other script files				///
+///	  - Changed the post loopSelection to select all new loop edges		///
+///	  - Removed the slider until it gets updated				///
+///										///
+///  DEPENDENCIES & CONNECTIONS:						///
+///   	none									///
+///										///
+///  PURPOSE & USE:								///
+///	Select one or severel polygon edges and execute the script to make a	///
+///	loopSplit through all connected quadFaces. If more then one face are	///
+///	selected on the same quadFace line, it splits only the shortest way	///
+///	between those two							///
+///										///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Alias Maya toolbox			///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Indput selection	 				///
+///	Output: 	String: Object name			 		///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string OMT_objectName(string $objSelection)
+{
+	string	$name[];
+	
+	tokenize $objSelection "." $name;
+	
+	return $name[0];
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	a component name	 				///
+///	Output: 	returns 1 if the indput name has a number and 0 if	/// 
+///			it hasn't						///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc int OMT_haveIndex(string $indput)
+{
+	string	$dump[];
+	
+	int $size = `tokenize $indput "[]" $dump`;
+	
+	int $return = 0;
+	
+	if ($size == 2)
+	{
+	   $return = 1;
+	}
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	string and array		 			///
+///	Output: 	returns 1 if string occurs in array, 0 if not	 	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc int OMT_inArray( string $string , string $array[])
+{
+	int	$int;
+	int 	$return = 0;
+	
+	for ($int = 0 ; $int < size($array) ; $int++)
+	{
+	   if ( $string == $array[$int] ) {$return = 1;}
+	}
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	2 arrays		 				///
+///	Output: 	returns an array with the first array turned backwards	///
+///			and combined with the second			 	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OMT_combineStringArray(string $backwardArray[] , string $forwardArray[])
+{
+	int	$int;
+	string 	$return[];
+	
+	for ($int = (size($backwardArray)-1) ; $int >= 0 ; $int--)
+	{
+	   $return[(size($return))] = $backwardArray[$int];
+	}
+	for ($int = 1 ; $int <= (size($forwardArray)-1) ; $int++)
+	{
+	   $return[(size($return))] = $forwardArray[$int];	
+	}
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge			 				///
+///	Output: 	returns a string Array with the two faces adjacent 	///
+///			to the input edge					///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OMT_edge2face(string $edge)
+{
+	string	$dump[];
+	string 	$token[];
+	string 	$object = `OMT_objectName($edge)`;
+	string $return[];
+	
+	$token = `polyInfo -ef $edge`;
+	tokenize ($token[0], $dump);
+	
+	$return[0] = $object + ".f[" + $dump[2] + "]";
+	$return[1] = $object + ".f[" + $dump[3] + "]";
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge array on adjacent faces				///
+///	output: 	connects the array edges and returns the polySplit 	///
+///			node name						///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OMT_splitEdges(string $splitEdges[])
+{
+	
+	int $int;
+	string $dump[];
+	string 	$object = `OMT_objectName($splitEdges[0])`;
+	string $splitCommand = "polySplit -ch on -s 1 ";
+	
+ 	for ($int = 0 ; $int <= (size($splitEdges) -1) ; $int++)
+   	{
+   	   tokenize $splitEdges[$int] "[]" $dump;
+   	   $splitCommand = $splitCommand + "-ep " + $dump[1] + " 0.5 ";	
+   	}
+	string $shapeName[] = `ls -sl "*Shape"`;
+   	$splitCommand = ($splitCommand + $shapeName[0]);
+   	return (eval($splitCommand));
+   	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	a face 							///
+///	Output: 	returns 1 if the face's a quad and 0 if it isn't	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc int OMT_isFaceQuad(string $face )
+{
+
+	string 	$token[];
+	string	$dump[];
+
+	int $result = 0;
+	
+	if( OMT_haveIndex($face) == 1 )
+	{
+	   $token = `polyInfo -fe $face`;
+	   tokenize ($token[0], $dump);	
+
+	   if (size($dump) == 6 )
+	   { 
+		$result = 1;
+	   }
+	}
+	
+	return $result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge plus a quad face adjacent to the edge.		///
+///	Output: 	string array, where [0] is the edge on the opposite side///
+///			of the face and [1] is the new face adjacent to the new	///
+///			edge, where the face isn't similar to the input face	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OMT_oppEdgeOnFace(string $edge, string $quadFace)
+{
+
+	string 	$token[];
+	string	$dump[];
+	string 	$return[];
+	string 	$object = `OMT_objectName($edge)`;
+	
+	$token = `polyInfo -fe $quadFace`;
+	tokenize ($token[0], $dump);
+	
+	for ($int = 2 ; $int <= 5 ; $int++)
+	{
+	   if( (OMT_objectName($edge) + ".e[" + $dump[$int] + "]") == $edge)
+	   {
+		if ($int == 2 || $int == 3) 
+		{
+		   $return[0] = ($object + ".e[" + $dump[($int+2)] + "]"); 
+		}
+		else $return[0] = ($object + ".e[" + $dump[($int-2)] + "]");
+	   }	
+	}
+
+	$token = `polyInfo -ef $return[0]`;
+	tokenize ($token[0], $dump);
+	
+	if (($object + ".f[" + $dump[2] + "]") == $quadFace)
+	{
+		$return[1] = $object + ".f[" + $dump[3] + "]";
+	}
+	else	
+	{
+		$return[1] = $object + ".f[" + $dump[2] + "]";
+	}
+	
+	return $return;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge and edge array					///
+///	Output: 	String array with ringedges.				///
+///			If only one edge appear on the ring it returns a whole 	///
+///			ringloop.						///
+///			If a element in $selection is detected on the ring it 	///
+///			only selects a partial ring between input and the 	///
+///			$selection element					///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OMT_listRing(string $edge1, string $selection[])
+{
+
+	global string $partials[];
+	
+	string	$dump[];
+	string 	$token[];
+	string	$split1[];
+	string	$split2[];
+	string	$faces[];
+	string	$return[];
+	int	$stop;
+	int	$int;
+	int	$stoppedRing;
+	int	$partialBool = 0;
+	
+
+	$split1[0] = $edge1;
+	$split2[0] = $edge1; 
+
+	
+	$faces = OMT_edge2face($edge1);
+	$int = OMT_isFaceQuad($faces[0]);
+	   
+	switch ( $int ) 
+	{
+	   case 1:
+		$edgeNface[1] = $faces[0];
+		$stoppedRing = 1;
+		do
+		{
+		   $stop = 0;
+		   $edgeNface = (OMT_oppEdgeOnFace( $split1[ (size($split1)-1) ] , $edgeNface[1] ));
+		   $split1[ size($split1) ] = $edgeNface[0];
+			
+		   if ($edgeNface[0] == $edge1) 
+		   {
+		   	$stop = 1;
+		   }
+		   else if (OMT_inArray($edgeNface[0], $selection) == 1) 
+		   {	
+			$stoppedRing = 0;
+			$partialBool = 1;
+			$partials[size($partials)] = $edgeNface[0];   
+		   	$stop = 1;
+		   }
+		} 
+		while (OMT_isFaceQuad($edgeNface[1]) == 1 && $stop == 0);
+		if ($edgeNface[0] == $edge1) break;
+			
+	   case 0:
+		if (OMT_isFaceQuad($faces[1]))
+		{
+		   $edgeNface[1] = $faces[1];
+		   $stoppedRing = ($stoppedRing + 2);
+		   do
+		   {
+		   	$stop = 0;
+			$edgeNface = OMT_oppEdgeOnFace($split2[(size($split2) -1)], $edgeNface[1]);
+			$split2[size($split2)] = $edgeNface[0];
+			
+		   	if ($edgeNface[0] == $edge1) 
+		   	{
+		   	   $stop = 1;
+		   	}
+		   	else if (OMT_inArray($edgeNface[0] , $selection) == 1) 
+		   	{
+		   	   $stoppedRing = ($stoppedRing - 2);
+		   	   $partialBool = 1;
+		   	   $partials[size($partials)] = $edgeNface[0];
+		   	   $stop = 1;
+		   	}
+		   } 
+		   while (OMT_isFaceQuad($edgeNface[1]) == 1 && $stop == 0);
+		}
+
+		
+	}
+	
+	if ($partialBool == 1)
+	{
+   	   if (size($split1) == 1) $return = $split2;
+	   else if (size($split2)== 1) $return = $split1;
+	   else if (size($split1) < size($split2) && $stoppedRing != 1) $return = $split1;
+	   else if (size($split1) < size($split2) && $stoppedRing == 1) $return = $split2;
+	   else if (size($split1) > size($split2) && $stoppedRing != 2) $return = $split2;
+	   else if (size($split1) > size($split2) && $stoppedRing == 2) $return = $split1;
+	   else if (size($split1) == size($split2) && $stoppedRing != 1) $return = $split1;
+	   else if (size($split1) == size($split2) && $stoppedRing != 2) $return = $split2;
+	   
+	}
+	else $return = OMT_combineStringArray($split1 , $split2);
+	
+	return $return;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///					TOOL					///
+///	Indput: 	Edge Selection						///
+///	Function: 	LoopSplit on every selected edge			///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OMT_to_splitLoop()
+{
+
+	global string 	$partials[];
+	clear $partials;
+
+	string 	$splitEdges[];
+	string 	$nodeName[];
+	string 	$selection[] = `filterExpand -sm 32`;
+	string 	$object = `OMT_objectName($selection[0])`;
+	
+	string	$vertexContainer[];
+	int	$indexCount;
+
+	
+	if (size($selection) == 0) error "You need to select at least one poly edge";
+	else 
+	{
+
+	   // Gets the count of vertices on the active object
+	   select -r $object;
+	   ConvertSelectionToVertices;
+	   $vertexContainer = `filterExpand -sm 31`;
+	   $indexCount = (size($vertexContainer));
+
+
+	   // runs through each edge in the selection checking if they're on the same ring. Else they are splitted
+	   for ( $sel in $selection )
+	   {
+	   	
+	   	if (OMT_inArray($sel, $partials) == 1) continue;
+		undoInfo -swf 0;
+	   	$splitEdges = OMT_listRing($sel, $selection);
+		undoInfo -swf 1;
+	   	$nodeName = OMT_splitEdges($splitEdges);
+	   	rename $nodeName[0] "LoopSplit"; 
+
+	   }
+
+
+	   // Gets the new count of vertices and finds the added vertices
+	   select -r $object;
+	   ConvertSelectionToVertices;
+	   $vertexContainer = `filterExpand -sm 31`;
+	   string $vertexString;
+	   $vertexString = $object + ".vtx[" + $indexCount + ":" + (size($vertexContainer)-1) + "]";
+	   
+	   // converts the new vertices to edges to get the newly added split
+	   select -r `polyListComponentConversion -in -te $vertexString`;
+	   hilite $object;
+	  
+	}
+	
+	
+	///	Auto drag handler:
+	if (`optionVar -q "OMTSettings_autoActivateDrag"`)
+	{
+		OMT_to_selectionDragger;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////

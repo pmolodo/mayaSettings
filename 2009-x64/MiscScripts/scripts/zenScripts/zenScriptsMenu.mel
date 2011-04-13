@@ -1,0 +1,232 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//takes a given name and returns a name suitable for use as a name or UI name
+global proc string zenValidName(string $name, int $allowSpaces)
+{
+		$name=strip($name);
+
+	string	$digits[]={"1","2","3","4","5","6","7","8","9","0"};
+	
+	string	$characters[]=
+		{
+			"a","A","b","B","c","C","d","D","e","E",
+			"f","F","g","G","h","H","i","I","j","J",
+			"k","K","l","L","m","M","n","N","o","O",
+			"p","P","q","Q","r","R","s","S","t","T",
+			"u","U","v","V","w","W","x","X","y","Y",
+			"z","Z"
+		};
+		
+	string	$separators[];
+	
+		if($allowSpaces)
+			$separators={"_"," "};
+		else
+			$separators={"_"};
+	
+	string	$valid[]=`stringArrayCatenate $digits $characters`;
+		$valid=`stringArrayCatenate $valid $separators`;
+	
+	string	$char;
+	int	$end=size($name);
+	string	$tempString1;
+	string	$tempString2;
+	
+		for($i=0;$i<$end;$i++)
+		{
+			$char=`substring $name 1 1`;
+			
+			if(`stringArrayContains $char $characters`)
+			{			
+				$char=`substring $name ($i+1) ($i+1)`;
+			
+				if(!`stringArrayContains $char $valid`)
+				{
+					$tempString1="";
+					$tempString2="";
+
+					if($i>=1) $tempString1=`substring $name 1 ($i)`;
+					if(size($name)>$i+1) $tempString2=`substring $name ($i+2) (size($name))`;
+
+					$name=$tempString1+$tempString2;
+					
+					$end--;
+					$i--;
+				}
+			}
+			else
+			{
+				if(size($name)>1)
+				{
+					$name=`substring $name 2 (size($name))`;
+					$end--;
+					$i--;
+				}
+				else
+				{
+					$name="X";
+					break;
+				}
+			}
+		}
+		
+	return	$name;
+}
+
+//recursively adds scripts and submenus according to folder structure and mel files
+global proc int zenAddScriptsFolder(string $menuName, string $folder, string $addCommands)
+{
+	string	$sep=`zenSeparatorString`;
+	string	$fileList[];
+	string	$scriptList[];
+	
+		if($folder!="null")
+		{
+			putenv MAYA_SCRIPT_PATH (`getenv MAYA_SCRIPT_PATH`+$sep+$folder);
+
+			$fileList=sort(`getFileList -fld $folder`);
+			$scriptList=sort(`getFileList -fld $folder -fs "*.mel"`);
+		}
+	
+		if(size($fileList)==0 && size($addCommands)==0) return 1;
+	
+	string	$folderCheck[];
+	string	$subMenu;
+	string	$displayName;
+	string	$baseName;
+	string	$scripts[];
+
+	string	$commands[];
+	
+	int	$err;
+	int	$hasSubMenus=0;
+
+		if($addCommands!="" && $addCommands!="null")
+		{	
+			$commands=`stringToStringArray $addCommands ","`;
+			$commands=`stringArrayRemove {""} $commands`;
+			
+			for($c in $commands)
+			{
+				$displayName=`zenValidName $c 1`;
+				$displayName=`substitute "_" $displayName " "`;
+				$displayName=`interToUI $displayName`;
+				
+				menuItem
+					-p $menuName
+					-l $displayName
+					-c ("if($zenOptions_debugging) source "+$c+";"+$c+";");
+			}
+		}
+		
+		if($addCommands!="" && size($fileList))
+			catchQuiet(`menuItem -d 1 -p $menuName`);
+			
+		for($f in $fileList)
+		{
+			$baseName=`basename $f ".mel"`;
+		
+			$folderCheck=`getFileList -fld ($folder+$f+"/")`;
+			
+			if(size($folderCheck))//item is a folder
+			{
+				$displayName=`substitute "_" $f " "`;
+				$displayName=interToUI(`zenValidName $displayName 1`);
+				
+				$hasSubMenus=1;
+				$err=catchQuiet($subMenu=`menuItem -p $menuName -sm true -to true -l $displayName`);
+				$err=catchQuiet(`zenAddScriptsFolder $subMenu ($folder+$f+"/") ""`);
+				if($err) print ("Failed to build subMenu "+$displayName);
+			}
+			else
+			{
+				$scripts[size($scripts)]=$f;
+			}
+		}
+
+		if($hasSubMenus && size($scriptList))
+			catchQuiet(`menuItem -d 1 -p $menuName`);
+
+		$scriptList=sort($scriptList);
+		
+	string	$tempArray[];
+	
+	global 	string	$zenOptionString_prefixExclude;
+	string	$prefixExlude[]=`stringToStringArray $zenOptionString_prefixExclude $sep`;
+	string	$baseNames[];
+	string	$displayNames[];
+	string	$sortedDisplayNames[];
+
+		for($i=0;$i<size($scriptList);$i++)
+		{
+			$baseNames[$i]=`basename ($scriptList[$i]) ".mel"`;
+			$displayNames[$i]=`substitute "_" $baseNames[$i] " "`;
+			$displayNames[$i]=interToUI(`zenValidName $displayNames[$i] 1`);
+			
+			$tempArray=`stringToStringArray $displayNames[$i] " "`;
+			
+			//remove prefixes
+			for($p in $prefixExlude)
+			{
+				if($tempArray[0]==`interToUI $p`)
+				{
+					$displayNames[$i]=$tempArray[1];
+					
+					for($n=2;$n<size($tempArray);$n++)
+						$displayNames[$i]=$displayNames[$i]+" "+$tempArray[$n];
+				}
+			}
+		}
+		
+		$sortedDisplayNames=sort($displayNames);
+		$baseNames=`zenStringArrayMatchOrder $displayNames $sortedDisplayNames $baseNames`;
+	
+		for($i=0;$i<size($baseNames);$i++)
+		{
+			$err=catchQuiet(`menuItem -p $menuName -l ($sortedDisplayNames[$i]) -c ("if($zenOptions_debugging) source "+$baseNames[$i]+";evalEcho(\""+$baseNames[$i]+"\");")`);
+			if($err) print ("Failed to build menu item "+$displayName);
+		}
+								
+	return	1;
+}
+
+//create menus for each folder specified in $zenOptionString_scriptsFolders
+global proc zenScriptsMenu()
+{
+	global	string $zenOptionString_scriptsFolders;
+	global	string $zenOptionString_scriptsFoldersAddCommands;
+	global	string $zenOptionString_scriptsFolderLabels;
+
+	global	string $zenScriptsMenus[];
+	
+	global	string $gMainWindow;
+	
+	string	$sep=`zenSeparatorString`;
+		
+	string	$scriptsFolders[]=`stringToStringArray $zenOptionString_scriptsFolders $sep`;
+	string	$scriptsFolderAddCommands[]=`stringToStringArray $zenOptionString_scriptsFoldersAddCommands $sep`;
+	string	$scriptsFolderLabels[]=`stringToStringArray $zenOptionString_scriptsFolderLabels $sep`;
+				
+		for($i=0;$i<size($zenScriptsMenus);$i++)
+			catchQuiet(`deleteUI -menu $zenScriptsMenus[$i]`);
+			
+		clear $zenScriptsMenus;
+			
+		for($i=0;$i<size($scriptsFolders);$i++)
+		{
+			$zenScriptsMenus[$i]=`menu -l $scriptsFolderLabels[$i] -p $gMainWindow -to 1 -aob true`;
+			zenAddScriptsFolder $zenScriptsMenus[$i] $scriptsFolders[$i] $scriptsFolderAddCommands[$i];
+		}
+}

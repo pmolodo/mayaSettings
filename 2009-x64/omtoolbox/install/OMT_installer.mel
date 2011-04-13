@@ -1,0 +1,381 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	OMT_installer.mel						///
+///  AUTHOR: 	Jakob Welner (jakob@welner.dk)					///
+///										///
+///  UDTATE LOG:								///
+///	26th of november: 1.10 by Jakob Welner					///
+///	- Fixed issue with write protected userSetup files by sourcing the old	///
+///	  from a newly created on including OMT patch				///
+///	- Organized every 'write' procedure to onlyexecute after 		///
+///	  pressing "install"							///
+///										///
+///	18th of november: 1.00 by Jakob Welner					///
+///	- Date of creation							///
+///										///
+///  DEPENDENCIES:								///
+///   	None									///
+///										///
+///  PURPOSE & USE:								///
+///	Installer for OpenMaya Tools						///
+///	Open this file in Maya and follow the instructions.			///
+///										///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Maya toolbox				///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+global	string	$modulePath;
+global	string	$userSetupPath;
+global	int	$modulePerm;
+global	int	$userSetupPerm;
+global	int	$userSetupExists;
+global 	string	$OMTPath;
+global	string 	$omtPathField;
+
+
+
+
+
+// Checkin for already existing files and/or write protections, and returns a string descriping the situation
+//
+proc string checkFiles(int $intTest)
+{
+global 	string	$OMTPath;
+global	string	$modulePath;
+global	string	$userSetupPath;
+
+global	int	$userSetupExists = 1;
+global	int	$ignoreUserSetup = 0;
+global	int	$moduleExists = 0;
+
+global	int	$userSetupPerm = 0;
+
+	string 	$dirList[];
+
+	string	$mayaVersion = `about -version`;
+	string	$returnString;
+
+	
+	string	$envPath =`getenv "MAYA_APP_DIR"`;
+	$envPath = ($envPath + "/" + $mayaVersion + "/");
+	
+	
+// Checking module START
+/// Checking for a "maya/x.x/modules" directory..
+///
+	$dirList = `getFileList -folder $envPath -filespec "modules"`;
+	if (size($dirList) != 0) $moduleExists = 1;
+
+/// Defining write path for module file and folder
+///
+	if ($moduleExists == 0) $modulePath = ( $envPath + "modules" );
+	else if ($moduleExists == 1) $modulePath = ( $envPath + "modules/OMToolbox.module" );
+	
+/// Checking module END
+
+
+
+/// Checking userSetup START
+
+	string 	$catchWhatIs = `whatIs userSetup`;
+
+	if($catchWhatIs == "Unknown")
+	{
+	    $userSetupPath = ($envPath + "/scripts/userSetup.mel"); 
+	    $userSetupExists = 0;
+	    $userSetupPerm = 1;
+	}
+	else
+	{
+	    //subtract magic number of 17: "Script found in: "
+	    int $numCharacters = `size($catchWhatIs)`;
+
+	    $userSetupPath = `endString $catchWhatIs ($numCharacters-17)`;
+	    
+ 	    catchQuiet($userSetupPerm = `fopen $userSetupPath "a"`);
+	    fclose $userSetupPerm;
+
+	    $fileId = `fopen $userSetupPath "r"`;
+	    string $nextLine = `fgetline $fileId`;
+
+ 	    while ( size( $nextLine ) > 0 ) 
+	    { 
+ 		if (`gmatch $nextLine "OMT_toolboxMenu;*"`) $ignoreUserSetup = 1;
+  		$nextLine = `fgetline $fileId`;
+ 	    }	
+ 	    fclose $fileId;
+	}
+/// Checking userSetup END
+
+
+
+
+/// Creating return string
+	if ($ignoreUserSetup == 1) $returnString = "Current userSetup.mel has already been patched for OMToolbox. Will ignore it.\n\n";
+	else
+	{
+	    if ($userSetupExists == 0) 
+	    {
+		    $returnString = ("No existing userSetup.mel found. Will write a new one to:\n\"" + $userSetupPath + "\"\n\n");
+	    }
+	    else if($userSetupPerm == 0)
+	    {
+		    $returnString = ("Active userSetup.mel is write protected. \nSourcing the old userSetup from a new file located in your \n\".../maya/x.x/scripts\" dir.\n\n"); 
+	    }
+	    else $returnString = ("Will write omtoolbox entries at the bottom of existing userSetup.mel at:\n\"" + $userSetupPath + "\"\n\n");
+	}
+
+
+	if ($moduleExists == 0) 
+	{
+	    $returnString = ($returnString + "Creating a modules dir in \n\".../maya/x.x/\" \nand writes a module file which adds the OMToolbox paths to Maya in \n\".../maya/x.x/modules/OMToolbox.module\"");
+	}
+	else $returnString = ($returnString + "Will write a new OMToolbox module file to:\n\".../maya/x.x/modules/OMToolbox.module\"");
+
+	return $returnString;
+}
+
+
+
+
+
+
+
+
+global proc activateToolbox()
+{
+
+global 	string	$OMTPath;
+	string	$pathName = (fromNativePath($OMTPath) + "/scripts");
+	string	$os = `about -os`;
+
+	if ($os == "nt") putenv "MAYA_SCRIPT_PATH" ((`getenv "MAYA_SCRIPT_PATH"`) + ";" + $pathName);
+	else if ($os == "linux") putenv "MAYA_SCRIPT_PATH" ((`getenv "MAYA_SCRIPT_PATH"`) + ":" + $pathName);
+	else putenv "MAYA_SCRIPT_PATH" ((`getenv "MAYA_SCRIPT_PATH"`) + ":" + $pathName);
+
+	evalDeferred -lp rehash;
+
+	scriptJob 
+	     -permanent
+	     -event "MenuModeChanged" "OMT_toolboxMenu";
+
+	evalDeferred -lp OMT_toolboxMenu;
+
+}
+
+
+
+
+
+
+// Writing entries to file
+//
+global proc makeWrite()
+{
+	
+global	string	$OMTPath;
+global	string	$modulePath;
+global 	int	$moduleExists;
+
+global	string	$userSetupPath;
+global	int	$userSetupPerm;
+global	int	$userSetupExists;
+
+global	int	$ignoreUserSetup;
+	string 	$printString;
+
+
+//Writing to module file
+//
+
+	if ($moduleExists == 0) 
+	{
+	    sysFile -makeDir ($modulePath);
+	    
+	    $printString = ("+ OMToolbox 0.0 " + $OMTPath);
+    	    $fileId=`fopen ($modulePath + "/OMToolbox.module") "w"`;
+    	    fprint $fileId $printString;
+
+    	    fclose $fileId;
+	}
+	else
+	{
+	    $printString = ("+ OMToolbox 0.0 " + $OMTPath);
+    	    $fileId=`fopen $modulePath "w"`;
+    	    fprint $fileId $printString;
+
+    	    fclose $fileId;
+	}
+
+//Writing to userSetup
+//
+	if ($ignoreUserSetup == 0)
+	{
+	    if ($userSetupPerm == 0)
+	    {
+		string	$mayaVersion = `about -version`;
+	    	string	$envPath =`getenv "MAYA_APP_DIR"`;
+	    	$envPath = ($envPath + "/" + $mayaVersion + "/scripts/userSetup.mel");
+	    
+	    	if ($userSetupExists == 1)
+	    	{
+		    $printString = ("// Sourcing old userSetup\nsource \"" + $userSetupPath + "\";\n\n// OMToolbox userSetup \nscriptJob \n     -permanent\n     -event \"MenuModeChanged\" \"OMT_toolboxMenu\";\nOMT_toolboxMenu;\n// OMT Stop");
+	    	}
+	    	else $printString = ("\n\n// OMToolbox userSetup \nscriptJob \n     -permanent\n     -event \"MenuModeChanged\" \"OMT_toolboxMenu\";\nOMT_toolboxMenu;\n// OMT Stop");
+	    
+	    	$fileId=`fopen $envPath "w"`;
+	    	fprint $fileId $printString;
+	    	fclose $fileId;	 
+	
+	    }
+	
+	    else
+ 	    {
+ 		if($userSetupExists == 1) $fileId=`fopen $userSetupPath "a"`;
+ 		else $fileId=`fopen $userSetupPath "w"`;
+
+		$printString = ("\n\n// OMToolbox userSetup \nscriptJob \n     -permanent\n     -event \"MenuModeChanged\" \"OMT_toolboxMenu\";\nOMT_toolboxMenu;\n// OMT Stop");
+
+		fprint $fileId $printString;
+
+		fclose $fileId;	    	
+ 	    }
+	}
+}
+
+
+
+
+
+
+global proc makeInstallGUI_step3()
+{
+   if (`window -exists installerWin`)
+      deleteUI installerWin;
+
+   string $window = `window -title "OpenMayaToolbox installer: STEP 3"
+       -iconName "OMTinst3"
+       installerWin`;
+
+	   string $form = `formLayout`;
+
+		string $colLayout = `columnLayout -columnAlign "center"`;
+ 			text -height 180 -label "Ready eddy";
+ 		setParent ..;
+
+		string $bottomButtons = `rowLayout -columnAlign 1 "center" -numberOfColumns 1 -columnAttach 1 "left" 445`;
+  	    		button -label "Activate" -width 150 -command ("activateToolbox; " + ("deleteUI -window " + $window));
+ 		setParent ..;
+
+	formLayout 
+		-edit
+		-attachForm $bottomButtons "bottom" 5
+		-attachForm $colLayout "top" 5
+		$form;
+
+	showWindow $window;	
+
+}
+
+
+
+
+
+
+
+
+global proc makeInstallGUI_step2()
+{
+   if (`window -exists installerWin`)
+      deleteUI installerWin;
+
+   string $window = `window -title "OpenMayaToolbox installer: STEP 2"
+       -iconName "OMTinst2"
+       installerWin`;
+
+	   string $form = `formLayout`;
+		string $colLayout = `columnLayout -columnAlign "left" -columnAttach "left" 5`;
+
+ 			text -height 210 -label (checkFiles(42));
+ 		setParent ..;
+
+		string $bottomButtons = `rowLayout -columnAlign 1 "center" -columnAlign 2 "center" -numberOfColumns 2 -columnAttach 1 "left" 0 -columnAttach 2 "left" 345`;
+  	    		button -label "Close" -width 150 -command ("deleteUI -window " + $window);
+			button -label "Install" -width 150 -command ("makeWrite;makeInstallGUI_step3");
+ 		setParent ..;
+
+	formLayout 
+		-edit
+		-attachForm $bottomButtons "bottom" 5
+		-attachForm $colLayout "top" 5
+		$form;
+
+	showWindow $window;	
+
+}
+
+
+
+global proc makeInstallGUI_step1()
+{
+global 	string 	$outPutField;
+global 	string	$OMTPath;
+global	string 	$omtPathField;
+
+   if (`window -exists installerWin`)
+      deleteUI installerWin;
+
+   string $window = `window -title "OpenMayaToolbox installer: STEP 1"
+       -iconName "OMTinst1"
+       installerWin`;
+	   string $form = `formLayout`;
+
+		string $colLayout = `columnLayout -columnAlign "left" -columnAttach "left" 5`;
+
+ 			text -label "ABSOLUTE PATH TO THE OMTOOLBOX DIRECTORY:" -font "boldLabelFont" -width 400;
+			text -label "fx:    Windows: C:\\absolute\\path\\to\\omtoolbox\n        Linux: /absolute/path/to/omtoolbox\n" -font "smallPlainLabelFont";
+ 			$omtPathField = `textField -width 595`;
+ 		setParent ..;
+
+		string $bottomButtons = `rowLayout -columnAlign 1 "center" -columnAlign 2 "center" -numberOfColumns 2 -columnAttach 1 "left" 0 -columnAttach 2 "left" 345`;
+  	    		button -label "Close" -width 150 -command ("deleteUI -window " + $window);
+			button -label "Next ->" -width 150 -command "$OMTPath = `textField -q -text $omtPathField`;makeInstallGUI_step2";
+ 		setParent ..;
+
+	formLayout 
+		-edit
+		-attachForm $bottomButtons "bottom" 5
+		-attachForm $colLayout "top" 5
+		$form;
+
+
+	showWindow $window;
+   // Resize the window
+   //
+   window -edit -widthHeight 610 300 $window;	
+
+}
+
+makeInstallGUI_step1;

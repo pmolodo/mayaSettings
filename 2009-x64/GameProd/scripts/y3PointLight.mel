@@ -1,0 +1,1338 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: 3PointLight v1.1
+''    Author: Yogesh Lakhani
+''    Last Updated: September 17, 2003
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=rendering#2488
+''  
+''  History:
+''    3PointLight v1.0 on August 20, 2003 by Yogesh Lakhani
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+
+
+
+// Author: Yogesh Lakhani
+// Date: 08/20/03
+// Version: 01
+//
+// y3PointLight mel script v1.0 - (c) Yogesh Lakhani - August 20th 2003
+//
+// Description: a)The main purpose of this program is create Three-point Lighting in the scene with a lot of
+//                user-friendly features.
+//              b)It has 2 parts: a.)Initial settings window for creation & b.)Edit settings window.
+//              c)In the "Initial Settings" section, just input values, select your primary object for lighting
+//                and click on the Create button.
+//              d)After creation, you can edit and update the values in the "Edit Settings" section.
+//              e)For new setup, go back to the "Initial Settings" tab and click on the button "New".
+//
+// Installation:
+//
+//  1. Copy the script y3PointLight.mel to your local user\scripts folder
+//
+//      C:\Documents and Settings\"USER"\My Documents\maya\5.0\scripts\
+//
+//  2. Start Maya
+//	
+//  4. Source y3PointLight.mel script in the Script Editor. Will automatically execute.
+//
+// Please send me your feedback or comments about this script on www.fxyogi.com
+//
+// Thanks.
+//
+//-----------------------------------------------------------------------------------------------------------------
+
+
+
+
+// Main procedure for generating the UI.
+global proc y3PointLight()
+{
+// Declare my variables.
+   string $myWindowLight = "y3PointLight";
+
+// Check to see if my window exists.
+   if (`window -ex $myWindowLight`)
+   {
+       	deleteUI $myWindowLight;
+   }
+
+// Create a new window
+   window -w 350 -h 500 -t ("y3PointLight - 1.0") -tb true $myWindowLight;
+
+// Create a TabLayout for "Initial Settings" and "Edit Settings"
+   scrollLayout -hst 16 -vst 16 -childResizable true;
+
+          //"Initial Settings" - TAB1
+          string $cLayout1 = "myColumnLayout1";
+          string $tab1 = `columnLayout $cLayout1`;
+
+          separator -style "none" -w 350 -h 8;
+
+                    //Frame1 - KeyLight Attributes
+                    frameLayout -label "KeyLight Attributes" -w 350 -borderStyle "etchedIn"
+                                -font "boldLabelFont" -collapsable true myFrameLayoutKey;
+
+                                columnLayout myColumnLayout3;
+                                separator -style "none" -w 350 -h 4;
+
+                                             rowColumnLayout -numberOfColumns 2 
+                                                             -cw 1 100 -cw 2 200 
+                                                             myRowColumnLayout1;
+                                             text -l "Name: " -al "right";
+                                             textField myNameKey;
+                                             setParent ..;
+
+                                separator -style "none" -w 350 -h 4;
+
+                                             rowColumnLayout -numberOfColumns 3 
+                                                             -cw 1 100 -cw 2 100 -cw 3 100
+                                                             myRowColumnLayout2;
+                                             text -l "Type: " -al "right";
+                                             radioCollection myRadioCollectionTypeKey;
+                                             radioButton -label "SpotLight" -al "left" rBtnSpotKey;
+                                             radioButton -label "Directional Light" -al "left" rBtnDirectionalKey;
+                                             setParent ..;
+
+                                separator -style "in" -w 350 -h 4;
+                                separator -style "none" -w 350 -h 4;
+
+                                floatSliderGrp -width 350
+                                               -adjustableColumn 1
+                                               -ann "Angle of the light from the camera in the horizontal direction"
+                                               -field true
+                                               -label "Horizontal Angle"
+                                               -columnAlign 1 "center"
+                                               -minValue 23.0 -maxValue 45.0
+                                               -precision 3
+                                               -value 30.0
+                                               myFloatSliderGrp_HorAngKey;
+
+                                separator -style "none" -w 350 -h 4;
+
+                                             rowColumnLayout -numberOfColumns 3 
+                                                             -cw 1 100 -cw 2 100 -cw 3 100 
+                                                             myRowColumnLayout3;
+                                             text -label "" -align "right";
+                                             radioCollection myRadioCollectionCamSideKey;
+                                             radioButton -label "Left of Camera" -al "left" rBtnCamLeft;
+                                             radioButton -label "Right of Camera" -al "left" rBtnCamRight;
+                                             setParent ..;
+
+                                separator -style "in" -w 350 -h 4;
+                                separator -style "none" -w 350 -h 4;
+
+                                floatSliderGrp -width 350
+                                               -adjustableColumn 1
+                                               -ann "Angle of the light from the camera in the vertical direction"
+                                               -field true
+                                               -label "Vertical Up Angle"
+                                               -columnAlign 1 "center"
+                                               -minValue 15.0 -maxValue 45.0
+                                               -precision 3
+                                               -value 30.0
+                                               myFloatSliderGrp_VerAngKey;
+
+                                separator -style "none" -w 350 -h 4;
+                                setParent ..;
+                    setParent ..;
+
+                    //Frame2 - Fill Light Attributes
+                    frameLayout -label "Fill Light Attributes" -w 350 -borderStyle "etchedIn"
+                                -font "boldLabelFont" -collapsable true myFrameLayoutFill;
+
+                                columnLayout myColumnLayout6;
+                                separator -style "none" -w 350 -h 4;
+
+                                           rowColumnLayout -numberOfColumns 2 -cw 1 100 -cw 2 200 myRowColumnLayout5;
+                                           text -l "Name: " -al "right";
+                                           textField myNameFill;
+                                           setParent ..;
+
+                                separator -style "none" -w 350 -h 4;
+
+                                          rowColumnLayout -numberOfColumns 3 
+                                                          -cw 1 100 -cw 2 100 -cw 3 100 
+                                                          myRowColumnLayout6;
+                                          text -l "Type: " -al "right";
+                                          radioCollection myRadioCollectionTypeFill;
+                                          radioButton -label "SpotLight" -al "left" rBtnSpotFill;
+                                          radioButton -label "Directional Light" -al "left" rBtnDirectionalFill;
+                                          setParent ..;
+
+                                separator -style "none" -w 350 -h 4;
+                                setParent ..;
+                    setParent ..;
+
+                    //Frame3 - Key-To-Fill Ratio
+                    frameLayout -label "Key-To-Fill Ratio" -w 350 -borderStyle "etchedIn"
+                                -font "boldLabelFont" -collapsable true myFrameLayoutKTF;
+
+                                columnLayout myColumnLayout4;
+
+                                             columnLayout -columnOffset "left" 15 myColumnLayout5;
+                                             separator -style "none" -w 350 -h 4;
+                                             radioCollection myRadioCollectionRatioKTF;
+                                             radioButton -label "1.5 : 1   (Low key-to-fill ratio)" 
+                                                         -al "center" 
+                                                         -onCommand "offCustomRBtn();" 
+                                                         rBtnLowKTF;
+                                             radioButton -label "   4 : 1   (Moderate key-to-fill ratio)" 
+                                                         -al "center" 
+                                                         -onCommand "offCustomRBtn();" 
+                                                         rBtnModKTF;
+                                             radioButton -label "   8 : 1   (High key-to-fill ratio)" 
+                                                         -al "center" 
+                                                         -onCommand "offCustomRBtn();" 
+                                                         rBtnHighKTF;
+                                             radioButton -label "Custom " 
+                                                         -al "center" 
+                                                         -onCommand "onCustomRBtn();" 
+                                                         rBtnCustomKTF;
+                                             floatSliderGrp -width 200
+                                                            -adjustableColumn 1
+                                                            -ann "Key-To-Fill Ratio"
+                                                            -field true
+                                                            -label ""
+                                                            -columnAlign 1 "center"
+                                                            -columnAttach 1 "left" 20
+                                                            -minValue 1.0 -maxValue 10.0
+                                                            -precision 1
+                                                            -value 4.0
+                                                            -enable false
+                                                            myFloatSliderGrp_CusKTF;
+
+                                             setParent ..;
+                                setParent ..;
+                    setParent ..;
+
+                    //Frame4 - Back Light Attributes
+                    frameLayout -label "Back Light Attributes" -w 350 -borderStyle "etchedIn"
+                                -font "boldLabelFont" -collapsable true myFrameLayoutBack;
+
+                                columnLayout myColumnLayout7;
+                                separator -style "none" -w 350 -h 4;
+
+                                           rowColumnLayout -numberOfColumns 2 -cw 1 100 -cw 2 200 myRowColumnLayout7;
+                                           text -l "" -al "right";
+                                           checkBox -label "No Back Light" 
+                                                    -align "left" -value 0 
+                                                    -changeCommand "chngStateCheckBack();" 
+                                                    myCheckBack;
+                                           setParent ..;
+
+                                separator -style "none" -w 350 -h 4;
+
+                                           rowColumnLayout -numberOfColumns 2 -cw 1 100 -cw 2 200 myRowColumnLayout8;
+                                           text -l "Name: " -al "right";
+                                           textField myNameBack;
+                                           setParent ..;
+
+                                separator -style "none" -w 350 -h 4;
+
+                                          rowColumnLayout -numberOfColumns 3 
+                                                          -cw 1 100 -cw 2 100 -cw 3 100 
+                                                          myRowColumnLayout9;
+                                          text -l "Type: " -al "right";
+                                          radioCollection myRadioCollectionTypeBack;
+                                          radioButton -label "SpotLight" -al "left" rBtnSpotBack;
+                                          radioButton -label "Directional Light" -al "left" rBtnDirectionalBack;
+                                          setParent ..;
+
+                                separator -style "none" -w 350 -h 4;
+                                setParent ..;
+                    setParent ..;
+
+          separator -style "none" -w 350 -h 4;
+
+          //Checkbox for Default Light Settings
+          int $defaultLight = `getAttr defaultRenderGlobals.enableDefaultLight`;
+          checkBox -label "Enable Default Light" -align "left" -value $defaultLight myCheckDefaultLight;
+
+          //Connecting the checkbox control to the Default Light attribute in the Render Globals.
+          string $defaultLightAttr = "defaultRenderGlobals.enableDefaultLight";
+          connectControl myCheckDefaultLight $defaultLightAttr;
+
+          separator -style "none" -w 350 -h 4;
+          separator -style "out" -w 350 -h 4;
+
+                    //Create buttons for "New" and "Create 3-Point Lighting"
+                    rowColumnLayout -numberOfColumns 2 -cw 1 150 -cw 2 200 myRowColumnLayout10;
+                    separator -style "none" -w 350 -h 4;
+                    separator -style "none" -w 350 -h 4;
+                    button -width 100 
+                           -label "New" 
+                           -align "center"
+                           -enable false
+                           -recomputeSize true
+                           -command "resetTAB1();"
+                           btnReset;
+                    button -width 150
+                           -label "Create 3-Point Lighting" 
+                           -align "center"
+                           -recomputeSize true
+                           -command "create3PointLight();" 
+                           btn3PointLight;
+                    setParent ..;
+
+          separator -style "none" -w 350 -h 4;
+          separator -style "out" -w 350 -h 4;
+          setParent ..;
+
+   showWindow $myWindowLight;
+}
+
+y3PointLight();
+
+//----------------------------------------------------------------------------------------------------------------
+// Actual Procedure to create 3 Point Lighting
+global proc create3PointLight()
+{
+       initSettingsInfo();
+}
+
+//----------------------------------------------------------------------------------------------------------------
+// Procedure to disable controls in TAB1.
+global proc disableTab1()
+{
+   textField -edit -enable false myNameKey;
+   radioButton -edit -enable false rBtnSpotKey;
+   radioButton -edit -enable false rBtnDirectionalKey;
+   floatSliderGrp -edit -enable false myFloatSliderGrp_HorAngKey;
+   radioButton -edit -enable false rBtnCamLeft;
+   radioButton -edit -enable false rBtnCamRight;
+   floatSliderGrp -edit -enable false myFloatSliderGrp_VerAngKey;
+   textField -edit -enable false myNameFill;
+   radioButton -edit -enable false rBtnSpotFill;
+   radioButton -edit -enable false rBtnDirectionalFill;
+   radioButton -edit -enable false rBtnLowKTF;
+   radioButton -edit -enable false rBtnModKTF;
+   radioButton -edit -enable false rBtnHighKTF;
+   radioButton -edit -enable false rBtnCustomKTF;
+   floatSliderGrp -edit -enable false myFloatSliderGrp_CusKTF;
+   checkBox -edit -enable false myCheckBack;
+   textField -edit -enable false myNameBack;
+   radioButton -edit -enable false rBtnSpotBack;
+   radioButton -edit -enable false rBtnDirectionalBack;
+   button -edit -enable false btn3PointLight;
+   button -edit -enable true btnReset;
+}
+
+//----------------------------------------------------------------------------------------------------------------
+// Procedure to Initialize the controls in TAB1.
+global proc resetTAB1()
+{
+   finishProc();
+   select -cl;
+   y3PointLight();
+}
+
+//----------------------------------------------------------------------------------------------------------------
+// Procedure to extract values entered by the user from the controls in the Initial Settings.
+global proc initSettingsInfo()
+{
+   //Get Key Light Information.
+   string $nameKey = `textField -query -text myNameKey`;
+   if ($nameKey == "")
+   {
+   	confirmDialog -title "Key Light Name"
+                      -message "Please give a name to the Key Light."
+                      -messageAlign "center"
+                      -button "OK"
+                      -defaultButton "OK";
+         return;
+   }
+
+   string $typeKey = `radioCollection -query -select myRadioCollectionTypeKey`;
+   if ($typeKey == "NONE")
+   {
+   	confirmDialog -title "Key Light Type"
+                      -message "Please select the type of Key Light."
+                      -messageAlign "center"
+                      -button "OK"
+                      -defaultButton "OK";
+        return;
+   }
+
+   // Check whether Key Light side is selected or not.
+   string $camSideKey = `radioCollection -query -select myRadioCollectionCamSideKey`;
+   if ($camSideKey == "NONE")
+   {
+   	confirmDialog -title "Key Light Horizontal Side"
+                      -message "Please select which side (Left/Right) of the camera you want the Key Light."
+                      -messageAlign "center"
+                      -button "OK"
+                      -defaultButton "OK";
+        return;
+   }
+
+   //Get Fill Light Information.
+   string $nameFill = `textField -query -text myNameFill`;
+   if ($nameFill == "")
+   {
+        confirmDialog -title "Fill Light Name"
+                      -message "Please give a name to the Fill Light."
+                      -messageAlign "center"
+                      -button "OK"
+                      -defaultButton "OK";
+        return;
+   }
+
+   // Check whether Fill Light Type is selected or not.
+   string $typeFill = `radioCollection -query -select myRadioCollectionTypeFill`;
+   if ($typeFill == "NONE")
+   {
+   	confirmDialog -title "Fill Light Type"
+                      -message "Please select the type of Fill Light."
+                      -messageAlign "center"
+                      -button "OK"
+                      -defaultButton "OK";
+        return;
+   }
+
+   // Check whether Key-To-Fill Ratio is selected or not.
+   string $ratioKTF = `radioCollection -query -select myRadioCollectionRatioKTF`;
+   if ($ratioKTF == "NONE")
+   {
+   	confirmDialog -title "Key-To-Fill Ratio"
+                      -message "Please select Key-To-Fill Ratio."
+                      -messageAlign "center"
+                      -button "OK"
+                      -defaultButton "OK";
+        return;
+   }
+
+   //Value for the Custom Key-To-Fill Ratio.
+   float $cusKTF = `floatSliderGrp -query -value myFloatSliderGrp_CusKTF`;
+
+   // Check whether Back Light is needed or not.
+   int $boolBackLight = `checkBox -query -value myCheckBack`;
+   if (!$boolBackLight)
+   {
+   	//Get Back Light Information.
+        string $nameBack = `textField -query -text myNameBack`;
+        if ($nameBack == "")
+        {
+                confirmDialog -title "Back Light Name"
+                              -message "Please give a name to the Back Light."
+                              -messageAlign "center"
+                              -button "OK"
+                              -defaultButton "OK";
+                return;
+        }
+
+        string $typeBack = `radioCollection -query -select myRadioCollectionTypeBack`;
+        if ($typeBack == "NONE")
+        {
+   	        confirmDialog -title "Back Light Type"
+                              -message "Please select the type of Back Light."
+                              -messageAlign "center"
+                              -button "OK"
+                              -defaultButton "OK";
+                return;
+        }
+   }
+   
+   selectSubject();
+}
+
+//----------------------------------------------------------------------------------------------------------------
+// Procedure to select the Primary Object for 3 Point Lighting and store its Translation Values.
+global proc selectSubject()
+{
+   global float $subTx;
+   global float $subTy;
+   global float $subTz;
+
+   string $selections[];
+   clear($selections);
+   string $selections[] = `ls -selection -transforms`;
+   int $selectionSize = size($selections);
+
+   if ($selectionSize < 1)
+   {
+   	confirmDialog -title "Subject Select"
+                      -message "Please select any ONE PRIMARY OBJECT in the VIEW where you want to render."
+                      -messageAlign "center"
+                      -button "OK"
+                      -defaultButton "OK";
+        return;
+   }
+   else if ($selectionSize > 1)
+   {
+       confirmDialog -title "Subject Select"
+                      -message "Please select ONLY ONE PRIMARY OBJECT in the VIEW where you want to render."
+                      -messageAlign "center"
+                      -button "OK"
+                      -defaultButton "OK";
+        return;
+   }
+   else
+   {
+   	string $confirm = `confirmDialog -title "Confirm"
+                                         -message "Are you sure you have selected the right PRIMARY OBJECT?"
+    	                                 -button "Yes"
+                                         -button "No"
+                                         -defaultButton "Yes"
+    	                                 -cancelButton "No"
+                                         -dismissString "No"`;
+
+        if ($confirm == "Yes")
+        {
+        	global string $mainSubjectSelect;
+                $mainSubjectSelect = $selections[0];
+                $subTx = `getAttr ( $mainSubjectSelect + ".tx" )`;
+                $subTy = `getAttr ( $mainSubjectSelect + ".ty" )`;
+                $subTz = `getAttr ( $mainSubjectSelect + ".tz" )`;
+        }
+        else
+                return;
+
+       cameraInfo();
+   }
+}
+
+
+//--------------------------------------------------------------------------------------------------------------
+// Procedure to get the camera information.
+global proc cameraInfo()
+{
+   // Check whether the selected panel is ModelPanel or some other panel.
+   string $panel = `getPanel -wf`;
+   if ($panel == "devicePanel1" || $panel == "hardwareRenderPanel1" || $panel == "blendShapePanel1" || $panel == "outlinerPanel1")
+   {
+        confirmDialog -title "Panel Type"
+                      -message "Please select a view to Render."
+                      -messageAlign "center"
+                      -button "OK"
+                      -defaultButton "OK";
+        return;
+   }
+   else
+   {
+        // Get the camera info.
+        string $camera = `modelPanel -q -camera $panel`;
+        global float $camTx;
+        global float $camTy;
+        global float $camTz;
+        global float $camRx;
+        global float $camRy;
+        global float $camRz;
+        $camTx = `getAttr ($camera + ".translateX")`;
+        $camTy = `getAttr ($camera + ".translateY")`;
+        $camTz = `getAttr ($camera + ".translateZ")`;
+        $camRx = `getAttr ($camera + ".rotateX")`;
+        $camRy = `getAttr ($camera + ".rotateY")`;
+        $camRz = `getAttr ($camera + ".rotateZ")`;
+
+        createKeyLight();
+   }
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to create and position Key Light in the scene.
+global proc createKeyLight()
+{
+   // Get Camera Information from cameraInfo().
+   global float $camTx;
+   global float $camTy;
+   global float $camTz;
+   global float $camRx;
+   global float $camRy;
+   global float $camRz;
+   global string $nameLocatorKey;
+
+   //Get Key Light Information.
+   string $nameKey = `textField -query -text myNameKey`;
+
+   string $typeKey = `radioCollection -query -select myRadioCollectionTypeKey`;
+   switch ($typeKey)
+   {
+   case "rBtnSpotKey":
+        // Create SpotLight.
+        string $spotLightShapeKey = `spotLight`;
+        string $spotLightKey[] = `pickWalk -direction "up" $spotLightShapeKey`;
+        global string $renameSpotKey;
+        $renameSpotKey = `rename $spotLightKey $nameKey`;
+
+        // Positioning the Key Light.
+        setAttr ($renameSpotKey + ".tx") $camTx;
+        setAttr ($renameSpotKey + ".ty") $camTy;
+        setAttr ($renameSpotKey + ".tz") $camTz;
+        setAttr ($renameSpotKey + ".rx") $camRx;
+        setAttr ($renameSpotKey + ".ry") $camRy;
+        setAttr ($renameSpotKey + ".rz") $camRz;
+
+        locatorKey();
+
+        break;
+
+   case "rBtnDirectionalKey":
+        // Create Directional Light.
+        string $directionalLightShapeKey = `directionalLight`;
+        string $directionalLightKey[] = `pickWalk -direction "up" $directionalLightShapeKey`;
+        global string $renameDirectionalKey;
+        $renameDirectionalKey = `rename $directionalLightKey $nameKey`;
+
+        // Positioning the Directional Light.
+        setAttr ($renameDirectionalKey + ".tx") $camTx;
+        setAttr ($renameDirectionalKey + ".ty") $camTy;
+        setAttr ($renameDirectionalKey + ".tz") $camTz;
+        setAttr ($renameDirectionalKey + ".rx") $camRx;
+        setAttr ($renameDirectionalKey + ".ry") $camRy;
+        setAttr ($renameDirectionalKey + ".rz") $camRz;
+
+        locatorKey();
+
+        break;
+   }
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to create Locator for Key Light and position it exactly where the Object is.
+global proc locatorKey()
+{
+   global float $subTx;
+   global float $subTy;
+   global float $subTz;
+
+   string $locatorKey[] = `spaceLocator`;
+   global string $nameLocatorKey;
+   $nameLocatorKey = `rename $locatorKey[0] "locatorKey"`;
+   
+   setAttr ($nameLocatorKey + ".tx") $subTx;
+   setAttr ($nameLocatorKey + ".ty") $subTy;
+   setAttr ($nameLocatorKey + ".tz") $subTz;
+   
+   string $typeKey = `radioCollection -query -select myRadioCollectionTypeKey`;
+   
+   // Parent the light to the locator.
+   switch ($typeKey)
+   {
+   	case "rBtnSpotKey":
+             global string $renameSpotKey;
+             select -cl;
+             parent $renameSpotKey $nameLocatorKey;
+        break;
+        
+        case "rBtnDirectionalKey":
+             global string $renameDirectionalKey;
+             select -cl;
+             parent $renameDirectionalKey $nameLocatorKey;
+        break;
+   }
+   
+   rotateKey();
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to rotate the Key Light Horizontally and Vertically.
+global proc rotateKey()
+{
+   global string $nameLocatorKey;
+
+   // Value for the Horizontal angle of the Key Light.
+   float $horAngKey = `floatSliderGrp -query -value myFloatSliderGrp_HorAngKey`;
+
+   // Check whether Key Light side is selected or not.
+   string $camSideKey = `radioCollection -query -select myRadioCollectionCamSideKey`;
+   
+   // Value for the Vertical angle of the Key Light.
+   float $verAngKey = `floatSliderGrp -query -value myFloatSliderGrp_VerAngKey`;
+
+   // Initial rotational values of the locator.
+   float $locatorKeyRx = `getAttr ($nameLocatorKey + ".rx")`;
+   float $locatorKeyRy = `getAttr ($nameLocatorKey + ".ry")`;
+   float $locatorKeyRz = `getAttr ($nameLocatorKey + ".rz")`;
+
+   switch ($camSideKey)
+   {
+        case "rBtnCamLeft":
+                setAttr ($nameLocatorKey + ".ry") ($locatorKeyRy - $horAngKey);
+        break;
+
+        case "rBtnCamRight":
+                setAttr ($nameLocatorKey + ".ry") ($locatorKeyRy + $horAngKey);
+        break;
+   }
+
+   setAttr ($nameLocatorKey + ".rz") ($locatorKeyRz + $verAngKey);
+   
+   createFillLight();
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to create and position Fill Light in the scene.
+global proc createFillLight()
+{
+   // Get Camera Information from cameraInfo().
+   global float $camTx;
+   global float $camTy;
+   global float $camTz;
+   global float $camRx;
+   global float $camRy;
+   global float $camRz;
+   global string $nameLocatorFill;
+
+   //Get Fill Light Information.
+   string $nameFill = `textField -query -text myNameFill`;
+
+   string $typeFill = `radioCollection -query -select myRadioCollectionTypeFill`;
+   switch ($typeFill)
+   {
+        case "rBtnSpotFill":
+                // Create SpotLight.
+                string $spotLightShapeFill = `spotLight`;
+                string $spotLightFill[] = `pickWalk -direction "up" $spotLightShapeFill`;
+                global string $renameSpotFill;
+                $renameSpotFill = `rename $spotLightFill $nameFill`;
+
+                // Positioning the Spot Light.
+                setAttr ($renameSpotFill + ".tx") $camTx;
+                setAttr ($renameSpotFill + ".ty") $camTy;
+                setAttr ($renameSpotFill + ".tz") $camTz;
+                setAttr ($renameSpotFill + ".rx") $camRx;
+                setAttr ($renameSpotFill + ".ry") $camRy;
+                setAttr ($renameSpotFill + ".rz") $camRz;
+                
+                locatorFill();
+
+                break;
+
+        case "rBtnDirectionalFill":
+                // Create Directional Light.
+                string $directionalLightShapeFill = `directionalLight`;
+                string $directionalLightFill[] = `pickWalk -direction "up" $directionalLightShapeFill`;
+                global string $renameDirectionalFill;
+                $renameDirectionalFill = `rename $directionalLightFill $nameFill`;
+
+                // Positioning the Directional Light.
+                setAttr ($renameDirectionalFill + ".tx") $camTx;
+                setAttr ($renameDirectionalFill + ".ty") $camTy;
+                setAttr ($renameDirectionalFill + ".tz") $camTz;
+                setAttr ($renameDirectionalFill + ".rx") $camRx;
+                setAttr ($renameDirectionalFill + ".ry") $camRy;
+                setAttr ($renameDirectionalFill + ".rz") $camRz;
+                
+                locatorFill();
+
+                break;
+   }
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to create Locator for Fill Light and position it exactly where the Object is.
+global proc locatorFill()
+{
+   global float $subTx;
+   global float $subTy;
+   global float $subTz;
+
+   string $locatorFill[] = `spaceLocator`;
+   global string $nameLocatorFill;
+   $nameLocatorFill = `rename $locatorFill[0] "locatorFill"`;
+
+   setAttr ($nameLocatorFill + ".tx") $subTx;
+   setAttr ($nameLocatorFill + ".ty") $subTy;
+   setAttr ($nameLocatorFill + ".tz") $subTz;
+   
+   string $typeFill = `radioCollection -query -select myRadioCollectionTypeFill`;
+   
+   // Parent the light to the locator.
+   switch ($typeFill)
+   {
+   	case "rBtnSpotFill":
+             global string $renameSpotFill;
+             select -cl;
+             parent $renameSpotFill $nameLocatorFill;
+        break;
+        
+        case "rBtnDirectionalFill":
+             global string $renameDirectionalFill;
+             select -cl;
+             parent $renameDirectionalFill $nameLocatorFill;
+        break;
+   }
+   
+   rotateFill();
+}
+
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to rotate the Fill Light Horizontally and Vertically.
+global proc rotateFill()
+{
+   global string $nameLocatorFill;
+
+   // Value for the Horizontal angle of the Key Light.
+   float $horAngKey = `floatSliderGrp -query -value myFloatSliderGrp_HorAngKey`;
+   
+   // Value for the Horizontal angle of the Fill Light.
+   float $horAngFill = ($horAngKey / 1.467);
+
+   // Check whether Key Light side is selected or not.
+   string $camSideKey = `radioCollection -query -select myRadioCollectionCamSideKey`;
+
+   // Value for the Vertical angle of the Key Light.
+   float $verAngKey = `floatSliderGrp -query -value myFloatSliderGrp_VerAngKey`;
+
+   // Value for the Vertical angle of the Fill Light.
+   float $verAngFill = ($verAngKey - 15.0);
+
+   // Initial rotational values of the locator.
+   float $locatorFillRx = `getAttr ($nameLocatorFill + ".rx")`;
+   float $locatorFillRy = `getAttr ($nameLocatorFill + ".ry")`;
+   float $locatorFillRz = `getAttr ($nameLocatorFill + ".rz")`;
+
+   switch ($camSideKey)
+   {
+        case "rBtnCamLeft":
+                setAttr ($nameLocatorFill + ".ry") ($locatorFillRy + $horAngFill);
+        break;
+
+        case "rBtnCamRight":
+                setAttr ($nameLocatorFill + ".ry") ($locatorFillRy - $horAngFill);
+        break;
+   }
+
+   setAttr ($nameLocatorFill + ".rz") ($locatorFillRz + $verAngFill);
+   
+   keyToFill();
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to calculate Key-To-Fill Ratio.
+global proc keyToFill()
+{
+   global string $nameLocatorKey;
+   global string $nameLocatorFill;
+   
+   //Value for the Custom Key-To-Fill Ratio.
+   float $cusKTF = `floatSliderGrp -query -value myFloatSliderGrp_CusKTF`;
+   
+   // To select the final Key Light.
+   string $locatorKeyChildren[] = `listRelatives -c $nameLocatorKey`;
+   string $finalKeyLight = $locatorKeyChildren[1];
+   float $keyLightIntensity = `getAttr ($finalKeyLight + ".intensity")`;
+
+   // To select the final Fill Light.
+   string $locatorFillChildren[] = `listRelatives -c $nameLocatorFill`;
+   string $finalFillLight = $locatorFillChildren[1];
+
+   // Calculate Fill Light Intensity based on KTF Ratio.
+   float $lowKTFIntensityFill = ($keyLightIntensity / 1.5);
+   float $modKTFIntensityFill = ($keyLightIntensity / 4);
+   float $highKTFIntensityFill = ($keyLightIntensity / 8);
+   float $customKTFIntensityFill = ($keyLightIntensity / $cusKTF);
+
+   // Assign Fill Light Intensity.
+   string $ratioKTF = `radioCollection -query -select myRadioCollectionRatioKTF`;
+
+   switch ($ratioKTF)
+   {
+   	case "rBtnLowKTF":
+             setAttr ($finalFillLight + ".intensity") $lowKTFIntensityFill;
+        break;
+
+   	case "rBtnModKTF":
+             setAttr ($finalFillLight + ".intensity") $modKTFIntensityFill;
+        break;
+
+   	case "rBtnHighKTF":
+             setAttr ($finalFillLight + ".intensity") $highKTFIntensityFill;
+        break;
+
+   	case "rBtnCustomKTF":
+             setAttr ($finalFillLight + ".intensity") $customKTFIntensityFill;
+        break;
+   }
+   
+   createBackLight();
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to create and position Back Light in the scene.
+global proc createBackLight()
+{
+   int $boolBackLight = `checkBox -query -value myCheckBack`;
+
+   if (!$boolBackLight)
+   {
+   	// Get Camera Information from cameraInfo().
+        global float $camTx;
+        global float $camTy;
+        global float $camTz;
+        global float $camRx;
+        global float $camRy;
+        global float $camRz;
+        global string $nameLocatorBack;
+
+        //Get Back Light Information.
+        string $nameBack = `textField -query -text myNameBack`;
+
+        string $typeBack = `radioCollection -query -select myRadioCollectionTypeBack`;
+        switch ($typeBack)
+        {
+        case "rBtnSpotBack":
+                // Create SpotLight.
+                string $spotLightShapeBack = `spotLight`;
+                string $spotLightBack[] = `pickWalk -direction "up" $spotLightShapeBack`;
+                global string $renameSpotBack;
+                $renameSpotBack = `rename $spotLightBack $nameBack`;
+
+                // Positioning the Spot Light.
+                setAttr ($renameSpotBack + ".tx") $camTx;
+                setAttr ($renameSpotBack + ".ty") $camTy;
+                setAttr ($renameSpotBack + ".tz") $camTz;
+                setAttr ($renameSpotBack + ".rx") $camRx;
+                setAttr ($renameSpotBack + ".ry") $camRy;
+                setAttr ($renameSpotBack + ".rz") $camRz;
+
+                locatorBack();
+
+                break;
+
+        case "rBtnDirectionalBack":
+                // Create Directional Light.
+                string $directionalLightShapeBack = `directionalLight`;
+                string $directionalLightBack[] = `pickWalk -direction "up" $directionalLightShapeBack`;
+                global string $renameDirectionalBack;
+                $renameDirectionalBack = `rename $directionalLightBack $nameBack`;
+
+                // Positioning the Directional Light.
+                setAttr ($renameDirectionalBack + ".tx") $camTx;
+                setAttr ($renameDirectionalBack + ".ty") $camTy;
+                setAttr ($renameDirectionalBack + ".tz") $camTz;
+                setAttr ($renameDirectionalBack + ".rx") $camRx;
+                setAttr ($renameDirectionalBack + ".ry") $camRy;
+                setAttr ($renameDirectionalBack + ".rz") $camRz;
+
+                locatorBack();
+
+                break;
+        }
+   }
+   else
+        tab2();
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to create Locator for Back Light and position it exactly where the Object is.
+global proc locatorBack()
+{
+   global float $subTx;
+   global float $subTy;
+   global float $subTz;
+
+   string $locatorBack[] = `spaceLocator`;
+   global string $nameLocatorBack;
+   $nameLocatorBack = `rename $locatorBack[0] "locatorBack"`;
+
+   setAttr ($nameLocatorBack + ".tx") $subTx;
+   setAttr ($nameLocatorBack + ".ty") $subTy;
+   setAttr ($nameLocatorBack + ".tz") $subTz;
+   
+   string $typeBack = `radioCollection -query -select myRadioCollectionTypeBack`;
+   
+   // Parent the light to the locator.
+   switch ($typeBack)
+   {
+   	case "rBtnSpotBack":
+             global string $renameSpotBack;
+             select -cl;
+             parent $renameSpotBack $nameLocatorBack;
+        break;
+        
+        case "rBtnDirectionalBack":
+             global string $renameDirectionalBack;
+             select -cl;
+             parent $renameDirectionalBack $nameLocatorBack;
+        break;
+   }
+   
+   rotateBack();
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to rotate the Back Light Horizontally and Vertically.
+global proc rotateBack()
+{
+   global string $nameLocatorBack;
+
+   // Value for the Horizontal angle of the Key Light.
+   float $horAngKey = `floatSliderGrp -query -value myFloatSliderGrp_HorAngKey`;
+   
+   // Value for the Horizontal angle of the Back Light.
+   float $horAngBack = ($horAngKey / 2.2);
+
+   // Check whether Key Light side is selected or not.
+   string $camSideKey = `radioCollection -query -select myRadioCollectionCamSideKey`;
+
+   // Value for the Vertical angle of the Key Light.
+   float $verAngKey = `floatSliderGrp -query -value myFloatSliderGrp_VerAngKey`;
+
+   float $verAngBack = ($verAngKey / 3.0);
+
+   // Initial rotational values of the locator.
+   float $locatorBackRx = `getAttr ($nameLocatorBack + ".rx")`;
+   float $locatorBackRy = `getAttr ($nameLocatorBack + ".ry")`;
+   float $locatorBackRz = `getAttr ($nameLocatorBack + ".rz")`;
+
+   switch ($camSideKey)
+   {
+        case "rBtnCamLeft":
+                setAttr ($nameLocatorBack + ".ry") ($locatorBackRy - (180 - $horAngBack));
+        break;
+
+        case "rBtnCamRight":
+                setAttr ($nameLocatorBack + ".ry") ($locatorBackRy + (180 - $horAngBack));
+        break;
+   }
+
+   setAttr ($nameLocatorBack + ".rz") ($locatorBackRz + $verAngBack);
+   
+   tab2();
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to create "Edit Settings" TAB
+global proc tab2()
+{
+   global string $nameLocatorKey;
+   global string $nameLocatorFill;
+   global string $nameLocatorBack;
+
+   // To select the final Key Light.
+   string $locatorKeyChildren[] = `listRelatives -c $nameLocatorKey`;
+   string $finalKeyLight = $locatorKeyChildren[1];
+
+   // To select the final Fill Light.
+   string $locatorFillChildren[] = `listRelatives -c $nameLocatorFill`;
+   string $finalFillLight = $locatorFillChildren[1];
+
+   // To create the window for the Edit settings.
+   string $myWindowLightEdit = "y3PointLightEdit";
+   if (`window -ex $myWindowLightEdit`)
+   {
+       deleteUI $myWindowLightEdit;
+   }
+      window -w 350 -h 500 -t ("Edit y3PointLight Settings") -tb 1 $myWindowLightEdit;
+
+
+
+        scrollLayout -hst 16 -vst 16 -childResizable true;
+	columnLayout -adj 1;
+
+                    //Frame1 - KeyLight Attributes
+                    frameLayout -label ($finalKeyLight + " Attributes") -w 350 -borderStyle "etchedIn"
+                                -font "boldLabelFont" -collapsable true myFrameLayoutKeyNew;
+
+                                columnLayout myColumnLayout8;
+                                separator -style "none" -w 350 -h 4;
+
+                                string $colorAttrKey = $finalKeyLight + ".color";
+                                attrColorSliderGrp -width 350
+                                                   -adjustableColumn 1
+                                                   -attribute $colorAttrKey
+                                                   -label "Color"
+                                                   -columnAlign 1 "center"
+                                                   -columnAttach 1 "left" 10
+                                                   myAttrColorSliderGrp_Key;
+
+                                separator -style "none" -w 350 -h 4;
+
+                                string $intensityAttrKey = $finalKeyLight + ".intensity";
+				attrFieldSliderGrp -width 350
+                                                   -adjustableColumn 1
+                                                   -fieldMinValue -100
+                                                   -fieldMaxValue 9999999
+                                                   -minValue 0
+                                                   -maxValue 10
+                                                   -columnAlign 1 "center"
+                                                   -columnAttach 1 "left" 5
+                                                   -attribute $intensityAttrKey
+                                                   -label "Intensity"
+                                                   myAttrFieldSliderGrp_IntenKey;
+
+                                separator -style "in" -w 350 -h 4;
+                                separator -style "none" -w 350 -h 4;
+
+                                string $horAngleAttrKey = $nameLocatorKey + ".ry";
+                                floatSliderGrp -width 350
+                                               -adjustableColumn 1
+                                               -ann "Angle of the Key light from the camera in the horizontal direction"
+                                               -field true
+                                               -label "Horizontal Angle"
+                                               -columnAlign 1 "center"
+                                               -minValue -45.0 -maxValue 45.0
+                                               -precision 3
+                                               myFloatSliderGrp_HorAngKeyEdit;
+
+                                connectControl myFloatSliderGrp_HorAngKeyEdit $horAngleAttrKey;
+
+                                separator -style "in" -w 350 -h 4;
+                                separator -style "none" -w 350 -h 4;
+
+                                string $verAngleAttrKey = $nameLocatorKey + ".rz";
+                                floatSliderGrp -width 350
+                                               -adjustableColumn 1
+                                               -ann "Angle of the Key light from the camera in the vertical direction"
+                                               -field true
+                                               -label "Vertical Angle"
+                                               -columnAlign 1 "center"
+                                               -minValue -45.0 -maxValue 45.0
+                                               -precision 3
+                                               myFloatSliderGrp_VerAngKeyEdit;
+
+                                connectControl myFloatSliderGrp_VerAngKeyEdit $verAngleAttrKey;
+
+                                separator -style "none" -w 350 -h 4;
+
+                                setParent ..;
+                    setParent ..;
+
+                    //Frame2 - Fill Light Attributes
+                    frameLayout -label ($finalFillLight + " Attributes") -w 350 -borderStyle "etchedIn"
+                                -font "boldLabelFont" -collapsable true myFrameLayoutFillNew;
+
+                                columnLayout myColumnLayout9;
+                                separator -style "none" -w 350 -h 4;
+
+                                string $colorAttrFill = $finalFillLight + ".color";
+                                attrColorSliderGrp -width 350
+                                                   -adjustableColumn 1
+                                                   -attribute $colorAttrFill
+                                                   -label "Color"
+                                                   -columnAlign 1 "center"
+                                                   -columnAttach 1 "left" 10
+                                                   myAttrColorSliderGrp_Fill;
+
+                                separator -style "none" -w 350 -h 4;
+
+                                string $intensityAttrFill = $finalFillLight + ".intensity";
+				attrFieldSliderGrp -width 350
+                                                   -adjustableColumn 1
+                                                   -fieldMinValue -100
+                                                   -fieldMaxValue 9999999
+                                                   -minValue 0
+                                                   -maxValue 10
+                                                   -columnAlign 1 "center"
+                                                   -columnAttach 1 "left" 5
+                                                   -attribute $intensityAttrFill
+                                                   -label "Intensity"
+                                                   myAttrFieldSliderGrp_IntenFill;
+
+                                separator -style "in" -w 350 -h 4;
+                                separator -style "none" -w 350 -h 4;
+
+                                string $horAngleAttrFill = $nameLocatorFill + ".ry";
+                                floatSliderGrp -width 350
+                                               -adjustableColumn 1
+                                               -ann "Angle of the Fill light from the camera in the horizontal direction"
+                                               -field true
+                                               -label "Horizontal Angle"
+                                               -columnAlign 1 "center"
+                                               -minValue -45.0 -maxValue 45.0
+                                               -precision 3
+                                               myFloatSliderGrp_HorAngFillEdit;
+
+                                connectControl myFloatSliderGrp_HorAngFillEdit $horAngleAttrFill;
+
+                                separator -style "in" -w 350 -h 4;
+                                separator -style "none" -w 350 -h 4;
+
+                                string $verAngleAttrFill = $nameLocatorFill + ".rz";
+                                floatSliderGrp -width 350
+                                               -adjustableColumn 1
+                                               -ann "Angle of the Fill light from the camera in the vertical direction"
+                                               -field true
+                                               -label "Vertical Angle"
+                                               -columnAlign 1 "center"
+                                               -minValue -45.0 -maxValue 45.0
+                                               -precision 3
+                                               myFloatSliderGrp_VerAngFillEdit;
+
+                                connectControl myFloatSliderGrp_VerAngFillEdit $verAngleAttrFill;
+
+                                separator -style "none" -w 350 -h 4;
+
+                                setParent ..;
+                    setParent ..;
+
+        //Frame3 - Back Light Attributes
+        int $boolBackLight = `checkBox -query -value myCheckBack`;
+
+        if (!$boolBackLight)
+        {
+                    // To select the final Back Light.
+                    string $locatorBackChildren[] = `listRelatives -c $nameLocatorBack`;
+                    string $finalBackLight = $locatorBackChildren[1];
+
+                    frameLayout -label ($finalBackLight + " Attributes") -w 350 -borderStyle "etchedIn"
+                                -font "boldLabelFont" -collapsable true myFrameLayoutBackNew;
+
+                                columnLayout myColumnLayout10;
+                                separator -style "none" -w 350 -h 4;
+
+                                string $colorAttrBack = $finalBackLight + ".color";
+                                attrColorSliderGrp -width 350
+                                                   -adjustableColumn 1
+                                                   -attribute $colorAttrBack
+                                                   -label "Color"
+                                                   -columnAlign 1 "center"
+                                                   -columnAttach 1 "left" 10
+                                                   myAttrColorSliderGrp_Back;
+
+                                separator -style "none" -w 350 -h 4;
+
+                                string $intensityAttrBack = $finalBackLight + ".intensity";
+				attrFieldSliderGrp -width 350
+                                                   -adjustableColumn 1
+                                                   -fieldMinValue -100
+                                                   -fieldMaxValue 9999999
+                                                   -minValue 0
+                                                   -maxValue 10
+                                                   -columnAlign 1 "center"
+                                                   -columnAttach 1 "left" 5
+                                                   -attribute $intensityAttrBack
+                                                   -label "Intensity"
+                                                   myAttrFieldSliderGrp_IntenBack;
+
+                                separator -style "in" -w 350 -h 4;
+                                separator -style "none" -w 350 -h 4;
+
+                                string $horAngleAttrBack = $nameLocatorBack + ".ry";
+                                floatSliderGrp -width 350
+                                               -adjustableColumn 1
+                                               -ann "Angle of the Back light from the camera in the horizontal direction"
+                                               -field true
+                                               -label "Horizontal Angle"
+                                               -columnAlign 1 "center"
+                                               -minValue -45.0 -maxValue 45.0
+                                               -precision 3
+                                               myFloatSliderGrp_HorAngBackEdit;
+
+                                connectControl myFloatSliderGrp_HorAngBackEdit $horAngleAttrBack;
+
+                                separator -style "in" -w 350 -h 4;
+                                separator -style "none" -w 350 -h 4;
+
+                                string $verAngleAttrBack = $nameLocatorBack + ".rz";
+                                floatSliderGrp -width 350
+                                               -adjustableColumn 1
+                                               -ann "Angle of the Back light from the camera in the vertical direction"
+                                               -field true
+                                               -label "Vertical Angle"
+                                               -columnAlign 1 "center"
+                                               -minValue -45.0 -maxValue 45.0
+                                               -precision 3
+                                               myFloatSliderGrp_VerAngBackEdit;
+
+                                connectControl myFloatSliderGrp_VerAngBackEdit $verAngleAttrBack;
+
+                                separator -style "none" -w 350 -h 4;
+
+                                setParent ..;
+                    setParent ..;
+        }
+        separator -style "none" -w 350 -h 4;
+        separator -style "out" -w 350 -h 4;
+        separator -style "none" -w 350 -h 4;
+
+        button -width 350 
+               -label "Click AFTER deciding FINAL POSITION of the lights" 
+               -align "center" 
+               -recomputeSize true 
+               -command "finishProc();" 
+               btnFinishProc;
+
+        separator -style "none" -w 350 -h 4;
+        separator -style "out" -w 350 -h 4;
+
+   // Disable controls in TAB1.
+   disableTab1();
+
+showWindow $myWindowLightEdit;
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure to unparent the lights and delete the locators.
+global proc finishProc()
+{
+   global string $nameLocatorKey;
+   global string $nameLocatorFill;
+   global string $nameLocatorBack;
+
+   string $listTransforms[] = `ls -transforms "locator*"`;
+
+   for ($locator in $listTransforms)
+   {
+   	if ($locator == $nameLocatorKey)
+   	{
+   	        // To select the final Key Light.
+                string $locatorKeyChildren[] = `listRelatives -c $nameLocatorKey`;
+                string $finalKeyLight = $locatorKeyChildren[1];
+                // Unparent the Light and delete the locator.
+                parent -world $finalKeyLight;
+                delete $nameLocatorKey;
+        }
+        else if ($locator == $nameLocatorFill)
+        {
+                // To select the final Fill Light.
+                string $locatorFillChildren[] = `listRelatives -c $nameLocatorFill`;
+                string $finalFillLight = $locatorFillChildren[1];
+                // Unparent the Light and delete the locator.
+                parent -world $finalFillLight;
+                delete $nameLocatorFill;
+        }
+        else if ($locator == $nameLocatorBack)
+        {
+        	// To select the final Fill Light.
+                string $locatorBackChildren[] = `listRelatives -c $nameLocatorBack`;
+                string $finalBackLight = $locatorBackChildren[1];
+                // Unparent the Light and delete the locator.
+                parent -world $finalBackLight;
+                delete $nameLocatorBack;
+        }
+   }
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure for enabling custom value FloatSlider for Key-To-Fill ratios.
+global proc onCustomRBtn()
+{
+   floatSliderGrp -edit -enable true myFloatSliderGrp_CusKTF;
+}
+
+
+// Procedure for disabling custom value FloatSlider for Key-To-Fill ratios.
+global proc offCustomRBtn()
+{
+   floatSliderGrp -edit -enable false myFloatSliderGrp_CusKTF;
+}
+
+//---------------------------------------------------------------------------------------------------------------
+// Procedure for Enabling / Disabling Back Light Settings.
+global proc chngStateCheckBack()
+{
+        int $boolBackLight = `checkBox -query -value myCheckBack`;
+        if ($boolBackLight)
+        {
+            textField -edit -enable false myNameBack;
+            radioButton -edit -enable false rBtnSpotBack;
+            radioButton -edit -enable false rBtnDirectionalBack;
+        }
+        else
+        {
+            textField -edit -enable true myNameBack;
+            radioButton -edit -enable true rBtnSpotBack;
+            radioButton -edit -enable true rBtnDirectionalBack;
+        }
+}

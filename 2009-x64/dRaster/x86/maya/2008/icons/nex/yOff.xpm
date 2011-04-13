@@ -1,0 +1,36 @@
+/* XPM */
+static char *yOff[] = {
+/* columns rows colors chars-per-pixel */
+"22 20 10 1",
+"  c gray100",
+". c yellow",
+"X s bg c magenta",
+"o c red",
+"O c cyan",
+"+ c green",
+"@ c blue",
+"# c black",
+"$ c #69696D",
+"% c #CECED2",
+/* pixels */
+"XX%%%%%%%%%%%%%%%%%%%%",
+"X%XXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXX##XXXX##XXXXXXX",
+"%XXXXXX##XXXX##XXXXXXX",
+"%XXXXXXX##XX##XX##XXXX",
+"%XXXXXXXX####XXX##XXXX",
+"%XXXXXXXXX##XXXXXXXXXX",
+"%XXXXXXXXX##XXXXXXXXXX",
+"%XXXXXXXXX##XXXX##XXXX",
+"%XXXXXXXXX##XXXX##XXXX",
+"%XXXXXXXXX##XXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"%XXXXXXXXXXXXXXXXXXXXX",
+"X$XXXXXXXXXXXXXXXXXXXX",
+"XX$$$$$$$$$$$$$$$$$$$$"
+};

@@ -1,0 +1,27 @@
+/* XPM */
+static char *shrinkOff[] = {
+/* columns rows colors chars-per-pixel */
+"55 17 4 1",
+"  s bg c green",
+". c gray100",
+"o c black",
+"O c gray100",
+/* pixels */
+"  ...................................................  ",
+" .                                                   . ",
+".                                                     o",
+".                                                     o",
+".               ooo   o        o       o              o",
+".              o   o  o                o              o",
+".              o      o                o              o",
+".              o      o oo  oo o o oo  o  o           o",
+".               ooo   oo  o o  o oo  o o o            o",
+".                  o  o   o o  o o   o oo             o",
+".                  o  o   o o  o o   o o o            o",
+".              o   o  o   o o  o o   o o  o           o",
+".               ooo   o   o o  o o   o o   o          o",
+".                                                     o",
+".                                                     o",
+" o                                                   o ",
+"  ooooooooooooooooooooooooooooooooooooooooooooooooooo  "
+};

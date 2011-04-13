@@ -1,0 +1,77 @@
+*                                                                                                                                                                                                                                                      *                              
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| HK Magnet Tool Documentation |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+Author: Henry Korol ( HawK)
+  Date created: 27.08.2004
+Version 1.0
+
+|-----------------------------------------------------------------------------------  Installation -------------------------------------------------------------------------------------------------|
+
+ 1. Copy the HKMagnetTool.mel file to " Documents and Settings\"Username"\My Documents\maya\6.0\scripts"
+ 
+ 2. Copy the HKMagnetIcon.bmp to " Documents and Settings\"Username"\My Documents\maya\6.0\prefs\icons "
+ 
+ 3. Open your userSetup.mel file located at  "My Documents\maya\6.0\scripts" and type new line with this code:  "  HKMagnetTool;  "
+      
+ 4. Open Maya. To install an Magnet Icon on the shelf select the shelf where you want the button to be placed, and in command line,
+     or in script editor call " HKMInstallShelfIcon; " The new shelf button will be created. Clicking the button will activate the Magnet tool,
+      to enter tool options double click the shelf button.
+
+ * In case you will want to assign a hotkey or marking menu on Magnet: to Enter the tool use "HKMagnetToolEnter;" command.
+    To open option window for this tool use "HKMOptionBox;" command.
+
+|-------------------------------------------------------------------------------- Tool Description --------------------------------------------------------------------------------------------|
+ 
+   This tool is designed to speed up polygon modeling( tweaking) in maya. It allows to move the points on the mesh in one click. The 
+ points in fallof radius( larger circle) are moved proportionally from the cursors center( using defined falloff ), 
+ the points that are in offset radius ( smallers circle) are moved with cursor. The vertexies are moved in a plane which is most 
+ perpendicular to the current view direction ( The curren slide plane is printed in the output line).  
+ The tool can be used on multiple objects at the time.
+   After installing the shelf icon with the tool( see Installation) you'll be able to call it by clicking the button, or changing the options by
+double clicking the shelf button. 
+  The tool uses it's own undo( see Actions) so while the tool is activated maya's native undo is turned off, but the queue is preserved.
+  To complete the tool just call any other tool( select, move, scale). 
+
+|--------------------------------------------------------------------------------- Tool Options -------------------------------------------------------------------------------------------------|
+
+* Apply Tool On:
+        Whole Object - all vertexies of the selected object(s) are affected.
+        Components - select the components to use with the tool and activate it. Only those vertexies are affected by the tool.
+
+*** Radius - the maximum distance from the cursor at which the vertexies are affected.
+
+*** Offset - the radius in which vertexies are moved without falloff.
+
+* Falloff Type:
+     *Note that the falloff calculation starts from the offset circle and not from the cursor. 
+     Linear - vertex is moved proportionally based on inverse linear proportionality ( Affect value => Distance to the cursor ).
+     Smooth - vertex is moved proportionally based on  inverse square proportionality ( Affect value =>  (Distance to the cursor)^2 ).
+
+* Backface Culling:
+   Toggles the back face culling for the object. Note that tool ignores objects backface culling parameters.
+
+*** Display Control Curves - toggles the display of curves showing the radius and offset sizes. 
+    ( the vertexies are still selected during the radius change so you can see the which vertexies you will affect).
+
+* Kill history on tool completion:
+  Toggles if the objects history is deleted after the tools completion. 
+ 
+The controls marked with *** can be modyfied using keyboard and mouse combinations( see Actions )
+
+|-------------------------------------------------------------------------------------  Actions -------------------------------------------------------------------------------------------------|
+ 
+ To Change the magnet's radius click drag middle mouse button. To change tool's offset press ctrl and middle mouse drag.
+ To Toggle Control Curves Display hold shift and middle mouse click.
+ To Undo previous action left mouse click holding the ctrl key.
+ To Undo all actions performed with this tool hold control + left mouse button for 3 - 4 seconds.
+
+ -------------------------------------------------------------------------------------- Limitations ----------------------------------------------------------------------------------------------
+
+ Since the tool works in local space and distance is calculated in world direction, it is prefered that the rotation transformations are 
+   freezed on deformed object(s).  
+ You won't be able to use maya's undo while the tool is activated. 
+ You won't be able to use script's undo after deleting objects history.
+ You won't be able to complete the tool using the complete tool command, instead just call any other tool. 
+ The tool works only on maya version 6( or higher :-) ) since it uses some of the new features.
+
+*                                                                                                                                                                                                                                                        *

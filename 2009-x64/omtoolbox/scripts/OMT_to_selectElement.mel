@@ -1,0 +1,56 @@
+// Copyright (C) 1997-2004 Alias Systems Corp.
+// 
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias license agreement, without fee.
+// 
+// ALIAS DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+
+global proc OMT_to_selectElement()
+//
+// Description:
+//		Select either a shell or border based on
+//		the current component selection
+// Arguments:
+//		borderOnly
+// Returns:
+//
+//
+{
+	string $compSel[]; 
+	
+	// Process all the subdiv components first
+	string $subdComps[];
+
+	if (`isTrue "SubdivUIExists"`) {
+	
+		$subdComps = `subdListComponentConversion -fv -ff -fuv -fe -tuv`;
+
+		// Process only one subd component type: UVs, Faces, edges
+ 		$subdComps = `filterExpand -ex false -sm 73 $subdComps`;
+		if (size($subdComps)) {
+	
+			$subdComps = `subdListComponentConversion -fuv -tuv -uvs $subdComps`;
+		}
+	}	// if SubdivUIExists
+
+	// Turn on shell mode for current selection. 
+	polySelectConstraint -t 0;
+	polySelectConstraint -sh 1 -bo 0 -m 2; 
+
+
+	// Reset shell constraint
+	polySelectConstraint -sh 0 -bo 0 -m 0;
+
+	// Add to the selection list the subd components
+	if( size($subdComps) > 0 ) {
+		select -add $subdComps;
+	}
+}

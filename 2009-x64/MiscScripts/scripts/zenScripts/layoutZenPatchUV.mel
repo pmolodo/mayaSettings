@@ -1,0 +1,48 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+global proc string layoutZenPatchUV()
+{
+	global	int	$zenOptions_patchUVDistribution,
+			$zenMinimumWindowWidth;
+	
+	string	$zenLoftColumn=`zenClearToolColumn`;
+
+	global 	string $zenToolsWindow;
+	
+		window -e -title "ZenPatchUV" $zenToolsWindow;
+
+			text -al left -p $zenLoftColumn -label "Distribution:";
+
+			radioButtonGrp 
+				-p $zenLoftColumn
+				-numberOfRadioButtons 2 
+				-l1 "Chord Length" 
+				-l2 "Uniform" 
+				-cc "$zenOptions_patchUVDistribution=`radioButtonGrp -q -select zenOptions_patchUVDistribution`"
+				-select $zenOptions_patchUVDistribution 
+				-columnWidth2 95 95
+				zenOptions_patchUVDistribution;
+
+			separator -p $zenLoftColumn -w $zenMinimumWindowWidth;				
+				
+			button
+				-h 20
+				-p $zenLoftColumn
+				-label Apply
+				-command "doZenCommand doZenPatchUV";
+			
+	return	$zenLoftColumn;
+}

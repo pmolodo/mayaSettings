@@ -1,0 +1,60 @@
+global proc ss2_blend_targetWeights (){
+	print"";
+}
+print "ss2_blend_targetWeights : sourced\n";
+
+proc ss2_blend_targetWeights_prep (){
+
+	//Make sure blend will work (without flooding, it can get confused)
+		ArtPaintBlendShapeWeightsToolOptions ;
+		artAttrInitPaintableAttr ;
+		artAttrPaintOperation artAttrCtx Add ;
+		artAttrCtx -e -value 1e-006 `currentCtx` ;
+		artAttrCtx -e -clear `currentCtx` ;
+
+}
+
+global proc ss2_blend_targetWeights_run (string $blendShape, string $blendShapeWeight[], int $inverse, int $copy){
+
+	ss2_blend_targetWeights_prep;
+
+	int $numWeights = size($blendShapeWeight);
+
+	float $weightVals[] = `getAttr ($blendShape+".inputTarget[0].inputTargetGroup[0].targetWeights")`;
+
+	int $size = size($weightVals);
+
+	for ($n = 0; $n < $numWeights; $n++){
+
+		if ($inverse && $n > 0){
+			$weightVals = `getAttr ($blendShape+".inputTarget[0].inputTargetGroup[" + $n + "].targetWeights")`;
+			$size = size($weightVals);
+		}
+
+		for ($i = 0; $i < $size; $i++)
+			$weightVals[$i] = clamp( 0, 1, $weightVals [ $i ] );
+
+		if ($inverse)
+			for ($i = 0; $i < $size; $i++)
+				$weightVals[$i] = 1 - $weightVals [ $i ];
+
+		for ($i = 0; $i < $size; $i++)
+			setAttr ( $blendShape + ".inputTarget[0].inputTargetGroup["+$n+"].targetWeights[" + $i + "]" ) $weightVals [ $i ];
+
+	}
+}
+
+
+global proc ss2_blend_targetWeights_shelf (string $copyOrInverse){
+
+	string $sel[] = `ls -sl`;
+	string $blendShape = `ss2_search_byType blendShape { $sel [ 0 ] }`;
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 1 `;
+
+	if ($copyOrInverse == "copy")
+		ss2_blend_targetWeights_run $blendShape $blendShapeWeight 0 1 ;
+
+	if ($copyOrInverse == "inverse")
+		ss2_blend_targetWeights_run $blendShape $blendShapeWeight 1 0 ;
+
+}

@@ -1,0 +1,102 @@
+zooZipScript "";
+
+
+global proc zooPack(){
+	zooToolBoxPack;
+	}
+
+
+//builds the zooToolBox distro package
+global proc zooToolBoxPack() {
+	eval "source zooToolBox;";
+	string $basePath = `internalVar -userAppDir`;
+	string $dest = $basePath +"scriptPackages/zooToolBox/";
+	string $scripts[] = `zooListTools all`;
+
+	$scripts[( `size $scripts` )] = "zooToolBox";
+	for( $script in $scripts ) zooZipScriptTo $script ( "-path "+ $dest +" -scriptPath scripts/ -iconPath prefs/icons/" );
+	if( `filetest -r ( $dest +"zooToolBox.rar" )`) sysFile -delete ( $dest +"zooToolBox.rar" );
+	chdir `toNativePath $dest`;
+	string $rarCmd = "rar a -r -m5 zooToolBox.rar *.*";
+	print "executing rar command:\n";
+	print $rarCmd;
+	string $res = `system $rarCmd`;
+	//print $res;
+	}
+
+
+global proc zooAnimPack(){
+	string $scripts[] = {};
+	string $basePath = `internalVar -userAppDir`;
+	string $dest = $basePath +"/scriptPackages/zooAnimPack/";
+	$scripts[( `size $scripts` )] = "zooKeyCommands";
+	$scripts[( `size $scripts` )] = "zooBodgeK";
+	$scripts[( `size $scripts` )] = "zooTimeSets";
+	$scripts[( `size $scripts` )] = "zooShots";
+	$scripts[( `size $scripts` )] = "zooCam";
+	$scripts[( `size $scripts` )] = "zooPanelCycler";
+	$scripts[( `size $scripts` )] = "zooToggleUI";
+	$scripts[( `size $scripts` )] = "zooTangentWks";
+	$scripts[( `size $scripts` )] = "zooXferAnim";
+	$scripts[( `size $scripts` )] = "zooSetMenu";
+	$scripts[( `size $scripts` )] = "zooToggle";
+
+	//copy any other scripts required
+	sysFile -cp ( $dest +"scripts/zooKeyCommands.mel" ) ( `zooGetScriptLocation zooFlags` +"zooKeyCommands.mel" );
+
+	for( $script in $scripts ) zooZipScriptTo $script ( "-path "+ $dest +" -scriptPath scripts/ -iconPath prefs/icons/" );
+	}
+
+
+global proc zooRiggingPack(){
+	string $scripts[] = {};
+	string $basePath = `internalVar -userAppDir`;
+	string $dest = $basePath +"/scriptPackages/zooRiggingPack/";
+	$scripts[( `size $scripts` )] = "zooCST";
+	$scripts[( `size $scripts` )] = "zooBodgeK";
+	$scripts[( `size $scripts` )] = "zooPosesToSliders";
+	$scripts[( `size $scripts` )] = "zooReorderAttribs";
+	$scripts[( `size $scripts` )] = "zooTriggered";
+	$scripts[( `size $scripts` )] = "zooStickToCurve";
+	$scripts[( `size $scripts` )] = "zooBodgeK";
+	$scripts[( `size $scripts` )] = "zooWeightSave";
+	$scripts[( `size $scripts` )] = "zooSurgeon";
+
+	for( $script in $scripts ) zooZipScriptTo $script ( "-path "+ $dest +" -scriptPath scripts/ -iconPath prefs/icons/" );
+	}
+
+
+global proc zooRenderPack(){
+	string $scripts[] = {};
+	string $basePath = `internalVar -userAppDir`;
+	string $dest = $basePath +"/scriptPackages/zooRenderPack/";
+	$scripts[( `size $scripts` )] = "zooCurveLight";
+	$scripts[( `size $scripts` )] = "zzRenderMaker";
+
+	for( $script in $scripts ) zooZipScriptTo $script ( "-path "+ $dest +" -scriptPath scripts/ -iconPath prefs/icons/" );
+	}
+
+
+global proc zooTDPack(){
+	string $scripts[] = {};
+	string $basePath = `internalVar -userAppDir`;
+	string $dest = $basePath +"/scriptPackages/zooTDPack/";
+	$scripts[( `size $scripts` )] = "zooScriptLoader";
+	$scripts[( `size $scripts` )] = "zooKeyCommands";
+	$scripts[( `size $scripts` )] = "zooBodgeK";
+	$scripts[( `size $scripts` )] = "zooRemind";
+	$scripts[( `size $scripts` )] = "zooBreakTime";
+	$scripts[( `size $scripts` )] = "zooAutoSave";
+	$scripts[( `size $scripts` )] = "zooLockFile";
+	$scripts[( `size $scripts` )] = "zooNameSpacey";
+
+	//copy any other scripts required
+	sysFile -cp ( $dest +"scripts/zooFlags.mel" ) ( `zooGetScriptLocation zooFlags` +"zooFlags.mel" );
+	sysFile -cp ( $dest +"scripts/zooMatchNames.mel" ) ( `zooGetScriptLocation zooMatchNames` +"zooMatchNames.mel" );
+	sysFile -cp ( $dest +"scripts/zooChangeRoo.mel" ) ( `zooGetScriptLocation zooFlags` +"zooChangeRoo.mel" );
+
+	for( $script in $scripts ) zooZipScriptTo $script ( "-path "+ $dest +" -scriptPath scripts/ -iconPath prefs/icons/" );
+	}
+
+
+//zoo.end

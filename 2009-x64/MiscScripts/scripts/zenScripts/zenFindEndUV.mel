@@ -1,0 +1,29 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//finds end uvs
+global proc string zenFindEndUV(string $uvPoints[])
+{
+	string	$returnVal;
+		$uvPoints=`ls -fl $uvPoints`;
+		if(size($uvPoints)<3) return $uvPoints[0];
+	
+	string 	$uv=$uvPoints[0];		
+		$otherUVs=`stringArrayRemove {$uv} $uvPoints`;
+		$otherUVs=`zenSortUVsByDistance $uv $otherUVs`;
+		$otherUVs=`stringArrayRemove {""," ",","} $otherUVs`;
+		$returnVal=$otherUVs[size($otherUVs)-1];
+		
+	return	$returnVal;
+}

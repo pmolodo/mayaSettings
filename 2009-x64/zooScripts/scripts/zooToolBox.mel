@@ -1,0 +1,379 @@
+zooArrays_str;
+zooTips;
+zooUtils;
+
+
+global proc zooToolBox() {
+	string $windowName = "zooToolBoxWindow";
+	string $windowTitle = "The zoo Tool Box  v07.04";
+	int $infoDate = 60224;
+	int $showTips = `zooTipState zooToolBox -1`;
+	int $latestTip = -1;
+	int $donated = `optionVar -q zooToolBoxDonation`;
+
+	if( rand(1) > 0.5 && !$donated ) {
+		string $a = `confirmDialog -t "Please support by Donating" -m "Please donate at macaronikazoo.com.\nIf you have already donated, or don't believe in donations, just hit Yes" -b "Donate NOW!" -b "Remind Me Later" -b "Yes I've donated" -b "I Don't Do Donations..."`;
+		if( $a == "Donate NOW!" ) showHelp -a "http://www.macaronikazoo.com/donate.html";
+		else if( $a == "Yes I've donated" ) optionVar -iv zooToolBoxDonation 1;
+		else if( $a == "I Don't Do Donations..." ) optionVar -iv zooToolBoxDonation 2;
+		}
+	if( $infoDate > `optionVar -q zooToolBoxDisplayInfo` ) {
+		$showTips = 1;
+		$latestTip = 1;
+		}
+	optionVar -iv zooToolBoxDisplayInfo $infoDate;
+	if( `window -exists $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -mb 1 -wh 400 400 -sizeable 1 $windowName;
+		menu -l "Shelf";
+			menuItem -l "Install Shelf Button" -c( "zooToolBoxSetup" );
+			menuItem -l "Remove Shelf Button" -c( "deleteUI `zooGetShelfButtonAll zooToolBox`" );
+		menu -l "Help";
+			menuItem -l "Donate Now" -c( "showHelp -a \"http://www.macaronikazoo.com/donate.html\";" );
+			menuItem -l "Help..." -c( "zooHelp zooToolBox 1" );
+			menuItem -l "Complete Tool List" -c( "zooHelp zooToolBox 2" );
+			menuItem -d 1;
+			menuItem -l "Show Tips" -c( "zooTipsWin zooToolBox 0;" );
+
+		string $mainForm = `formLayout`;
+			string $tabs = `tabLayout`;
+				string $shelf1 = `shelfLayout`;
+				setParent ..;
+				string $shelf2 = `shelfLayout`;
+				setParent ..;
+				string $shelf3 = `shelfLayout`;
+				setParent ..;
+				string $shelf4 = `shelfLayout`;
+				setParent ..;
+			setParent ..;
+
+			string $image = `image -width 300 -height 8 -backgroundColor ((float)96/255) ((float)100/255) ((float)146/255) -image(zooGetFileLocation(zooListEnv("XBMLANGPATH"),"zoo_sig","tga") +"zoo_sig.tga" )`;
+				popupMenu -p $image -b 1 -pmc ( "showHelp -a \"http://www.macaronikazoo.com/\"" );
+
+	tabLayout -e
+		-tabLabel $shelf1 "Animation Tools"
+		-tabLabel $shelf2 "Rigging Tools"
+		-tabLabel $shelf3 "Other Tools"
+		-tabLabel $shelf4 "Marking Menus"
+		$tabs;
+
+	formLayout -e
+		-af $tabs "top" 0
+		-af $tabs "left" 0
+		-af $tabs "right" 0
+		-ac $tabs "bottom" 2 $image
+
+		-an $image "top"
+		-af $image "left" 2
+		-af $image "right" 2
+		-af $image "bottom" 2
+		$mainForm;
+
+	showWindow $windowName;
+	window -e -wh 350 250 $windowName;
+	if( $showTips ) zooTipsWin zooToolBox $latestTip;
+	zooAddTools animation $shelf1;
+	zooAddTools rigging $shelf2;
+	zooAddTools other $shelf3;
+	zooAddTools hotkey $shelf4;
+	}
+
+
+global proc zooAddTools( string $type, string $shelf ) {
+	string $tools[] = `zooListTools $type`;
+	setParent $shelf;
+	for( $tool in $tools ) {
+		string $butt = `shelfButton -docTag $tool`;
+		shelfButton -e -image( `zooToolIcon $tool` +".xpm" ) -iol `zooToolOverlay $tool` -ann( "right click for more information about "+ $tool ) -c( `zooToolCmd $tool` ) $butt;
+		popupMenu -p $butt -b 3 -pmc( "zooToolMoreInfo "+ $tool );
+		}
+	}
+
+
+global proc string[] zooListTools( string $type ) {
+	string $animTools[] = { "zooAutoSave","zooAnimStore","zooShots","zooTriggered",
+		"zooGreaseMonkey","zooBoltOnIK","zooBodgeK","zooGraphFilter","zooHUDCtrl",
+		"zooKeyCommands","zooKeymaster","zooRemind","zooRenamer","zooTriggerator",
+		"zooVisMan","zooXferAnim" };
+	string $riggingTools[] = { "zooAutoSave","zooTriggered","zooCST","zooBoltOnIK",
+		"zooBodgeK","zooHeavy","zooNameSpacey","zooRemind","zooRenamer",
+		"zooSurgeon","zooWeightSave","zooTriggerator","zooReblender" };
+	string $otherTools[] = { "p4menu","zooAutoSave","zooChangeLog","zooAssets",
+		"zooNameSpacey","zooRemind","zooRenamer","zooToggleUI","zooPanelCycler" };
+	string $hotkeys[] = { "zooTangentWks","zooCam","zooSetMenu","zooSetkey","zooAlign",
+		"toggle_shading","toggle_lights","toggle_texturing","zooHeavy","zooFitTimeline" };
+	string $unlisted[] = { "zooAlign","zooCurveLight","zooChangeRoo","zooChangeSpace",
+		"zooHotkeyer" };
+
+	if( $type == "animation" ) return `sort $animTools`;
+	if( $type == "rigging" ) return `sort $riggingTools`;
+	if( $type == "other" ) return `sort $otherTools`;
+	if( $type == "hotkey" ) return `sort $hotkeys`;
+	if( $type == "all" ) {
+		string $all[] = `zooAddArray_str $animTools $riggingTools`;
+		$all = `zooAddArray_str $all $otherTools`;
+		$all = `zooAddArray_str $all $hotkeys`;
+		$all = `zooAddArray_str $all $unlisted`;
+		return `stringArrayRemoveDuplicates $all`;
+		}
+	return {};
+	}
+
+
+global proc zooToolMoreInfo( string $tool ) {
+	if( `window -ex zooToolMoreInfo` ) deleteUI zooToolMoreInfo;
+	window -title "more info" -mb 1 -wh 200 150 -sizeable 1 zooToolMoreInfo;
+		string $form = `formLayout`;
+			string $text = `scrollField -ed 0 -ww 1 -tx(zooToolAnnotation($tool))`;
+
+	formLayout -e
+		-af $text "top" 0
+		-af $text "left" 0
+		-af $text "right" 0
+		-af $text "bottom" 0
+		$form;
+
+	showWindow zooToolMoreInfo;
+	window -e -wh 350 200 zooToolMoreInfo;
+	}
+
+
+global proc string zooToolAnnotation( string $tool ) {
+	string $annotation = "";
+	switch( $tool ) {
+		default:
+			return( $tool +" is a tool from macaroniKazoo - check macaroniKazoo.com for more information" );
+		case "toggle_lights":
+			$annotation = "toggle viewport lighting";
+			break;
+		case "toggle_texturing":
+			$annotation = "toggle viewport texturing";
+			break;
+		case "toggle_shading":
+			$annotation = "toggle viewport shading";
+			break;
+		case "zooAlign":
+			$annotation = "snaps two objects together - first select the master object, then the object you want to snap, then hit the hotkey";
+			break;
+		case "zooAssets":
+			$annotation = "zooAssets is a tool for managing \"assets\" within a maya scene.  An asset can be any DAG object.  Assets can be assigned any data they want through a very easy to use interface.\n\nThe default data the UI allows you to add to an asset includes start/end times, asset name, notes, pre/post export commands and a few others.\n\nIt is very useful for games studios as it allows in scene management of animation assets, prop assets etc.  By writing a simple export procedure for use with your studio's game engine, this script can provide a full featured in-scene asset management solution.";
+			break;
+		case "zooAutoSave":
+			$annotation = "zooAutoSave is a tool that will automatically save your scene after a certain number of selections.  Maya doesn't provide a timer, so its not possible to write a time based autosave tool, but it makes more sense to save automatically after you've done a certain number of \"things\".  You can easily adjust the threshold, and have the tool automatically start when maya starts if you wish.";
+			break;
+		case "zooBodgeK":
+			$annotation = "zooBodgeK allows you to manipulate fk chains using a non-invasive, scriptJob driven IK chain.  This chain may be added to absolutely any fk chain.  Because it is scriptJob based, it preserves existing animation.  It allows you to pose the fk chain quickly using IK, but set FK keys on your chain.  Great for animators who want to quickly pose FK chains (arms, spines, legs etc) and remain in FK";
+			break;
+		case "zooBoltOnIK":
+			$annotation = "zooBoltOnIK allows an animator to take an FK chain, and turn it into an IK controlled chain.  Designed to be used on top of existing rigs, this tool creates a duplicate fk chain, constrains the FK chain to the duplicate, and controls the duplicate with IK.  This allows any FK chain on a rig to be controlled using IK.  For example, taking the chain from the chest, to the clavicle, to an fk bicep, to an fk elbow will allow an fk arm to be locked at the elbow to a table.  Typically this is quite difficult, but this tool makes it a two step process.  Select the fk controls, run this script.";
+			break;
+		case "zooCam":
+			$annotation = "zooCam is a marking menu that lets you quickly swap between any camera in your scene.  It is integrated tightly with zooShots, so you can quickly navigate between shot cameras, master cameras, or any other in-scene camera.";
+			break;
+		case "zooChangeLog":
+			$annotation = "zooChangeLog is a simple script that allows you to add revision notes to your scene.  It keeps a log of all previous notes added to the scene, along with the username of the person who wrote the note.  Its great for keeping track of changes to common scene files, and just for keeping track of changes you make yourself to you own scenes.";
+			break;
+		case "zooCST":
+			$annotation = "zooCST is one of the most powerful freely available auto-rigging tools around.  The Character Setup Toolkit provides a broad range of rigging \"primitives\", enabling the rigging of just about any character quickly and powerfully.\n\nIt also provides a bunch of tools to quickly build IK/FK switching chains which can be built upon should you want to extend the default arm/leg rig.\n\nIt provides a comprehensive library of tools for auto-cutting up proxy geometry for characters, placing pole vectors accurately without disturbing rotations, determining rotation orders, up vectors etc.  It has also been production proven on many game titles and even a few film titles.\n\nBy default, it allows you to setup:\nIK/FK switching stretchy arms\nIK/FK switching stretcju legs\nFK spine\nIK spine\nadvanced head/eye rig\nfingers";
+			break;
+		case "zooFitTimeline":
+			$annotation = "fits the graph/dope editor range to that of the current timeline - also fits curve values";
+			break;
+		case "zooGraphFilter":
+			$annotation = "zooGraphFilter provides a quick and easy way of filtering out certain channels on many objects in the graph editor.";
+			break;
+		case "zooGreaseMonkey":
+			$annotation = "zooGreaseMonkey is a neat little script that allows you to draw in your camera viewport.  It lets you add as many frames as you want at various times in your scene.  You can use it to thumbnail your animation in your viewport, you can use it to plot paths, you could even use it to do a simple 2d based animation if you wanted.";
+			break;
+		case "zooHUDCtrl":
+			$annotation = "zooHUDCtrl lets you easily add stuff to your viewport HUD.  It supports custom text, filename, current frame, camera information, object attribute values, and if you are using zooShots, it will also print out shot numbers to your HUD.";
+			break;
+		case "zooHeavy":
+			$annotation = "zooHeavy is a collection of niche, but very useful weighting tools";
+			break;
+		case "zooKeyCommands":
+			$annotation = "zooKeyCommands is a simple little tool that lets you run a MEL command on an object for each keyframe the object has.  It basically lets you batch a command for each keyframe.";
+			break;
+		case "zooKeymaster":
+			$annotation = "keymaster gives you a heap of tools to manipulate keyframes - scaling around curve pivots, min/max scaling of curves/keys etc...";
+			break;
+		case "zooNameSpacey":
+			$annotation = "zooNameSpacey is a namespace management tool.  It lets you visualise the namespaces you have in your scene - and navigate through them using a \"folder\" type paradigm.";
+			break;
+		case "zooPanelCycler":
+			$annotation = "zooPanelCycler is a super simple script - when bound to a hotkey, it will cycle through different panels in a viewport.  For example, if you have:\nzooPanelCycler { \"graph\", \"dope\" };\n\nset to a hotkey, it would step through the cycle of three panels everytime you pressed that hotkey.\n\nOther useful ones are:\nzooPanelCycler { \"render\", \"texture\",\"hypershade\" };\nzooPanelCycler { \"hypergraph\", \"hypershade\" };\n";
+			break;
+		case "zooReblender":
+			$annotation = "zooReblender will rebuild your blendshapes after you have applied history to them.  This is useful for modifying topology after you've already built blendshapes.  Select your object with blendshapes, and run this tool.";
+			break;
+		case "zooRemind":
+			$annotation = "zooRemind will set a reminder in your scene.  Everytime you open the scene, the reminder will popup.  This can be a great way to remind yourself to do something, or set notes for someone else who will work on your scene.";
+			break;
+		case "zooRenamer":
+			$annotation = "zooRenamer is a batch renaming script.  It also has a command-line interface for easy integration into other tools.";
+			break;
+		case "zooSetMenu":
+			$annotation = "zooSetMenu us a marking menu that lets you quickly interact with all quick selection sets in your scene.";
+			break;
+		case "zooSetkey":
+			$annotation = "zooSetKey is a tool designed to replace the set key hotkey.  It is a marking menu script that lets you perform a variety of set key based operations - such as push the current key to the next key, perform a euler filter on all selected objects etc...";
+			break;
+		case "zooSurgeon":
+			$annotation = "zooSurgeon will automatically cut up a skinned mesh and parent the cut up \"proxy\" objects to the skeleton.  This allows for near instant creation of a fast geometrical representation of a character.";
+			break;
+		case "zooShots":
+			$annotation = "zooShots is a camera management tool.  It lets you create a bunch of cameras in your scene, and \"edit\" them together in time.  The master camera then cuts between each \"shot\" camera.  All camera attributes are maintained over the cut - focal length, clipping planes, fstop etc...\n\nThe interface allows you to associate notes with each shot, colour shots in the UI to help group like shots, shot numbering etc...";
+			break;
+		case "zooTangentWks":
+			$annotation = "zooTangentWks is a marking menu script that provides super fast access to common tangent based operations.  Tangent tightening, sharpening, change tangent types, changing default tangents etc...";
+			break;
+		case "zooToggleUI":
+			$annotation = "zooToggleUI is a simple script that toggles UI elements on and off.  Use it when you want to maximise screen space temporarily.";
+			break;
+		case "zooTriggerator":
+			$annotation = "zooTriggerator is an interface for building and managing triggered viewport interfaces.  It builds collapsible, in-viewport folders that contain selection triggers.\n\nThey can be used to build selection triggers for complex rigs to make an easy to use interface for animators to use.";
+			break;
+		case "zooTriggered":
+			$annotation = "zooTriggered is one of the most powerful rigging companions around.  It allows the rigger to attach name independent MEL commands to an object.  These commands can be run either on the selection of the object, or by right clicking over that object.\n\nIt allows context sensitive scripted commands to be added to a character rig, which allows the rigger to create more intuitive rigs.  Being able to add name independent MEL scripts to a rig can open up entire new worlds of possibilities, as does selection triggered MEL commands.";
+			break;
+		case "zooVisMan":
+			$annotation = "visMan is a tool for creating and using heirarchical visibility sets in your scene.  a visibility set holds a collection of items, be it components, objects or anything else that normally fits into a set.  the sets can be organised heirarchically, and easily collapsed, and selected in a UI to show only certain objects in your viewports.  its great for working with large sets, or breaking a character up into parts to focus on";
+			break;
+		case "zooWeightSave":
+			$annotation = "zooWeightSave is a special type of weight transfer script.  It stores mesh weights in the mesh itself, but independent of a skin cluster, and independent of vert numbering.  So when you need to change topology, you can first store the weights into the mesh using zooWeightSave, make your topology changes, then restore the weights after deleting history.";
+			break;
+		case "zooXferAnim":
+			$annotation = "zooXferAnim is an animation transfer utility.  It allows transfer of animation using a variety of different methods, instancing, duplication, copy/paste, import/export and tracing.  Its also fully externally scriptable for integration into an existing production pipeline.";
+			break;
+		}
+	return( $annotation +" - try checking macaroniKazoo.com for more information" );
+	}
+
+global proc string zooToolCmd( string $tool ) {
+	string $annotation = "";
+	string $mmMsg = "confirmDialog -m \"this will setup a hotkey for the "+ $tool +" script\";";
+	switch( $tool ) {
+		default:
+			return $tool;
+		case "zooAlign":
+			return "zooHotkeyer zooAlign \"{\\nstring $sel[] = `ls -sl`;\\nfloat $pos[] = `xform -q -ws -rp $sel[0]`;\\nfloat $rot[] = `xform -q -ws -ro $sel[0]`;\\nfor( $n=1; $n<`size $sel`; $n++ ) {\\n\tmove -a -ws -rpr $pos[0] $pos[1] $pos[2] $sel[$n];\\n\trotate -a -ws $rot[0] $rot[1] $rot[2];\\n\t}\\n}\" \"\" \"-default a -alt 1 -enableMods 1 -ann aligns two objects\"";
+		case "zooAutoSave":
+			return "source zooAutoSave; zooAutoSaveConfig;";
+		case "zooBoltOnIK":
+			return "source zooBoltOnIK; zooBoltOnIKWin;";
+		case "zooCam":
+			return( $mmMsg +"zooHotkeyer zooCam \"zooCam;\" \"zooCamKillUI;\" \"-default l -enableMods 0 -ann zooCam marking menu script for managing in scene cameras\";" );
+		case "zooKeyCommands":
+			return "source zooKeyCommandsWin;";
+		case "zooKeymaster":
+			return "zooKeymasterWin;";
+		case "zooRemind":
+			return "source zooRemind; zooRemindSetReminderUI;";
+		case "zooSetMenu":
+			return( $mmMsg +"zooHotkeyer zooSetMenu \"zooSetMenu;\" \"zooSetMenuKillUI;\" \"-default y -enableMods 0 -ann zooSetMenu lets you quickly interact with selection sets in your scene through a marking menu interface\";" );
+		case "zooSetkey":
+			return( $mmMsg +"zooHotkeyer zooSetkey \"zooSetkey;\" \"zooSetkeyKillUI;\" \"-default s -enableMods 0 -ann designed to replace the set key hotkey, this marking menu script lets you quickly perform all kinda of set key operations\";" );
+		case "zooTangentWks":
+			return( $mmMsg +"zooHotkeyer zooTangentWks \"zooTangentWks;\" \"zooTangentWksKillUI;\" \"-default q -enableMods 0 -ann tangent works is a marking menu script to speed up working with the graph editor\";" );
+		case "zooHeavy":
+			return( $mmMsg +"zooHotkeyer zooHeavy \"zooHeavyMenu;\" \"zooHeavyKillUI;\" \"-default h -enableMods 0 -ann heavy is a skin weighting tool\";" );
+		case "zooPanelCycler":
+			return "print \"\\n----------------\\ncreate a hotkey using the following command:\\nzooPanelCycler { \\\"graph\\\",\\\"dope\\\",\\\"hypershade\\\",\\\"hypergraph\\\" };\\nyou can add as many or as few panels as you want on the\\nhotkey.  pressing the hotkey will cycle through them all.\\nfollowing is a list of the panel names you can use:\\n----------------\\n\"; zooPanelCycler {};confirmDialog -m \"panel cycler will create a hotkey to cycle between mutiple panels - read the script editor for info on how to set it up\";";
+		case "toggle_lights":
+			return "zooHotkeyer toggleLights \"zooToggle lighting;\" \"\" \"-default 3 -enableMods 1 -ann toggles viewport lighting\"";
+		case "toggle_texturing":
+			return "zooHotkeyer toggleTexture \"zooToggle texturing;\" \"\" \"-default 2 -enableMods 1 -ann toggles viewport texturing\"";
+		case "toggle_shading":
+			return "zooHotkeyer toggleShading \"zooToggle shading;\" \"\" \"-default 1 -enableMods 1 -ann toggles viewport shading\"";
+		case "zooFitTimeline":
+			return "zooHotkeyer fitGraphEdRange \"zooFitTimeline;\" \"\" \"-default k -enableMods 1 -ann fits the graph/dope editor range to that of the current timeline - also fits curve values\"";
+		}
+	return "";
+	}
+
+
+global proc string zooToolIcon( string $tool ) {
+	string $annotation = "";
+	switch( $tool ) {
+		default:
+			return $tool;
+		case "zooAlign":
+		case "toggle_lights":
+		case "toggle_texturing":
+		case "toggle_shading":
+		case "zooCam":
+		case "zooFitTimeline":
+		case "zooSetMenu":
+		case "zooSetkey":
+		case "zooTangentWks":
+		case "zooHeavy":
+			return "zooHotkeyer";
+		case "zooAutoSave":
+			return "zooAutoSave_0";
+		case "zooTriggered":
+			return "zooTriggered_0";
+		case "zooToggleUI":
+			return "zooIcon";
+		case "zooReblender":
+			return "zooIcon";
+		case "zooHUDCtrl":
+			return "zooIcon";
+		case "zooVisMan":
+			return "zooIcon";
+		}
+	return "";
+	}
+
+
+global proc string zooToolOverlay( string $tool ) {
+	string $annotation = "";
+	switch( $tool ) {
+		default:
+			return "";
+		case "zooAlign":
+			return "ali";
+		case "toggle_lights":
+			return "lit";
+		case "toggle_texturing":
+			return "tex";
+		case "toggle_shading":
+			return "shad";
+		case "zooCam":
+			return "cam";
+		case "zooFitTimeline":
+			return "fit";
+		case "zooSetMenu":
+			return "sets";
+		case "zooSetkey":
+			return "key";
+		case "zooTangentWks":
+			return "tang";
+		case "zooToggleUI":
+			return "tgl";
+		case "zooPanelCycler":
+			return "";
+		case "zooReblender":
+			return "re-B";
+		case "zooHUDCtrl":
+			return "HUD";
+		case "zooHeavy":
+			return "heavy";
+		case "zooVisMan":
+			return "VIS";
+		}
+	}
+
+
+//------
+//installs a shelf buttons for zooTriggered on the current shelf
+//------
+global proc zooToolBoxSetup() {
+	string $button = `zooInstallShelfButton zooToolBox`;
+	string $image = `internalVar -userBitmapsDir` +"zooToolBox.xpm";
+	string $cmd = "zooToolBox;";
+
+	shelfButton -e -image1 $image -label "zooToolBox shelf button" -ann "load the zooShots UI - right click for additional options" -command $cmd $button;
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

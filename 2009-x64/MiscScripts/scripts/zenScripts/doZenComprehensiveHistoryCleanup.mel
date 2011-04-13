@@ -1,0 +1,121 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//breaks incoming and/or outgoing connections, deletes history, deletes intermediate objects
+global proc string[] doZenComprehensiveHistoryCleanup()
+{
+	int	$destinationConnections=1;
+
+	string 	$nodes[]=`ls -sl`;
+	string	$failed;
+		
+	//find all the nodes
+	string	$trNodes[]=`ls -type transform $nodes`;
+	string	$shapeNodes[]=`listRelatives -pa -s -ni $nodes`;
+	string	$intermediateObjects[]=stringArrayRemove($shapeNodes,`listRelatives -pa -s $nodes`);
+	
+		$shapeNodes=stringArrayCatenate($shapeNodes,`ls -type shape $nodes`);
+		$shapeNodes=`stringArrayRemoveDuplicates $shapeNodes`;
+		$trNodes=`stringArrayRemoveDuplicates $trNodes`;
+		
+	//get history
+	string	$history[]=`listHistory $shapeNodes $trNodes`;
+		
+	//if nodes are locked, unlock
+		lockNode -lock 0 $trNodes $shapeNodes;
+		
+	//try to delete history
+		catchQuiet(`delete -ch $shapeNodes`);
+		catchQuiet(`delete -ch $trNodes`);
+		
+	//get connections	
+	string	$targetObj;
+	string	$connectionsIn[]=`listConnections -c 1 -s 1 -d 0 -p 1 $shapeNodes $trNodes`;
+	
+	//source connections
+		for($i=0;$i<size($connectionsIn)-1;$i+=2)
+			catchQuiet(`disconnectAttr $connectionsIn[$i+1] $connectionsIn[$i]`);
+
+		$targetObj=zenReturnFirstStringItem(`stringToStringArray $connectionsIn[$i+1] "."`);
+		if(`objExists $targetObj`)
+		{
+			if(`getAttr ($targetObj+".intermediateObject")`)
+				delete $targetObj;
+		}
+		
+	//destination connections
+	string	$connectionsOut[]=`listConnections -c 1 -s 0 -d 1 -p 1 $shapeNodes $trNodes`;
+	string	$returnVal[]=$connectionsOut;
+		if($destinationConnections)
+		{
+			for($i=0;$i<size($connectionsOut)-1;$i+=2)
+			{
+				catchQuiet(`disconnectAttr $connectionsOut[$i] $connectionsOut[$i+1]`);
+				
+				//if connection is a shader, re-connect
+				if(`gmatch $connectionsOut[$i] "*.instObjGroups*"`)
+					connectAttr -f $connectionsOut[$i] $connectionsOut[$i+1];
+				
+				$targetObj=zenReturnFirstStringItem(`stringToStringArray $connectionsOut[$i+1] "."`);
+				if(`objExists ($targetObj+".intermediateObject")`)
+				{
+					if(`getAttr ($targetObj+".intermediateObject")`)
+						delete $targetObj;
+				}
+				
+				if(!`objExists $targetObj`) 
+					$returnVal=`stringArrayRemove {$connectionsOut[$i],$connectionsOut[$i+1]} $returnVal`;
+			}
+		}
+		
+		if(size($intermediateObjects))
+		{
+			for($interObj in $intermediateObjects)
+			{
+				if(`objExists $interObj`)
+					delete $interObj;
+			}
+		}
+		
+	//delete history nodes which now have no output connections feeding a shape node
+	string	$future[];
+	int	$relevant;
+		if(size($history))
+		{
+			for($h in $history)
+			{
+				if(`objExists $h`)
+				{
+					$relevant=0;
+					$future=`listHistory -f true $h`;
+					
+					for($f in $future)
+					{
+						if(size(`ls -type shape $f`))
+						{
+							if(!`getAttr ($f+".intermediateObject")`)
+								$relevant=1;
+						}
+					}
+							
+					if($relevant==0)
+						delete $h;
+				}
+			}
+		}
+		
+		print "Cleaning finished.";
+		
+	return	$returnVal;
+}

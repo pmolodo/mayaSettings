@@ -1,0 +1,542 @@
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>ZenTools</title>
+<head>
+
+<style type="text/css">
+body
+{
+	font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+	font-size: 12px;
+}
+h1
+{
+	font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+	font-size: 24px;
+	font-style: normal;
+	font-weight: bold;
+	color: #003300;
+	margin-bottom: 5px;
+	margin-top: 5px;
+}
+h2
+{
+	font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+	font-size: 16px;
+	font-weight: bold;
+	color: #333333;
+	margin-bottom: 5px;
+	margin-top: 5px;
+	text-align: center;
+}
+h3
+{
+	font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+	font-size: 16px;
+	font-style: normal;
+	font-weight: bold;
+	color: #336600;
+	margin-bottom: 5px;
+	margin-top: 5px;
+}
+h4
+{
+	font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+	font-size: 14px;
+	font-style: normal;
+	font-weight: bold;
+	color: #336600;
+	margin-bottom: 5px;
+	margin-top: 5px;
+}
+
+a:link
+{
+	font-size: inherit;
+	font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+	font-weight: bold;
+	text-decoration: underline;
+	color: #669933;
+	text-decoration: none;
+}
+a:visited
+{
+	font-size: inherit;
+	font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+	font-weight: bold;
+	text-decoration: none;
+	color: #669933;
+	margin-bottom: inherit;
+	margin-top: inherit;
+}
+a:hover
+{
+	font-size: inherit;
+	font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+	font-weight: bold;
+	text-decoration: none;
+	color: #FF33FF;
+	margin-bottom: inherit;
+	margin-top: inherit;
+}
+
+h4
+{
+	font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: bold;
+	color: #333333;
+	font-size: 14px;
+	margin-bottom: 5px;
+	margin-top: 5px;
+}
+div
+{
+	font-size: inherit;
+	border: none;
+	border-color:none;
+}
+ul
+{
+	font-size: inherit;
+	margin-bottom: 5;
+	margin-top: 5;
+}
+div.indented
+{
+	font-size: inherit;
+	padding-left: 15px;
+}
+.show
+{
+	font-size: inherit;
+	display: block;
+}
+.hide
+{
+	font-size: inherit;
+	display: none;
+}
+table{ font-size: inherit; }
+tbody{ font-size: inherit; }
+tr{ font-size: inherit; }
+td{ font-size: inherit; }
+p{ font-size: inherit; }
+</style>
+
+<script type="text/javascript">
+<!--
+
+//find an element by style class
+function getElementsByStyleClass (className) 
+{
+  var all = document.all ? document.all :
+    document.getElementsByTagName('*');
+  var elements = new Array();
+  for (var e = 0; e < all.length; e++)
+    if (all[e].className == className)
+      elements[elements.length] = all[e];
+  return elements;
+}
+
+function urlInfo( get )
+{
+	switch( get )
+	{
+		case "variables":
+			var winLocation = String(window.location);
+			var variableStringArray = new Array();
+			
+			variableStringArray=winLocation.split("?");
+			variableStringArray.shift();
+			
+			var varObj=new Object();
+			var splitEqArray=new Array();
+			
+			for( i in variableStringArray )
+			{
+				splitEqArray=variableStringArray.split("=");
+				
+				if(splitEqArray.length==2)
+					varObj[splitEqArray[0]]=splitEqArray[1];
+			}
+			
+			return varObj;
+		case "index":
+			var returnVal=new String("");
+			
+			var winLocation = String(window.location);
+			var variableStringArray = new Array();
+			
+			variableStringArray=winLocation.split("#");
+			
+			if(variableStringArray.length>1)	
+				returnVal=variableStringArray[variableStringArray.length-1];
+			
+			return returnVal;
+		case "baseURL":
+			var returnVal=new String("");
+		
+			var winLocation = String(window.location);
+			var variableStringArray = new Array();
+			
+			returnVal=winLocation.split("#")[0].split("?")[0];
+			
+			return returnVal;	
+	}
+}
+
+function urlIndex()
+{
+	var winLocation = String(window.location);
+	var variableStringArray = new Array();
+	
+	variableStringArray=winLocation.split("#");
+	
+	var returnVal=new String("");
+	
+	if(variableStringArray.length>1)	
+		returnVal=variableStringArray[variableStringArray.length-1];
+	
+	return returnVal;
+}
+
+//toggles visibility for an item
+function toggleVisibility( showNodeID, visibilitySwitchInclude )
+{
+	location.href="#"+showNodeID;
+	
+	var showNode=document.getElementById(showNodeID);
+
+	if(showNode.className=="show")
+	{
+		showNode.className="hide";
+		window.location="#";
+	}
+	else
+	{	
+		if(!visibilitySwitchInclude)
+			visibilitySwitchInclude=getElementsByStyleClass("show").concat(getElementsByStyleClass("hide"));
+		
+		for ( i in visibilitySwitchInclude )
+		{
+			if(visibilitySwitchInclude[i].id==showNodeID)
+				visibilitySwitchInclude[i].className="show";
+			else
+				visibilitySwitchInclude[i].className="hide";
+		}
+	}
+}
+
+//loads delayed images
+
+window.onload=function()
+{
+	var showNodeID=urlInfo("index");
+	toggleVisibility(showNodeID);
+}
+//-->
+</script>
+
+</head>
+
+<body>
+
+<table align="center" border="0" cellpadding="0" cellspacing="0" width="700">
+	<tbody>
+		<tr>
+			<td width="616">
+				<table width="100%" border="0" cellpadding="0" cellspacing="0">
+					<tbody>
+						<tr>
+							<td align="left" width="33%" valign="top">
+								<h1><img src="images/zenTools_header.gif" alt="ZenTools for Maya" width="230" height="35"></h1>
+							</td>
+							<td width="33%" align="bottom" valign="top" class="flashHelv24">&nbsp;
+								
+							</td>
+							<td valign="top" align="right" width="33%" height="15">
+								<h3><img src="images/zenTools_dbHeader.gif" alt="David Belais" width="117" height="24"></h3>
+							<a href="mailto:dbelais@gmail.com" target="_blank" class="h2" >dbelais@gmail.com</a>							</td>
+						</tr>
+					</tbody>
+				</table>			
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<br />
+				<a href="javascript:toggleVisibility('installation')">Installation</a>
+				<div class="indented">
+					<div id="installation" class="hide">
+						<ul>
+							<li>
+								Bonus tools for Maya is required to use ZenTools.
+								<br /><br />Bonus Tools can be found at <a href="http://area.autodesk.com/index.php/misc/bonus_tools/">http://area.autodesk.com/index.php/misc/bonus_tools/.</a><br /><br />
+							</li> 
+							<li>
+								If maya is open, close Maya*. Unzip the contents of the downloaded archive "zenTools.zip" to your user scripts directory.
+								<div class="indented">
+									<p>*Alternately, if you prefer to leave Maya open, type "rehash" into the command-line after unzipping the archive and hit [Enter] to update Maya's script paths.</p>
+								</div>
+							</li>
+							<li>
+								<p>Inside Maya, type "zenTools" ( no quotes ) into the command line and hit [Enter].</p>
+							</li>
+						</ul>
+					</div>
+				</div>
+				<br />
+				<h4>Tools ( by Menu )</h4>
+				<br />
+				<div id="tools">
+					<div class="indented">
+						<div>
+							<h4>Select</h4>
+							<ul>
+								<li>
+									<a href="javascript:toggleVisibility('tools_select_vertLoop')">Vert Loop</a>
+									<div class="indented">
+										<div id="tools_select_vertLoop" class="hide">
+											<p>Selects an edge path between selected vertices.</p>
+											<p><strong>Q: </strong>Maya already has a <em>Select Shortest Edge Path</em> tool, how is this  different?</p>
+											<p><strong>A: </strong> Maya's<em> Select Shortest Edge Path </em>tool   delivers unintuitive results on irregular surfaces.   ZenTools <em>Vert Loop</em> function  always retrieves the connecting edge path containing the fewest number of edges possible to make the connection, as illustrated below.</p>
+											<table width="600">
+												<tbody>
+													<tr>
+														<td align="center">Input Selection</td>
+														<td align="center"><em>Select Shortest Edge Path</em> Results</td>
+														<td align="center">ZenTools <em>Vert Loop</em> Results</td>
+													</tr>
+													<tr>
+														<td align="center"><img src="images/vertLoopA.gif" width="200" height="200"></td>
+														<td align="center"><img src="images/vertLoopB.gif" width="200" height="200"></td>
+														<td align="center"><img src="images/vertLoopC.gif" width="200" height="200"></td>
+													</tr>
+												</tbody>
+											</table>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_select_floodSelect')">Flood Select</a>
+									<div class="indented">
+										<div id="tools_select_floodSelect" class="hide">
+											<p>Select polygon edges defining a desired selection perimeter, then a vertex or a face indicating the region which should be filled. "Flood Fill" will select the vertices or faces contained within.</p>
+											<table width="100%">
+												<tbody>
+													<tr>
+														<td align="center">Input Selection</td>
+														<td align="center">Results</td>
+													</tr>
+													<tr>
+														<td align="center"><img src="images/floodSelectA.gif" width="200" height="200"></td>
+														<td align="center"><img src="images/floodSelectB.gif" width="200" height="200"></td>
+													</tr>
+													<tr>
+														<td align="center">Input Selection</td>
+														<td align="center">Results</td>
+													</tr>
+													<tr>
+														<td align="center"><img src="images/floodSelectC.gif" width="200" height="200"></td>
+														<td align="center"><img src="images/floodSelectD.gif" width="200" height="200"></td>
+													</tr>
+												</tbody>
+											</table>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_select_transferComponentSelection')">Transfer Component Selection</a>
+									<div class="indented">
+										<div id="tools_select_transferComponentSelection" class="hide">
+											<p>Select components on one object, then [right click > Object Mode] and shift-select one or more similar objects, "Transfer Component Selection" will select the corresponding components on the selected objects.</p>
+										</div>
+									</div>
+								</li>
+							</ul>
+						</div>
+					</div>
+					<div class="indented">
+						<div>
+							<h4>Create</h4>
+							<ul class="showList">
+								<li>
+									<a href="javascript:toggleVisibility('tools_create_surfaceBetweenEdgeLoops')">Surface Between Edge Loops</a>
+									<div class="indented">
+										<div id="tools_create_surfaceBetweenEdgeLoops" class="hide">
+											<p>Select 2 or more edge loops of equal edge count which are parallel in orientation and aligned such as to share edge rings. This command will create a surface from the portion of the mesh sandwiched between your selections.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_create_curveSpansBetweenEdgeLoops')">Curve Spans Between Edge Loops</a>
+									<div class="indented">
+										<div id="tools_create_curveSpansBetweenEdgeLoops" class="hide">
+											<p>Select 2 or more edge loops of equal edge count which are parallel in orientation and aligned such as to share edge rings. With “spans” set to 0 ( the default ), this command will create a curve on each parallel edge loop sandwiched between your selection. If the span count is greater than 0, this command will create the specified number of curves.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_create_curvesFromContiguousEdges')">Curves From Contiguous Edges</a>
+									<div class="indented">
+										<div id="tools_create_curvesFromContiguousEdges" class="hide">
+											<p>This command will create a curve from selected edges, or multiple curves if the selection is not contiguous.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_create_autoUVMap')">Auto UV Map</a>
+									<div class="indented">
+										<div id="tools_create_autoUVMap" class="hide">
+											<p>Select polygon objects or faces. This command creates uv coordinates for each face with proportionate spacing according to face area. Useful for quickly creating non-overlapping uv's for baking 3d textures.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_create_uvPatchBetweenEdgeLoops')">UV Patch Between Edge Loops</a>
+									<div class="indented">
+										<div id="tools_create_uvPatchBetweenEdgeLoops" class="hide">
+											<p>Select 2 aligned, equal length, parallel edge loops lying on a polygon surface. This command will create a nurbs-style uv-patch with the selected edges defining it's u borders.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_create_scriptsMenusFromFolders')">Scripts Menus From Folders</a>
+									<div class="indented">
+										<div id="tools_create_scriptsMenusFromFolders" class="hide">
+											<p>This command recursively searches given directories and creates menus for executing contained scripts based on folder hierarchy.</p>
+											<p>Each folder in the given directory, and each sub-folder will be added to Maya’s script path. Each sub-directory will correspond to a sub-menu, and each MEL script a menu item. Each menu item will execute the command corresponding to the script name, per internal convention, so a global procedure with the same name as the MEL script must be present in each script.</p>
+											<p>In the “Remove Prefixes” text field you may enter a list of prefixes which you wish to have excluded from menu labels. This list should be separated by a semicolon for Windows users, or a colon for Linux and OS X users.</p>
+											<p>After pressing save, ZenTools stores your options in a file called “zenTools_userOptions.mel” in your user scripts directory, along with the rest of your options. These folders are not removed from your options file by using the Help>Reset Options command. In order to remove these menus, open ZenTools, select “Create>Scripts Menus From Folders…” and press the delete button below the folder you wish to remove, then press save.</p>
+											<p>If debugging a script which is in-progress, it may be desirable to have ZenTools source the script each time you execute, thereby reflecting recent changes. In this case, open ZenTools, navigate to the “Help” menu, and select “Debugging Mode”. This will cause scripts in all ZenTools-created menu’s to be sourced upon execution.</p>
+										</div>
+									</div>
+								</li>
+							</ul>
+						</div>
+					</div>
+					<div class="indented">
+						<div>
+							<h4>Modify</h4>
+							<ul class="showList">
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_cutEdges')">Cut Edges</a>
+									<div class="indented">
+										<div id="tools_modify_cutEdges" class="hide">
+											<p>Splits the mesh at selected edges.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_curveDistributeBetweenVertices')">Curve Distribute Between Vertices</a>
+									<div class="indented">
+										<div id="tools_modify_curveDistributeBetweenVertices" class="hide">
+											<p>Select 2 or more vertices. This command will align the vertices between them along an arc, ep curve , or cv curve based on current options.</p>
+										</div>
+									</div>
+								</li>								
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_loftDistributeBetweenEdgeLoops')">Loft Distribute Between Edge Loops</a>
+									<div class="indented">
+										<div id="tools_modify_loftDistributeBetweenEdgeLoops" class="hide">
+											<p>Select 2 or more edge loops of equal edge count which are parallel in orientation and aligned such as to share edge rings. This command will distribute the vertices between them along a loft.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_vertexCVPositionsTransfer')">Vertex/CV Positions Transfer</a>
+									<div class="indented">
+										<div id="tools_modify_vertexCVPositionsTransfer" class="hide">
+											<p>Select vertices or control vertices on one object, then [right click > Object Mode] and shift-select one or more similar objects. This command will transfer the positions of the selected cv's or vertices onto the selected object(s).</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_curveDistributeBetweenUVs')">Curve Distribute Between UVs</a>
+									<div class="indented">
+										<div id="tools_modify_curveDistributeBetweenUVs" class="hide">
+											<p>Select 2 or more uv points. This command will align the uv points between them along an arc, ep curve , or cv curve based on current options.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_uvMirror')">UV Mirror</a>
+									<div class="indented">
+										<div id="tools_modify_uvMirror" class="hide">
+											<p>Select the source faces you which to mirror. This command will position the uv's which are opposite the selected faces in object space to be similarly opposite in texture space. The reference axis is determined by the object’s rotation axis.</p>
+										</div>
+									</div>	
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_uvTransfer')">UV Transfer</a>
+									<div class="indented">
+										<div id="tools_modify_uvTransfer" class="hide">
+											<p>Select the source mesh, then the target mesh. This command should be used in situations where the source and target mesh are of the same resolution. This transfer method will typically obtain more accurate results on uv shell borders than the transferAttributes function available in Maya 8 and later. Unlike transferAttributes, however, this command transfers uv’s 1 for 1, meaning that if the source mesh is a cut-out piece of the target mesh, it will transfer 1 uv on the target mesh for each uv on the source mesh, leaving the rest of the uv’s alone. This allows you to extract pieces of your mesh for easier handling, then transfer the uv’s back to the whole when finished.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_uvLayoutProportionate')">UV Layout Proportionate </a>
+									<div class="indented">
+										<div id="tools_modify_uvLayoutProportionate" class="hide">
+											<p>This command will layout selected UV shells proportionately in relation to their 3d surface area.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_mirrorSmoothSkinInfluenceWeights')">Mirror Smooth Skin Influence Weights</a>
+									<div class="indented">
+										<div id="tools_modify_mirrorSmoothSkinInfluenceWeights" class="hide">
+											<p>Select a smooth skinned object. This command will mirror skin influence weights. Opposite vertices will be identified by closest vertex. Opposite influences will be matched according to a number of matching methods, narrowing matches in the following order:</p>
+											<ul>
+												<li type="a"><strong>Node Type:</strong> only the same node type will be considered as a possible match.</li>
+												<li type="a"><strong>Joint Labels: </strong> For nodes which are joints, narrows down possible candidates to opposingly labeled joints.</li>
+												<li type="a"><strong>Naming:</strong> Matches any object containing the string “left” to an opposing object containing the string “right” and vice-versa, capitalization is OK but must match for both influences.</li>
+												<li type="a"><strong>Transform: </strong>Matches objects according to their bounding box and rotation pivots.</li>
+											</ul>
+											<br />
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_confineSkinWeightsToSelectedObjects')">Confine Skin Weights to Selected Objects</a>
+									<div class="indented">
+										<div id="tools_modify_confineSkinWeightsToSelectedObjects" class="hide">
+											<p>Select vertices on a smooth skinned object. Then select all of the joints or influence objects you want to affect the selected vertices. All other influences will be set to zero and the selected influences proportionately normalized.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_reconstructMesh')">Reconstruct Mesh</a>
+									<div class="indented">
+										<div id="tools_modify_reconstructMesh" class="hide">
+											<p>This command creates a new mesh from the "outMesh" attribute of the selected polygon objects, replacing the original mesh.</p>
+											<br />
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_comprehensiveHistoryCleanup')">Comprehensive History Cleanup</a>
+									<div class="indented">
+										<div id="tools_modify_comprehensiveHistoryCleanup" class="hide">
+											<p>Comprehensive History Cleanup deletes history on selected objects, then deletes unused intermediate objects, breaks connections to other objects history (future connections), and deletes all orphan nodes. This function will often resolve DAG errors where history deletion will not.</p>
+										</div>
+									</div>
+								</li>
+								<li>
+									<a href="javascript:toggleVisibility('tools_modify_setAttributesOnMultipleObjects')">Set Attributes On Multiple Objects</a>
+									<div class="indented">
+										<div id="tools_modify_setAttributesOnMultipleObjects" class="hide">
+											<p>Attempts to set the attribute value given on each selected object and (optionally) its descendants. Objects which do not have the selected attribute are skipped. Input can be of any type which can be set using the setAttr command, and format should follow the same conventions.</p>
+										</div>
+									</div>
+								</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</td>
+		</tr>
+	</tbody>
+</table>
+
+</body>

@@ -1,0 +1,290 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: ijUtils v1.3
+''    Author: Ian Jones
+''    Last Updated: July 25, 2005
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=modeling#3586
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+// ijUtils v1.3 for Maya 6.0.1
+// Created by Ian Jones
+// Copyright 2005
+// mel@shrtcww.com
+
+// last updated july 23, 2005
+
+// To use type ijUtils;
+
+/*
+	ijUtils consists of a blendshape flipper (ijFlipShape), a tool to parent 
+	multiple shapes to a single transform (ijParentShape), a tool to create 
+	a group between an object and it's parent (ijGroup2Self) and a tool to 
+	connect two nurbs surfaces together -used for creating non-spherical eyes 
+	(ijConnect2Surface). 
+	
+	HOPEING TO FIND A TOOL THAT WASN'T HERE? - email me
+	
+	V1.3 
+		-FIX- Connect 2 Surfaces
+	
+	V1.2
+		-UPD- Topology Check for ijFlipBlend
+	
+	V1.1 
+		-NEW- ijConnect2Surface
+		-NEW- ijGroup2Self
+	
+*/
+
+global proc ijFlipShape()
+{
+	// Set axis to flip shape on and direction
+	int $flipDir = -1;
+	string $flipAxis = "X";
+	
+	string $mirrorAxis = `radioCollection -query -select ijFlipShapeCollection`;
+	int $forceTopologyCheckOff = `checkBox -q -v ijFlipForceBox`;
+	
+		if ($mirrorAxis == "X") {
+		$flipAxis = "X";
+		$flipDir = "1";
+	} else if ($mirrorAxis == "x") {
+		$flipAxis = "X";
+		$flipDir = "-1";
+	} else if ($mirrorAxis == "Y") {
+		$flipAxis = "Y";
+		$flipDir = "1";
+	} else if ($mirrorAxis == "y") {
+		$flipAxis = "Y";
+		$flipDir = "-1";
+	} else if ($mirrorAxis == "Z") {
+		$flipAxis = "Z";
+		$flipDir = "1";
+	} else {
+		$flipAxis = "Z";
+		$flipDir = "-1";
+	}
+	
+	// Shape + Base should be selected, retrieve and store.
+	string $sel[] = `ls -sl`;
+	int $numShapes = `size($sel)`;
+	
+	if ($sel[1] == "") warning "Select at least two surfaces - a blend and a base shape.";
+	else 
+	{
+		// Set base shape name variable
+		string $base = $sel[($numShapes - 1)];
+
+		
+		int $n;
+		for( $n=0; $n<($numShapes - 1); $n++ )
+		{
+			//Set new flipShape
+			string $shape = $sel[$n];
+				
+			// Create copy of base to make flipped shape with.
+			// Create duplicate of base so as not to affect it.
+			string $newShape[] = `duplicate -n "flippedShape#" $base`;
+			$newShape[0] = `rename $newShape[0] ($shape + "_flipped")`;
+			string $temp[] = `duplicate -n "tempShape" $base`;
+			
+			// Create blend shape on temporary base to drive wrap deform.
+			string $flipBlendShape[] = `blendShape -tc $forceTopologyCheckOff -n "ijFlipBlend#" $shape $temp[0]`;
+			
+			// Flip temporary base with axis of choice
+			setAttr ( $temp[0] + ".scale" + $flipAxis ) ( $flipDir );
+			
+			// Group the temporary base and newShape and scale up to prep wrapDeform.
+			string $flipGrp = `group $temp[0] $newShape[0]`;
+			setAttr ( $flipGrp + ".scale" ) 100 100 100;
+			
+			// Set up and build wrap deformer temporary base drives newShape
+			select -r $newShape[0] $temp[0]; 
+			string $flipWrapDeform[] = `doWrapArgList "2" { "1","0","0.1" }`;
+			
+			// Create flip by driving wrap deform with blendshape
+			setAttr ($flipBlendShape[0] + "." + $shape ) 1;
+			
+			//CleanUP History, revert scale, parent to world, delete temp nodes
+			DeleteHistory;
+			setAttr ( $flipGrp + ".scale" ) 1 1 1;
+			parent -w $newShape[0];
+			delete $flipGrp;
+		}
+	}
+	
+}
+
+global proc ijParentShape()
+{
+	// Retreve selection information, Selection order child(ren) then parent.
+	string $sel[] = `ls -sl`;
+	int $childrenNum = `size($sel)`;
+
+	// Warn out if two or more objects are not selected.
+	if ($sel[1] == "") warning "Select at least two shapes - a chield and a parent.";
+	else 
+	{
+		// Set base shape name variable
+		string $parent = $sel[($childrenNum - 1)];
+		string $parentsParent[0] = `listRelatives -p $parent`;
+		parent -w $parent;
+		makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+				
+		// For each child that was selected do the following
+		// Parent to world, freeze transform, pickWalk to shape, parent, delete empty transform.
+		int $n;
+		for( $n=0; $n<($childrenNum - 1); $n++ )
+		{
+			select -r $sel[$n];
+			parent -w ;
+			makeIdentity -apply true -t 1 -r 1 -s 1 -n 0;
+			
+			string $shapes[] = `listRelatives -s -path $sel[$n]`;
+			select -clear;
+			for( $shape in $shapes)
+			{
+				select -tgl $shape;
+			}
+			select -tgl $parent;
+				parent -r -s;
+			delete $sel[$n];
+		}
+		
+		//Reestable any parent that it used to have.
+		parent $parent $parentsParent[0];
+	}
+}
+
+
+global proc ijConnect2Surface()
+{
+        //Discover two surfaces to connect. First is parent, second surface is attached.
+		string $selList[] = `ls -sl`;
+        string $node = `createNode pointOnSurfaceInfo`;
+ 
+        //Connect parent to point on surface node
+		connectAttr ( $selList[0] + ".worldSpace " ) ( $node + ".inputSurface" );
+        connectAttr ( $node + ".position " ) ( $selList[1] + ".translate" );
+        setAttr ( $node + ".u" ) 0.5;
+        setAttr ( $node + ".v" ) 0.5;
+ 
+        //select -r ( $selList[0] + " " + $selList[1] );
+ 
+		//Setup normal constraint so child remains facing away from the parent.
+		//string $aimCmd = "-aimVector 0 1 0 ";
+        //string $upCmd = "-upVector 0 0 1 ";
+        //string $wuCmd = "-worldUpVector 0 1 0 ";
+        normalConstraint -weight 1 -aimVector 0 1 0 -upVector 0 0 1 -worldUpVector 0 1 0 $selList[0] $selList[1];
+}
+
+global proc string ijGroup2Self( string $obj ) 
+{
+	//Create an empty group at the origin
+	string $grp = `group -em`;
+	
+	//Discover the current parent of the selection
+	string $objParentArray[] = `listRelatives -p $obj`;
+	string $objParent = $objParentArray[0];
+
+	//Rename null group based on selection
+	$grp = `rename $grp ( $obj + "_space" )`;
+	
+	//Parent the group to the discovered parent.
+	if( `objExists $objParent` ) parent $grp $objParent;
+	
+	//Create/Delete a parent constraint between the object and grp
+	delete `parentConstraint $obj $grp`;
+	
+	//Freeze transforms of the grp
+	makeIdentity -apply 1 -t 1 -r 1 $grp;
+	
+	//Parent the obj to the grp
+	parent $obj $grp;
+
+	print $grp;
+	return $grp;
+}
+
+
+global proc ijUtils()
+{
+	//Delete ijUtils if previously opened.
+	string $windowName = "ijUtils";
+	if( `window -exists $windowName` ) deleteUI $windowName;
+	
+	//Create ijUtils window
+	string $window = `window -title "ijUtils v1.3 by Ian Jones" $windowName`;
+
+ 	columnLayout "Rig Tools";
+	
+	//FLIP BLEND SHAPE UI
+		rowColumnLayout -nc 1 -cw 1 220;
+		text -al "center" -label ".: Flip Blend Shape :.";
+		setParent..;
+		//Flip Options
+		rowColumnLayout -nc 6 -cw 1 35 -cw 2 35 -cw 3 35 -cw 4 35 -cw 5 35 -cw 6 35 ;
+		
+		radioCollection ijFlipShapeCollection;
+		radioButton -label "+X" X;
+		radioButton -label "-X" x;
+		radioButton -label "+Y" Y;
+		radioButton -label "-Y" y;
+		radioButton -label "+Z" Z;
+		radioButton -label "-Z" z;
+		radioCollection -edit -select x ijFlipShapeCollection;
+		setParent ..;
+		
+			//Flip instructions/button
+		rowColumnLayout -nc 2 -cw 1 120 -cw 2 100;
+		checkBox -l "Check Topology" -value false ijFlipForceBox;
+		setParent..;
+		
+		//Flip instructions/button
+		rowColumnLayout -nc 2 -cw 1 120 -cw 2 100;
+		text "Sel Shapes then Base -> ";
+		button -label "Mirror Blendshape"  -c ("ijFlipShape");
+		setParent..;
+	
+	//PARENT TO SHAPE UI
+		rowColumnLayout -nc 1 -cw 1 220;
+		text -al "center" -label "\n .: Parent to Shape :.";
+		setParent..;
+		
+		//Parent instructions/button
+		rowColumnLayout -nc 2 -cw 1 120 -cw 2 100;
+		text "Sel Child(ren), parent -> ";
+		button -label "Parent to Shape"  -c ("ijParentShape");
+		setParent..;
+		
+	//GROUP TO SELF UI
+		rowColumnLayout -nc 1 -cw 1 220;
+		text -al "center" -label "\n .: Add group above node :.";
+		setParent..;
+		
+		//Group to self instructions/button
+		rowColumnLayout -nc 2 -cw 1 120 -cw 2 100;
+		text "Select node then -> ";
+		button -label "Group to Self"  -c ("ijGroup2Self");
+		setParent..;
+	
+	//Connect NURBS surfaces
+		rowColumnLayout -nc 1 -cw 1 220;
+		text -al "center" -label "\n .: Connect Nurbs Surfaces :.";
+		setParent..;
+		
+		//Connect NURBS Surfaces instructions/button
+		rowColumnLayout -nc 2 -cw 1 120 -cw 2 100;
+		text "Sel parent/child surfaces -> ";
+		button -label "Connect Surfaces"  -c ("ijConnect2Surface");
+		setParent..;
+
+	showWindow $window;
+}

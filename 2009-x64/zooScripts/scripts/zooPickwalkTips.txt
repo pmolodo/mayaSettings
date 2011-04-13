@@ -1,0 +1,2 @@
+The easiest way to setup pickwalking in a scene is to use the "simple author" feature.  Simply select the controls in the order you want the pickwalking to happen (from top down), then go to Authoring->simple author.
+The "make reciprocal" checkbox in the main interface lets you do single direction pickwalking.  By default if you make CUBE the up pickwalk object of SPHERE, SPHERE becomes the down pickwalk object of CUBE.  To turn this behaviour off, simply turn off "make reciprocal" when you author the pickwalk

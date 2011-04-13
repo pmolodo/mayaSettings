@@ -1,0 +1,55 @@
+v 0.6.1
+- Enabled optional auto-activation after split
+- Redo of the settings window
+- delayedStepKeyframe now plays in "play every frame" on key-hold
+- added hotkey-file: delayedSelectionDragger
+
+v 0.6.0
+- Added toggle culling
+- Added delayed stepKeyframe
+- Added tool: Overshoot
+- Added support for custom menuModes in OMT settings
+- Fixed bugfix-release versioning support (v7.01 -> v7.0) in the installer
+- Added support for sticky keys on the selectiondragger and the ability to return to last used tool.
+- removed auto-activate selectionDragger after split commands
+- Made scalePosition pivot dependent instead of bounding box
+- Made scalePosition work with keyed objects also
+- Made scalePosition work on rotate too for positioning a group of objects from a single pivot (like grouping them)
+
+v 0.5.1
+- Removed spyware'ish java tracker from the doc html file
+- Made the installer take better care of write protected userSetup files
+
+v 0.5.0
+- fixed bug on linux in the select outline script
+- rewrote the installer to take care of all cases I can think of in both linux and windows, and hopefully OSX as well.
+- fixed GUI bug in linux which removed all content of the settings menu.
+- added toggle save selection tool
+- added x-ray toggle tool
+- changed the select element procedure
+- removed marking menu
+- automated 'set deafults' from the settings menu
+
+
+v 0.4.0
+- added scale position
+- added select element
+- added a Marking Menu
+
+
+v 0.3.7
+- Rearranged and fixed some connections between tools
+- New menu system
+- Loop Select enhancements
+- Bugfixes
+
+
+v 0.1.2
+- Added Spin Edge/faces
+- Updated 'select outline'
+
+
+v 0.1.1
+- Combined slideLast and slideLoop (slideLoop on edge selection, else slideLast)
+- Added component extrude
+- Added loopSelect on faces and vertices by selecting adjacent components

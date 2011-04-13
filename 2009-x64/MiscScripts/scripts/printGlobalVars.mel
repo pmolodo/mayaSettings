@@ -1,0 +1,148 @@
+// Copyright (C) 1997-2000 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+// Alias|Wavefront Script File
+// MODIFY THIS AT YOUR OWN RISK
+//
+// Print Global Variable names + values
+// 
+// Author : 	Takumi Takahashi <ttakahashi@aw.sgi.com>
+// Date : 		March 3, 1999
+// Description : 
+//		Check to see what type of global variable exists,
+//		and print out the global variable names + values.
+//
+// 		This enables you to do case-sensitive search on the 
+// 		global variables used in current Maya session and print out 
+// 		the results in script editor.
+// 		As soon as you execute, the dialog pops up to 
+// 		inquire your input for the search string of partial name 
+// 		of the global variables. You enter the string and press 
+// 		the search button, and the result is printed in 
+// 		script editor. Alternatively you can press ALL button 
+// 		and the result returns you with all the global variables 
+// 		used in current Maya session, but be aware - it's mean 
+// 		long :)
+global proc printGlobalVars()
+
+{
+	$env = `env`;
+	$ans = `promptDialog -m "Search or All Global variables?"
+			-b "All" -b "Search" -b "Cancel" -text "(enter search string here)"`;
+	string $searchString = `promptDialog -q -text`;
+	if ($ans != "Cancel")
+	{
+		print "\n______________________________________________________________\n";
+		print "printGlobalVars.mel Start ...";
+		print "\nType      :  Global Variable Name [array size]  =  Value  \n";
+		print "______________________________________________________________\n";
+		// Loop for all global variable names 
+		for ($i=0;$i<size($env);$i++) 
+		{
+			string $search =  ( match ( $searchString, $env[$i]) );
+			if ((($search != "") && ($ans == "Search") )|| ($ans == "All"))
+			{
+				// Check what type 
+				// of a variable by stripping "variable" string
+				string $typeVar = `whatIs $env[$i]`;
+				string $type = `substitute " variable.*" $typeVar ""`;
+				string $values[];
+				switch ($type)
+				{
+					case "int":
+						print ("int       :  " + $env[$i] + " = ");
+						eval ("print " + $env[$i]);
+						print "\n";
+						break;
+					case "float":
+						print ("float     :  " + $env[$i] + " = ");
+						eval ("print " + $env[$i]);
+						print "\n";
+						break;
+					case "string":
+						print ("string    :  " + $env[$i] + " = \"");
+						eval ("print " + $env[$i]);
+						print "\"\n";
+						break;
+					case "vector":
+						print ("vector    :  " + $env[$i] + " = <<");
+						//vector $vector;
+						//eval ("$vector = " + $env[$i]);
+						$cmd = ("vector $vector = " + $env[$i]);
+						vector $vector = `eval $cmd`;
+						print ($vector.x + ", " + $vector.y + ", " + $vector.z + ">>\n");
+						break;
+					case "matrix":
+						print ("matrix    :  " + $env[$i] + " = \n");
+						$cmd = ("print " + $env[$i]);
+						eval $cmd;
+						break;
+					case "int[]":
+						print ("int[]     :  ");
+						$cmd = "int $ints[] = " + $env[$i];
+						int $intArray[] = `eval $cmd`;
+						print ($env[$i] + "[" + size($intArray) + "]\n");
+						for ($j = 0 ; $j < size($intArray);$j++)
+						{
+							$values[$j] = $intArray[$j];
+							print ("             [" + $j + "] = " + $values[$j] + "\n");
+						}
+						break;
+					case "float[]":
+						print ("float[]   :  ");
+						$cmd = "float $floats[] = " + $env[$i];
+						float $floatArray[] = `eval $cmd`;
+						print ($env[$i] + "[" + size($floatArray) + "]\n");
+						for ($j = 0 ; $j < size($floatArray);$j++)
+						{
+							$values[$j] = $floatArray[$j];
+							print ("             [" + $j + "] = "+ $values[$j] + "\n");
+						}
+						break;
+					case "string[]":
+						print ("string[]  :  ");
+						$cmd = "string $strings[] = " + $env[$i];
+						string $stringArray[] = `eval $cmd`;
+						print ($env[$i] + "[" + size($stringArray) + "]\n");
+						for ($j = 0 ; $j < size($stringArray);$j++)
+						{
+							$values[$j] = $stringArray[$j];
+							print ("             [" + $j + "] = \""+ $values[$j] + "\"\n");
+						}
+						break;
+					case "vector[]":
+						//print ("vector[]  :  " + $env[$i] + "[" + size($env[$i]) + "]\n");
+						print ("vector[]  :  ");
+						$cmd = "vector $vectors[] = " + $env[$i];
+						vector $vectorArray[] = `eval $cmd`;
+						print ($env[$i] + "[" + size($vectorArray) + "]\n");
+						for ($j = 0; $j < size($vectorArray); $j ++)
+						{
+							print ("             [" + $j + "] = <<");
+							vector $v = $vectorArray[$j];
+							print ($v.x + "," + $v.y + "," + $v.z);
+							print ">>\n";
+						}
+						break;
+				}// switch
+			}// if All or searching and searched
+		}// for loop end
+		print "\n______________________________________________________________\n";
+		print "printGlobalVars.mel End.\n Coded by Takumi Takahashi March 1999.\n";
+		print "______________________________________________________________\n";
+	}//if cancelled	
+}
+

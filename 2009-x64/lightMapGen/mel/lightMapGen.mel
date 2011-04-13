@@ -1,0 +1,652 @@
+//
+// LightMapGen.mel
+// Written by Seth Hall :: chewy@pixill.com
+// ---------------
+// 
+// Front end GUI for Maya to run lightMapGen.exe
+// 
+// Generated .lm files will be put in the \mentalRay\lightmap folder
+//
+// any .tif images will be left in \sourceimages
+//
+// any .txt capture information just showing what flags were used to 
+// generate the lightmap or .tif files will be put in \data with the
+// name of the actual image file.
+//
+
+//
+// Modify the 3 path's below to point to the proper MEL script and lightMapGen executable.
+// Please try to not use spaces in the path names as it tends to break the calls.
+//
+	source "C:\\Documents and Settings\\Elrond\\My Documents\\maya\\2009-x64\\lightMapGen\\mel\\lightMapGen_loader.mel";
+
+	global string $lightMapGenPath = "C:\\Documents and Settings\\Elrond\\My Documents\\maya\\2009-x64\\lightMapGen\\bin\\lightMapGen.exe";
+	
+	global string $HDRShopPath = "C:\\Graphics\\HDRShop\\HDRShop.exe";
+//
+//
+	
+global proc lightMapGenSetInput() {
+		
+	string $dirMask = "tif";
+	string $SI = `workspace -q -rd`;
+	string $SIFolder = $SI + "sourceimages/*." + $dirMask;
+	string $formatSIFolder = toNativePath($SIFolder);
+	string $pathFile = `fileDialog -dm $formatSIFolder`;	
+	string $formatPathFile = toNativePath($pathFile);
+	
+	textField -e -tx $formatPathFile lightMapGenInput;
+	
+	lightMapGenCheckInput;
+}
+
+global proc lightMapGenToHDRShop() {
+	
+	global string $HDRShopPath;
+	string $file = `textField -q -tx lightMapGenInput`;
+	
+	string $formatPath = toNativePath($file);
+	string $formatHDRShopPath = toNativePath($HDRShopPath);
+	
+		system ($formatHDRShopPath + " " + "\"" + $formatPath + "\"");
+		
+}
+
+global proc lightMapGenCalculate() {
+	
+	string $projectRoot = `workspace -q -rd`;
+	string $dataPath = "data/";
+	string $lmPath = "sourceimages/lightMapGen/";
+	string $siPath = $projectRoot + "sourceimages/";
+	string $input = `textField -q -tx lightMapGenInput`;
+	global string $lightMapGenPath;
+
+	string $lightMapPath = $projectRoot + $siPath;
+	string $inputName = basename($input, ".tif");
+
+	// general options
+	int $samples = `intField -q -v lightMapGenSamples`;
+	int $iSamples = `intField -q -v lightMapGenInterleavedSamples`;
+	int $sampleType = `optionMenu -q -sl lightMapGenSampleType`;
+	int $normalize = `checkBox -q -v lightMapGenNormalize`;
+	int $writeDiag = `checkBox -q -v lightMapGenWriteDiag`;
+	
+	string $formatProjectRoot = toNativePath($projectRoot);
+	string $formatDataPath = toNativePath($dataPath);
+	string $formatLightMapPath = toNativePath($siPath);
+	string $formatLightMapGenPath = "\"" + toNativePath($lightMapGenPath) + "\" ";
+	string $formatInput = toNativePath($input);
+
+	 waitCursor -st on;
+	 
+	//open IOstream to save to *.mel file	
+	cmdFileOutput -o ($formatProjectRoot + $formatDataPath + $inputName + "_lmg_flags.txt");
+
+	print ("Output Calculation Parameters:\n");
+	print ("  Input        : " + $formatInput + "\n");
+	print ("  Samples      : " + $samples + "\n");
+	if ($iSamples > 0) {
+		print ("  Interleaved  : " + $iSamples + "\n");
+	}
+	print ("  Sample Type  : Median Cut\n");
+	print ("  Normalize    : " + $normalize + "\n");
+	print ("  Write Diag   : " + $writeDiag + "\n");
+	
+	string $cmd;
+		if ($iSamples > 0) { // if we use interleaved samples with median cut, process the interleaved samples
+			if ($normalize == 1 && $writeDiag == 1) { // ON: normalize, writeDensity
+				$cmd = $formatLightMapGenPath + "-in \"" + $formatInput + "\" -s " + $samples + " " + $iSamples + " -st 4" + " -normalize -writeDiagImages";
+			} else if ($normalize == 1 && $writeDiag == 0) { // ON: normalize
+				$cmd = $formatLightMapGenPath + "-in \"" + $formatInput + "\" -s " + $samples + " " + $iSamples + " -st 4" + " -normalize";
+			} else if ($normalize == 0 && $writeDiag == 1) { // ON: writeDensity
+				$cmd = $formatLightMapGenPath + "-in \"" + $formatInput + "\" -s " + $samples + " " + $iSamples + " -st 4" + " -writeDiagImages";
+			} else if ($normalize == 0 && $writeDiag == 0) { // all checkboxes off
+				$cmd = $formatLightMapGenPath + "-in \"" + $formatInput + "\" -s " + $samples + " " + $iSamples + " -st 4";
+			}
+		} else if ($iSamples < 1) { // if we do not have interleaved samples, do only the regular samples
+			if ($normalize == 1 && $writeDiag == 1) { // ON: normalize, writeDensity
+				$cmd = $formatLightMapGenPath + "-in \"" + $formatInput + "\" -s " + $samples + " -st 4" + " -normalize -writeDiagImages";
+			} else if ($normalize == 1 && $writeDiag == 0) { // ON: normalize
+				$cmd = $formatLightMapGenPath + "-in \"" + $formatInput + "\" -s " + $samples + " -st 4" + " -normalize";
+			} else if ($normalize == 0 && $writeDiag == 1) { // ON: writeDensity
+				$cmd = $formatLightMapGenPath + "-in \"" + $formatInput + "\" -s " + $samples + " -st 4" + " -writeDiagImages";
+			} else if ($normalize == 0 && $writeDiag == 0) { // all checkboxes off
+				$cmd = $formatLightMapGenPath + "-in \"" + $formatInput + "\" -s " + $samples + " -st 4";
+			}
+		}
+    print("Executing lightMapGen:\n" + $cmd + "\n");
+    system($cmd);
+
+	print ("\nLIGHTMAP LOCATION: " + $formatLightMapPath + "\n");
+	
+	// close all IOstream
+	cmdFileOutput -ca;
+
+	// create the /mentalRay/lightmap path if it does not exist
+	if (`filetest -d $lightMapPath` == 0) {
+		sysFile -md ($projectRoot + $lmPath);
+	}
+	
+	// move the .lm lightmap file to the lightmap folder if it exists
+	if (`filetest -f ($siPath + $inputName + ".lm")` == 1) {
+		sysFile -mov ($projectRoot + $lmPath + $inputName + ".lm") ($siPath + $inputName + ".lm");
+	}
+
+	waitCursor -st off;
+	
+	// bring up our status report of the calc
+	lightMapGenCalculated;
+}
+
+global proc lightMapCheckLoadBox(int $num) {
+	int $spotBox = `checkBox -q -v lightMapGenCalcLoadSpot`;
+	int $dirBox = `checkBox -q -v lightMapGenCalcLoadDirectionals`;
+	
+	global int $lightMapGenLoadBoxLightType;
+	
+	switch ($num) {
+		case 1:
+			checkBox -e
+				-v 0
+			lightMapGenCalcLoadDirectionals;
+			
+			if ($spotBox == 1) {
+				button -e
+					-en 1
+				lightMapGenCalcLoadButton;
+				
+			$lightMapGenLoadBoxLightType = 1;
+			} else {
+				button -e
+					-en 0
+				lightMapGenCalcLoadButton;
+			}
+		break;
+		case 2:
+			checkBox -e
+				-v 0
+			lightMapGenCalcLoadSpot;
+			
+			if ($dirBox == 1) {
+				button -e
+					-en 1
+				lightMapGenCalcLoadButton;
+			} else {
+				button -e
+					-en 0
+				lightMapGenCalcLoadButton;
+			}
+			
+		$lightMapGenLoadBoxLightType = 0;
+		break;
+	}	
+}
+
+global proc lightMapGenCalculated() {
+
+	global int $lightMapGenLoadBoxLightType;
+	
+	string $projectRoot = `workspace -q -rd`;
+	string $dataPath = $projectRoot + "data/";
+	string $lmPath = "sourceimages/lightMapGen/";
+	string $siPath = $projectRoot + "sourceimages/";
+	string $input = `textField -q -tx lightMapGenInput`;
+
+	string $lightMapPath = $projectRoot + $lmPath;
+	string $inputName = basename($input, ".tif");
+	
+	string $formatLMP = toNativePath($lightMapPath);
+	string $formatDP = toNativePath($dataPath);
+	
+	if (`window -exists lightMapGenCalcWindow` == 1) {
+		deleteUI lightMapGenCalcWindow;
+	}
+	
+	if (`window -exists lightMapGenWindow` == 1) {
+		deleteUI lightMapGenWindow;
+	}
+
+	window
+		-title "LightMapGen Loading"
+		-maximizeButton false
+		-minimizeButton true
+		-sizeable true
+		-resizeToFitChildren false
+		-menuBar true
+		-menuBarVisible true
+		-w 473
+		-h 180
+	lightMapGenCalcWindow;
+		
+		columnLayout -adj true;
+		
+		separator -h 2 "none";
+		
+			rowColumnLayout -nc 2
+				-cw 1 100 -cs 1 10
+				-cw 2 343 -cs 2 2;
+			
+				text -l "Light Map Path:";
+				textField
+					-tx ($formatLMP + $inputName + ".lm")
+					-ed 0
+				lightMapGenCalcLMpath;
+			setParent ..;
+		setParent ..;
+		
+		columnLayout -adj true;
+		
+			rowColumnLayout -nc 2
+				-cw 1 100 -cs 1 10
+				-cw 2 343 -cs 2 2;
+			
+				text -l "Output Info:";
+				textField
+					-tx ($formatDP + $inputName + "_lmg_flags.txt")
+					-ed 0
+				lightMapGenCalcDPpath;
+			setParent ..;
+		setParent ..;
+		
+		columnLayout -adj true;
+		
+		separator -h 5 -st "none";
+		
+			rowColumnLayout -nc 4
+				-cw 1 60 -cs 1 110
+				-cw 2 17 -cs 2 2
+				-cw 3 90 -cs 3 50
+				-cw 4 17 -cs 4 2;
+				
+					text -l "Spot Lights";
+					checkBox -v 0
+						-cc "lightMapCheckLoadBox 1"
+					lightMapGenCalcLoadSpot;
+					
+					text -l "Directional Lights";
+					checkBox -v 0
+						-cc "lightMapCheckLoadBox 2"
+					lightMapGenCalcLoadDirectionals;
+				setParent ..;
+			setParent ..;
+		
+		columnLayout -adj true;
+		
+			separator -h 5 -st "none";
+			
+			button 
+				-l ("Load " + $inputName + ".lm") 
+				-c ("lightMapGen_loader " + $lightMapGenLoadBoxLightType) 
+				-en 0
+			lightMapGenCalcLoadButton;
+			
+			separator -h 5 -st "none";
+			
+			button
+				-l ("Load " + $inputName + ".lm as sphericalLight")
+				-c ("lmgSphericalLight " + "\"" + $lightMapPath + $inputName + ".lm\"")
+				-en 1
+			lightMapGenLoadSphericalLight;
+
+			separator -h 2 -st "none";
+			separator -h 5 -st "out";
+			separator -h 2 -st "none";
+			
+			button -l "Close Window" -c "deleteUI lightMapGenCalcWindow"
+			lightMapGenCalcCloseButton;
+		setParent ..;
+		
+	showWindow lightMapGenCalcWindow;	
+	
+}
+
+global proc lmgSphericalLight(string $lightMapFile) {
+	waitCursor -state on;
+	
+	// mental ray should be loaded
+	string $plugin = "Mayatomr";
+	if( !eval( "pluginInfo -query -loaded " + $plugin ) )
+		loadPlugin $plugin;
+	
+	string $getNewest;
+	
+	string $mayaLight = `pointLight -i 0`;
+	string $mrLight = `mrCreateCustomNode -asUtility ( "defaultNavigation -connectToExisting -destination " + $mayaLight + ".miLightShader -source %node" ) sphericalLight`;
+	setAttr ( $mayaLight+".areaLight" ) 1;
+	setAttr ( $mayaLight+".areaType" ) 4;
+	setAttr ( $mayaLight+".areaSamplingU" ) 1024;
+	setAttr ( $mayaLight+".areaSamplingV" ) 1024;
+	string $mayaLightTransform[] = `listRelatives -p $mayaLight`;
+	$mayaLightTransform[0] = `rename $mayaLightTransform[0] "sphericalLight#"`;
+	
+	createLightMapDome( "lightMapGenDome", $mayaLightTransform[0], 100 );
+	
+	select $mrLight;
+	
+	setAttr ($mrLight + ".lightMapFile") -type "string" $lightMapFile;
+	
+	deleteUI lightMapGenCalcWindow;
+	
+	waitCursor -state off;
+}
+
+global proc lightMapGenCheckInput() {
+	string $getInput = `textField -q -tx lightMapGenInput`;
+	int $sampleType = `optionMenu -q -sl lightMapGenSampleType`;
+	
+	if (($getInput != "") && (gmatch($getInput, "*.tif") == 1) || (gmatch($getInput, "*.TIF") == 1)) {
+		button -e
+			-l "Calculate"
+			-en 1
+			-c "lightMapGenCalculate"
+		lightMapGenCalculateButton;
+		
+		intField -e
+			-en 1
+		lightMapGenSamples;
+		
+		intField -e
+			-en 1
+		lightMapGenInterleavedSamples;
+		
+		optionMenu -e
+			-en 1
+		lightMapGenSampleType;
+		
+		checkBox -e
+			-en 1
+		lightMapGenNormalize;
+		
+		if ($sampleType < 5) {
+			checkBox -e -en 1 lightMapGenWriteDiag;
+		}
+	} else if (($getInput == "") || (gmatch($getInput, "*.tif") == 0) || (gmatch($getInput, "*.TIF") == 0)) {
+		button -e
+			-l "Not a valid tif image. Please load a floating point tif image"
+			-en 0
+			-c "lightMapGenCalculate"
+		lightMapGenCalculateButton;
+		
+		intField -e
+			-en 0
+		lightMapGenSamples;
+		
+		intField -e
+			-en 0
+		lightMapGenInterleavedSamples;
+
+		optionMenu -e
+			-en 0
+		lightMapGenSampleType;
+		
+		checkBox -e
+			-en 0
+		lightMapGenNormalize;
+
+	}
+}
+
+global proc lightMapGenCheckSampling() {
+	
+	int $iSamples = `intField -q -v lightMapGenInterleavedSamples`;
+
+			if ($iSamples < 1) {
+				button -e
+					-en 0
+					-l "Please set the number of interleaved samples"
+				lightMapGenCalculateButton;
+			} else {
+				button -e
+					-en 1
+					-l "Calculate"
+				lightMapGenCalculateButton;
+			}
+			intField -e -en 1 lightMapGenInterleavedSamples;
+}
+
+global proc checkInterleavedSamples() {
+	
+	int $iSamples = `intField -q -v lightMapGenInterleavedSamples`;
+	
+	if ($iSamples < 1) {
+		button -e
+			-en 0
+			-l "Please set the number of interleaved samples"
+		lightMapGenCalculateButton;
+	} else {
+		button -e
+			-en 1
+			-l "Calculate"
+		lightMapGenCalculateButton;
+	}
+}
+
+global proc lightMapGenMousover(int $option) {
+	
+	switch ($option) {
+		case 0:
+			// input
+			textField 
+				-e
+				-tx "Load a floating point .TIF (.TIF is only format supported)"
+			lightMapGenTextBox;
+			break;
+		case 1:
+			// number of samples
+			textField 
+				-e
+				-tx "The number of samples to calculate."
+			lightMapGenTextBox;
+			break;
+		case 2:
+			// resize amount
+			break;
+		case 3:
+			// sampling type
+			textField 
+				-e
+				-tx "Different algorithms for solving lights (Default is Median Cut)"
+			lightMapGenTextBox;
+			lightMapGenCheckSampling;
+			break;
+		case 4:
+			// map type
+			break;
+		case 5:
+			// normalize
+			textField
+				-e
+				-tx "Normalize lightmap into the 0 -> 1 range"
+			lightMapGenTextBox;
+			break;
+		case 6:
+			// write diag images
+			textField
+				-e
+				-tx "Outputs a Voronoi Tesselation for each iteration"
+			lightMapGenTextBox;
+			break;
+		case 7:
+			// write density
+			break;
+		case 8:
+			// centroidal offset
+			break;
+		case 9:
+			// radius of perturb
+			break;
+		case 10:
+			// centroidal iterations
+			break;
+		case 11:
+			// interleaved iterations
+			break;
+		case 12:
+			// interleaved samples
+			textField 
+				-e
+				-tx "The number of interleave samples. Works with Median Cut and Interleaved Importance Voronoi"
+			lightMapGenTextBox;
+			break;
+	}
+}
+
+global proc lightMapGen() {
+	
+	if (`window -exists lightMapGenWindow` == true) {
+		deleteUI lightMapGenWindow;
+	}
+	
+	if (`window -exists lightMapGenCalcWindow` == 1) {
+		deleteUI lightMapGenCalcWindow;
+	}
+	
+	window
+		-title "LightMapGen"
+		-maximizeButton false
+		-minimizeButton true
+		-sizeable true
+		-resizeToFitChildren false
+		-menuBar true
+		-menuBarVisible true
+		-w 473
+		-h 208
+	lightMapGenWindow;
+	
+	columnLayout -adj true;
+	
+		separator -h 2 -st "none";
+	
+		rowColumnLayout -nc 3 
+			-cw 1 65 
+			-cw 2 400;
+			
+			text -l "Input File:";
+			textField
+				-tx ""
+				-cc "lightMapGenCheckInput"
+				-rfc "lightMapGenMousover 0"
+			lightMapGenInput;
+			text -l "";
+			button -l "HDRShop"  -c "lightMapGenToHDRShop";
+	
+			button -al center -l "Browse for .TIF File" -c "lightMapGenSetInput";
+		setParent ..;
+	setParent ..;
+	
+	columnLayout -adj true;
+
+		separator -h 5 -st "in";
+		separator -h 2 -st "none";
+	
+		rowColumnLayout -nc 2 
+			-cw 1 72 -cs 1 10
+			-cw 2 200 -cs 2 2;
+		
+			text -l "Sampling Type:";
+ 			optionMenu -label " "
+				-cc "lightMapGenMousover 3"
+			lightMapGenSampleType;
+				menuItem -label "Median Cut";			
+				
+			optionMenu -e
+				-sl 1
+				-en 0
+			lightMapGenSampleType;
+		setParent ..;
+	setParent ..;
+	
+	columnLayout -adj true;
+
+		separator -h 2 -st "none";
+	
+		rowColumnLayout -nc 4
+			-cw 1 100 -cs 1 10
+			-cw 2 50 -cs 2 2
+			-cw 3 100 -cs 3 35
+			-cw 4 50 -cs 4 2;
+
+		text -l "Number of Samples:";
+ 		intField
+ 			-editable true 
+ 			-minValue 1 -maxValue 2048 
+ 			-value 32 
+ 			-step 1
+			-rfc "lightMapGenMousover 1"
+			-en 0
+ 		lightMapGenSamples;
+
+		text -l "Interleaved Samples:";
+ 		intField
+ 			-editable true
+ 			-minValue 0 -maxValue 2048 
+			-cc "lightMapGenCheckSampling"
+ 			-value 0 
+ 			-step 1
+			-rfc "lightMapGenMousover 12"
+			-en 0
+ 		lightMapGenInterleavedSamples;
+		
+		setParent ..;
+	setParent ..;
+
+	columnLayout -adj true;
+	
+		separator -h 2 -st "none";
+		separator -h 4 -st "out";
+		separator -h 2 -st "none";
+	
+		rowColumnLayout -nc 6
+			-cw 1 50 -cs 1 60
+			-cw 2 17 -cs 2 2
+			-cw 3 92 -cs 3 20
+			-cw 4 17 -cs 4 2
+			-cw 5 70 -cs 5 20
+			-cw 6 17 -cs 6 2;
+		
+		text -l "Normalize:";
+		checkBox -l ""
+			-cc "lightMapGenMousover 5"
+			-v 1
+			-en 0
+		lightMapGenNormalize;
+		
+		text -l "Write Diag Images:";
+		checkBox -l ""
+			-cc "lightMapGenMousover 6"
+			-v 0
+			-en 0
+		lightMapGenWriteDiag;
+
+		setParent ..;
+	setParent ..;
+
+	columnLayout -adj true;
+
+		separator -h 4 -st "in";
+		separator -h 2 -st "none";
+	
+		button -l "Please load a floating point .TIF image"
+			-en 0
+			-c "lightMapGenCalculate"
+		lightMapGenCalculateButton;
+		setParent ..;
+	
+	columnLayout -adj true;
+	
+		separator -h 4 -st "in";
+		separator -h 2 -st "none";
+	
+		textField 
+			-en 0
+		lightMapGenTextBox;
+	setParent ..;
+	
+	lightMapGenCheckSampling;
+	
+	intField -e -en 0 lightMapGenInterleavedSamples;
+
+	showWindow lightMapGenWindow;
+}
+
+lightMapGen;

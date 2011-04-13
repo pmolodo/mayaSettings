@@ -1,0 +1,20 @@
+zooUtils;
+zooArrays_str;
+zooMatchNames {} {} "";
+
+
+global proc zooMirrorSelection( int $add ) {
+	string $sel[] = `ls -sl`;
+	string $opposite[] = {};
+
+	for( $s in $sel ) {
+		string $oppositeName = `zooGetOpposite $s`;
+		if( `objExists $oppositeName` ) $opposite[( `size $opposite` )] = $oppositeName;
+		else $opposite[( `size $opposite` )] = $s;
+		}
+	if( $add ) $opposite = `zooAddArray_str $sel $opposite`;
+	select $opposite;
+	}
+
+
+//zoo.end

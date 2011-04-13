@@ -1,0 +1,35 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//return the input string with the numerical suffix increased by 1
+global proc string zenNumberSuffix(string $name)
+{
+	string	$newName=$name;
+	string	$newDigit;
+	string 	$numString;
+	string	$digits[]={"0","1","2","3","4","5","6","7","8","9"};
+		for($i=0;$i<size($name);$i++)
+		{
+			$newDigit=`substring $name (size($name)-$i) (size($name)-$i)`;
+			if(`stringArrayContains $newDigit $digits`)
+			{
+				$numString=`substring $name (size($name)-$i) (size($name))`;
+				$newName=`substring $name 1 (size($name)-$i-1)`;				
+			}else break;
+		}
+	int	$num=1;
+		if(size($numString)>0) $num=int($numString)+1;
+		$newName=$newName+(string($num));
+	return	$newName;
+}

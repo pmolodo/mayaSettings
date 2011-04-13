@@ -1,0 +1,92 @@
+/*
+Key Frame Scaler  - keyScalerButtons.mel - By David Peers (davidp@al.com.au)
+for info see www.andrewsilke.com/mel_info.html
+
+WHAT IT DOES
+this script scales keys from the center of each curve from selected keys in the graph editor. 
+
+  
+  HOW TO INSTALL
+	1. Unzip the zip file with the 2 scripts:
+	keyScalerButtons.mel
+	keyScaler.mel
+	1. Copy both mel files to a directory in your scripts path
+	   eg. documents path \maya\5.0\scripts
+	2. map the following to a hotkey or shelf button:
+	keyScalerButtons;
+	
+  HOW TO USE
+	1. Press the hotkey or shelf button to run the key scaler UI
+	2. Select the curves you wish to modify, press the buttons on the UI
+*/
+
+
+// ******UI********
+
+global proc keyScalerButtons()
+{
+//kill existing
+if ((`window -ex frameyWindow`) == true) deleteUI frameyWindow;
+
+
+
+//create UI
+window -t "Multi Key Scaler" -mxb 0 -rtf 1 frameyWindow;
+rowLayout -numberOfColumns 6 -w 1;
+button -l "-1 (invert)" -c "doKeyScaler(-1)" doButton1;
+button -l "<<-0.2" -c "doKeyScaler(0.8)" doButton2;
+button -l "<-0.1" -c "doKeyScaler(0.9)" doButton3;
+button -l "+0.1>" -c "doKeyScaler(1.1)" doButton4;
+button -l "+0.2>>" -c "doKeyScaler(1.2)" doButton5;
+button -l "+1>>>" -c "doKeyScaler(2)" doButton6;
+
+
+showWindow frameyWindow;
+}
+
+
+//*****CODE*******
+
+global proc doKeyScaler (float $scaleButt)
+{
+// make array of selected curves
+string $selCurves[] = `keyframe -query -name -sl`;
+string $curve;
+
+// loop scaler for each curve
+for ($curve in $selCurves)
+{
+
+// array for keys on a single curve
+float $keyVals[] = `keyframe -query -sl -vc -attribute $curve`;
+int $keyIndex[] = `keyframe -query -sl -iv -attribute $curve`;
+int $indexSize = size($keyIndex);
+int $indexLast = $keyIndex[$indexSize-1];
+
+
+string $curveObj[] = `listConnections -p 1 $curve`;
+string $curveAttr[] = `listAttr $curveObj[0]`;
+
+
+// init variables
+float $key;
+float $maxKey = -1000000;
+float $minKey = 1000000;
+
+// scan keyframes for max and min values
+for ($key in $keyVals)
+	{
+	$maxKey = `max $maxKey $key`;
+	$minKey = `min $minKey $key`;
+	}	
+
+float $midPoint = ($maxKey + $minKey)/2;
+//float $scaleAmount = `floatSliderGrp -q -v scaler`;
+
+string $insert = $keyIndex[0] + ":" + $indexLast;
+
+// Scale around centre pivot - ts and tp are ineffectual for magnitude scaling
+scaleKey -iub false -ts 1 -tp 52 -index $insert -vs $scaleButt -vp $midPoint -attribute $curveAttr[0] $curveObj[0];
+};
+
+}

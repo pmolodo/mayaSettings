@@ -1,0 +1,83 @@
+/*
+Key Frame Scaler  - keyScaler.mel - By David Peers (davidp@al.com.au)
+for info see www.andrewsilke.com/mel_info.html
+
+WHAT IT DOES
+This script scales keys from the center of each curve from selected keys in the graph editor. 
+
+  
+  HOW TO INSTALL
+	1. Unzip the zip file with the 2 scripts:
+	keyScalerButtons.mel
+	keyScaler.mel
+	1. Copy both mel files to a directory in your scripts path
+	   eg. documents path \maya\5.0\scripts
+	2. map the following to a hotkey or shelf button:
+	keyScalerButtons;
+	
+  HOW TO USE
+	1. Press the hotkey or shelf button to run the key scaler UI
+	2. Select the function curves you wish to modify, press the buttons on the UI
+*/
+
+// ******UI********
+
+global proc keyScaler()
+{
+//kill existing
+if ((`window -ex frameyWindow`) == true) deleteUI frameyWindow;
+
+//create UI
+window -t "Multi Key Scaler" -mxb 0 -rtf 1 frameyWindow;
+columnLayout controlLayout;
+floatSliderGrp -l "Scale" -f 1 -v 1 -min (-1) -max 3 scaler;
+button -l "Scale It" -c doKeyScaler doButton;
+
+showWindow frameyWindow;
+}
+
+//*****CODE*******
+
+global proc doKeyScaler ()
+{
+// make array of selected curves
+string $selCurves[] = `keyframe -query -name -sl`;
+string $curve;
+
+// loop scaler for each curve
+for ($curve in $selCurves)
+{
+
+// array for keys on a single curve
+float $keyVals[] = `keyframe -query -sl -vc -attribute $curve`;
+int $keyIndex[] = `keyframe -query -sl -iv -attribute $curve`;
+int $indexSize = size($keyIndex);
+int $indexLast = $keyIndex[$indexSize-1];
+
+
+string $curveObj[] = `listConnections -p 1 $curve`;
+string $curveAttr[] = `listAttr $curveObj[0]`;
+
+
+// init variables
+float $key;
+float $maxKey = -1000000;
+float $minKey = 1000000;
+
+// scan keyframes for max and min values
+for ($key in $keyVals)
+	{
+	$maxKey = `max $maxKey $key`;
+	$minKey = `min $minKey $key`;
+	}	
+
+float $midPoint = ($maxKey + $minKey)/2;
+float $scaleAmount = `floatSliderGrp -q -v scaler`;
+
+string $insert = $keyIndex[0] + ":" + $indexLast;
+
+// Scale around centre pivot - ts and tp are ineffectual for magnitude scaling
+scaleKey -iub false -ts 1 -tp 52 -index $insert -vs $scaleAmount -vp $midPoint -attribute $curveAttr[0] $curveObj[0];
+};
+
+}

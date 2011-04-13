@@ -1,0 +1,65 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc string zenLinkAttr(string $attrA, string $attrB)
+{
+	string	$typeA=`getAttr -type $attrA`;
+	string	$typeB=`getAttr -type $attrA`;
+	
+	string	$connectionScriptNode=`scriptNode -st 1 -n "zenAttributeLink#"`;
+	
+		addAttr -at $typeA -ln proxyA $connectionScriptNode;
+		addAttr -at $typeB -ln proxyB $connectionScriptNode;
+		addAttr -at bool -ln evaluate -dv 1 $connectionScriptNode;
+			
+	string	$proxyA=($connectionScriptNode+".proxyA");
+	string	$proxyB=($connectionScriptNode+".proxyB");
+	string	$evaluate=($connectionScriptNode+".evaluate");
+	
+		connectAttr -f $attrA $proxyA;
+		connectAttr -f $attrB $proxyB;
+		
+	
+	string	$script=
+		(
+			"proc zenCreateAttrConnectionScriptJob()\n"+
+			"{\n"+
+			"	string  $attrAList[]=`listConnections -plugs 1 "+$proxyA+"`;\n"+
+			"	string  $attrBList[]=`listConnections -plugs 1 "+$proxyB+"`;\n"+
+			"\n"+
+			"	string  $attrA=$attrAList[0];\n"+
+			"	string  $attrB=$attrBList[0];\n"+
+			"\n"+
+			"	string	$command=(\"if(`getAttr "+$evaluate+"`) setAttr \"+$attrB+\" `getAttr "+$proxyA+"`\");\n"+
+			"\n"+
+			"	int 	$jobA=`scriptJob -pro -cu 1 -ac "+$proxyA+" $command`;\n"+
+			"\n"+
+			"	string	$disconnectCommand=\n"+
+			"		(\n"+
+			"			\"if(`scriptJob -ex \"+(string($jobA))+\"`) scriptJob -force -kill \"+(string($jobA))+\";\\n\"+\n"+
+			"			\"if(`objExists "+$connectionScriptNode+"`) delete "+$connectionScriptNode+";\\n\"\n"+
+			"		);\n"+
+			"\n"+
+			"		scriptJob -pro -ro 1 -con "+$proxyA+" $disconnectCommand;\n"+
+			"		scriptJob -pro -ro 1 -con "+$proxyB+" $disconnectCommand;\n"+
+			"}\n"+
+			"zenCreateAttrConnectionScriptJob;\n"
+		);
+		
+		scriptNode -e -bs $script $connectionScriptNode;
+		
+		scriptNode -eb $connectionScriptNode;
+	
+	return	$connectionScriptNode;
+}

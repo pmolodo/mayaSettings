@@ -1,0 +1,1561 @@
+<html xmlns:v="urn:schemas-microsoft-com:vml"
+xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=ProgId content=Word.Document>
+<meta name=Generator content="Microsoft Word 9">
+<meta name=Originator content="Microsoft Word 9">
+<link rel=File-List href="./LevelTools_2.0_files/filelist.xml">
+<link rel=Edit-Time-Data href="./LevelTools_2.0_files/editdata.mso">
+<!--[if !mso]>
+<style>
+v\:* {behavior:url(#default#VML);}
+o\:* {behavior:url(#default#VML);}
+w\:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+</style>
+<![endif]-->
+<title>LevelTools</title>
+<!--[if gte mso 9]><xml>
+ <o:DocumentProperties>
+  <o:Author>Steven Roselle</o:Author>
+  <o:LastAuthor>sroselle</o:LastAuthor>
+  <o:Revision>4</o:Revision>
+  <o:TotalTime>443</o:TotalTime>
+  <o:Created>2004-11-30T06:20:00Z</o:Created>
+  <o:LastSaved>2004-11-30T07:38:00Z</o:LastSaved>
+  <o:Pages>11</o:Pages>
+  <o:Words>3291</o:Words>
+  <o:Characters>18763</o:Characters>
+  <o:Company>Alias Wavefront</o:Company>
+  <o:Lines>156</o:Lines>
+  <o:Paragraphs>37</o:Paragraphs>
+  <o:CharactersWithSpaces>23042</o:CharactersWithSpaces>
+  <o:Version>9.3821</o:Version>
+ </o:DocumentProperties>
+</xml><![endif]-->
+<style>
+<!--
+ /* Font Definitions */
+@font-face
+	{font-family:"Arial Unicode MS";
+	panose-1:2 11 6 4 2 2 2 2 2 4;
+	mso-font-charset:128;
+	mso-generic-font-family:swiss;
+	mso-font-pitch:variable;
+	mso-font-signature:-1 -369098753 63 0 4129023 0;}
+@font-face
+	{font-family:"\@Arial Unicode MS";
+	mso-font-charset:128;
+	mso-generic-font-family:swiss;
+	mso-font-pitch:variable;
+	mso-font-signature:-1 -369098753 63 0 4129023 0;}
+ /* Style Definitions */
+p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{mso-style-parent:"";
+	margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+h1
+	{mso-style-next:Normal;
+	margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	page-break-after:avoid;
+	mso-outline-level:1;
+	font-size:14.0pt;
+	mso-bidi-font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-font-kerning:0pt;
+	font-weight:bold;
+	text-decoration:underline;
+	text-underline:single;}
+h2
+	{mso-style-next:Normal;
+	margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	page-break-after:avoid;
+	mso-outline-level:2;
+	font-size:14.0pt;
+	mso-bidi-font-size:12.0pt;
+	font-family:"Times New Roman";
+	font-weight:normal;
+	text-decoration:underline;
+	text-underline:single;}
+h3
+	{mso-style-next:Normal;
+	margin:0in;
+	margin-bottom:.0001pt;
+	text-indent:.5in;
+	mso-pagination:widow-orphan;
+	page-break-after:avoid;
+	mso-outline-level:3;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	font-weight:bold;}
+h4
+	{mso-style-next:Normal;
+	margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	page-break-after:avoid;
+	mso-outline-level:4;
+	font-size:14.0pt;
+	mso-bidi-font-size:12.0pt;
+	font-family:"Times New Roman";
+	font-weight:bold;}
+h5
+	{mso-style-next:Normal;
+	margin-top:0in;
+	margin-right:0in;
+	margin-bottom:0in;
+	margin-left:1.0in;
+	margin-bottom:.0001pt;
+	text-indent:-1.0in;
+	mso-pagination:widow-orphan;
+	page-break-after:avoid;
+	mso-outline-level:5;
+	font-size:14.0pt;
+	mso-bidi-font-size:12.0pt;
+	font-family:"Times New Roman";
+	font-weight:bold;}
+h6
+	{mso-style-next:Normal;
+	margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	page-break-after:avoid;
+	mso-outline-level:6;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	font-weight:bold;}
+p.MsoHeading7, li.MsoHeading7, div.MsoHeading7
+	{mso-style-next:Normal;
+	margin:0in;
+	margin-bottom:.0001pt;
+	text-align:center;
+	mso-pagination:widow-orphan;
+	page-break-after:avoid;
+	mso-outline-level:7;
+	font-size:18.0pt;
+	mso-bidi-font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";
+	font-weight:bold;}
+p.MsoHeading8, li.MsoHeading8, div.MsoHeading8
+	{mso-style-next:Normal;
+	margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	page-break-after:avoid;
+	mso-outline-level:8;
+	font-size:16.0pt;
+	mso-bidi-font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";
+	font-weight:bold;}
+p.MsoHeading9, li.MsoHeading9, div.MsoHeading9
+	{mso-style-next:Normal;
+	margin:0in;
+	margin-bottom:.0001pt;
+	text-align:center;
+	mso-pagination:widow-orphan;
+	page-break-after:avoid;
+	mso-outline-level:9;
+	font-size:20.0pt;
+	mso-bidi-font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";
+	font-weight:bold;}
+p.MsoTitle, li.MsoTitle, div.MsoTitle
+	{margin:0in;
+	margin-bottom:.0001pt;
+	text-align:center;
+	mso-pagination:widow-orphan;
+	font-size:20.0pt;
+	mso-bidi-font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+p.MsoBodyText, li.MsoBodyText, div.MsoBodyText
+	{margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:14.0pt;
+	mso-bidi-font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";
+	font-weight:bold;
+	text-decoration:underline;
+	text-underline:single;}
+p.MsoBodyTextIndent, li.MsoBodyTextIndent, div.MsoBodyTextIndent
+	{margin-top:0in;
+	margin-right:0in;
+	margin-bottom:0in;
+	margin-left:1.0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+p.MsoBodyText2, li.MsoBodyText2, div.MsoBodyText2
+	{margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";
+	color:red;}
+p
+	{margin-right:0in;
+	mso-margin-top-alt:auto;
+	mso-margin-bottom-alt:auto;
+	margin-left:0in;
+	mso-pagination:widow-orphan;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+pre
+	{margin:0in;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	tab-stops:45.8pt 91.6pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt;
+	font-size:10.0pt;
+	font-family:"Courier New";
+	mso-fareast-font-family:"Courier New";}
+tt
+	{mso-ascii-font-family:"Courier New";
+	mso-fareast-font-family:"Courier New";
+	mso-hansi-font-family:"Courier New";
+	mso-bidi-font-family:"Courier New";}
+@page Section1
+	{size:8.5in 11.0in;
+	margin:1.0in 1.25in 1.0in 1.0in;
+	mso-header-margin:.5in;
+	mso-footer-margin:.5in;
+	mso-paper-source:0;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+<!--[if gte mso 9]><xml>
+ <o:shapedefaults v:ext="edit" spidmax="1037"/>
+</xml><![endif]--><!--[if gte mso 9]><xml>
+ <o:shapelayout v:ext="edit">
+  <o:idmap v:ext="edit" data="1"/>
+ </o:shapelayout></xml><![endif]-->
+</head>
+
+<body lang=EN-US style='tab-interval:.5in'>
+
+<div class=Section1>
+
+<p class=MsoTitle><b><span style='font-size:24.0pt;mso-bidi-font-size:12.0pt'>LevelTools
+2.0<o:p></o:p></span></b></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p><b><span style='font-size:14.0pt;mso-bidi-font-size:10.0pt'>General
+Description<o:p></o:p></span></b></p>
+
+<p><span style='mso-bidi-font-size:10.0pt'>LevelTools is a suite of tools
+specifically designed for game level building.&nbsp; It provides new
+functionality and also consolidates many of Maya's existing features into one
+easy to use interface.&nbsp; The interface itself is broken down into 3 main
+sections: Import, Layout and Display. </span><b><span style='font-size:14.0pt;
+mso-bidi-font-size:10.0pt'><o:p></o:p></span></b></p>
+
+<p><span style='mso-bidi-font-size:10.0pt'>The Import section provides a simple
+icon based UI, which allows you to quickly, and easily bring assets into a game
+level.&nbsp; LevelTools looks in a user defined folder for importable files and
+automatically builds icon buttons for each file it finds.&nbsp; By simply
+clicking on an icon, the associated file is imported into the scene.&nbsp; The
+imported object can then be easily positioned by click dragging it into place. <o:p></o:p></span></p>
+
+<p><span style='mso-bidi-font-size:10.0pt'>The Layout section contains tools
+for the placement of objects within a level or scene.&nbsp; This includes
+positioning, orienting, aligning and snapping.&nbsp; Standard Maya features
+such as the Align Tool and the Snap Together Tool are integrated into the UI,
+as well as new tools such as Geometry Snap and the Orient Tool.<span
+style="mso-spacerun: yes">   </span><o:p></o:p></span></p>
+
+<p><span style='mso-bidi-font-size:10.0pt'>The Display section provides
+controls for setting and adjusting visual aspects of a level and the objects
+within it.&nbsp; This includes tools for viewing and saving information such as
+the Triangle Count heads-up display and the File Info window.&nbsp; It also
+contains simple toggles for things such as background color, wire frame on
+shaded, polygon normals, geometry borders, single sidedness and vertex color
+display. </span><span style='font-size:10.0pt;font-family:Arial'><o:p></o:p></span></p>
+
+<p>LevelTools assumes that Y is up, therefore some tools will not behave
+predictably if you change your coordinate system.<span style="mso-spacerun:
+yes">  </span>If you need to work in something other than Y up, then certain
+features (e.g. DragTool, Base, Geo Snap, Walk Cam, Importing etc…) will need to
+be modified in the original scripts.<span style='color:red'><o:p></o:p></span></p>
+
+<p class=MsoNormal><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal><b><span style='font-size:14.0pt;mso-bidi-font-size:12.0pt'>New
+Features Highlights for 2.0<o:p></o:p></span></b></p>
+
+<p class=MsoNormal><b><span style='font-size:14.0pt;mso-bidi-font-size:12.0pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></b></p>
+
+<p class=MsoNormal><b><span style='font-size:14.0pt;mso-bidi-font-size:12.0pt'><span
+style='mso-tab-count:1'>          </span></span></b>Improved UI:<span
+style='mso-tab-count:1'>    </span>Better organization of tools.<span
+style="mso-spacerun: yes">  </span>UI state is now preserved between sessions.</p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span></p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>Layout-&gt;Position-&gt;MoveAlongEdge
+:<span style='mso-tab-count:2'>               </span>Move any object or
+componant along an arbitrary edge</p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>Layout-&gt;Position-&gt;MoveAlongNormal
+: <span style='mso-tab-count:1'>          </span>Move any object or componant
+along an arbitrary face normal</p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>Layout-&gt;Orient-&gt;OrientTool
+:<span style='mso-tab-count:3'>                          </span>Rotate align an
+object to point at or touch a given edge or vert</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>Display-&gt;Info-&gt;VertDistance:<span
+style='mso-tab-count:3'>                           </span>Calculate distance
+between any two poly verts</p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>Display-&gt;View-&gt;CycleBG:<span
+style='mso-tab-count:3'>                               </span>White added to
+cycle</p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>Display-&gt;View-&gt;WalkCam:<span
+style='mso-tab-count:3'>                             </span>Use w/s/a/d keys to
+navigate through seen</p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>Display-&gt;View-&gt;FirstPerson:<span
+style='mso-tab-count:3'>                           </span>Use left mouse to
+turn pov of camera (used with WalkCam)</p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>Display-&gt;View-&gt;Clipping:<span
+style='mso-tab-count:3'>                                </span>Slider for
+interactively adjusting far clipping plane</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>Import-&gt;Settings-&gt;InitialGround<span
+style='mso-tab-count:2'>                       </span>Setting for initial Y
+placement of imported objects.</p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>Import-&gt;Settings-&gt;Import/Reference<span
+style='mso-tab-count:2'>                </span>Option for creating references instead
+of importing directly.</p>
+
+<p class=MsoNormal><span style='font-size:14.0pt;mso-bidi-font-size:12.0pt'><span
+style='mso-tab-count:2'>                   </span><o:p></o:p></span></p>
+
+<p class=MsoNormal><b><span style='font-size:14.0pt;mso-bidi-font-size:12.0pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></b></p>
+
+<p class=MsoNormal><b><span style='font-size:14.0pt;mso-bidi-font-size:12.0pt'>Installation</span></b><span
+style='font-size:14.0pt;mso-bidi-font-size:12.0pt'><o:p></o:p></span></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoBodyText2><span style='color:windowtext'>Quick install:<span
+style="mso-spacerun: yes">  </span>First close Maya. Then simply unzip the
+LevelTools2.0.zip file into the MyDocuments/maya/6.0 folder.<span
+style="mso-spacerun: yes">  </span>Restart Maya and run LT from the LevelTools
+shelf.<span style="mso-spacerun: yes">  </span>This will open the entire
+LevelTools interface.</span><span style="mso-spacerun: yes">  </span>(Note:<span
+style="mso-spacerun: yes">  </span>Because of changes to Mel, LevelTools2.0 is
+only compatible with Maya 6 and beyond.)</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal>Manual install:<span style="mso-spacerun: yes"> 
+</span>First close Maya. Then put the five LT scripts...</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><span style='mso-tab-count:2'>                        </span>LT_displayProcs.mel</p>
+
+<p class=MsoNormal><span style='mso-tab-count:2'>                        </span>LT_generalProcs.mel</p>
+
+<p class=MsoNormal><span style='mso-tab-count:2'>                        </span>LT_layoutProcs.mel</p>
+
+<p style='margin:0in;margin-bottom:.0001pt'><span style='mso-tab-count:2'>                        </span>LT_optionVars.mel<span
+style='mso-tab-count:1'>       </span></p>
+
+<p class=MsoNormal><span style='mso-tab-count:2'>                        </span>LT_UI.mel</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal>…into your MyDocuments/maya/6.0/scripts folder.<span
+style="mso-spacerun: yes">  </span>Restart Maya.<span style="mso-spacerun:
+yes">  </span>Then run the command<span style="mso-spacerun: yes">  </span>&lt;
+LT_UI &gt; from the command line or via a shelf button.<span
+style="mso-spacerun: yes">  </span>This will open the entire LevelTools
+interface.<span style="mso-spacerun: yes">  </span>There is also a
+levelTools.bmp file in the prefs/icons folder that can be loaded onto the shelf
+as an icon.<span style="mso-spacerun: yes">  </span>See Maya documentation for
+how to create a shelf button.<span style="mso-spacerun: yes">  </span>Also, see
+the Import tab section of the documentation for more info about setting up
+LevelTools once it’s installed.</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><b><span style='font-size:14.0pt;mso-bidi-font-size:12.0pt'>Details<o:p></o:p></span></b></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal>LevelTools is broken down into 3 main sections: Layout,
+Display and Import.<span style="mso-spacerun: yes">  </span>Each tab contains a
+set of related tools.<span style="mso-spacerun: yes">  </span>Every button,
+field, check box, etc... has an annotation that describes its function.<span
+style="mso-spacerun: yes">  </span>Simply hold your cursor over each button to
+get information about what it does.<span style="mso-spacerun: yes">  </span></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><span style='color:red'>(Note: new features are highlighted
+below in red.)</span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<div style='border:none;border-top:solid windowtext .5pt;padding:1.0pt 0in 0in 0in'>
+
+<p class=MsoNormal style='border:none;mso-border-top-alt:solid windowtext .5pt;
+padding:0in;mso-padding-alt:1.0pt 0in 0in 0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+</div>
+
+<p class=MsoHeading7><span style='font-size:20.0pt;mso-bidi-font-size:12.0pt'>The
+Layout Tab<o:p></o:p></span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><b><span
+style='font-size:14.0pt;mso-bidi-font-size:12.0pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></b></p>
+
+<p class=MsoNormal align=center style='text-align:center'><!--[if gte vml 1]><v:shapetype
+ id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t"
+ path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f">
+ <v:stroke joinstyle="miter"/>
+ <v:formulas>
+  <v:f eqn="if lineDrawn pixelLineWidth 0"/>
+  <v:f eqn="sum @0 1 0"/>
+  <v:f eqn="sum 0 0 @1"/>
+  <v:f eqn="prod @2 1 2"/>
+  <v:f eqn="prod @3 21600 pixelWidth"/>
+  <v:f eqn="prod @3 21600 pixelHeight"/>
+  <v:f eqn="sum @0 0 1"/>
+  <v:f eqn="prod @6 1 2"/>
+  <v:f eqn="prod @7 21600 pixelWidth"/>
+  <v:f eqn="sum @8 21600 0"/>
+  <v:f eqn="prod @7 21600 pixelHeight"/>
+  <v:f eqn="sum @10 21600 0"/>
+ </v:formulas>
+ <v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/>
+ <o:lock v:ext="edit" aspectratio="t"/>
+</v:shapetype><v:shape id="_x0000_i1025" type="#_x0000_t75" style='width:166.5pt;
+ height:622.5pt'>
+ <v:imagedata src="./LevelTools_2.0_files/image001.jpg" o:title="Layout"/>
+</v:shape><![endif]--><![if !vml]><img width=222 height=830
+src="./LevelTools_2.0_files/image001.jpg" v:shapes="_x0000_i1025"><![endif]></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h1><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'>General<o:p></o:p></span></h1>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>CTM Tool</b>
+<span style='mso-tab-count:1'>     </span>Create a
+ComponentTransfromManipulator for selected components.<span
+style="mso-spacerun: yes">  </span>This allows you to move, scale and snap the
+components via a snapHandle.<span style="mso-spacerun: yes">  </span>The pivot of
+the handle can be moved to change the snap from point.<span
+style="mso-spacerun: yes">  </span>Unlike a cluster, the affect of the handle
+is preserved even after deleting it.</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>MRS Tool</b>
+<span style='mso-tab-count:1'>     </span>Enable
+Modify-&gt;TransformTools-&gt;MoveRotateScaleTool : a Multi-manip for moving,
+rotating and scaling</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Drag Tool</b>
+<span style='mso-tab-count:1'>      </span>Enable Click/Drag tool to place
+selected object along XZ plane.<span style="mso-spacerun: yes">  </span>Hold
+ctrl to constrain to Y axis, and hold shift to constrain to view plane<span
+style="mso-spacerun: yes">  </span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal style='text-indent:.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal style='text-indent:.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<h1><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'>Position<o:p></o:p></span></h1>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span><b>Move<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'>Value</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'> : set value for move offset
+and snap<span style="mso-spacerun: yes">  </span>(eg… 0.05, 2.5, 100)<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'>x/y/z</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'> : choose axis for move
+offset and snap <o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'>World / Object</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'> : set space to world axis
+or objects axis<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt;color:red'>Edge </span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt;color:red'>: offset all
+selected objects/components along last selected edge<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt;color:red'>Normal</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt;color:red'>: offset all
+selected objects/components along normal of last selected face</span><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'><o:p></o:p></span></p>
+
+<p class=MsoNormal><span style='mso-tab-count:2'>                        </span></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Snap</b><span
+style='mso-tab-count:1'>                </span>Snap to nearest point along
+selected axis divisible by value (Move Snap works along world axis only)</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Offset-</b><span
+style="mso-spacerun: yes">  </span><span style='mso-tab-count:1'>          </span>Decrement
+position along selected axis, <span style='color:red'>edge or normal</span>
+using above value</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Offset+<span
+style="mso-spacerun: yes">   </span></b><span style='mso-tab-count:1'>        </span>Increment
+position along selected axis, <span style='color:red'>edge or normal</span>
+using above value</p>
+
+<p class=MsoNormal style='text-indent:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='text-indent:.5in'><span style="mso-spacerun: yes">  
+</span><span style='color:red'><o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><!--[if gte vml 1]><v:shape id="_x0000_i1026"
+ type="#_x0000_t75" style='width:375pt;height:179.25pt'>
+ <v:imagedata src="./LevelTools_2.0_files/image002.jpg" o:title="moveAlong"/>
+</v:shape><![endif]--><![if !vml]><img width=500 height=239
+src="./LevelTools_2.0_files/image002.jpg" v:shapes="_x0000_i1026"><![endif]></p>
+
+<p class=MsoNormal><span style='color:red'><span style='mso-tab-count:1'>            </span><span
+style="mso-spacerun: yes">   </span>Offset along edge…<span style='mso-tab-count:
+3'>                           </span><span style="mso-spacerun: yes">     
+</span>Offset along normal…<o:p></o:p></span></p>
+
+<p style='margin:0in;margin-bottom:.0001pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p style='margin:0in;margin-bottom:.0001pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h2><b><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'>Orient<o:p></o:p></span></b></h2>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span><b>Rotate<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'>Value</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'> : set value for offset and
+snap (0 to 90)<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'>x/y/z</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'> : choose axis for rotate
+offset and snap<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'>World / Object</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'> : set space to world axis
+or objects axis<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><span style="mso-spacerun:
+yes"> </span></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Snap</b> <span
+style='mso-tab-count:1'>               </span>Snap rotate to nearest angle
+divisible by degree value (Rotate snap works along object axis only)</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Offset-</b> <span
+style='mso-tab-count:1'>           </span>Decrement rotation around selected
+axis using above degree value</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Offset+ </b><span
+style='mso-tab-count:1'>          </span>Increment rotation around selected
+axis using above degree value</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>-----------------------------------------------------------------------------------</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b><span
+style='color:red'>Orient Tool<span style='mso-tab-count:1'>     </span></span></b><span
+style='color:red'>Rotate first object around its pivot to orient/align with
+second object.<span style="mso-spacerun: yes">  </span>The target will either
+be an edge or a vertex on the second object.<span style="mso-spacerun: yes"> 
+</span></span><span style='mso-fareast-font-family:"Arial Unicode MS";
+color:red'>The orientation can take place on one axis at a time: X, Y or
+Z.<span style="mso-spacerun: yes">  </span>(Note:<span style="mso-spacerun:
+yes">  </span>works only on poly objects)<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><span
+style='mso-fareast-font-family:"Arial Unicode MS";color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt;color:red'>x/y/z</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt;color:red'> : <span
+style='mso-tab-count:1'>    </span>choose axis for rotation/orientation (object
+space)<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt;color:red'>Edge</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt;color:red'> :<span
+style='mso-tab-count:1'>     </span>Put OrientTool in edge mode.<span
+style="mso-spacerun: yes">  </span>First select a vertex on object you wish to
+rotate.<span style="mso-spacerun: yes">  </span>Next, select an edge on the
+target object you wish to rotate towards.<span style="mso-spacerun: yes"> 
+</span>If possible, the first object will then be rotated around its pivot so
+that the vertex is touching the edge on the target object.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt;color:red'>Vert</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt;color:red'> :<span
+style='mso-tab-count:1'>      </span>Put OrientTool in vertex mode.<span
+style="mso-spacerun: yes">  </span>First select a vertex on object you wish to
+rotate.<span style="mso-spacerun: yes">  </span>Next, select a vertex on the
+target object you wish to rotate towards.<span style="mso-spacerun: yes"> 
+</span>The first object will then be rotated around its pivot so that the
+vertex on the first object is pointing towards the vertex on the target
+object.<span style="mso-spacerun: yes">  </span>The result will be an imaginary
+line running between the pivot of the first object and the two vertices.</span><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'><o:p></o:p></span></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal>:<span style='mso-tab-count:1'>           </span><!--[if gte vml 1]><v:shape
+ id="_x0000_i1027" type="#_x0000_t75" style='width:6in;height:147.75pt'>
+ <v:imagedata src="./LevelTools_2.0_files/image003.jpg" o:title="orientTool"/>
+</v:shape><![endif]--><![if !vml]><img width=576 height=197
+src="./LevelTools_2.0_files/image003.jpg" v:shapes="_x0000_i1027"><![endif]></p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span><span
+style="mso-spacerun: yes">  </span><span style='color:red'>Before<span
+style='mso-tab-count:3'>                                    </span><span
+style="mso-spacerun: yes">  </span>After OrientToVert<span style='mso-tab-count:
+2'>                 </span><span style="mso-spacerun: yes">   </span>After
+OrientToEdge<o:p></o:p></span></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h1><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'>Align<o:p></o:p></span></h1>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'>x/y/z</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'> : choose axis for
+Line/Stack/Dist<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Line </b><span
+style='mso-tab-count:1'>                </span>Center and line all selected objects
+with last selected along the specifiedaxis</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b><span
+style='color:red'>Base<span style='mso-tab-count:1'>                </span> </span></b><span
+style='color:red'>Align all selected objects with base of last selected and
+along specified axis (center for Y)<o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Stack</b> <span
+style='mso-tab-count:2'>              </span>Stack all selected objects to last
+selected on specified axis</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Dist</b><span style='mso-tab-count:
+2'>                 </span>Make selected objects equidistant along specified
+axis</p>
+
+<p class=MsoNormal style='text-indent:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h3><span style='color:red'>More…<span style='mso-tab-count:1'>           </span></span><span
+style='color:red;font-weight:normal'>Open options for:<span
+style="mso-spacerun: yes">   </span></span><span style='color:red'>Modify-&gt;SnapAlign-&gt;AlignObjects<o:p></o:p></span></h3>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p style='margin:0in;margin-bottom:.0001pt'><span style='mso-tab-count:1'>            </span>-----------------------------------------------------------------------------------</p>
+
+<p class=MsoNormal><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal><b><span style='mso-tab-count:1'>            </span>Align
+Tool</b><span style='mso-tab-count:1'>       </span>Enable:<span
+style="mso-spacerun: yes">   </span><b>Modify-&gt;SnapAlign-&gt;AlignTool</b><span
+style="mso-spacerun: yes">  </span>(Manipulator for aligning objects based on
+bounding box)</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h1><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'>Snap<o:p></o:p></span></h1>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><span style='mso-tab-count:2'>                        </span><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'>Orient</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'> : causes Snap Tool to
+orient object as well<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt'>Face</span></b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt'> : causes Snap Tool to snap to face centers<span
+style="mso-spacerun: yes">  </span>(Note : snap tool also respects standard
+Maya point, curve and grid snapping)<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:1.0in;text-indent:.5in'><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Snap Tool</b>
+<span style='mso-tab-count:1'>      </span>Enable:<span style="mso-spacerun:
+yes">   </span><b>Modify-&gt;SnapAlign-&gt;SnapTogetherTool</b><span
+style="mso-spacerun: yes">  </span>(Manipulator for snapping one object to
+another at any arbitrary point and<span style="mso-spacerun: yes"> 
+</span>independently of its pivot)</p>
+
+<p class=MsoNormal><span style='color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>-----------------------------------------------------------------------------------</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>To Face</b> <span
+style='mso-tab-count:1'>          </span>Snap all selected objects and/or components
+to last selected face center</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>To Edge</b> <span
+style='mso-tab-count:1'>         </span>Snap all selected objects and/or
+components to last selected edge center</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>pt To pt</b> <span
+style='mso-tab-count:1'>          </span>Point to point snap (first object to
+second)</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>2pt Left</b> <span
+style='mso-tab-count:1'>          </span>2 point to 2 point snap - align left
+(first object to second)</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>2pt Mid</b><span
+style='mso-tab-count:1'>           </span>2 point to 2 point snap - align
+center (first object to second)</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>2pt Right</b><span
+style='mso-tab-count:1'>         </span>2 point to 2 point snap - align right
+(first object to second)</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span>-----------------------------------------------------------------------------------</p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b>Edge Snapping</b></p>
+
+<p class=MsoNormal style='margin-left:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt'>Segments: </span></b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt'><span style="mso-spacerun: yes"> </span>toggles edge
+segment snapping on/off and sets magnet tolerance to 100 (maximum) or 0
+(minimum).</span></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt'>Snap To</span></b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt'> :<span style='mso-tab-count:1'>               </span>Midpoint:<span
+style='mso-tab-count:1'>              </span>set number of snapping magnets to
+1<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'><span style='mso-tab-count:
+2'>                                </span>Thirds:<span style='mso-tab-count:
+2'>                   </span>set number of snapping magnets to 2<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in;text-indent:.5in'><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'><span style='mso-tab-count:
+2'>                                </span>Quarter:<span style='mso-tab-count:
+2'>                  </span>set number of snapping magnets to 3<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:3.0in;text-indent:-1.0in'><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'>Use Prefs:<span
+style='mso-tab-count:1'>              </span>open user preferences to snapping
+tab if more snap points are needed</span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:.5in'>Note: The edge snapping settings
+work with both the SnapTogetherTool as well as with the standard snapping
+workflow.<span style="mso-spacerun: yes">  </span>You still must hold down the “c”
+key and middle click on the desired edge when attempting to snap an object or
+component to an edge segment. These settings simply provide a more intuitive
+way of modifying the standard preferences.</p>
+
+<p class=MsoNormal style='margin-left:1.0in;text-indent:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='text-indent:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoHeading8><u>Constrain<o:p></o:p></u></p>
+
+<p class=MsoNormal><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Geo Snap</b><span
+style='mso-tab-count:1'>        </span>Snap the position and orientation of all
+selected objects to the nearest point and normal of the last selected
+object.<span style="mso-spacerun: yes">  </span>A combination of geometry
+constraints and normal constraints are used to do this. By default The +Y axis
+is used for normal alignment and the +X axis will point up if/when
+possible.<span style="mso-spacerun: yes">  </span>For example, in order for a
+wall sconce/lamp to snap correctly to a wall it would need to be built (or
+transforms frozen) so that its front faced positive Y and its top faced
+positive X.<span style="mso-spacerun: yes">  </span></p>
+
+<p class=MsoNormal style='margin-left:1.5in'>(Note: This can be changed by
+using the following cycle and flip tools)</p>
+
+<p class=MsoNormal style='text-indent:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='text-indent:.5in'><span style="mso-spacerun: yes">  
+</span>Before Geo Snap…</p>
+
+<p class=MsoNormal style='text-indent:.5in'><!--[if gte vml 1]><v:shape id="_x0000_i1028"
+ type="#_x0000_t75" style='width:262.5pt;height:308.25pt'>
+ <v:imagedata src="./LevelTools_2.0_files/image004.jpg" o:title="geoSnap"/>
+</v:shape><![endif]--><![if !vml]><img width=350 height=411
+src="./LevelTools_2.0_files/image004.jpg" v:shapes="_x0000_i1028"><![endif]></p>
+
+<p class=MsoNormal style='text-indent:.5in'><span style="mso-spacerun: yes"> 
+</span>After…</p>
+
+<p class=MsoNormal style='text-indent:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Cycle Aim<span
+style='mso-tab-count:1'>       </span></b>Cycle the Aim vector axis for the
+constrained (Geo Snapped) object between X, Y and Z</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Flip Aim</b><span
+style='mso-tab-count:1'>          </span>Flip the Aim vector axis for the
+constrained (Geo Snapped) object between positive and negative</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Cycle Up</b><span
+style='mso-tab-count:1'>         </span>Cycle the Up vector axis for the
+constrained (Geo Snapped) object between X, Y and Z</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Flip Up</b><span
+style='mso-tab-count:1'>            </span>Flip the Aim vector axis for the
+constrained (Geo Snapped) object between positive and negative<span
+style='color:red'><o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Break</b><span style='mso-tab-count:
+2'>              </span>Remove geometry and normal constraints for selected
+object</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><b><u><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'>Replace</span></u></b><u><span
+style='font-size:16.0pt;mso-bidi-font-size:12.0pt'><o:p></o:p></span></u></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt'>Inherit Rotate</span></b><span style='font-size:
+10.0pt;mso-bidi-font-size:12.0pt'> : duplicated objects will inherit rotation<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt'>Inherit Scale</span></b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt'> : duplicated objects will inherit scale<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt'>Inst</span></b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt'> : creates instances instead of duplicates for
+replace tool<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><b>Replace</b><span
+style='mso-tab-count:1'>          </span>Replace all selected objects with last
+selected object.<span style="mso-spacerun: yes">  </span>First, select 1 or
+more objects that you wish to replace (be sure to select top node of hierarchy
+if one exists).<span style="mso-spacerun: yes">  </span>Then select the object
+you wish to replace them with last.<span style="mso-spacerun: yes">  </span></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><span
+style="mso-spacerun: yes">  </span>Before Replace…</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><!--[if gte vml 1]><v:shape
+ id="_x0000_i1029" type="#_x0000_t75" style='width:261.75pt;height:321pt'>
+ <v:imagedata src="./LevelTools_2.0_files/image005.jpg" o:title="Replace"/>
+</v:shape><![endif]--><![if !vml]><img width=349 height=428
+src="./LevelTools_2.0_files/image005.jpg" v:shapes="_x0000_i1029"><![endif]></p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:-1.0in'><span
+style="mso-spacerun: yes">   </span>After…</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<div style='border:none;border-top:solid windowtext .5pt;padding:1.0pt 0in 0in 0in'>
+
+<p class=MsoNormal style='border:none;mso-border-top-alt:solid windowtext .5pt;
+padding:0in;mso-padding-alt:1.0pt 0in 0in 0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+</div>
+
+<p class=MsoHeading7><span style='font-size:20.0pt;mso-bidi-font-size:12.0pt'>The
+Display Tab<o:p></o:p></span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='text-align:center'><!--[if gte vml 1]><v:shape
+ id="_x0000_i1030" type="#_x0000_t75" style='width:162pt;height:545.25pt'>
+ <v:imagedata src="./LevelTools_2.0_files/image006.jpg" o:title="Display"/>
+</v:shape><![endif]--><![if !vml]><img width=216 height=727
+src="./LevelTools_2.0_files/image006.jpg" v:shapes="_x0000_i1030"><![endif]></p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h1><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'>Info<o:p></o:p></span></h1>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Poly Count<span
+style='mso-tab-count:1'>                  </span></b>Toggle <b>Display-&gt;HeadsUpDisplay-&gt;PolyCount</b></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Shell Count</b><span
+style='mso-tab-count:1'>                 </span>Toggle heads up display which
+counts number of shells for all selected objects</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Edge Length</b>
+<span style='mso-tab-count:1'>              </span>Toggle heads up display
+which calculates total length of all selected edges</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Vert
+Distance</b> <span style='mso-tab-count:1'>            </span>Toggle heads up
+display which calculates the distance between two selected vertices</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'>-----------------------------------------------------------------------------------</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>File Info <span
+style='mso-tab-count:1'>                     </span></b>Opens an editable window
+that allows you to create a text annotation for the current file.<span
+style="mso-spacerun: yes">  </span>The information in the window is saved with
+the file via a scriptNode.<span style="mso-spacerun: yes">  </span>When the
+file is reopened the File Info window will be shown with the previously saved
+information.</p>
+
+<p class=MsoNormal style='margin-left:1.5in;text-indent:.5in'><span
+style='color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></p>
+
+<p class=MsoNormal align=center style='text-align:center'><!--[if gte vml 1]><v:shape
+ id="_x0000_i1031" type="#_x0000_t75" style='width:230.25pt;height:198pt'>
+ <v:imagedata src="./LevelTools_2.0_files/image007.png" o:title="fileInfo"/>
+</v:shape><![endif]--><![if !vml]><img width=307 height=264
+src="./LevelTools_2.0_files/image008.jpg" v:shapes="_x0000_i1031"><![endif]></p>
+
+<p class=MsoNormal align=center style='text-align:center'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='text-align:center'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p style='margin-top:0in;margin-right:0in;margin-bottom:0in;margin-left:2.0in;
+margin-bottom:.0001pt;text-indent:-1.5in'><b>Annotate</b><span
+style='mso-tab-count:1'>                     </span>Attach an annotation to the
+selected object using Create-&gt;Annotation</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p style='margin:0in;margin-bottom:.0001pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h1><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'>View<o:p></o:p></span></h1>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Toggle UI</b><span
+style='mso-tab-count:1'>                   </span>Toggle display of all UI
+elements (including main menus and panel menus) on and off</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Cycle BG</b>
+<span style='mso-tab-count:1'>                   </span>Cycle background color
+between <span style='color:red'>white</span>, light gray, dark gray and black for
+all views</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'>-----------------------------------------------------------------------------------</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b><span
+style='color:red'>Walk Cam<span style='mso-tab-count:1'>                  </span></span></b><span
+style='color:red'>Use hotkeys Alt + w/s/a/d to navigate any perspective camera
+front/back/left/right<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b><span
+style='color:red'>First Person<span style='mso-tab-count:1'>                </span></span></b><span
+style='color:red'>Use left mouse button to change direction of camera for
+WalkCam<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt;color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></b></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt;color:red'>Speed</span></b><span style='font-size:
+10.0pt;mso-bidi-font-size:12.0pt;color:red'> : change speed of walk cam (Slow
+&lt;-&gt; Fast)<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><b><span style='font-size:10.0pt;
+mso-bidi-font-size:12.0pt;color:red'>Clipping: </span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt;color:red'><span
+style="mso-spacerun: yes"> </span>interactively edit the distance of the far
+clipping plane of any active perspective camera</span><span style='font-size:
+10.0pt;mso-bidi-font-size:12.0pt'><o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='text-indent:.5in'>-----------------------------------------------------------------------------------</p>
+
+<p class=MsoNormal style='text-indent:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Toggle Grid</b> <span
+style='mso-tab-count:2'>               </span>Toggle grid display for active
+panel</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Grid Numbers</b><span
+style='mso-tab-count:1'>            </span>Toggle grid numbers for all views</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.0in'><b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'>Grid Size</span></b><span
+style='font-size:10.0pt;mso-bidi-font-size:12.0pt'>: interactively increase or
+decrease the overall size of the grid<span style='mso-tab-count:2'>                   </span><o:p></o:p></span></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='text-indent:.5in'>-----------------------------------------------------------------------------------</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b>Wire Shaded</b> <span
+style='mso-tab-count:2'>              </span>Toggle wire frame on shaded
+display mode for active panel</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>X-ray Mode</b> <span
+style='mso-tab-count:2'>               </span>Toggle xray display mode for
+active panel</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Texture Filter</b> <span
+style='mso-tab-count:1'>            </span>Toggle texture filtering for active
+panel</p>
+
+<p class=MsoBodyText2 style='margin-left:2.0in;text-indent:-1.5in'><b><span
+style='color:windowtext'>Fast Interact</span></b><span style='color:windowtext'><span
+style='mso-tab-count:1'>               </span>Toggle interactive wire shading
+for faster navigation/manipulation in active panel<o:p></o:p></span></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoBodyText><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'>Polys<o:p></o:p></span></p>
+
+<p class=MsoNormal><b><span style='font-size:14.0pt;mso-bidi-font-size:12.0pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></b></p>
+
+<p class=MsoNormal><span style='mso-tab-count:1'>            </span><b>Face
+Normals</b> <span style='mso-tab-count:1'>            </span>Toggle display of
+face normals on selected objects </p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Vertex Normals</b> <span
+style='mso-tab-count:1'>        </span>Toggle display of vertex normals on
+selected objects</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Normal
+Length</b> <span style='mso-tab-count:1'>          </span>Interactively adjust
+slider to lengthen or shorten vertex or face normals for selected objects<span
+style='mso-tab-count:1'>            </span></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Geo Borders</b><span
+style='mso-tab-count:1'>               </span>Toggle display of thick geometry
+borders on selected objects</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Text Borders </b><span
+style='mso-tab-count:2'>             </span>Toggle display of thick texture
+borders on selected objects</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Edge
+Thickness </b><span style='mso-tab-count:1'>         </span>Interactively adjust
+slider to change thickness of geometry and texture borders for selected objects</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Soft Edges</b>
+<span style='mso-tab-count:1'>                 </span>Toggle display of
+wireframe dotted line of soft edges on selected objects </p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Inner
+Triangles</b><span style='mso-tab-count:1'>          </span>Toggle display of
+wireframe dotted line of hidden inner triangles on selected objects</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Options<span style='mso-tab-count:
+2'>                       </span></b>Open Display-&gt;CustomPolygonDisplay
+options</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Reset</b> <span
+style='mso-tab-count:3'>                         </span>Disable all custom
+polygon display options</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Back Culling</b><span
+style='mso-tab-count:1'>               </span>Toggle backface culling for
+selected objects (note: now no visible wireframe for culled faces)</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>1:2 Sided</b>
+<span style='mso-tab-count:1'>                    </span>Toggle selected
+polygon objects between single and double sided<span style='color:red'> <o:p></o:p></span></p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>All 1 Sided</b> <span
+style='mso-tab-count:2'>                 </span>Make all polygon objects single
+sided</p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>All 2 Sided</b> <span
+style='mso-tab-count:2'>                 </span>Make all polygon objects double
+sided</p>
+
+<p style='margin:0in;margin-bottom:.0001pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h1><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'>Color<o:p></o:p></span></h1>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Vertex
+Default</b> <span style='mso-tab-count:1'>          </span>Display vertex color
+with default lighting for all objects, in current panel</p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Vertex Color
+Only</b> <span style='mso-tab-count:1'>    </span>Display vertex color only for
+all objects, in current panel (Note : now utilizes panel
+Lighting-&gt;UseNoLights option) </p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>Vertex +
+Texture</b> <span style='mso-tab-count:1'>      </span>Display vertex color
+blended with texture for all objects, in current panel (Note : now utilizes
+panel Lighting-&gt;UseNoLights option) </p>
+
+<p class=MsoNormal style='text-indent:.5in'><b>Reset</b> <span
+style='mso-tab-count:3'>                         </span>Disable vertex color
+display in current panel</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<div style='border:none;border-top:solid windowtext .5pt;padding:1.0pt 0in 0in 0in'>
+
+<p class=MsoNormal style='border:none;mso-border-top-alt:solid windowtext .5pt;
+padding:0in;mso-padding-alt:1.0pt 0in 0in 0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+</div>
+
+<p class=MsoHeading9>The Import Tab</p>
+
+<p class=MsoNormal align=center style='text-align:center'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal align=center style='text-align:center'><!--[if gte vml 1]><v:shape
+ id="_x0000_i1032" type="#_x0000_t75" style='width:162.75pt;height:620.25pt'>
+ <v:imagedata src="./LevelTools_2.0_files/image009.jpg" o:title="Import"/>
+</v:shape><![endif]--><![if !vml]><img width=217 height=827
+src="./LevelTools_2.0_files/image009.jpg" v:shapes="_x0000_i1032"><![endif]></p>
+
+<p class=MsoNormal><span style='mso-tab-count:3'>                                    </span></p>
+
+<p class=MsoNormal><tt><span style='mso-ansi-font-size:12.0pt;mso-ascii-font-family:
+"Times New Roman";mso-hansi-font-family:"Times New Roman";mso-bidi-font-family:
+"Times New Roman"'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></tt></p>
+
+<p class=MsoNormal><tt><span style='font-size:10.0pt;font-family:"Courier New"'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></tt></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.0in;text-indent:-1.0in'><b><span
+style='font-size:14.0pt;mso-bidi-font-size:12.0pt'>Refresh</span></b> <span
+style='mso-tab-count:1'>       </span>Refresh icon list for new props.<span
+style="mso-spacerun: yes">  </span>When new props are added to one of your props
+folders, or if your current project changes, simply press Refresh to rebuild
+the icons in the import tab.<span style="mso-spacerun: yes">  </span>See Icons
+section below about creating icons for props.</p>
+
+<p class=MsoNormal style='margin-left:1.0in;text-indent:-1.0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.0in;text-indent:-1.0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.0in;text-indent:-1.0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h5><span style='font-size:16.0pt;mso-bidi-font-size:12.0pt'>Import Settings<o:p></o:p></span></h5>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><span style='color:red'>Initial
+Ground:<span style='mso-tab-count:1'>            </span></span></b><span
+style='color:red'>Determines the initial placement of all imported/referenced
+objects on the Y-axis.<span style="mso-spacerun: yes">   </span>This is used as
+a starting point for the click/drag placement tool, which is activated as soon
+as the object is brought into the scene.<span style="mso-spacerun: yes"> 
+</span>Changing this setting raises or lowers the ground plane for the
+placement tool.<span style="mso-spacerun: yes">  </span>You can also adjust the
+ground plane afterwards by holding down the ctrl key while the click/drag
+placement tool is activated.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><span style='color:red'><span
+style='mso-tab-count:1'>            </span><o:p></o:p></span></b></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><span style='color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></b></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><span style='color:red'>Import/Reference:
+<span style='mso-tab-count:1'>    </span></span></b><span style='color:red'>By
+default any assets or props are brought into the scene directly by
+importing.<span style="mso-spacerun: yes">  </span>This can now be changed to a
+reference instead.<span style="mso-spacerun: yes">  </span>Management of the
+references will still need to be done through the <b>ReferenceEditor</b>.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in'><span style='color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in'><span style='color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b>Remove Duplicate Shaders:<span
+style='mso-tab-count:2'>             </span></b>Automatically clean up any
+redundancy in the HyperShade upon import: including materials and
+textures.<span style="mso-spacerun: yes">  </span>In other words, if you import
+the same prop more than once, only one copy of its shader and textures will be
+retained.<span style="mso-spacerun: yes">  </span>This can also be done after
+importing by using<b> File-&gt;OptimizeSceneSize.<o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><span style='color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></b></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><span style='color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></b></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><span style='color:red'>Create
+Reference Locator:<span style='mso-tab-count:2'>               </span></span></b><span
+style='color:red'>If objects are referenced then you can choose to also create
+a reference locator.<span style="mso-spacerun: yes">  </span>This simply allows
+you to load and unload your references directly from the camera view without
+needing to open the <b>ReferenceEditor.<span style="mso-spacerun: yes"> 
+</span></b>This is done by right clicking on the reference locator.<o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in'><span style='color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:.5in'>-----------------------------------------------------------------------------------</p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></b></p>
+
+<p class=MsoNormal style='margin-left:.5in'><b>Folder Prefix:<span
+style='mso-tab-count:2'>             </span></b>The prefix is used to determine
+which folders within your import path contain importable items.<span
+style="mso-spacerun: yes">  </span>All import assets or “props” should be put
+into a folder or folders beginning with the specified prefix.<span
+style="mso-spacerun: yes">  </span>The default prefix is “props”.<span
+style="mso-spacerun: yes">  </span>In this case your folders would be named
+something like: props-level3 or propsRoom2 or props_Architecture.<span
+style="mso-spacerun: yes">  </span>The prefix itself can be set to something
+more meaningful to you simply by editing this field.<span style="mso-spacerun:
+yes">  </span>When changed, LevelTools will automatically re-search for any
+folders beginning with the new prefix and build icons for those that it finds.</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h6 style='margin-left:.5in'>Include Subfolders:<span style='mso-tab-count:
+1'>    </span><span style='font-weight:normal'>By default, LevelTools will look
+only at the top level of the import path (either defined </span>RelativeToCurrentProject
+<span style='font-weight:normal'>or by </span>SetPath<span style='font-weight:
+normal'>).<span style="mso-spacerun: yes">  </span>Turning the </span>Include
+Subfolders <span style='font-weight:normal'>option on will tell level tools to
+begin at the import path and recursively look into all folders and subfoldes
+for the current prefix.<span style="mso-spacerun: yes">  </span>You can even
+search your entire drive for any folders beginning with the prefix by selecting
+the root of the drive (eg… C:\ ).<span style="mso-spacerun: yes">  </span>While
+it is possible, it could take a while to search the whole drive, so it is not
+recommended.<o:p></o:p></span></h6>
+
+<h6 style='margin-left:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></h6>
+
+<h6 style='margin-left:.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></h6>
+
+<h6 style='margin-left:.5in'>Relative To Current Project:<span
+style='mso-tab-count:1'>            </span><span style='font-weight:normal'>When
+enabled (default), LevelTools will use the scenes folder of the current project
+as the import path.<span style="mso-spacerun: yes">  </span>It will then build
+icons for any folder that it finds beginning with the </span>Current Prefix<span
+style='font-weight:normal'> at that location.<span style="mso-spacerun: yes"> 
+</span>If the current project changes, then the icons will need to be refreshed
+with the </span>Refresh<span style='font-weight:normal'> button.<o:p></o:p></span></h6>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h6 style='margin-left:.5in'>Set Path:<span style='mso-tab-count:1'>         </span><span
+style='font-weight:normal'>If the </span>RelativeToCurrentProject <span
+style='font-weight:normal'>option is turned off, then </span>Set Path<span
+style='font-weight:normal'> can be used to define the import path by specifying
+an explicit location instead.<span style="mso-spacerun: yes">  </span>For
+example, you may be managing your assets on a network server so that that all
+users can access the same files.<span style="mso-spacerun: yes">   </span>In
+this case</span> <span style='font-weight:normal'>you can point LevelTools
+directly to that location (e.g. N:\Repository\Level2\Assets), rather than
+relying on the current project.<span style="mso-spacerun: yes">  </span>The </span>Set
+Path <span style='font-weight:normal'>button will open a file browser for finding
+and setting the desired location.<o:p></o:p></span></h6>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h6 style='margin-left:.5in'><span style='font-weight:normal'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></h6>
+
+<div style='border:none;border-bottom:solid windowtext .75pt;padding:0in 0in 1.0pt 0in'>
+
+<p style='margin:0in;margin-bottom:.0001pt;border:none;mso-border-bottom-alt:
+solid windowtext .75pt;padding:0in;mso-padding-alt:0in 0in 1.0pt 0in'><span
+style='color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></p>
+
+</div>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><b><span style='font-size:10.0pt;mso-bidi-font-size:12.0pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></b></p>
+
+<p style='margin:0in;margin-bottom:.0001pt'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.0in;text-indent:-1.0in'><b><span
+style='font-size:14.0pt;mso-bidi-font-size:12.0pt'>Icons</span></b><span
+style="mso-spacerun: yes">  </span><b><span style='mso-tab-count:1'>           </span></b>Each
+icon in the props section can be used to import a prop/asset.<span
+style="mso-spacerun: yes">  </span>When you press a given icon button, the
+associated file will be imported into the scene and the resulting object
+automatically selected.<span style="mso-spacerun: yes">  </span>The Drag Tool
+will then be activated for easy placement of the object.<span
+style="mso-spacerun: yes">  </span>By default the drag tool will drag the
+object on the XZ ground plane.<span style="mso-spacerun: yes">  </span>Holding
+the ctrl key will lock the drag to the vertical Y axis.<span
+style="mso-spacerun: yes">  </span>In LevelTools 1.5 a bug was fixed that prevented
+dragging from working with units set to something other than cm.</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.0in;mso-layout-grid-align:none;
+text-autospace:none'>If LevelTools is not able to create any import icons then
+you will get the following message (<span style='mso-bidi-font-size:8.5pt'>Nothing
+to import. Check settings above.<span style="mso-spacerun: yes">  </span>Either
+there is a problem with the path or there were no folders with the current
+prefix found at that location.<span style="mso-spacerun: yes">  </span>See the
+script editor for details.)<span style="mso-spacerun: yes">  </span>In this
+case, </span>try using SetPath to select the folder LT_Repository, which is
+provided in the zip file.<span style="mso-spacerun: yes">  </span>Alternatively
+you can set your current project to LT_Project (which is also provided) but you
+will then need to press the refresh button in the import tab to update the
+icons.<span style="mso-spacerun: yes">  </span>See <b>Example Files</b> section
+below for a more detailed explanation of how to setup LevelTools to use them.</p>
+
+<p style='margin:0in;margin-bottom:.0001pt;mso-layout-grid-align:none;
+text-autospace:none'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:1.0in'>Each set of props/assets should
+exist within a unique folder that begins with the current prefix.<span
+style="mso-spacerun: yes">  </span>Level tools will look for any folders
+beginning with that prefix.<span style="mso-spacerun: yes">  </span>It will build
+a drop-down menu for each one it finds, as well as buttons for each Maya file
+found within those folders. </p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h3 style='margin-left:1.0in;text-indent:-1.0in'><span style='mso-tab-count:
+1'>                        </span><span style='font-weight:normal'>Previously
+the icons for each prop were stored within the associated props folder, in a
+subfolder simply called icons (e.g.… props-Level1/icons).<span
+style="mso-spacerun: yes">  </span>This is still an option, but as an
+alternative you can now store all icons in one common “icons” folder at the
+root of the import path.<span style="mso-spacerun: yes">  </span>LevelTools
+will first search within the props folder for a given icon, and then look to
+the root of the import path.<span style="mso-spacerun: yes">  </span>The icons
+do not get created automatically, so if you are going to create your own props
+you will likely want to create a unique icon (of the same name) for each one
+and put it in the associated icons folder.<span style="mso-spacerun: yes"> 
+</span>To do this, simply render a 40x40 bmp image of the prop/asset.<span
+style="mso-spacerun: yes">  </span>LevelTools comes with a pre-set scene for
+creating new icons called iconGenerator.mb.<span style="mso-spacerun: yes"> 
+</span>When you first open this scene a file info window appears, displaying a
+step-by-step guide for generating custom icons.<span style="mso-spacerun:
+yes">  </span>If an icon does not exist or can’t be found, a simple button with
+the filename will be created instead.<o:p></o:p></span></h3>
+
+<h3 style='text-indent:0in'><span style='font-weight:normal'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></h3>
+
+<h3 align=center style='text-align:center;text-indent:0in'><span
+style='font-weight:normal'><!--[if gte vml 1]><v:shape id="_x0000_i1033"
+ type="#_x0000_t75" style='width:210.75pt;height:177.75pt'>
+ <v:imagedata src="./LevelTools_2.0_files/image010.png" o:title="iconGen"/>
+</v:shape><![endif]--><![if !vml]><img width=281 height=237
+src="./LevelTools_2.0_files/image011.jpg" v:shapes="_x0000_i1033"><![endif]><o:p></o:p></span></h3>
+
+<h3 style='text-indent:0in'><span style='font-weight:normal'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></h3>
+
+<h3 style='margin-left:1.0in;text-indent:0in'><span style='font-weight:normal'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></h3>
+
+<p class=MsoNormal style='margin-left:1.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-2.0in'><b><span
+style='font-size:14.0pt;mso-bidi-font-size:12.0pt'>Example Files</span></b> <span
+style='mso-tab-count:1'>                  </span>Example files for LevelTools
+are included in the zip file.<span style="mso-spacerun: yes">  </span>If you
+extracted this file directly into your MyDocuments/maya/5.0 folder then you
+will find both of the following subfolders at that location.<span
+style="mso-spacerun: yes">  </span>It is not a problem to moves these to
+another location or to simply delete them if you have no need for them.</p>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in;text-indent:-1.5in'><b>LT_Project:</b><span
+style='mso-tab-count:1'>                </span>LT_Project is an example of how
+you would setup a simple project structure to work with LevelTools.<span
+style="mso-spacerun: yes">  </span>For this example, set your current project
+in Maya to the folder LT_Project.<span style="mso-spacerun: yes">  </span>Open
+LevelTools and check the import tab.<span style="mso-spacerun: yes">  </span>If
+the icons are not already loaded, reset the LevelTools settings
+(Edit-&gt;ResetSettings).<span style="mso-spacerun: yes">  </span>You should
+now see icons for props-LairLevel and props-StreetLevel in the LevelTools
+Import tab.<span style="mso-spacerun: yes">  </span></p>
+
+<p class=MsoNormal style='margin-left:1.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in'>This illustrates how the Import
+tab will behave in its default state.<span style="mso-spacerun: yes"> 
+</span>Notice that the folder LT_Project has a basic Maya project structure,
+and the scenes folder within the project is the actual location of all props
+folders.<span style="mso-spacerun: yes">  </span>Also notice that each prop
+folder contains a separate folder for icons (e.g...
+LT_Project/scenes/prop-LairLevel/icons).</p>
+
+<p class=MsoNormal style='margin-left:1.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h3 style='margin-left:2.0in;text-indent:-1.5in'>LT_Repository:<span
+style='mso-tab-count:1'>         </span><span style='font-weight:normal'>LT_Repository
+contains another set of example files for experimenting with some of the
+changes in LevelTools 1.5.<span style="mso-spacerun: yes">  </span>Start by
+resetting LevelTools (Edit-&gt;ResetSettings).<span style="mso-spacerun: yes"> 
+</span>Then use the SetPath button (under Settings in the Import tab) to select
+the folder LT-Repository.<span style="mso-spacerun: yes">  </span>This will set
+the folder as the root import path.<span style="mso-spacerun: yes">  </span>No
+project/scenes folder is necessary.<span style="mso-spacerun: yes">  </span>You
+will still not see any icons however, because this example uses a different
+prefix.<o:p></o:p></span></h3>
+
+<p class=MsoNormal style='margin-left:1.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in'>Next<b> </b>you must edit the
+CurrentPrefix.<span style="mso-spacerun: yes">  </span>Change this setting from
+&quot;props&quot; to &quot;assets&quot;.<span style="mso-spacerun: yes"> 
+</span>Now you'll notice that only a small set of icons appears, based on files
+it found at the top level.</p>
+
+<p class=MsoNormal style='margin-left:1.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in'>Finally, turn on include
+subfolders.<span style="mso-spacerun: yes">  </span>This will cause LevelTools
+to look into all folders and subfolders within LT_Repository.<span
+style="mso-spacerun: yes">  </span>Now you should see 6 sets of icons (one for
+each subfolder that is found with the prefix &quot;assets&quot;).</p>
+
+<p class=MsoNormal style='margin-left:1.5in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in'>Also notice that instead of having
+an icons folder within each subfolder, all of the icons are kept in one
+location, at the root (LT_Repository/icons).<span style="mso-spacerun: yes"> 
+</span>This is just an alternative way of organizing your icons.</p>
+
+<p class=MsoNormal style='margin-left:2.0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<p class=MsoNormal style='margin-left:2.0in'><span style='color:red'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></p>
+
+</div>
+
+</body>
+
+</html>

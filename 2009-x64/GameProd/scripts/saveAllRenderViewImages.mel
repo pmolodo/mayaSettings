@@ -1,0 +1,74 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: saveAllRenderViewImages.mel v1.0
+''    Author: Andrew Chapman
+''    Last Updated: January 28, 2003
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=rendering#2124
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+//
+// Written by Andrew Chapman - July 2002 - chapman@technolumiere.com
+// Cleaned up for publishing - Jan 2003
+//
+// This script saves out all the images in Maya's Render View window as an image 
+// sequence. This is handy for when you've been doing a long session of look development
+// work and you want to keep the progression of images (for that next 'Making Of' tape!)
+//
+// Images are saved out using the format and naming scheme currently specified in Maya's
+// render globals. Images are written to the images directory of the current project with
+// the name renderView.N.ext. The images are numbered from 1 (oldest) to N (newest).
+//
+// Maya will warn you about overwriting each existing image - so delete the existing sequence 
+// first if this is causing you grief.
+
+
+global proc saveAllRenderViewImages()
+{
+  // first find the render view controls
+  string $renderViewPanels[] = `getPanel -scriptType "renderWindowPanel"`;
+  if (size($renderViewPanels) < 1) { error "Render View window not found"; }
+  string $renderViewForm     = `renderWindowEditor -query -parent $renderViewPanels[0]`;
+  if ($renderViewForm == "")       { error "Render View window not found"; }
+  string $scrollBarName      = `match ".*|" $renderViewForm` + "scrollBarForm|scrollBar";
+
+  // work out where to save the image files to
+  string $ws = `workspace -q -fullName`;
+  string $imagesDir = `workspace -q -renderTypeEntry "images"`;
+  string $imagesDir = $ws + "/" + $imagesDir;
+
+  // find out which of the render view images we're currently looking at
+  // so we can set it back after stepping through them
+  int $currentIndex = `intScrollBar -q -value $scrollBarName`;
+
+  // now step through all the saved images in the render view window, saving each one out
+  //int $maxImageIndex = `intScrollBar -query -maxValue $scrollBarName`;
+  int $maxImageIndex = `renderWindowEditor -q -nbImages renderView` + 1;
+  int $imagesWritten = 0;
+  for($i=0; $i<$maxImageIndex; $i++) {
+    if ($maxImageIndex != 1) { // if only one image then there will be no scroll bar yet
+      intScrollBar -e -value ($i - 1) $scrollBarName;
+    }
+    renderWindowScrollDisplayImage renderView;
+    renderWindowSaveImageCallback "renderView" ($imagesDir + "/renderView." + ($maxImageIndex - $i)) "";
+    ++$imagesWritten;
+  }
+
+  // reset the current render view back to what it was before stepping through them
+  intScrollBar -e -value $currentIndex $scrollBarName;
+  renderWindowScrollDisplayImage renderView;
+
+  if ($imagesWritten == 0) {
+    print("Error saving: render view contains no images\n");
+  } else if ($imagesWritten == 1) {
+    print("Save complete: 1 render view image written\n");
+  } else {
+    print("Save complete: " + $imagesWritten + " render view images written\n");
+  }
+}

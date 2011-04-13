@@ -1,0 +1,301 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//User Interface
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+global proc string zenClearToolColumn()
+{
+	global 	string	$zenToolsMainColumn;
+	global 	int 	$zenWindowWidth;
+	global 	int 	$zenMinimumWindowWidth;
+
+		deleteUI (zenReturnLastStringItem(`columnLayout -q -ca $zenToolsMainColumn`));
+		window -e -w $zenMinimumWindowWidth -h 1 zenToolsWindow;
+		
+	string	$column=`columnLayout -p $zenToolsMainColumn -adj 1`;
+	
+		columnLayout -e -w $zenMinimumWindowWidth $column;
+		
+	return	$column;
+}
+
+global proc zenUserInterface(string $zenCurrentTool)
+{
+	global 	int 	$zenSaveOptionsScriptJob;
+
+	global 	int 	$zenMinimumWindowWidth=240;
+
+	global 	int 	$zen_safeVertLoop,
+			$zenOptions_safeUVLoop;
+	
+	global	string	$zen_selection,
+			$zenLoopChordLengthObj,
+			$zenLoftChordLengthObj;
+		
+	global	int 	$zenOptions_debugging;
+
+	global 	int 	$zenWindowWidth=245;
+	
+	global	string	$zenScriptsFolder;
+	
+	global	string	$zenHelp;
+	
+		$zenHelp=$zenScriptsFolder+"/help/index.html";
+			
+	//window
+		if(`window -ex zenToolsWindow`)
+		{
+			scriptJob -kill $zenSaveOptionsScriptJob;
+			deleteUI zenToolsWindow;
+		}
+			
+	global 	string $zenToolsWindow;
+		
+		$zenToolsWindow=`window -rtf 1 -mb 0 -title ZenTools zenToolsWindow`;
+		
+	string	$menuBar=`menuBarLayout -w $zenMinimumWindowWidth -p $zenToolsWindow`;
+
+	string 	$keepHistCB;
+					
+	global 	string	$zenToolsMainColumn;
+	
+		$zenToolsMainColumn=`columnLayout -adj 1 -p $menuBar`;
+					
+		columnLayout -h 1 -p $zenToolsMainColumn -adj 1 zenToolColumn;
+			
+	//menu		
+		menu -p $menuBar -aob 1 -label "Select" -tearOff true;
+		
+			menuItem
+				-l "Edges Between Vertices"
+				-c "doZenSelectEdgeLoopBetweenVerts"
+				-annotation "Selects an edge path containing the fewest edges necessary to connect selected vertices.";
+				
+			menuItem
+				-l "Flood Select"
+				-c "doZenCommand zenFloodSelect"
+				-annotation "Selected Edges will define a selection border, selected vertices or faces will determine the portion of the mesh to be selected.";
+				
+			menuItem
+				-l "Transfer Component Selection"
+				-c "doZenTransferComponentSelection"
+				-annotation "Transfers component selection between objects. Select components, then select one or more objects with identical topology.";
+
+
+		menu -p $menuBar -aob 1 -label "Create" -tearOff true;
+
+			menuItem
+				-l "Surface Between Edge Loops"
+				-c "doZenAttachSurface"
+				-annotation "Create curves distributed between two or more parallel edge loop selections.";
+
+			menuItem
+				-c "layoutSurfaceBetweenEdgeLoops"
+				-ob 1;
+				
+			menuItem
+				-l "Curve Spans Between Edge Loops"
+				-c "doZenAttachSpans"
+				-annotation "Create curves distributed between two or more parallel edge loop selections.";
+
+			menuItem
+				-c "layoutZenCurveSpans"
+				-ob 1;
+
+			menuItem
+				-l "Curves From Contiguous Edges"
+				-c "doZenCurvesFromEdges"
+				-annotation "Create a curve from selected polygon edges.";
+
+			menuItem
+				-c "layoutZenCurvesFromEdges"
+				-ob 1;
+
+			menuItem -d 1;
+			
+			menuItem
+				-l "UV Patch Between Edge Loops"
+				-c "doZenPatchUV"
+				-annotation "Create a nurbs-style UV patch between two or more parallel edge loop selections.";
+
+			menuItem
+				-ob 1
+				-c "layoutZenPatchUV";
+			menuItem
+				-l "Auto UV Map"
+				-c "doZenAutoMap"
+				-annotation "Maps each face on a polygon object proportionally within the 0-1 range.";
+				
+			menuItem -d 1;
+
+			menuItem
+				-l "Muscle/Tendon..."
+				-c "layoutZenMuscle";
+
+			menuItem -d 1;
+
+			menuItem
+				-l "Script Menus From Folders..."
+				-c "layoutZenManageScripts";	
+			
+				
+		menu -p $menuBar -aob 1 -label "Modify" -tearOff true;
+						
+			menuItem
+				-l "Cut Edges"
+				-c "doZenCutEdges"
+				-annotation "Cuts mesh at selected edges.";
+
+			menuItem -d 1;
+				
+			menuItem
+				-l "Curve Distribute Between Vertices"
+				-c "doZenLoop"
+				-annotation "Allign edge loop along a curve based on vertex selection.";
+				
+			menuItem
+				-ob 1
+				-c "layoutZenLoop";
+				
+			menuItem
+				-l "Loft Distribute Between Edge Loops"
+				-c "doZenLoft"
+				-annotation "Distribute vertices between two or more parallel edge loops.";
+				
+			menuItem
+				-ob 1
+				-c "layoutZenLoft";
+							
+			menuItem
+				-l "Vertex/CV Positions Transfer"
+				-c "doZenTransferPointPositions"
+				-annotation "Transfers vertex or CV positions. Select polygon vertices or nurbs/subdivision control vertices, then select one or more objects with identical topology.";
+
+			menuItem -d 1;
+
+			menuItem
+				-l "Curve Distribute Between UVs"
+				-c "doZenLoopUV"
+				-annotation "Allign edge loop along a curve based on uv selection.";
+
+			menuItem
+				-ob 1
+				-c "layoutZenLoopUV";
+				
+			menuItem
+				-l "UV Mirror "
+				-c "doZenReflectUV"
+				-annotation "Mirror UV's according to their object space positions.";
+				
+			menuItem
+				-ob 1
+				-c "layoutZenReflectUV";
+				
+			menuItem
+				-l "UV Transfer"
+				-c "doZenTransferUV"
+				-annotation "Transfer UV's between polygon objects wich have a different vertex order.";
+				
+			menuItem
+				-ob 1
+				-c "layoutZenTransferUV";
+				
+			menuItem
+				-l "UV Layout Proportionate"
+				-c "doZenProportionateUVShells"
+				-annotation "Layout selected UV shells proportionate to surface area in 3d space.";
+				
+			menuItem -d 1;
+			
+			menuItem
+				-l "Mirror Smooth Skin Influence Weights"
+				-c "doZenMirrorInfluences"
+				-annotation "Mirror smooth skin influence weights including non-joint influence object weights.";
+				
+			menuItem
+				-ob 1
+				-c "layoutZenMirrorInfluences";
+				
+			menuItem
+				-l "Confine Skin Weights To Selected Influences"
+				-c "doZenConfineWeights"
+				-annotation "Confines skin weights for selected vertices to selected influences & prunes unselected influences.";
+				
+			menuItem
+				-ob 1
+				-c "layoutZenConfineWeights";
+				
+			menuItem -d 1;
+
+			menuItem
+				-l "Reconstruct Mesh"
+				-c "doZenReconstructMesh"
+				-annotation "Reconstruct selected meshes from their outMesh attribute, resetting all attributes and connections.";
+
+			menuItem
+				-l "Comprehensive History Cleanup"
+				-c "doZenComprehensiveHistoryCleanup"
+				-annotation "Break Connections, Delete History and Delete Intermediate objects.";
+
+			menuItem -d 1;
+
+			menuItem
+				-l "Set Attributes On Multiple Objects..."
+				-c "layoutZenSetAttr"
+				-annotation "Set objects on multiple items simultaneously.";
+				
+				
+				
+		menu -p $menuBar -aob 1 -label "Help" -tearOff false;
+
+			menuItem
+				-l "Help"
+				-c "showHelp -a $zenHelp";
+				
+			menuItem
+				-l "Update ZenTools"
+				-c "showHelp -a \"http://www.highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html\";";
+				
+			menuItem
+				-l "Debugging Mode"
+				-cb $zenOptions_debugging
+				-c "$zenOptions_debugging=`menuItem -q -cb zenToolsDebuggingModeCB`;"
+				zenToolsDebuggingModeCB;
+				
+			menuItem
+				-l "Reset Options"
+				-c "zenTools_defaultOptions;zenUserInterface \"\";"
+				-annotation "Reset All ZenTools Options";				
+	//edit window
+		window 
+			-e
+			-mnb 1 
+			-mxb 0 
+			-h 1
+			-w $zenWindowWidth
+			-s 1 
+			$zenToolsWindow;
+			
+		showWindow $zenToolsWindow;
+		
+		if($zenCurrentTool!="")
+			eval($zenCurrentTool);
+			
+	//save options on zenTools exit
+		$zenSaveOptionsScriptJob=`scriptJob -e "quitApplication" "zenSaveOptions"`;
+}
+
+
+

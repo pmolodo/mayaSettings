@@ -1,0 +1,84 @@
+// fileNodeRename.mel
+//	by Naughty (naughty_genepool@hotmail.com)
+//
+// This script renames the selected file nodes with either their file's filenames 
+// or their parent shader's name. If no file nodes are selected it will rename ALL
+// of them.
+//
+// Usage:
+//
+//	fileNodeRename <mode>;	// -f = filename, -m = material name
+//
+// Usage examples:
+//
+//	fileNodeRename -f;	// renames the FILE node using it's connected file's filename
+//	fileNodeRename -m;	// renames the FILE node using it's parent material name
+//
+//
+// goto:
+//	http://www.naughtynathan.supanet.com/mel.htm
+// for more detailed explanations, pictures and even more MEL scripts...
+
+global proc fileNodeRename(string $switch)
+{
+	string $allFiles[]=`ls -sl -type file`;
+	if (size($allFiles)==0)
+		$allFiles=`ls -type file`;
+
+	print "\n\n==== Renaming File Nodes ====\n\n";
+
+	for ($node in $allFiles)
+	{
+		print ("File node found:   " + $node + "\n");
+		switch ($switch)
+		{
+			case	"-f":
+			case	"-F":
+				int $slashNums ;
+				string $subStrs[] ;
+
+				// find the (fully pathed) filename
+				string $findFileName = "getAttr " + $node + ".fileTextureName";
+				string $fullPathFileName = `eval $findFileName`;
+
+				// trim away the path leaving only the filename
+				$slashNums = `tokenize $fullPathFileName "/" $subStrs` ; 
+				string $extName = $subStrs[$slashNums-1] ;
+
+				// trim everything after the first "." (usually just the file extention)
+				$slashNums = `tokenize $extName "." $subStrs` ; 
+				string $fileName = $subStrs[0] ;
+				string $endName="";
+
+				// loop through each character in the filename to build a new string containing only the valid chars
+				for ($n=1 ; $n<(`size $fileName`+1) ; $n++)
+				{
+					string $cmd= ("substring \"" + $fileName + "\" " + $n + " " + $n);
+					string $char=`eval $cmd`;
+					if ((`match "[_a-zA-Z0-9]" $char`) != "")
+					{	$endName=$endName+$char;	}
+					else
+					{	$endName=$endName+"_";	}
+				}
+				//print ("	Filename:  \"" + $extName + "\" \n");
+				break;
+
+			case	"-m":
+			case	"-M":
+				string $materialName[] = `listConnections -t lambert $node`;
+				$endName = ($materialName[0]+"_TM");
+				//print ("	Material:   " + $materialName[0] + "\n");
+				break;
+
+			default:
+				error "Unknown Switch!";
+				break;
+		}
+		
+		// do the actual renaming
+		//print ("	New Name:   " + $endName + "\n\n");
+		rename $node $endName;
+	}
+
+	print ("\n==== Renamed " + (size($allFiles)) + " File Nodes ====\n");
+}

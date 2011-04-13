@@ -1,0 +1,24 @@
+global proc float[] tax( float $i ){
+	float $tax = 0;
+	float $taxedIncome = 0;
+	float $maxRate = 0.45;
+	float $rates[] = {0.,0.,0.15,0.3,0.4};
+	int $brackets[] = {0,6000,25000,75000,150000};
+
+	for( $n=1; $n<`size $brackets`; $n++ ) {
+		if( $i<$brackets[$n] && $i>$brackets[$n-1] ) {
+			$tax += ($i-$taxedIncome)*$rates[$n];
+
+			return {$tax,($i-$tax),(($i-$tax)/12)};
+			}
+		$tax += $rates[$n]*($brackets[$n]-$brackets[$n-1]);
+		$taxedIncome = $brackets[$n];
+		if( $taxedIncome >= $i ) return {$tax,($i-$tax),(($i-$tax)/12)};
+		}
+
+	$tax += ($i-$taxedIncome)*$maxRate;
+
+	return {$tax,($i-$tax),(($i-$tax)/12)};
+	}
+
+

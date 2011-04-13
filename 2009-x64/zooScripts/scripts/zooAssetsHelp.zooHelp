@@ -1,0 +1,61 @@
+----Managing Objects----
+zooAssets manages objects in your scene by connecting them to a node in your scene.  Each asset connected to this node is assigned a unique slot number.  This slot number is then used to uniquely name attributes associated with an asset.  These attributes are used to store information associated with that asset such as its name, notes, pre/post export mel data etc...  So zooAssets basically provides you an interface to easily create and maintain a list of assets within a scene.  If you want to explore the assets node yourself, you can select it though Export->Select Node.
+
+To manage an object, select it, and press the "manage selected objects" button down the bottom of the UI.  This will create a slot for that object, and add it to the UI.  Each asset is represented by a row in the UI.  You can then edit the information associated with a slot by right clicking anything in that row.
+
+To the far left of an asset's row is a checkBox.  Checking these boxes allow you to "select" multiple assets.  By selecting multiple assets, you can change any setting in the right click menu for all selected assets.  This allows you to easily make changes to many assets easily.  Also by right click the selection checkBoxes you can perform advanced selection functions.  Selecting all assets above or below a given slot, or selecting all of an object's assets can be done through the selection right click menu.
+
+
+----Setting Export Path----
+The "export options" section contains global settings that pertain to the entire scene.  The export path in here is where all assets are exported to.  By default, it exports to the "batch_export" path of the current project.
+
+
+----Notification Emails----
+You can get zooAssets to send an email certain people to notify them when scene assets change anre have been re-exported.  The people to notify are set on a per scene basis.  So for instance, if you have 5 animation assets in a scene, when one of them changes, you can tell assets to fire off an email to all the people in your notification list that the selected assets have been updated.
+
+To set the people in your notification list, you can either go through the menu Export->Notify People, or you can go to your "export options", and right click the text input field.  You can manually edit this field if one of the people you want to notify is not in the right click menu.
+
+To send email, select the slots you have re-exported, and go to Export->Send Email.
+
+IMPORTANT NOTE: don't rely on zooAssets to do your communication for you.  The email function is there to make life easier, not remove your responsibility to communicate with the rest of the team.  make sure you follow up emails sent every now and then because if zooAssets fails to send the email properly, you won't be given an error notification because of the way the email process works.
+
+
+----Changing A Slots Object----
+It is easy to change which object is plugged into a slot.  Select the new object, right click the slot, and select the "use selected object" menu item.
+
+
+----Pre/Post Export MEL Commands----
+You can assign a pre or post export MEL command to an asset.  This is useful for times when you want set up your scene in a different fashion to exporting.  For example, if you were working on a cutscene with multiple characters, its often ideal to unload all referenced characters.  Obviously if the characters are unloaded, the export will fail.  So you could set up your pre-export MEL command to load the reference, and the post-export mel could unload it again once the export has finished.
+
+The most important thing to be aware of when using pre/post export MEL commands is that the command strings can use a variety of "meta-variables".  The meta-variables are symbols that get replaced with node names when the command is executed.  For example, if you wanted to know the slot number of the MEL command was being executed from, you would use the @ symbol.
+
+The following symbols are supported:
+# - the object being managed by the slot
+%slot - the slot number
+%prefix - the global prefix
+%name - the asset name
+%attr - the data for an attribute called "attr"
+
+you can also use zooTriggered symbols in pre/post export MEL commands.  The connects are taken from the object being managed by a slot.  For more information about symbols used in zooTriggered please refer to the zooTriggered help files.
+
+These symbols get replaced with the actual values before the command is executed.  So for example, if you wanted to set an attribute on the managed object, you could use this quasi-MEL command:
+
+setAttr #.tx 5;
+
+
+----View Filtering----
+For scenes with many assets in them, finding a particular asset in the list can be frustrating.  zooAssets offers you a few ways to filter the list of assets in your scene.  The expandable tab down the bottom of the window lets you specify a name filter, time range filters, and selection filters.  To enable the time range filter, simply right click on the label.  This will make the input field editable and tell zooAssets that you want to filter based on time ranges.
+
+There are also other ways to filter and order the view of assets in your scene.  In the View menu you can choose from one of three different ordering methods.  These allow you to view assets in a variety of different ways.
+
+You can also ask zooAssets to hide any disabled assets.  A disabled asset doesn't get exported when you do an export all.  This is a way of keeping the asset in your scene, but flagging it as a "not used" asset.  By disabling assets, you can keep multiple versions of an asset in the scene and still make it clear which asset to use.
+
+
+----Batch Management----
+When setting attributes for an asset, zooAssets will check to see if you have any assets selected.  If you do, it will make any changes to the assets you have selected only.  Regardless of which asset you click on.  If you click on an asset thats not part of the selection, a warning will be issued.
+
+You can copy settings from one slot to another.  First, select the target assets - the assets you want to be copies.  Then right click the slot you want to copy from, and choose "copy this assets attributes".  This procedure will copy all settings from the source asset - except the object being managed by the slot.  So copying isn't quite the same as duplicating.
+
+The other great batch editing tool available is the search & replace function.  To do a search and replace, first select the assets you want to work on, right click them and choose the "search & replace".  A window will open asking you to choose which attribute you want to do the search and replace on.  So you might want to do a search and replace on the asset names of a bunch of assets.  Or perhaps you want to replace something in the notes etc...
+
+Then simply enter the search string, and the replace string and hit go.

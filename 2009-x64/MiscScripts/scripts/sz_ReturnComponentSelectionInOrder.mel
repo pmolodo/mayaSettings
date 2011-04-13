@@ -1,0 +1,27 @@
+global proc string [] sz_ReturnComponentSelectionInOrder () {
+
+string $selectionAll[] = `ls -sl`;
+string $selection[];
+string $realSelection[];
+string $buffer[];
+string $lastCommand = `undoInfo -q -un`;
+int $counter = 0;
+
+while (`match "select" $lastCommand` != "")
+{
+$lastCommand = `undoInfo -q -un`;
+if (`match "select" $lastCommand` != "")
+{
+tokenize $lastCommand " " $buffer;
+$selection [$counter] = $buffer[2];
+$counter++;
+undo;
+}
+}
+select $selectionAll;
+
+for ($i = 0; $i < (`size $selection`); $i++)
+$realSelection [$i] = $selection[(`size $selection` - $i)-1];
+
+return $realSelection;
+}

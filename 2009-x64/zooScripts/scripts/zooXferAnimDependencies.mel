@@ -1,0 +1,30 @@
+global proc string[] zooXferAnimDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $helpDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $return[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooAnimFile";
+	$melDependencies[( `size $melDependencies` )] = "zooAlign";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_float";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_int";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_str";
+	$melDependencies[( `size $melDependencies` )] = "zooChangeRoo";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooHelp";
+	$melDependencies[( `size $melDependencies` )] = "zooMatchNames";
+	$melDependencies[( `size $melDependencies` )] = "zooShelveIt";
+	$melDependencies[( `size $melDependencies` )] = "zooSortToHeirarchy";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooXferAnimUtils";
+	$helpDependencies[( `size $helpDependencies` )] = "zooXferAnim_about";
+	$helpDependencies[( `size $helpDependencies` )] = "zooXferAnim_history";
+	$helpDependencies[( `size $helpDependencies` )] = "zooXferAnim_scripting";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+	$iconDependencies[( `size $iconDependencies` )] = "zooXferAnim.bmp";
+
+	if( $mode == "-scripts" ) $return = $melDependencies;
+	if( $mode == "-docs" ) $return = $helpDependencies;
+	if( $mode == "-icons" ) $return = $iconDependencies;
+	return $return;
+	}

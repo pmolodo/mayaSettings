@@ -1,0 +1,41 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//transfers component selection by ID
+//to use: select vertices, then select one or more objects with identical topology
+global proc doZenTransferComponentSelection()
+{
+	string 	$targetObjects[]=stringArrayCatenate(`ls -tr -sl`,`ls -s -sl`);
+		
+	string	$sourceComponents[]=stringArrayRemove($targetObjects,`ls -sl -fl`);
+		if(size(stringArrayRemoveDuplicates(`ls -o $sourceComponents`))>1) error "Select components on only one object.";
+		
+	string	$targetComponents[];
+		
+	float	$tr[];
+	
+		progressWindow -ii true -title "Working" -status "Transferring Selection" -max (size($sourceComponents)*size($targetObjects)) -progress 0;
+	
+	string	$targetObj;
+	string	$newSelection[];
+		for($targetObj in $targetObjects)
+		{
+			$targetComponents=`zenMimicSelection $sourceComponents $targetObj`;
+			$newSelection=`stringArrayCatenate $newSelection $targetComponents`;
+		}
+		
+		select $newSelection;
+		
+		progressWindow -endProgress;
+}

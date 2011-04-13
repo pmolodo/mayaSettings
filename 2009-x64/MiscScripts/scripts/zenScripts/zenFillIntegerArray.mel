@@ -1,0 +1,26 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//returns an int array of size $count filled with value $value
+global proc int[] zenFillIntegerArray(int $count,int $value)
+{
+	int 	$array[];
+	
+		for($i=0;$i<$count;$i++)
+		{ 
+			$array[size($array)]=$value;
+		}
+		
+		return $array;
+}

@@ -1,0 +1,1835 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: Local Tools
+''    Author:  
+''    Last Updated: Jan 22, 2007
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/3717.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//Author: Henry Korol
+//henrykorol@yahoo.com
+
+// Version 1.0
+
+
+// This is a main script file, place it in your user setup directory, 
+// then call it from maya by typing "HKLocalTools;", or typing that to your userPrefs file.
+
+// For full documentation refer to this online doc: http://www.henrykorol.com/Scripts/LocalTools/LTDocIntroduction.htm
+
+global proc HKLocalTools()
+{
+   global int $HKLTHudBlock, $HKLTToolOn, $HKLTScriptJobID = 22222222, $HKLTScriptJobToolChangeID = 111111111, $HKLTSceneOpenScriptJob, $HKLTOptionOrientationOnly, $HKLTPivotLocked;
+   global int $HKLTScriptJob, $HKLTScriptJobRedo, $HKLTSnappingScriptJob;
+   global float $HKLTTValue,  $HKLTPivotSettings[6];
+  
+   if ( `optionVar -ex HKLTOrientationOnlyOpVar`)
+      $HKLTOptionOrientationOnly = `optionVar -q HKLTOrientationOnlyOpVar`;
+   else
+   {
+      optionVar -iv HKLTOrientationOnlyOpVar 0;
+      $HKLTOptionOrientationOnly = 0;
+   }
+   if ( `optionVar -ex HKLTPivotLockedOpVar`)
+      $HKLTPivotLocked = `optionVar -q HKLTPivotLockedOpVar`;
+   else
+   {
+      optionVar -iv HKLTPivotLockedOpVar 0;
+	  $HKLTPivotLocked = 0;
+   }
+   
+   if ( ! `optionVar -ex HKLTHUDBlock`)
+   {
+	   $HKLTHudBlock = 9;
+       optionVar -iv HKLTHUDBlock 9;
+   }
+   else
+      $HKLTHudBlock = `optionVar -q HKLTHUDBlock`;
+   
+   
+   if(  $HKLTScriptJob == 0 )
+       $HKLTScriptJob = `scriptJob -cu 1 -permanent -e "Undo" "HKLTUndoSetup()"`;
+   if ( $HKLTSnappingScriptJob == 0 )
+       $HKLTSnappingScriptJob = `scriptJob -cu 1 -permanent -e "snapModeChanged" "HKLTSFSnappingFix()"`;
+   if ( $HKLTSceneOpenScriptJob == 0 )
+       $HKLTSceneOpenScriptJob = `scriptJob -permanent -e "SceneOpened" "HKLTFixerCleanUp()"`;
+   
+    $HKLTToolOn = 0;
+}   
+   
+global proc HKLTHUDPosition( int $Block )
+{
+	global int $HKLTHudBlock;
+	optionVar -iv HKLTHUDBlock $Block;
+	$HKLTHudBlock = $Block;
+	HKLTOperateHUD(1);
+}
+   
+   if ( ! `optionVar -ex HKLTPreferedPivot`)   
+   {
+      optionVar -iva HKLTPreferedPivot 1;
+      optionVar -iva HKLTPreferedPivot 1;
+      optionVar -iva HKLTPreferedPivot 1;
+      optionVar -iva HKLTPreferedPivot 1;
+   }  
+ 
+global proc HKLTSetTheOptionVarArrayVar( int $index, int $Value )
+{
+	$ValArray = `optionVar -q HKLTPreferedPivot`;
+	optionVar -ca  HKLTPreferedPivot;
+	for ( $i = 0; $i < 4; $i ++ )
+	{
+		if( $i != $index )
+		   optionVar -iva HKLTPreferedPivot $ValArray[$i];
+		else
+		   optionVar -iva HKLTPreferedPivot $Value;
+   	}
+}
+
+global proc HKLTReadMenuSelection( string $UIName, int $index )
+{
+	$Val = `optionMenuGrp -q -v $UIName`;
+	int $Pref;
+    if ( $Val == "Point")
+		$Pref = 0;
+	else if ( $Val == "Edge")
+		$Pref = 1;
+	else if ( $Val == "Face")
+		$Pref = 2;
+	else if ( $Val == "Object")
+		$Pref = 3;
+	HKLTSetTheOptionVarArrayVar( $index, $Pref );
+}
+
+global proc HKLTOptionBox()
+{
+global int $HKLTToolOn, $HKLTScriptJobID, $HKLTScriptJobToolChangeID, $HKLTOptionOrientationOnly, $HKLTPivotLocked;
+global int $HKLTScriptJob, $HKLTScriptJobRedo, $HKLTSnappingScriptJob;
+if( `window -ex HKLocalToolOptionsWindow` )
+  deleteUI HKLocalToolOptionsWindow;
+    window -wh 433 274 -t "LocalTool Options:" HKLocalToolOptionsWindow;
+         formLayout HKMForm;
+		   columnLayout HKMMainCol;
+               frameLayout -l "Main" -cll 1 -bs "etchedIn" -w 400 HKMFrame; 
+			        columnLayout -rs 3;
+                  		 checkBox -ann "Determines whether both position and orientation of the pivot should be used or orientation only for the manipulators. Could be changed at any time." 
+							  -v $HKLTOptionOrientationOnly -l "Use Pivot Orientation Only" -cc "HKLTCBOrientationOnlyToggle" HKLTWOrientationOnlyCB;
+			              checkBox -v $HKLTPivotLocked -l  "Pivot lock" -cc "HKLTCBLockPivotToggle" HKLTWLockPivotCB;
+                         //button -l "Bake to Object";
+						  setParent ..;
+					
+			  setParent ..;
+			 frameLayout -l "Preferred component setup for the reference" -cc "window -e -h 155 HKLocalToolOptionsWindow;" -ec "window -e -h 274 HKLocalToolOptionsWindow;" -cll 1 -bs "etchedIn" -w 400  HKMFrame1; 
+			       //columnLayout -rs 3;
+			 gridLayout -nc 2 -cw 100  -ch 23 ;
+			 
+			    text -l " Object type" -fn boldLabelFont;
+			    text -l "Preferred pivot" -fn boldLabelFont;
+			    $PivotSettings = `optionVar -q HKLTPreferedPivot`;
+
+			    text -l "  Transform";
+			    optionMenuGrp  -cc "HKLTReadMenuSelection( \"HKLTTransformPivotMenu\", 0 );" HKLTTransformPivotMenu; 
+	                 menuItem -label "Point";
+ 			         menuItem -label "Edge";
+					 menuItem -label "Face";
+					 menuItem -label "Object";
+					 optionMenuGrp -e -sl ($PivotSettings[0]+1) HKLTTransformPivotMenu;
+
+			    text -l "  Vertex";
+			    optionMenuGrp -cc "HKLTReadMenuSelection( \"HKLTVertexPivotMenu\", 1 );" HKLTVertexPivotMenu ; 
+	                 menuItem -label "Point";
+ 			         menuItem -label "Edge";
+					 menuItem -label "Face";
+					 menuItem -label "Object";
+			         optionMenuGrp -e -sl ($PivotSettings[1]+1) HKLTVertexPivotMenu;
+			    text -l "  Edge";
+			    optionMenuGrp -cc "HKLTReadMenuSelection( \"HKLTEdgePivotMenu\", 2 );" HKLTEdgePivotMenu; 
+	                 menuItem -label "Point";
+ 			         menuItem -label "Edge";
+					 menuItem -label "Face";
+					 menuItem -label "Object";
+			         optionMenuGrp -e -sl ($PivotSettings[2]+1) HKLTEdgePivotMenu;
+
+			    text -l "  Face";
+			    optionMenuGrp -cc "HKLTReadMenuSelection( \"HKLFacePivotMenu\", 3 );" HKLFacePivotMenu; 
+	                 menuItem -label "Point";
+ 			         menuItem -label "Edge";
+					 menuItem -label "Face";
+					 menuItem -label "Object";
+			         optionMenuGrp -e -sl ($PivotSettings[3]+1) HKLFacePivotMenu;
+			setParent ..;
+		setParent ..;
+		setParent ..;
+		button -l " Take reference " -c "HKLTMainButtonProc()" -h 27 -p HKMForm HKLTEnterToolBut;
+		button -l  " Bake to Object " -c "HKLTBakeToObject();" -h 27 -p HKMForm HKLTLockPivtBut;
+        button -l " Close " -c "deleteUI HKLocalToolOptionsWindow;" -h 27 -p HKMForm HKLTCloseBut;
+		    formLayout -e 
+              -af HKLTEnterToolBut bottom 5
+              -af HKLTEnterToolBut left 3
+              -ap HKLTEnterToolBut right 2 33
+			  -af HKLTLockPivtBut bottom 5
+              -ap HKLTLockPivtBut left 2 33
+              -ap HKLTLockPivtBut right 2 66
+              -af HKLTCloseBut right 3
+              -af HKLTCloseBut bottom 5
+              -ac HKLTCloseBut left 5 HKLTLockPivtBut
+			  -ac HKMMainCol bottom 3 HKLTEnterToolBut
+			  -af HKMMainCol top 3
+			  -af HKMMainCol left 3
+			  -af HKMMainCol right 3
+           HKMForm;
+
+    showWindow;
+}
+
+global proc HKLTMainButtonProc()
+{
+	 if (`getModifiers` == 4 )
+      HKLTEnd(); 
+	 else if (`getModifiers` != 4 )
+	  HKLocalToolsAction();
+}
+
+global proc HKLocalToolsAction()
+{
+ 	 global int $HKLTPivotLocked;
+	 $CS = `ls -sl`;
+	 if ( size ( $CS ) > 0 )
+	 {
+		if ( ! $HKLTPivotLocked )
+	    {
+	         HKMoveComps(0);
+	    }
+	    else if ( $HKLTPivotLocked )
+	    {
+			$HKLTPivotLocked = 0;
+		    HKMoveComps(0);
+			$HKLTPivotLocked = 1;
+	    }
+	 }
+	 else
+		 warning "Haha, nothing selected!";
+}
+
+global proc HKLTCBLockPivotToggle()  
+{
+ global int $HKLTPivotLocked; 
+ if ( $HKLTPivotLocked == 1 ) // on - turning off
+ {
+	if (  `checkBox -ex HKLTWLockPivotCB`)
+	   checkBox -e -v 0 HKLTWLockPivotCB;
+	if  (`headsUpDisplay -ex HKLTHUD`) 
+	    if ( `getApplicationVersionAsFloat` >= 7 ) 
+		       hudButton -e -l "LT" -bw 35 HKLTHUD;
+		else
+			  headsUpDisplay -e -l "Local Tool" HKLTHUD;
+	 $HKLTPivotLocked = 0;
+ }
+ else if ( $HKLTPivotLocked == 0 )// turning on
+ {
+    if (  `checkBox -ex HKLTWLockPivotCB`)
+	   checkBox -e -v 1 HKLTWLockPivotCB;
+	if  (`headsUpDisplay -ex HKLTHUD`)
+	    if ( `getApplicationVersionAsFloat` >= 7 ) 
+	         hudButton -e -l "LT Locked" -bw 75 HKLTHUD;
+	    else
+			  headsUpDisplay -e -l "Pivot Locked" HKLTHUD;
+    $HKLTPivotLocked = 1;
+ }
+  optionVar -iv HKLTPivotLockedOpVar $HKLTPivotLocked;
+}
+
+global proc HKLTHUDCommand()
+{
+	if (`getModifiers` != 4 && `getModifiers` != 1){
+		HKLTCBLockPivotToggle();
+	}
+	else if (`getModifiers` == 1 ){
+		HKLTEnd();
+	}
+	else{
+		HKLTOptionBox();
+	}
+}
+
+global proc HKLTOperateHUD( int $mode )
+{
+    // 1 - create, 0 - delete
+   global int $HKLTPivotLocked, $HKLTHudBlock;
+   if( `headsUpDisplay -ex HKLTHUD`)
+	     headsUpDisplay -rem HKLTHUD;
+   if( $mode == 1 )
+   {
+      if ( `getApplicationVersionAsFloat` >= 7 ) // version 7 and higher
+	  {   
+		  if ( $HKLTPivotLocked == 1 )
+		     hudButton -s 5 -b $HKLTHudBlock -vis 1 -l "LT Locked" -bw 75 -bsh "roundRectangle" -rc "HKLTHUDCommand" HKLTHUD;
+          else if ( $HKLTPivotLocked == 0)
+			 hudButton -s 5 -b $HKLTHudBlock -vis 1 -l "LT" -bw 35 -bsh "roundRectangle" -rc "HKLTHUDCommand" HKLTHUD;
+	  }
+	  else
+	  {
+		  if ( $HKLTPivotLocked == 1 )
+		     headsUpDisplay -s 5 -b $HKLTHudBlock -l "Pivot Locked" HKLTHUD;
+          else if ( $HKLTPivotLocked == 0 )
+			 headsUpDisplay -s 5 -b $HKLTHudBlock -l "Local Tool"  HKLTHUD;
+	  }
+   }
+}
+
+
+
+global proc HKLTCBOrientationOnlyToggle()
+{
+ global int $HKLTOptionOrientationOnly, $HKLTScriptJobID;
+ global string $HKMovedComps[], $HKMovedObjects[], $ShapeName[];
+ global float $HKLTPivotSettings[];
+ $State = `checkBox -q -v HKLTWOrientationOnlyCB`;
+ $HKLTOptionOrientationOnly = $State;
+       optionVar -iv HKLTOrientationOnlyOpVar $HKLTOptionOrientationOnly;
+ if( `objExists LocalToolReference`)
+ {
+   
+	if ( `scriptJob -ex $HKLTScriptJobID`)
+	     scriptJob -f -kill $HKLTScriptJobID;
+    undoInfo -swf 0;
+	if(  $HKLTOptionOrientationOnly == 1 )
+	{
+		select -r $HKMovedObjects;
+        select -add $HKMovedComps;
+		$Coord = HKGetSelectionCenter();
+		xform -ws -piv  $Coord[0] $Coord[1] $Coord[2] LocalToolReference;
+		if( size ($HKMovedComps) > 0 ) 
+		{
+			hilite $ShapeName;
+			select -d ( `filterExpand -sm 36 -sm 37 -sm 38 $HKMovedComps` );
+		}
+		if( size ($HKMovedObjects) > 0 ) 
+		{
+			select -d $HKMovedObjects;
+		}
+	   select -add LocalToolReference;
+  	}
+	else if(  $HKLTOptionOrientationOnly == 0 )
+	{
+	   xform -ws -piv  $HKLTPivotSettings[6] $HKLTPivotSettings[7] $HKLTPivotSettings[8] LocalToolReference;
+	}
+       undoInfo -swf 1;
+	  $HKLTScriptJobID = `scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKMCCleanUp(0,1);"`;
+      // print Done;
+ }
+}
+
+global proc HKLTBakeToObject()
+{
+	global int $HKLTPivotLocked, $HKLTScriptJobID, $HKLTOptionOrientationOnly;
+  if ( `objExists LocalToolReference`)
+  { 
+	float $Rot[3] = `xform -q -ro LocalToolReference`;
+    float $Piv[3] = `xform -ws -q -piv LocalToolReference`;
+
+    if ( $HKLTPivotLocked )
+		  HKLTCBLockPivotToggle();
+	
+	if( `scriptJob -ex $HKLTScriptJobID` )
+       scriptJob -f -kill $HKLTScriptJobID;
+	HKMCCleanUp(0,0);
+    
+	global string $HKMovedComps[], $HKMovedObjects[];
+	string $Hilite[];
+	clear $Hilite;
+	if( `size $HKMovedComps` > 0 )
+		$Hilite = `ls -hl -fl`;
+	for ( $cur in $HKMovedObjects )
+		$Hilite[ (`size $Hilite`) ] = $cur;
+   
+    select -clear;
+    for ( $currentObj in $Hilite )
+	{
+		$Parent = `listRelatives -p -typ "transform" $currentObj`;
+	    if( `size $Parent` > 0 )
+			  parent -w $currentObj;
+		$Children = `listRelatives -typ "transform" $currentObj`;
+		if( `size $Children` > 0 )
+		      parent -w $Children;
+		
+		if ( size (`filterExpand -sm 12 -sm 68 -sm 9 -sm 11 -sm 10 $currentObj`) > 0)  // geomery
+	    {
+		      makeIdentity -apply 1 -t 0 -r 1 -s 0 -n 0 $currentObj;
+			  if (  `getAttr ( $currentObj + ".ro" )` != 0 )
+				  setAttr ( $currentObj + ".ro" ) 0;
+		      float $P[3] = `xform -ws -q -rp $currentObj`;
+		      xform -a -ws -ro $Rot[0] $Rot[1] $Rot[2] $currentObj;
+		 
+		      string $Comps;
+		      if( size (`filterExpand -sm 12 $currentObj`) > 0)
+		        $Comps = ($currentObj+".vtx[*]");
+		 
+		      else if(  size (`filterExpand -sm 68 $currentObj`) > 0)
+			    $Comps  = ($currentObj+".smp[*][*]");  
+		 
+		      else if( size (`filterExpand -sm 9 -sm 11 $currentObj`) > 0)
+	            $Comps = ($currentObj + ".cv[*]");
+		 
+		      else if( size (`filterExpand -sm 10 $currentObj`) > 0)
+		        $Comps = ($currentObj + ".cv[*][*]"); 
+			 
+		     rotate -r -p $P[0] $P[1] $P[2] 0 0 (-$Rot[2]) $Comps;
+		     rotate -r -p $P[0] $P[1] $P[2] 0 (-$Rot[1]) 0 $Comps; 
+		     rotate -r -p $P[0] $P[1] $P[2] (-$Rot[0]) 0 0 $Comps; 
+			 if ( $HKLTOptionOrientationOnly == 0)
+			       xform -ws -piv $Piv[0] $Piv[1] $Piv[2] $currentObj;
+		}
+		else
+		{
+		   $Shape = `listRelatives -s -ni $currentObj`;
+	       if( `nodeType $Shape[0]` == "clusterHandle" || `nodeType $Shape[0]` == "softModHandle" )  // clusters 
+           { 
+   		       $T = `xform -q -ws -t $currentObj`;
+			   $S = `xform -q -r -s $currentObj`;
+			   spaceLocator -n HKBakeTMP;
+			   xform -ws -t 0 0 0$currentObj;
+			   xform -s 1 1 1 $currentObj;
+		       if( `nodeType $Shape[0]` == "clusterHandle" )
+			        cluster -e -bs 1 -wn HKBakeTMP HKBakeTMP $Shape[0];
+			   else
+				    softMod -e -bs 1 -wn HKBakeTMP HKBakeTMP $Shape[0];
+               xform -ro $Rot[0] $Rot[1] $Rot[2] $currentObj;
+             
+			   if( `nodeType $Shape[0]` == "clusterHandle" )
+                   cluster -bs 1 -e -wn $currentObj $currentObj $Shape[0];
+			   else
+				   softMod -bs 1 -e -wn $currentObj $currentObj $Shape[0];
+			   xform -ws -t $T[0] $T[1] $T[2] $currentObj;
+			   xform -s $S[0] $S[1] $S[2] $currentObj;
+			   if( $HKLTOptionOrientationOnly == 0)
+		            xform -ws -piv $Piv[0] $Piv[1] $Piv[2] $currentObj;
+			   
+               delete HKBakeTMP;
+           }
+		   else // other transforms
+	       {
+		      xform -ro $Rot[0] $Rot[1] $Rot[2] $currentObj;
+	          if ( $HKLTOptionOrientationOnly == 0)
+			      xform -ws -piv $Piv[0] $Piv[1] $Piv[2] $currentObj;
+			  if (  `getAttr ( $currentObj + ".ro" )` != 0 )
+			     warning ("The rotation order on the object is incorrect, uncorrect results may occur. Object: "+$currentObj);  
+	       }
+		}
+	    
+		if( `size $Children` > 0 )
+		    parent $Children $currentObj;
+		if( `size $Parent` > 0 )
+			parent $currentObj $Parent[0];
+		
+	}
+		
+	select -r $Hilite;
+	print "Baked successfully!";
+  }
+  else
+	  warning "No effect. No active reference for the tool at the moment. ";
+}	
+
+global proc HKLTWriteVariables()
+{
+   if( `objExists LocalToolReference`)	
+   {
+	global string  $HKLTParents[], $HKMovedObjects[], $HKLTTweakName[], $HKMCClusterName;
+	// creating the attribute/setting it's value
+	 if ( `attributeQuery -n LocalToolReference -ex "Parents"` ) 
+	    deleteAttr LocalToolReference.Parents;
+	 addAttr -s 1 -dt "string" -ln "Parents" -m LocalToolReference;
+	  
+	 if ( `attributeQuery -n LocalToolReference -ex "Objects"` ) 
+	     deleteAttr LocalToolReference.Objects;
+	 addAttr -s 1 -dt "string" -ln "Objects" -m LocalToolReference;
+	 
+	 if ( `attributeQuery -n LocalToolReference -ex "Tweak"` ) 
+	     deleteAttr LocalToolReference.Tweak;
+	 addAttr -s 1 -dt "string" -ln "Tweak" -m LocalToolReference;
+	 
+	 if ( `attributeQuery -n LocalToolReference -ex "ClusterName"` ) 
+	     deleteAttr LocalToolReference.ClusterName;
+	 addAttr -s 1 -dt "string" -ln "ClusterName" LocalToolReference;
+	 
+	 
+	 for ( $i = 0; $i < `size $HKLTParents`; $i++)
+	   setAttr ("LocalToolReference.Parents["+$i+"]") -type "string" $HKLTParents[$i];
+	 for ( $i = 0; $i < `size $HKMovedObjects`; $i++)
+	   setAttr ("LocalToolReference.Objects["+$i+"]") -type "string" $HKMovedObjects[$i];
+	 for ( $i = 0; $i < `size $HKLTTweakName`; $i++)
+	   setAttr ("LocalToolReference.Tweak["+$i+"]") -type "string" $HKLTTweakName[$i];
+     setAttr ("LocalToolReference.ClusterName") -type "string" $HKMCClusterName;
+   }
+}
+
+global proc HKLTReadVariables()
+{
+   	  global string  $HKLTParents[], $HKMovedObjects[], $HKLTTweakName[], $HKMCClusterName;  
+	  // reading the attribute/setting value to the variable 
+	  if ( `attributeQuery -n LocalToolReference -ex "Parents"` ) 
+	  {  
+	   clear $HKLTParents;
+       $length = `getAttr -s LocalToolReference.Parents`;
+       for ( $i = 0; $i < $length; $i++)
+         $HKLTParents[$i] = `getAttr ("LocalToolReference.Parents["+$i+"]")`;
+	  
+	  clear $HKMovedObjects;
+      $length = `getAttr -s LocalToolReference.Objects`;
+      for ( $i = 0; $i < $length; $i++)
+         $HKMovedObjects[$i] = `getAttr ("LocalToolReference.Objects["+$i+"]")`;
+	  
+	  clear $HKLTTweakName;
+      $length = `getAttr -s LocalToolReference.Tweak`;
+      for ( $i = 0; $i < $length; $i++)
+         $HKLTTweakName[$i] = `getAttr ("LocalToolReference.Tweak["+$i+"]")`;
+
+	   $HKMCClusterName = `getAttr ("LocalToolReference.ClusterName")`;
+	  }
+}	 
+
+//------------------------------------------------------------------------------------------------------
+global proc HKMoveComps(int $Mode)
+{
+    global int $HKLTToolOn, $HKLTOptionOrientationOnly, $HKLTPivotLocked;
+    global string $HKMCClusterName, $HKLTLastTool;
+    global string $HKMovedComps[], $HKMovedObjects[] , $HKLTTweakName[], $HKLTParents[];
+    global int $HKLTScriptJobID;
+     
+	if ( $Mode != 1 )
+    {
+          if(`objExists LocalToolReference`)
+          {
+                 if( `scriptJob -ex $HKLTScriptJobID` )
+                     scriptJob -f -kill $HKLTScriptJobID;
+                 
+				 int $ShouldAddObjs = 0;
+				 string $Sl[] = `ls -sl -tr`;
+				 if ( $Sl[0] == "LocalToolReference" )
+					 $ShouldAddObjs = 1;
+		         //select -d LocalToolReference;
+                 if( ! $HKLTPivotLocked )
+				      HKMCCleanUp(0,1);
+				 if( `size $HKMovedObjects` > 0 && $ShouldAddObjs )
+					  select -add $HKMovedObjects;
+          }          
+    }
+     $HKLTLastTool = `currentCtx -q`;
+     global string $gSelect;
+    clear $HKLTTweakName;
+    if( size (`ls -hl`) > 0 )
+	   $HKMovedComps = `filterExpand -ex 0 -sm 31 -sm 32 -sm 34 -sm 36 -sm 37 -sm 38 -sm 28 -sm 46`;
+	else 
+		clear $HKMovedComps;
+    $HKMovedObjects = `ls -sl -tr`;
+	$HKMCClusterName = ""; 
+	 if( size ( $HKMovedObjects ) == 1 )
+		 if ( $HKMovedObjects[0] == "LocalToolReference" )
+		     clear $HKMovedObjects; 
+	  $ObjSelMode = `selectMode -q -o`; 
+	  $CompSelMode = `selectMode -q -co`; 
+	  if ( $Mode == 0 )
+	  {
+		  $ObjSelMode = 1;
+		  $CompSelMode = 1;
+	  }
+      
+	if ( size ($HKMovedComps) > 0 )//&& $CompSelMode)
+    {
+          setToolTo $gSelect;   
+          global string $ShapeName[];
+          $ShapeName = `ls -s -sl -sn -o`;
+          hilite $ShapeName;
+		  $Transform = `listRelatives -p $ShapeName`;
+          $Vtx = `polyListComponentConversion -tv`;   // add the subdiv and nurbs things
+          $SbdVtx = `subdListComponentConversion -tv`;  
+		  $OtherCmps = `filterExpand -sm 28 -sm 46`;
+		 // for ( $item in $SbdVtx )
+			//  $Vtx[ `size $Vtx` ] = $item;   
+          
+		  changeSelectMode -component;
+		  int $Shouldrecluster = 0;
+   		  $History = `listHistory -il 1 $ShapeName`;
+		  for ( $cur in $History )
+			  if ( `nodeType $cur` == "tweak" )
+			      if ( `getAttr ($cur+".en")` > 0 )
+				       $Shouldrecluster = 1;
+		
+		  //string $Tmp[3];
+		   //if( $Shouldrecluster == 0 )
+		   
+   			   $Tmp = `cluster  -n "localTransform1" $Vtx $SbdVtx $OtherCmps`;
+               $History = `listHistory -il 1 -lv 2 $Tmp`;
+           
+		       int $l = 1;
+		       while( `nodeType $History[$l]` == "tweak")
+               {
+                   $HKLTTweakName[`size $HKLTTweakName` ] = $History[$l];
+                   if (`getAttr -s ($History[$l]+".vl[0].vt")` > 0)
+					$Shouldrecluster = 1;
+				   $l = $l+1;
+		       }  
+		  
+				if( $Shouldrecluster )			
+				{
+                      //this is the procedure in case that tweaks are loaded
+                     
+					  string $InstanceParents[]; int $ParentIndex[]; clear $ParentIndex;
+					  $ParentIndex[0] = 0;
+					  for ( $currentShape in $ShapeName )  
+					  {
+					      $Parents = `listRelatives -ap -ni $currentShape`;
+					      $ParentIndex[`size $ParentIndex`] = $ParentIndex[(`size $ParentIndex`-1)]+(`size $Parents`) - 1; 
+					  }
+					  $ParentIndex[`size $ParentIndex`] = $ParentIndex[(`size $ParentIndex`-1)] + 1; 
+					  $InstanceParents = `listRelatives -ap -ni $ShapeName`;
+					  
+					  // cleanuping the trash in history so that clusterization will not cause any troubles
+					  for ( $currentTransform in $Transform )
+					  {
+					    $Sp = `listRelatives -s $currentTransform`;
+                        string $cur;
+                        for ( $cur in $Sp )
+                        if( `getAttr ( $cur+".io")` == 1)
+                        {
+                           $DestCon = `listConnections -d 1 -s 0 -p 1 -t "shadingEngine" $cur`;
+         
+		                   string $DestConPair[]; clear  $DestConPair;
+                           for ( $cr in $DestCon)
+                           {
+                              $Con = `listConnections -d 0 -s 1 -p 1 $cr`;
+	                          $DestConPair[`size $DestConPair`] = $Con[0];
+                           }
+                           for ( $con = 0; $con < (`size $DestCon`); $con++ )
+                              if ( `isConnected $DestConPair[$con] $DestCon[$con]` )
+                                   disconnectAttr $DestConPair[$con] $DestCon[$con];       
+                         }   
+					  }
+
+					  if( `objExists $Tmp[1]`)  
+					     delete $Tmp[1];
+                      $Shape = `listRelatives -s -ni $Transform`;
+                      $Tmp = `cluster -af -n "localTransform1" $Vtx $SbdVtx $OtherCmps`;
+                      $NewShape = `listRelatives -s -ni $Transform`;
+					  
+					  string $MeshConnections[],  $MatrixConnections[], $DrawInfo[];
+					  
+					  for ( $d = 0; $d < `size ( $Shape )`; $d++ )
+					  {
+					     $MeshConnections = `listConnections -s 0 -d 1 -p 1 ($Shape[$d]+".outMesh")`;
+                         $MatrixConnections = `listConnections -s 0 -d 1 -p 1 ($Shape[$d]+".worldMatrix")`;
+                         $DrawInfo = `listConnections -s 1 -d 0 -p 1 ($Shape[$d]+".drawOverride")`;
+					  
+						   for ( $currentPlug in $MeshConnections )
+					       {
+						      if ( !`isConnected ($NewShape[$d]+".outMesh") $currentPlug` )
+                                      connectAttr -f ($NewShape[$d]+".outMesh") $currentPlug;
+					       }
+   						   for ( $currentPlug in $DrawInfo )
+					       {
+						       if ( !`isConnected $currentPlug ($NewShape[$d]+".drawOverride")` )
+                                      connectAttr -f $currentPlug ($NewShape[$d]+".drawOverride");
+						   }
+                           for ( $currentPlug in $MatrixConnections )
+					       {
+	 						   if ( !`isConnected ($NewShape[$d]+".worldMatrix") $currentPlug` )
+                                      connectAttr -f ($NewShape[$d]+".worldMatrix") $currentPlug;
+						   }
+						   if( `objExists $Shape[$d]` ) 
+						       rename $Shape[$d] ($Shape[$d]+"Orig");
+						   if( `objExists $NewShape[$d]` ) 
+						       rename $NewShape[$d] $Shape[$d];
+					  }
+					 
+                      int $count = 0;
+					  for( $i = 0; $i < `size($Shape)`; $i++) 
+                      {
+						  $Parents = `listRelatives -p $Shape[$i]`;
+						  for ( $k = ($ParentIndex[$count]); $k <= $ParentIndex[$count+1]; $k++) 
+						     if ( $InstanceParents[$k] != $Parents[0] ) 
+		              		     parent -add -s $Shape[$i] $InstanceParents[$k];
+						  $count =  $i+2;
+                      }
+                  
+					  $History = `listHistory -il 1 -lv 2 $Tmp`;
+					  
+                      int $l = 1;
+					  clear $HKLTTweakName;
+		              while( `nodeType $History[$l]` == "tweak")
+                      {
+                         $HKLTTweakName[`size $HKLTTweakName` ] = $History[$l];
+                          //setAttr ($History[$l]+".en") 0;
+				           $l = $l+1;
+		              }    
+                }
+                //else
+                  if ( $Mode == 1 )
+				      for ( $curTweak in $HKLTTweakName )
+					       setAttr ($curTweak+".en") 0;
+               
+          // else   add the checking the history procedure for finding tweak nodes if this is inside the thing of locked pivot- ignore 
+
+          $HKMCClusterName = $Tmp[1];
+          setAttr ($HKMCClusterName+".visibility") 0;
+		  hilite $Transform;
+          $ShapeName = $Transform;
+		  
+		  
+           
+      }
+	  if ( size ($HKMovedObjects) > 0 )
+	  {
+          string $cur, $parents[]; 
+		  clear $HKLTParents;
+		  for ( $cur in $HKMovedObjects )
+	          if ( `objExists $cur`)
+		      {
+                  $parents = `listRelatives -p $cur`; 
+				  if ( `size $parents` == 0)
+                      $HKLTParents[`size $HKLTParents`] = "world";
+				  else
+					  $HKLTParents[`size $HKLTParents`] = $parents[0];
+		       }
+	  }
+	  
+	  // -------------------   handling the selection stuff 
+	  //if (  size ($HKMovedObjects) > 0 && size ($HKMovedComps) > 0 )
+	  //{
+	      if( $Mode == 0 )
+	      {
+                select -clear;
+			   if( size ($HKMovedObjects) > 0 )
+			   {
+				  changeSelectMode -component;
+			      $Hlt = `filterExpand -ex 0 -sm 9 -sm 10 -sm 11 -sm 12 -sm 68 $HKMovedObjects`;
+				  hilite $Hlt;
+				  if ( `size $Hlt` == 0 )
+					  changeSelectMode -object;
+			   }
+               $PrefComp = `optionVar -q HKLTPreferedPivot`;
+			   
+			   if ( size  ( $HKMovedObjects ) > 0 )
+			   {
+                 if ( $PrefComp[0] == 0 )
+				    selectType  -pv 1;
+                 else if ( $PrefComp[0] == 1 )
+                    selectType  -pe 1;
+                 else if ( $PrefComp[0] == 2 )
+                    selectType  -pf 1;
+				 else if ( $PrefComp[0] == 3 )
+                     changeSelectMode -object;
+			   }
+			   else if ( size (`filterExpand -ex 0 -sm 31 -sm 36 -sm 28 $HKMovedComps`) > 0 )
+			   {
+                 if ( $PrefComp[1] == 0 )
+				    selectType  -pv 1;
+                 else if ( $PrefComp[1] == 1 )
+                    selectType  -pe 1;
+                 else if ( $PrefComp[1] == 2 )
+                    selectType  -pf 1;
+				 else if ( $PrefComp[1] == 3 )
+                     changeSelectMode -object;
+			   }
+			   else if ( size (`filterExpand -ex 0 -sm 32 -sm 37 $HKMovedComps`) > 0 )
+			   {
+                 if ( $PrefComp[2] == 0 )
+				    selectType  -pv 1;
+                 else if ( $PrefComp[2] == 1 )
+                    selectType  -pe 1;
+                 else if ( $PrefComp[2] == 2 )
+                    selectType  -pf 1;
+				 else if ( $PrefComp[2] == 3 )
+                     changeSelectMode -object;
+			   }	
+			   else if ( size (`filterExpand -ex 0 -sm 34 -sm 38 $HKMovedComps`) > 0 )
+			   {
+                 if ( $PrefComp[3] == 0 )
+				    selectType  -pv 1;
+                 else if ( $PrefComp[3] == 1 )
+                    selectType  -pe 1;
+                 else if ( $PrefComp[3] == 2 )
+                    selectType  -pf 1;
+				 else if ( $PrefComp[3] == 3 )
+                     changeSelectMode -object;
+			   }		 
+				 select -d $HKMovedObjects;
+				 scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKLTTakeReference();";
+                print "Select the reference component/s or object/s.";
+			}
+		   else if ( $Mode == 1 )
+		   {
+				 select -r $HKMovedComps; 
+				 select -d ( `filterExpand -sm 36 -sm 37 -sm 38 $HKMovedComps` );
+				 select -add $HKMovedObjects;
+				 //$HKLTScriptJobID = `scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKMCCleanUp(0,1);"`;
+		   }
+		   
+		   
+	      if ( $Mode == 1) 
+	       setToolTo $HKLTLastTool;
+ }
+
+//-------------------------------------------------------------------------------------------------------------------
+
+global proc HKLTTakeReference()
+{
+ 	float $Pos[3]; string $EdgeVtx[]; 
+    global string $HKMCClusterName;
+    global string $HKMovedComps[], $HKMovedObjects[], $HKLTTweakName[];
+    global string $ShapeName[];
+    global int $HKLTScriptJobID, $HKLTOptionOrientationOnly;
+     HKLTOperateHUD(0);
+	string $Pivot[] = `filterExpand  -ex 1 -sm 31 -sm 32 -sm 34 -sm 36 -sm 37 -sm 38 -sm 28`;
+      int $TwoPts = 0;
+	  
+    if ( `getModifiers` == 1 )   //
+    {
+      	 if( size (`filterExpand -ex 1 -sm 31 -sm 36 -sm 28` ) == 1 )
+      	 {
+             print "Select another point for 2 points reference definition";
+                //if( !`scriptJob -ex  $HKLTScriptJobID` )
+                   $HKLTScriptJobID = `scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKLTTakeReference();"`;
+      	     $TwoPts = 1;
+      	 }
+		 else if( size ( `ls -sl -fl -tr` ) == 1 )
+		 {
+			 print "Select another obejct for 2 objects reference definition";
+			   $HKLTScriptJobID = `scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKLTTakeReference();"`;
+			    $TwoPts = 1;
+		 }
+    }
+   
+	if ( (size (`filterExpand -ex 1 -sm 31 -sm 36 -sm 28`) != 1 && size ( `ls -sl -fl -tr` ) != 1 )||  $TwoPts != 1 )
+    {
+      //------------------- Checking the pivot for errors  --------------------
+      if( (size($Pivot) == 0 && size ( `ls -hl`) > 0 ) ) 
+      {
+ 	         print "Nothing selected, select a component to use as a pivot.";
+ 	         scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKLTTakeReference();";
+      }
+	  else if (  size ( `ls -sl -tr`) == 0 && size ( `ls -hl`) == 0  )
+	  {
+		  print "Nothing selected, select a component to use as a pivot.";
+ 	      scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKLTTakeReference();";
+	  }
+      else if ( size ( `ls -hl`) > 0 || size ( `ls -sl -tr`) > 0 )
+      {
+  		 string $buff[], $Hilite;    
+		 if (  size ( `ls -hl`) > 0 )
+		 {
+		   $Numb = `tokenize $Pivot[0] "." $buff`;
+		   $Hilite = $buff[0];
+		 }
+		 else
+		 {
+			 $sl = `ls -sl -tr -fl`;
+			  $Hilite = $sl[0];
+		 }
+		  string $Shape[] = `listRelatives -s -ni $Hilite`;
+		  if ( size ($HKMovedObjects) > 0 )
+			  $ShapeName[0] = $Shape[0];   
+		  if ( `size $Shape` == 0 ) 
+			  $Shape[0] = $Hilite;
+
+		  // ------------ Deleting old reference object -------------------
+          if(`objExists LocalToolReference`)
+          {
+               $Relatives = `listRelatives LocalToolReference`;
+               if ( `size $Relatives` > 1 )
+                    parent -w -a $Relatives[1];
+               delete LocalToolReference;
+               select -r $Pivot;
+          }
+          // ******************* reference setup for pivoting ***********************
+		  // ------------ Vertex Pivot or Multiple component Pivot ----------------
+          if( (size($Pivot) > 1 || size( `filterExpand -sm 31 -sm 36 -sm 28 $Pivot`) == 1 )&& size( `filterExpand -sm 31 -sm 36 -sm 28 $Pivot`) != 2 )
+          { 
+                $Coord = HKGetSelectionCenter();
+                spaceLocator -n "LocalToolReference" -p $Coord[0] $Coord[1] $Coord[2];
+                xform -cp LocalToolReference;
+                setAttr "LocalToolReferenceShape.v" 0;
+                $Norm = HKGetVertexNormal($Pivot, $Shape[0]); 
+                float $pos[3];
+                 $pos[0] = $Norm[0] + $Coord[0];
+                 $pos[1] = $Norm[1] + $Coord[1];
+                 $pos[2] = $Norm[2] + $Coord[2];
+
+                spaceLocator -n "HKTMP1" -p $pos[0] $pos[1] $pos[2];  xform -cp HKTMP1;
+                aimConstraint -n "HKReferenceTmpAim" HKTMP1 LocalToolReference;
+                delete HKTMP1;
+          }
+          // ------------- Single Edge/Face Pivot or 2 point pivot ----------------
+          else if( size( `filterExpand -sm 28 -sm 32 -sm 34 -sm 37 -sm 38 $Pivot`) > 0  ||  size( `filterExpand -sm 28 -sm 31 -sm 36 $Pivot`) == 2   )
+          {
+                  float $Coord[3];
+                  $Coord = HKGetSelectionCenter(); 
+                  spaceLocator -n "LocalToolReference" -p $Coord[0] $Coord[1] $Coord[2];
+                  xform -cp LocalToolReference;
+                  setAttr "LocalToolReferenceShape.v" 0;
+
+				  if( size( `filterExpand -sm 28 -sm 32 -sm 31 -sm 36 -sm 37 $Pivot`) )
+                  {
+                         $EdgeVtx = `polyListComponentConversion -tv $Pivot`;   
+                         $EdgeVtx = `ls -fl $EdgeVtx`;
+						 $SbdVtx = `subdListComponentConversion -tv $Pivot`; 
+						 $SbdVtx = `ls -fl $SbdVtx`;
+                         if( size ( $EdgeVtx ) == 0 && size ( $SbdVtx ) > 0 )
+							 $EdgeVtx = $SbdVtx;
+						 else if ( size ( $EdgeVtx ) == 0 )
+							 $EdgeVtx = `filterExpand -sm 28 $Pivot`;
+						 $Pos = `pointPosition $EdgeVtx[0]`;
+						 spaceLocator -n "HKTMP1" -p $Pos[0] $Pos[1] $Pos[2];  xform -cp HKTMP1;
+                         $Norm = HKGetVertexNormal($Pivot, $Shape[0]);
+                         $Constraint = `aimConstraint -n "HKReferenceTmpAim" -wu $Norm[0] $Norm[1] $Norm[2] HKTMP1 LocalToolReference`;
+                         delete $Constraint; delete HKTMP1;
+				  }
+                  else
+                  {
+                         string $FaceEdges[],$TargetEdgeVerts[];
+					     $FaceEdges = `polyListComponentConversion -te $Pivot`;
+						 if ( size ($FaceEdges) > 0 )
+						 {
+                            $FaceEdges = `ls -fl $FaceEdges`;
+                            $TargetEdgeVerts = `polyListComponentConversion -tv $FaceEdges[0]`;
+       					 }
+						 else
+						 {
+						    $FaceEdges = `subdListComponentConversion -te $Pivot`; 
+						    $FaceEdges = `ls -fl $FaceEdges`;
+                            $TargetEdgeVerts = `subdListComponentConversion -tv $FaceEdges[0]`;
+						 }
+                           $TargetEdgeVerts = `ls -fl $TargetEdgeVerts`;
+                        
+						   $TPos1 = `pointPosition $TargetEdgeVerts[0]`; $TPos2 = `pointPosition $TargetEdgeVerts[1]`;
+                           $Pos[0] =  ($TPos1[0]+ $TPos2[0])/2-$Coord[0];
+                           $Pos[1] =  ($TPos1[1]+ $TPos2[1])/2-$Coord[1];
+                           $Pos[2] =  ($TPos1[2]+ $TPos2[2])/2-$Coord[2];
+						    $Norm = HKGetVertexNormal($Pivot, $Shape[0]);
+				            $NormalVector[0] = $Coord[0] + $Norm[0];
+				            $NormalVector[1] = $Coord[1] + $Norm[1];
+				            $NormalVector[2] = $Coord[2] + $Norm[2];
+				              spaceLocator -n "HKTMP1" -p $NormalVector[0] $NormalVector[1] $NormalVector[2];  xform -cp HKTMP1;
+   				             $Constraint = `aimConstraint -n "HKReferenceTmpAim" -wu $Pos[0] $Pos[1] $Pos[2] HKTMP1 LocalToolReference`;
+                            delete $Constraint; delete HKTMP1;
+                  }
+                     
+          }
+     // -------------  object pivot  --------------
+		  else if (size ( `ls -sl -tr`) > 0 && size ( `ls -sl -tr`) != 2) 
+		  {
+			  $Transfrom = `ls -sl -tr`;
+			  $Rot = `xform -q -ro -ws $Transfrom[0]`;
+			      float $Coord[3];
+                  $Coord = HKGetSelectionCenter(); 
+                  spaceLocator -n "LocalToolReference" -p $Coord[0] $Coord[1] $Coord[2];
+                  xform -cp LocalToolReference;
+				  setAttr LocalToolReference.r $Rot[0] $Rot[1] $Rot[2];
+                  setAttr "LocalToolReferenceShape.v" 0;
+		  }
+		// -------------- 2 objects pivot -----------------  
+		  else if( size ( `ls -sl -tr`) == 2) 
+		  {
+			  $Transfrom = `ls -sl -tr`;
+			     float $Coord[3];
+                 $Coord = HKGetSelectionCenter(); 
+                  spaceLocator -n "LocalToolReference" -p $Coord[0] $Coord[1] $Coord[2];
+                  xform -cp LocalToolReference;
+				  $Constraint = `aimConstraint -n "HKReferenceTmpAim" $Transfrom[1] LocalToolReference`;
+                  delete $Constraint;  
+                  setAttr "LocalToolReferenceShape.v" 0;
+		  }
+		  HKLTWriteVariables();
+      
+	   // ----------  setting up the connections between the reference and the moved objects/components.	  
+	   
+	          global float $HKLTTValue;
+			  global float $HKLTPivotSettings[];
+              float $Rot[3] = `xform -q -ro LocalToolReference`;
+              float $Pos[3] = `pointPosition LocalToolReference`;
+			  float $Piv[3] = `xform -q -piv -ws LocalToolReference`;
+	          $HKLTPivotSettings[0] = $Pos[0];
+			  $HKLTPivotSettings[1] = $Pos[1];
+			  $HKLTPivotSettings[2] = $Pos[2];
+              $HKLTPivotSettings[3] = $Rot[0];
+			  $HKLTPivotSettings[4] = $Rot[1];
+			  $HKLTPivotSettings[5] = $Rot[2];
+              $HKLTPivotSettings[6] = $Piv[0];
+			  $HKLTPivotSettings[7] = $Piv[1];
+			  $HKLTPivotSettings[8] = $Piv[2];			  
+			  $HKLTTValue = abs($Rot[0]) + abs($Rot[1]) + abs($Rot[2]) + abs($Pos[0]) + abs($Pos[1]) + abs($Pos[2]);  
+       
+	   if ( `objExists ($HKMCClusterName+"Shape")`)
+       {
+           cluster -e -bs 1 -wn LocalToolReference LocalToolReference ($HKMCClusterName+"Shape");
+           xform -ro $Rot[0] $Rot[1] $Rot[2] $HKMCClusterName;
+           if( $HKLTOptionOrientationOnly == 0)
+		       xform -ws -piv $Pos[0] $Pos[1] $Pos[2] $HKMCClusterName;
+
+           cluster -bs 1 -e -wn $HKMCClusterName $HKMCClusterName ($HKMCClusterName +"Shape");
+           
+           parent $HKMCClusterName LocalToolReference;
+        }
+		
+	    if ( size ($HKMovedObjects) > 0 )
+		{
+			parent $HKMovedObjects LocalToolReference;
+		}
+     
+		//--------------------- handling the selection and manipulators -------------------
+		global string $gMove, $gRotate;
+        if( size (`filterExpand -sm 31 -sm 36 $HKMovedComps`))
+              selectType  -pv 1;
+        if( size (`filterExpand -sm 32 -sm 37 $HKMovedComps`))
+              selectType  -pe 1;
+        if( size (`filterExpand -sm 34 -sm 38 $HKMovedComps`))
+              selectType  -pf 1;
+
+		setToolTo $gRotate; setToolTo $gMove;         // adding these will prevent errors when jumping from UV editor
+        $MoveCtx = `superCtx -q $gMove`;
+        $RotateCtx = `superCtx -q $gRotate`;
+        global int $HKLTToolSettings[];
+
+        $HKLTToolSettings[0] = `manipMoveContext -q -mode $MoveCtx`;
+        $HKLTToolSettings[1] = `manipRotateContext -q -mode $RotateCtx`;
+
+        if( $HKLTToolSettings[0] != 4 )
+             manipMoveContext -e -mode 4 $MoveCtx;
+        if ( $HKLTToolSettings[1] != 0 )
+             manipRotateContext -e -mode 0 $RotateCtx;
+
+        scriptJob -cu 1 -ac "LocalToolReference.s" "HKLTScaleFix()";
+      global string $HKLTLastTool;
+      setToolTo $HKLTLastTool;
+      global int $HKLTToolOn;
+      $HKLTToolOn = 1;
+	  
+	  if ( size ($HKMovedObjects) > 0 )
+		  changeSelectMode -object;
+	  else
+		  changeSelectMode -component;
+
+	   select -r $HKMovedComps;
+	  
+	   // ------------- handling the orientation only feature, where only the orientation is used --------
+	    if( $HKLTOptionOrientationOnly == 1 )  
+		{  
+			select -add $HKMovedObjects;
+	        $Coord = HKGetSelectionCenter(); 
+	        xform -ws -piv  $Coord[0] $Coord[1] $Coord[2] LocalToolReference;
+	    	if(  size ($HKMovedObjects) > 0 ) 
+	   		    select -d $HKMovedObjects;		    	
+		}
+	  
+	   select -d ( `filterExpand -sm 36 -sm 37 -sm 38 $HKMovedComps` );
+	   select -add LocalToolReference;
+       if ( `size $HKMovedComps` > 0 ) 
+		 for ( $cr in $ShapeName )
+	         if( `objExists $cr` ) 
+		           hilite $cr;
+	   if ( size (`filterExpand -sm 37 $HKMovedComps`) > 0 )// hahaha it's a maya bug! needed to write a bug proof...
+		  {
+			  $length = size ( $HKMCClusterName );
+              string $clusterNodeName = `substring $HKMCClusterName 1 ($length - 6)`;
+               setAttr ($clusterNodeName+".nodeState") 0;  
+		  }
+	    for ( $curTweak in $HKLTTweakName )
+		   if ( `objExists 	$curTweak`)
+			 setAttr ($curTweak+".en") 0;
+       $HKLTScriptJobID = `scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKMCCleanUp(0,1);"`;
+       HKLTOperateHUD(1);
+    }
+    else   /// pivot selection canceled
+    {
+    	
+    }
+  
+   }
+}
+
+global proc HKLTEnd()
+{
+  global int $HKLTPivotLocked, $HKLTScriptJobID;
+  if ( `scriptJob -ex $HKLTScriptJobID` )
+		 scriptJob -f -kill $HKLTScriptJobID;
+  if ( ! $HKLTPivotLocked )
+  {
+	 HKMCCleanUp(0,0);
+  }
+  else if ( $HKLTPivotLocked )
+  {
+	 $HKLTPivotLocked = 0;
+     HKMCCleanUp(0,0);
+	 $HKLTPivotLocked = 1;
+  }
+}
+  
+	
+global proc HKMCCleanUp(int $mode, int $allowAdd)
+{
+   global int $HKLTScriptJobID,$HKLTScriptJobToolChangeID, $HKLTPivotLocked, $HKLTOptionOrientationOnly;
+   global string $HKMCClusterName, $HKLTTweakName[], $ShapeName[], $HKMovedComps[], $HKLTParents[],$HKMovedObjects[], $gSelect;
+   global float $HKLTPivotSettings[];
+	string $UndoState;
+	HKLTOperateHUD(0);
+	if ( $mode == 0 )
+	{
+	   if ( `scriptJob -ex $HKLTScriptJobToolChangeID` && $HKLTScriptJobToolChangeID != 0) 
+		   scriptJob -kill $HKLTScriptJobToolChangeID;
+	}
+	else if ( $mode == 1 )
+	   if ( `scriptJob -ex $HKLTScriptJobID` && $HKLTScriptJobID != 0) 
+		   scriptJob -kill $HKLTScriptJobID;
+	   
+	  string $UndoState = "";
+	  if ( $allowAdd )
+	      $UndoState = `undoInfo -q -un`;
+
+	   int $IsLastOpSelection = 0;
+	   if ( size (` match "select" $UndoState` ) > 0  ) 
+		  $IsLastOpSelection = 1;
+	   else
+		  $IsLastOpSelection = 0;
+	   int $DeleteOperationPerformed = 0;
+	   if ( size (` match "doDelete" $UndoState` ) > 0  )
+         $DeleteOperationPerformed = 1;
+	   if ( size (` match "Duplicate" $UndoState` ) > 0  )
+	   {
+	      int $HasComps = 0;
+		   if( size ( $HKMovedComps ) > 0 )
+			  $HasComps = 1;
+		   $Sl = `ls -sl -tr`;
+		   int $count;
+	      if( size (`match "DuplicateWithTransform" $UndoState` ) > 0 )
+		  {
+		   string $Children[] = `listRelatives -c -f $Sl[0]`;
+		   string $ChildrenShortNames[] = `listRelatives -c $Sl[0]`;
+		   $count = 0;
+		   for ( $i = 0; $i < `size $Children`; $i++) 
+		   {
+			  if( `nodeType $Children[$i]` != "locator" )
+			  {
+				 $Num = `match "[0-9]+" $ChildrenShortNames[$i]`;
+				  $NumbersLength = `size $Num`;
+				  $NameLenght = `size $ChildrenShortNames[$i]`;
+				  $NameWithoutNumb = `substring $ChildrenShortNames[$i] 1 ($NameLenght-$NumbersLength)`;
+                   int $Number = $Num;
+				  $Number++;
+				  rename $Children[$i] ($NameWithoutNumb+$Number);
+			  }
+		   }
+		  }
+		   string $Children[] = `listRelatives -c $Sl[0]`;
+		   string $Parents[],$SelectedObjcts[]; 
+		   for ( $i = 0; $i < `size $Children`; $i++) 
+	       {  
+			   if ( size (` match "localTransform" $Children[$i]` ) == 0)
+			   {
+			      if( `nodeType $Children[$i]` != "locator" )
+				  {
+				     if ( $HKLTParents[$count] == "world" )
+			         {
+				         if ( size ( `listRelatives -p $HKMovedObjects[$count]` ) ) 
+						 {
+				              parent -w -a $Children[$i];
+							  $SelectedObjcts[(`size $SelectedObjcts`) ] = $Children[$i];
+						 }
+			         }
+			         else
+					     if (`objExists $HKLTParents[$count]`) 
+				         {
+					         $Parents = `listRelatives -p $Children[$i]`;
+						     if ( $Parents[$count] != $HKLTParents[$count] )
+					           $Res =  `parent $Children[$i] $HKLTParents[$count]`;
+							 $SelectedObjcts[(`size $SelectedObjcts`) ] = $Children[$i];
+				         }
+					$count++;
+				  }
+			   }
+			   else
+				   delete $Children[$i];
+			   
+	        }
+		   
+		  delete $Sl;
+		  if( $HasComps )
+		  {
+			  select -add $HKMovedComps;
+			  hilite $ShapeName;
+		  }
+		  //select -add $SelectedObjcts;
+		  clear $SelectedObjcts;
+		  
+	   }
+         
+		
+	   $CHilite = `ls -hl`; 
+     string $CSel[]; clear $CSel; 
+     if( size ($CHilite) > 0 )
+        $CSel = `filterExpand -ex 0 -sm 31 -sm 32 -sm 34 -sm 36 -sm 37 -sm 38 -sm 28 -sm 46`; 
+  
+     $ObjSel = `ls -sl`;
+     $CurTool = `currentCtx -q`;
+  
+  	  int $IsSacredTool = 0;
+	  if ( $CurTool == "selectSuperContext" || $CurTool == "moveSuperContext" || $CurTool == "RotateSuperContext"
+		   || $CurTool == "scaleSuperContext" || $CurTool == "Transform"  )
+		   $IsSacredTool = 1;
+	  
+ 
+	  $Transforms = `ls -fl -tr $ObjSel`;
+	  int $IsTransformSelectionEmpty = 1;
+	  if ( size( $Transforms ) > 0 )
+		  $IsTransformSelectionEmpty = 0;
+	  if (  `size $Transforms ` == 1 )
+		  if ( $Transforms[0] == "LocalToolReference" )
+		      $IsTransformSelectionEmpty = 1;
+  //--------------------------- handle the add to selection features --------------------------------
+  if ( ( `getModifiers` == 1 || `getModifiers` == 4 ) && $IsLastOpSelection && $IsTransformSelectionEmpty && $allowAdd) 
+  {   
+ 	  //if( size ( $HKMovedComps ) > 0 )// ?????????
+	  //{
+	  // to check which is the last operation here
+	  
+		 select -add ( `filterExpand -sm 36 -sm 37 -sm 38 $HKMovedComps` );
+		  $CSel = `filterExpand -ex 0 -sm 31 -sm 32 -sm 34 -sm 36 -sm 37 -sm 38 -sm 28 -sm 46`;
+	     $HKMovedComps = $CSel;
+	  // string $AddedTransforms[] = `ls -tr $ObjSel`;
+	   ///string $cur1;
+	 // for ( $cur1 in $AddedTransforms )
+		  //if ( $cur1 != "LocalToolReference" )
+	        // $HKMovedObjects[ `size $HKMovedObjects` ] = $cur1;
+	  if(  $HKLTOptionOrientationOnly == 1 )
+	  {
+		   select -add $ObjSel;
+		   if( `objExists LocalToolReference`)
+		      select -d LocalToolReference;
+		   $Coord = HKGetSelectionCenter();
+           if( `objExists LocalToolReference` )
+	            xform -ws -piv  $Coord[0] $Coord[1] $Coord[2] LocalToolReference;
+		  	 select -d (`ls -tr $ObjSel`);
+		   
+	  }
+	  string $clusterNodeName;
+	 if( $HKMCClusterName != "" )
+	 {
+		$length = size ( $HKMCClusterName );
+        $clusterNodeName = `substring $HKMCClusterName 1 ($length - 6)`;
+        if( `objExists ($clusterNodeName+"Set")`)
+        {
+          sets -cl ($clusterNodeName+"Set");  /// add a thing that if some extrude was performed this would ignore itslef
+          string $addToClusterVtx[] = `polyListComponentConversion -tv $CSel`;
+		  string $addToClusterSbdVtx[] = `subdListComponentConversion -tv $CSel`;
+		  string $addToClusterNurbs[] = `filterExpand -sm 28 $CSel`; 
+		  if( size ( $addToClusterVtx ) > 0 ||  size ( $addToClusterSbdVtx ) > 0 ||  size ( $addToClusterNurbs ) > 0)
+             sets -e -add ($clusterNodeName+"Set") $addToClusterVtx $addToClusterSbdVtx $addToClusterNurbs; 
+		  
+        }
+	   if( `objExists $clusterNodeName`)
+	   	    $History = `listHistory -il 1 -lv 2 $clusterNodeName`;
+		 
+	   
+	   clear $HKLTTweakName;
+       for ($cur in $History )
+	   {
+		   if( `nodeType $cur` == "tweak")
+           {
+               $HKLTTweakName[`size $HKLTTweakName` ] = $cur;
+                setAttr ($cur+".en") 0;
+		    }  
+       }
+	  }
+	   HKLTWriteVariables();
+	   if( `objExists LocalToolReference`)
+         select -add LocalToolReference;
+	    select -d ( `filterExpand -sm 36 -sm 37 -sm 38 $HKMovedComps` );
+		if( `objExists $clusterNodeName` )  // hahaha it's a maya bug! needed to write a bug proof...
+		{
+			setAttr ($clusterNodeName+".nodeState") 0;  
+		}
+     HKLTOperateHUD(1);
+     $HKLTScriptJobID = `scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKMCCleanUp(0,1);"`;
+	  //}  
+  }
+  
+  // ----------------------------------------  cleanuping  ---------------------------------------
+  else
+  {
+	  int $isLocked = 0; 
+	  //if ( `objExists $HKMCClusterName`)
+	      // $isLocked = `attributeQuery -n $HKMCClusterName -ex "locked"`;
+	 // attributeQuery -n localTransform19Handle -ex "locked";
+	  string $History[];  
+      if( `objExists $ShapeName[0]` )
+        $History = `listHistory -il 1 -lv 2 $ShapeName[0]`;
+      float $T, $S;
+      global float $HKLTTValue;  
+      int $ShouldDelete = 0;  
+	    $ElementId = 1;
+	  if ( !$IsLastOpSelection )
+		$ElementId = 2;
+	  if( size($History[$ElementId]) > 0)
+      {
+       if( `nodeType $History[$ElementId]` == "cluster")
+         if(`objExists LocalToolReference`)  
+		 {
+			 float $Rot[3] = `xform     -q -ro LocalToolReference`;
+             float $Pos[3] = `pointPosition LocalToolReference`;
+			   $T  = abs($Rot[0]) + abs($Rot[1]) + abs($Rot[2]) + abs($Pos[0]) + abs($Pos[1]) + abs($Pos[2]); 
+               $T = $T-$HKLTTValue;
+               float $Scl[3];
+               $Scl = `xform -q -s -r LocalToolReference`;
+                 if( abs($Scl[0]) < 0.0000001 ) setAttr ("LocalToolReference.sx") 0.000001;
+                  if( abs($Scl[1]) < 0.0000001 ) setAttr ("LocalToolReference.sy") 0.000001;
+                   if( abs($Scl[2]) < 0.0000001 ) setAttr ("LocalToolReference.sz") 0.000001;
+                    $S = $Scl[0]+$Scl[1]+$Scl[2];
+              if( ( $T < 0.0001 ) && ($T > -0.0001 ) && ( $S < 3.0001 ) && ($S > 2.9999 ))
+                 $ShouldDelete = 1;
+		//	  if( ! $ShouldDelete )
+				//  if ( `objExists $HKMCClusterName`)
+	             //    //  addAttr -ln locked -at bool $HKMCClusterName;
+         }
+      } 
+	  	
+      //} 
+	  if ( `objExists $HKMCClusterName`)
+        if ( size ( `listRelatives -p $HKMCClusterName` ) )
+	    {
+            parent -w -a $HKMCClusterName;
+		  select -d $HKMCClusterName;
+	    }
+	  
+	  string $cur;
+	  global string $HKMovedObjects[];
+	  
+	  if ( size ($HKMovedObjects) > 0 )
+	  {
+		  for ( $i = 0; $i < `size $HKMovedObjects`; $i++)
+	      {  
+			 if( `objExists $HKMovedObjects[$i]`)
+			    //if ( size ( `listRelatives -p $HKMovedObjects[$i]` ) ) 
+			       if ( $HKLTParents[$i] == "world" )
+			       {
+				     if ( size ( `listRelatives -p $HKMovedObjects[$i]` ) ) 
+				          parent -w -a $HKMovedObjects[$i];
+			       }
+			       else
+					 if (`objExists $HKLTParents[$i]`)
+				     {
+					    $Parents = `listRelatives -p $HKMovedObjects[$i]`;
+						 if ( $Parents[0] != $HKLTParents[$i] )
+					       parent  $HKMovedObjects[$i] $HKLTParents[$i];
+				     }
+	      }
+		  if(  ! $HKLTPivotLocked )
+		  {
+		    changeSelectMode -object;  
+		   // if( ! $DeleteOperationPerformed )
+			  //  select -r $HKMovedObjects;
+		  }
+		  else
+			if( ! $DeleteOperationPerformed )
+			  if ( `objExists $HKMovedObjects[0]` )
+			       select -d $HKMovedObjects;
+	  }
+		 
+   	  if ( $ShouldDelete )
+		 if( size ( `match $History[$ElementId] $HKMCClusterName` ) > 0 )
+	           delete $History[$ElementId];
+	  
+	  for ( $cur in $HKLTTweakName)
+			if( `objExists $cur`)
+		        if(`getAttr ($cur + ".en")` == 0)
+                      delete $cur;
+	
+	  //------------------------------- finishing/lock pivot stuff -------------------------------------------------
+	 //$ObjSel = `filterExpand` here to filter only what the tool should handle, things like isoparms, Uvs etc should not be deselected
+	 if( ! $HKLTPivotLocked )
+	 {
+	   if(`objExists LocalToolReference`) 
+	       delete LocalToolReference; 
+	 }
+     else if ( $HKLTPivotLocked && size( $ObjSel ) > 0 && $IsSacredTool)
+	 {
+		  select -r $ObjSel; hilite $CHilite;
+		  if ( $IsLastOpSelection == 1 )
+		      if ( size (` match "-tgl" $UndoState` ) > 0 || size (` match "-add" $UndoState` ) > 0  ) 
+		  { select -add $HKMovedObjects; select -d LocalToolReference; }
+		  HKMoveComps(1);
+          global float $HKLTTValue;
+	      global float $HKLTPivotSettings[];
+		  global string $HKMCClusterName, $HKLTTweakName[], $ShapeName[], $HKMovedComps[];
+		  if ( ! `objExists LocalToolReference` )
+		  {
+			  spaceLocator -n "LocalToolReference" -p $HKLTPivotSettings[0] $HKLTPivotSettings[1] $HKLTPivotSettings[2];
+              xform -ws -piv $HKLTPivotSettings[6] $HKLTPivotSettings[7] $HKLTPivotSettings[8] LocalToolReference;    
+              setAttr "LocalToolReferenceShape.v" 0;	          	
+		  }
+		  xform -ro $HKLTPivotSettings[3] $HKLTPivotSettings[4] $HKLTPivotSettings[5] LocalToolReference;
+          HKLTWriteVariables(); 
+		  if( $HKLTOptionOrientationOnly == 0)
+		      //xform -ws -t $HKLTPivotSettings[6] $HKLTPivotSettings[7] $HKLTPivotSettings[8] LocalToolReference;
+			  setAttr LocalToolReference.t 0 0 0;
+		  else if(  $HKLTOptionOrientationOnly == 1 )
+	      {
+		       select -r $HKMovedObjects;
+               select -add $HKMovedComps;
+	        	$Coord = HKGetSelectionCenter();
+	        	xform -ws -piv  $Coord[0] $Coord[1] $Coord[2] LocalToolReference;
+	        	if( size ($HKMovedComps) > 0 ) 
+	    	    {
+			        hilite $ShapeName;
+			       select -d ( `filterExpand -sm 36 -sm 37 -sm 38 $HKMovedComps` );
+		        }
+	        	if( size ($HKMovedObjects) > 0 ) 
+		        {
+			      select -d $HKMovedObjects;
+	         	}
+ 	      }
+		  
+	         global float $HKLTTValue;
+              float $Rot[3] = `xform -q -ro LocalToolReference`;
+              float $Pos[3] = `pointPosition LocalToolReference`;
+	        	  
+			  $HKLTTValue = abs($Rot[0]) + abs($Rot[1]) + abs($Rot[2]) + abs($Pos[0]) + abs($Pos[1]) + abs($Pos[2]);  
+       
+   	      if ( `objExists ($HKMCClusterName + "Shape")` && size ($HKMovedObjects) == 0)
+          {
+              cluster -e -bs 1 -wn LocalToolReference LocalToolReference ($HKMCClusterName+"Shape");
+              xform -ro $HKLTPivotSettings[3] $HKLTPivotSettings[4] $HKLTPivotSettings[5] $HKMCClusterName;
+              if( $HKLTOptionOrientationOnly == 0)
+		           xform -ws -piv $HKLTPivotSettings[0] $HKLTPivotSettings[1] $HKLTPivotSettings[2] $HKMCClusterName;
+              cluster -bs 1 -e -wn $HKMCClusterName $HKMCClusterName ($HKMCClusterName +"Shape");
+           
+              parent $HKMCClusterName LocalToolReference;
+          }
+	      else if ( size ($HKMovedObjects) > 0 )
+		  {
+			  string $Rel[] = `listRelatives -p $HKMovedObjects[0]`;
+			  if ( $Rel[0] != "LocalToolReference" ) 
+			      parent $HKMovedObjects LocalToolReference;
+		  }	 	 
+
+		   if ( size ($HKMovedObjects) > 0 )
+		  changeSelectMode -object;
+	        else if ( size ( $CSel ) > 0 )
+		  changeSelectMode -component;
+
+	      select -r $HKMovedComps; 
+		  select -d ( `filterExpand -sm 36 -sm 37 -sm 38 $HKMovedComps` );
+
+		  if( size ( $HKMovedComps ) > 0 || size ( $HKMovedObjects ) > 0 )
+		       select -add LocalToolReference;
+		  if( `objExists $ShapeName[0]` )
+          if( !`selectMode -q -object` )
+             hilite $ShapeName;
+	 }
+     
+	
+	
+	
+   	if( !$HKLTPivotLocked || ! $IsSacredTool )
+	{
+	    	//  $UndoState = `undoInfo -q -un`;
+        // forming the last command exept the values, and repeting it, having undone the preveous one.
+		if( ! $IsLastOpSelection )
+		{
+		  if(0){//$UndoState;
+          string $buff[],$buffTmp[];
+		  $Size = `tokenize $UndoState " " $buff`;
+          print $buff;
+
+			string $Cmd = $buff[0];  
+		  for ( $i = ($Size - 1); $i > 0; $i-- )
+		  {
+			  if( `gmatch $buff[$i] "-*" ` == 1 && `tokenize $buff[$i] "." $buffTmp` == 1) // it is a flag string
+			  	  
+				  
+				  $Cmd = $Cmd + " " + $buff[$i];
+		  }
+			print $Cmd;	 }
+		   
+		 
+		}	 
+		if( ! $IsLastOpSelection )
+		{
+            hilite $CHilite;
+			select -clear;
+			 for ( $curobj in $ObjSel )
+			   if ( `objExists $curobj` )	  
+			      select -add $curobj;
+		    setToolTo $CurTool;
+		}
+			
+	    else if( $IsLastOpSelection )
+		{
+	       if( `objExists $ShapeName[0]` )
+             if( !`selectMode -q -object` )
+               hilite $ShapeName;
+		
+		   if ( ! size ($HKMovedObjects) > 0 )
+	       {
+	          select -r $CSel;
+	          if ( !$IsLastOpSelection )
+				 if( `objExists $History[1]` )
+	                 select -add $History[1];
+	       }
+		}
+		if ( `size $ObjSel` == 0 )
+		  for ( $cur in $HKMovedObjects )
+			if ( `objExists $cur`)
+			   select -d $cur;
+		   
+		  global int    $HKLTToolSettings[];
+          global string $gMove, $gRotate;
+	      string  $RotateCtx = `superCtx -q $gRotate`;
+		     if(`contextInfo -c $RotateCtx` == "manipRotate")
+		        manipRotateContext -e -ah 1 $RotateCtx;
+        if(  !$HKLTPivotLocked  )
+		{
+        
+          $MoveCtx = `superCtx -q $gMove`;
+          $RotateCtx = `superCtx -q $gRotate`;
+          if(`contextInfo -c $MoveCtx` == "manipMove") 
+            if( `manipMoveContext -q -mode $MoveCtx` != $HKLTToolSettings[0] )
+                  manipMoveContext -e -mode $HKLTToolSettings[0] $MoveCtx;
+          if(`contextInfo -c $RotateCtx` == "manipRotate")
+            if ( `manipRotateContext -q -mode $RotateCtx` != $HKLTToolSettings[1] )
+                    manipRotateContext -e -mode $HKLTToolSettings[1] $RotateCtx;
+   	       global int $HKLTToolOn;
+	       $HKLTToolOn = 0;
+		  // if ( `button -ex HKLTEnterToolBut`)
+			 // button -e -label "Take reference" HKLTEnterToolBut;
+		}
+	}
+	if ( $HKLTPivotLocked )
+	{
+	    if ( $IsSacredTool )
+		   if( `objExists $ShapeName[0]` )
+              if( !`selectMode -q -object` )
+                   hilite $ShapeName;
+		 HKLTOperateHUD(1);
+		 global int $HKLTScriptJobID;
+		  if ( ! $IsSacredTool )
+		  $HKLTScriptJobToolChangeID = `scriptJob -cu 1 -ro 1 -e "ToolChanged" "HKMCCleanUp(1,1);"`;
+		  
+		  $HKLTScriptJobID = `scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKMCCleanUp(0,1);"`;
+	}
+   }
+  //}
+}
+
+global proc float[] HKGetVertexNormal(string $Component[], string $Shape)
+{
+   string $HKLTTweakName[];
+   float $Normal[3];
+   float $RNormal[3] = {0,0,0};
+   float $TmpNormal[3] =  {0,0,0};
+   string $Vtx[]; string $cur;
+   if( `size $Component` != 0 )
+   {
+      $Vtx = `polyListComponentConversion -tvf $Component`;
+      $SbdVtx = `subdListComponentConversion -tv $Component`; 
+      $Nrbs = `filterExpand -sm 28 $Component`;
+        $Vtx = `ls -fl $Vtx`; 
+        string $NormalChangeNode[1];
+   if( size ($Vtx ) > 0 )
+   {
+        if ( `size $Component` < 2)
+        {
+   	     $CompEdges = `polyListComponentConversion -te $Component`;
+         $NormalChangeNode = `polySoftEdge -a 0 -ch 1 $CompEdges`;
+	    }
+        for ( $cur in $Vtx )
+        {
+              $Normal = `polyNormalPerVertex -q -xyz $cur`;
+              $TmpNormal[0] += $Normal[0];
+              $TmpNormal[1] += $Normal[1];
+              $TmpNormal[2] += $Normal[2];
+         }
+         if ( `size $Component` < 2)
+         {
+              delete $NormalChangeNode;
+         }
+         int $Size = `size $Vtx`;
+
+              $TmpNormal[0] = $TmpNormal[0]/$Size;
+              $TmpNormal[1] = $TmpNormal[1]/$Size;
+              $TmpNormal[2] = $TmpNormal[2]/$Size;
+	   
+	   if( `objExists HKLocalToolsCalculator`)
+        delete HKLocalToolsCalculator;
+ 
+        createNode -n "HKLocalToolsCalculator" vectorProduct;
+        setAttr HKLocalToolsCalculator.operation 3;
+        setAttr "HKLocalToolsCalculator.normalizeOutput" 0;
+        setAttr "HKLocalToolsCalculator.i1" $TmpNormal[0] $TmpNormal[1] $TmpNormal[2];
+        
+		connectAttr -f ($Shape+".worldMatrix[0]") HKLocalToolsCalculator.m;
+
+       $TmpNormal = `getAttr HKLocalToolsCalculator.o`;
+       delete HKLocalToolsCalculator;		  
+    }
+	else if( size ( $SbdVtx ) > 0 || size ( $Nrbs ) > 0 )
+	{
+		$SbdVtx = `ls -fl $SbdVtx`; 
+		$Nrbs = `ls -fl $Nrbs`;  
+		string $cur1, $cur;
+		for ( $cur1 in $Nrbs )
+			$SbdVtx[ `size $SbdVtx` ] = $cur1;
+		for ( $cur in $SbdVtx )
+		{
+		    
+			$InitPos = `pointPosition $cur`; 
+            undoInfo -swf 0;
+              moveVertexAlongDirection -n 1 $cur;
+              $AfterPos = `pointPosition $cur`;
+              move -a $InitPos[0] $InitPos[1] $InitPos[2] $cur;
+            undoInfo -swf 1;
+			
+            $Normal[0] = $AfterPos[0] - $InitPos[0]; 
+            $Normal[1] = $AfterPos[1] - $InitPos[1];
+            $Normal[2] = $AfterPos[2] - $InitPos[2];
+	        $TmpNormal[0] += $Normal[0];
+            $TmpNormal[1] += $Normal[1];
+            $TmpNormal[2] += $Normal[2];
+		}
+              int $Size = `size $SbdVtx`; 
+
+              $TmpNormal[0] = $TmpNormal[0]/$Size; 
+              $TmpNormal[1] = $TmpNormal[1]/$Size;
+              $TmpNormal[2] = $TmpNormal[2]/$Size;
+	}
+    }
+    else
+	{
+	  $TmpNormal = { 0, 1, 0 };
+    }
+  
+   return $TmpNormal; 
+}
+
+
+global proc float[] HKGetSelectionCenter()
+{
+	$Transforms = `ls -sl -tr -fl`;
+	//$Hl = `ls -hl`;
+	string $Comps[];
+	$Comps = `filterExpand -ex 0 -sm 28 -sm 30 -sm 31 -sm 32 -sm 34 -sm 35 -sm 36 -sm 37 -sm 38 -sm 39 
+		-sm 40 -sm 41 -sm 42 -sm 43 -sm 44 -sm 45 -sm 46 -sm 47 -sm 70 -sm 72 -sm 73`;
+	float $Coord[3];
+	float $Bbox[6] = {999999999,999999999,999999999,-999999999,-999999999,-999999999 };
+	
+	if( size ( $Comps ) > 0 )
+	{
+	int $BreakPoints[]; clear $BreakPoints;
+	$BreakPoints[0] = 0;
+	string $cur, $buff[];
+	string $CurrentShapeName;
+	tokenize $Comps[0] "." $buff;
+	$CurrentShapeName = $buff[0];
+	
+	for( $i = 1; $i < size( $Comps ); $i++ )
+	{
+	     tokenize $Comps[$i] "." $buff;
+		 if ( $buff[0] != $CurrentShapeName )
+		 {
+			$BreakPoints[`size $BreakPoints`] = $i;
+			$CurrentShapeName = $buff[0];
+		 }
+	}
+	$BreakPoints[`size $BreakPoints`] = size( $Comps );
+	string $TmpArray[]; clear $TmpArray;
+    	
+	 for ( $i = 1;  $i <= (size( $BreakPoints )-1); $i++ )
+	 {
+	    clear $TmpArray; 
+		if ( size( $BreakPoints ) == 2 )
+		$TmpArray = $Comps;
+		else
+		   for ( $l = $BreakPoints[($i-1)] ; $l < $BreakPoints[$i]; $l++ )
+			    $TmpArray[ `size ($TmpArray)`] = $Comps[$l];
+		    
+		if( size ( $TmpArray ) > 0 )
+			{
+		      $TmpBbox = `xform -q -ws -bb $TmpArray`;
+              if(  $TmpBbox[0] < $Bbox[0] )  
+				 $Bbox[0] = $TmpBbox[0];
+			  if(  $TmpBbox[1] < $Bbox[1] )
+				 $Bbox[1] = $TmpBbox[1];
+			  if(  $TmpBbox[2] < $Bbox[2] )
+				 $Bbox[2] = $TmpBbox[2];
+			  if(  $TmpBbox[3] > $Bbox[3] )
+				 $Bbox[3] = $TmpBbox[3];
+			  if(  $TmpBbox[4] > $Bbox[4] )
+				 $Bbox[4] = $TmpBbox[4];
+			  if(  $TmpBbox[5] > $Bbox[5] )
+				 $Bbox[5] = $TmpBbox[5];
+			}  
+			
+	  } 
+	}
+	for ( $cur in $Transforms )
+	{
+	   if( size (`filterExpand -sm 12 -sm 68 -sm 9 -sm 11 -sm 10 $cur`) > 0)
+	   {
+    		  $TmpBbox = `xform -q -ws -bb $cur`;
+              if(  $TmpBbox[0] < $Bbox[0] )  
+				 $Bbox[0] = $TmpBbox[0];
+			  if(  $TmpBbox[1] < $Bbox[1] )
+				 $Bbox[1] = $TmpBbox[1];
+			  if(  $TmpBbox[2] < $Bbox[2] )
+				 $Bbox[2] = $TmpBbox[2];
+			  if(  $TmpBbox[3] > $Bbox[3] )  
+				 $Bbox[3] = $TmpBbox[3];
+			  if(  $TmpBbox[4] > $Bbox[4] )
+				 $Bbox[4] = $TmpBbox[4];
+			  if(  $TmpBbox[5] > $Bbox[5] )
+				 $Bbox[5] = $TmpBbox[5]; 
+	   }
+	   else
+	   {
+		     $TmpBbox = `xform -q -piv -ws $cur`;
+			  if(  $TmpBbox[0] < $Bbox[0] )  
+				 $Bbox[0] = $TmpBbox[0];
+			  if(  $TmpBbox[1] < $Bbox[1] )
+				 $Bbox[1] = $TmpBbox[1];
+			  if(  $TmpBbox[2] < $Bbox[2] )
+				 $Bbox[2] = $TmpBbox[2];
+			  if(  $TmpBbox[0] > $Bbox[3] )  
+				 $Bbox[3] = $TmpBbox[0];
+			  if(  $TmpBbox[1] > $Bbox[4] )
+				 $Bbox[4] = $TmpBbox[1];
+			  if(  $TmpBbox[2] > $Bbox[5] )
+				 $Bbox[5] = $TmpBbox[2]; 
+	   }
+	}
+	     $Coord[0]  =  ($Bbox[0]+ $Bbox[3])/2;
+         $Coord[1]  =  ($Bbox[1]+ $Bbox[4])/2;
+         $Coord[2]  =  ($Bbox[2]+ $Bbox[5])/2;
+	     
+		 return $Coord; 
+}
+
+
+
+global proc HKLTUndoSetup()
+{
+    global int $HKLTScriptJobID;
+    global string $gMove, $gRotate, $HKLTTweakName[];
+    global string $HKMCClusterName, $HKMovedComps[],$HKMovedObjects[];
+     string $S[] = `ls -sl -tr`;
+	string $UndoName = `undoInfo -q -undoName`;
+	
+    if ( `objExists LocalToolReference`)
+    {
+        if ( $S[0] == "LocalToolReference" )
+        {
+            if( !`scriptJob -ex $HKLTScriptJobID` )
+            {
+                global int $HKLTToolSettings[];
+                $MoveCtx = `superCtx -q $gMove`;
+                $RotateCtx = `superCtx -q $gRotate`;
+                if( $HKLTToolSettings[0] != 4 )
+                     manipMoveContext -e -mode 4 $MoveCtx;
+                if( $HKLTToolSettings[1] != 0 )
+                     manipRotateContext -e -mode 0 $RotateCtx;
+				HKLTOperateHUD(1);
+				$HKLTScriptJobID = `scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKMCCleanUp(0,1);"`;
+            }
+        }
+     }
+     else if( `objExists LocalToolReference` && $S[0] != "LocalToolReference") 
+     {
+         for ( $cur in $HKLTTweakName)
+			if( `objExists $cur`)
+		        if(`getAttr ($cur + ".en")` == 0)
+                      delete $cur;
+     }               
+  
+}
+
+global proc HKLTRedoSetup() 
+{
+   global string  $HKLTTweakName[]; string $cur;  
+   if ( !`objExists LocalToolReference`)
+   {
+	    for ( $cur in $HKLTTweakName)
+			if( `objExists $cur`)
+		        if(`getAttr ($cur + ".en")` == 0)
+                      delete $cur;
+   }
+}
+
+global proc HKLTFixerCleanUp()
+{
+	global int $HKLTScriptJobID, $HKLTScriptJobToolChangeID;
+	HKLTOperateHUD(0);
+	if ( `scriptJob -ex $HKLTScriptJobID` )
+		scriptJob -f -kill $HKLTScriptJobID;
+	if ( `scriptJob -ex $HKLTScriptJobToolChangeID` )
+		scriptJob -f -kill $HKLTScriptJobToolChangeID;
+    if( `objExists LocalToolReference`)
+	{
+		HKLTReadVariables();
+		HKLTEnd();
+	}
+}
+
+global proc HKLTScaleFix()
+{
+	float $Scl[3]; 
+	  $Scl = `xform -q -s -r LocalToolReference`;
+          if( abs($Scl[0]) < 0.0000001 ) setAttr ("LocalToolReference.sx") 0.000001;
+          if( abs($Scl[1]) < 0.0000001 ) setAttr ("LocalToolReference.sy") 0.000001;
+          if( abs($Scl[2]) < 0.0000001 ) setAttr ("LocalToolReference.sz") 0.000001;
+}
+
+
+global proc HKLTSFHideSelectionForSnapping()
+{
+	$Transforms = `ls -sl -tr`;
+	$Comps = `filterExpand -ex 0 -sm 31 -sm 32 -sm 34 -sm 36 -sm 37 -sm 38 -sm 28 -sm 46`;
+     global int $HKLTScriptJobID;
+	 scriptJob -f -kill $HKLTScriptJobID;
+     
+	 select -d $Comps;
+	 $HKLTScriptJobID = `scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKMCCleanUp(0,1);"`;
+	 
+}
+
+
+global proc HKLTSFShowSelectionForSnapping()
+{
+    global string $HKMovedComps[];
+	 global int $HKLTScriptJobID;
+	 scriptJob -f -kill $HKLTScriptJobID;
+	select -r $HKMovedComps;
+	select -d ( `filterExpand -sm 36 -sm 37 -sm 38 $HKMovedComps` );
+	select -add LocalToolReference;
+	$HKLTScriptJobID = `scriptJob -cu 1 -ro 1 -e "SelectionChanged" "HKMCCleanUp(0,1);"`;
+}
+
+
+global proc HKLTSFSnappingFix( )
+{
+	int $SnappingOn;
+	$SnappingOn = `snapMode -q -p` + `snapMode -q -c`+`snapMode -q -gr`+`snapMode -q -vp`; 
+	undoInfo -swf 0;
+   	if( `objExists LocalToolReference`)
+	{
+	  if( $SnappingOn )
+	    HKLTSFHideSelectionForSnapping;
+	  else
+	    HKLTSFShowSelectionForSnapping;
+	}
+	undoInfo -swf 1;
+}
+
+

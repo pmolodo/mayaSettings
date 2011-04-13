@@ -1,0 +1,94 @@
+/*
+-------------------
+MJPolyToolsUI v1.0
+-------------------
+July 01, 2002
+mike hovland
+mhovland@midwaygames.com
+-------------------
+User Interface for Mikkel Jans excelent MJPolyTools
+I use them constantly and run without the menu bar, so this was the quick logical answer.
+*/
+
+global proc MJPolyToolsUI()
+{
+
+source MJPolyTools;
+
+	if (`window -exists MJPolyToolsWin`)
+		{
+		deleteUI MJPolyToolsWin;
+		}
+
+
+
+string $MJWin = `window -title "MJPolyTools" -width 222 -height 248 -sizeable 0 -tlc 150 150 MJPolyToolsWin`;
+string $form = `formLayout`;
+
+string $ConnectVEFslide = `symbolButton -image "ConnectVEFslide.bmp" -c "connectVertsEdgesFacesSlide" -ann "Connect Verts, Edges, Faces w/Slider"`;
+string $ConnectVEF = `symbolButton -image "ConnectVEF.bmp" -c "connectVertsEdgesFaces" -ann "Connect Verts, Edges, Faces"`;
+string $SplitAroundVEF = `symbolButton -image "splitAroundVEF.bmp" -c "splitAroundVertsEdgesFaces" -ann "Split around Verts, Edges, Faces"`;
+string $LoopSplit = `symbolButton -image "loopSplit.bmp" -c "loopSplit" -ann "Loop Split"`;
+string $MultiLoopSplit = `symbolButton -image "multiLoopSplit.bmp" -c "multiLoopSplit" -ann "MultiLoop Split"`;
+string $face352quad = `symbolButton -image "face352quad.bmp" -c "quadSelection" -ann "Convert 3 and 5 edge polys to all quads"`;
+string $ringSelect = `symbolButton -image "ringSelect.bmp" -c "ringSelect" -ann "Ring Select"`;
+string $selectOutline = `symbolButton -image "selectOutline.bmp" -c "selectOutline" -ann "Select Face Outline Edges"`;
+string $extrudeVseperate = `symbolButton -image "extrudeVseperate.bmp" -c "extrudeVertex" -ann "Evtrude Verts Seperate"`;
+string $extrudeVtogether = `symbolButton -image "extrudeVtogether.bmp" -c "extrudeVertexTo" -ann "Extrude Verts Together"`;
+string $chamferVseperate = `symbolButton -image "chamferVseperate.bmp" -c "chamferVertex" -ann "Chamfer Verts Seperate"`;
+string $chamferVtogether = `symbolButton -image "chammferVtogether.bmp" -c "chamferVertexTo" -ann "Chamfer Verts Together"`;
+string $linkButton = `symbolButton -image "linkButton.bmp" -c "HomepageLink" -ann "http://www.maya3d.dk"`;
+string $helpButton = `symbolButton -image "helpButton.bmp" -c "Docs" -ann "Documentation"`;
+string $forumButton = `symbolButton -image "forumButton.bmp" -c "Forum" -ann "Discuss MJ Tools"`;
+
+formLayout -edit
+	//row one//
+	-af $ConnectVEFslide "left" 2
+	-af $ConnectVEFslide "top" 2
+	
+	-ac $ConnectVEF "left" 2 $ConnectVEFslide
+	-af $ConnectVEF "top" 2
+	
+	-ac $SplitAroundVEF "left" 2 $ConnectVEF
+	-af $SplitAroundVEF "top" 2
+	
+	-ac $LoopSplit "left" 2 $SplitAroundVEF
+	-af $LoopSplit "top" 2
+	//row two//
+	-af $MultiLoopSplit "left" 2
+	-ac $MultiLoopSplit "top" 2 $ConnectVEFslide
+	
+	-ac $face352quad "left" 2 $MultiLoopSplit
+	-ac $face352quad "top" 2 $ConnectVEF
+	
+	-ac $ringSelect "left" 2 $face352quad
+	-ac $ringSelect "top" 2 $SplitAroundVEF
+	
+	-ac $selectOutline "left" 2 $ringSelect
+	-ac $selectOutline "top" 2 $LoopSplit
+	//row three//
+	-af $extrudeVseperate "left" 2 
+	-ac $extrudeVseperate "top" 2 $MultiLoopSplit
+	
+	-ac $extrudeVtogether "left" 2 $extrudeVseperate
+	-ac $extrudeVtogether "top" 2 $face352quad
+	
+	-ac $chamferVseperate "left" 2 $extrudeVtogether
+	-ac $chamferVseperate "top" 2 $ringSelect
+	
+	-ac $chamferVtogether "left" 2 $chamferVseperate
+	-ac $chamferVtogether "top" 2 $selectOutline
+	//row four//
+	-af $linkButton "left" 2
+	-ac $linkButton "top" 2 $extrudeVseperate
+	
+	-af $forumButton "left" 2
+	-ac $forumButton "top" 2 $linkButton
+	
+	-ac $helpButton "left" 2 $linkButton
+	-ac $helpButton "top" 2 $chamferVtogether
+	
+$form;
+
+showWindow $MJWin;
+}

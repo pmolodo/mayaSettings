@@ -1,0 +1,56 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: LightInten v1.0
+''    Author: Diego Galtieri
+''    Last Updated: February 28, 2003
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=rendering#2168
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+// LightInten - By Diego Galtieri - diego@diegogaltieri.com - Change intensity of all your lights 
+global proc LightInten()
+{	
+	float $lint;
+	float $factor;
+	string $result = `promptDialog -t "LightInten - By Diego Galtieri" -message "Enter Intensity Factor for Selected Lights (1=No Change):" -button "Ok" -button "Cancel" -defaultButton "Ok" -cancelButton  "Cancel" -dismissString "Cancel"`;
+	if ($result == "Ok") {
+		$factor = float(`promptDialog -query`);
+    	}
+	else 
+	{
+		$factor = 1;
+	}
+	string $selected[] = `ls -sl`;
+	string $shapes[] = `listRelatives -s $selected`;
+	string $lights[];
+	if (`size $selected[0]` == 0)
+	{
+		warning "Nothing selected.";
+		return;
+	}
+	if (`size $shapes` > 1)
+	{
+		$lights = $shapes;
+	}
+	else
+	{
+		$lights = $selected;
+	}
+	for ($lightname in $lights)
+	{
+	 if (`attributeExists "intensity" $lightname`) 
+	{	
+		$attr1 = $lightname + ".intensity";
+		$lint = `getAttr $attr1`; 
+		setAttr $attr1 ($lint * $factor);
+		print ("setAttr " + $attr1 + " " + string($lint * $factor) + "\n");
+	  }
+	}
+}
+LightInten;

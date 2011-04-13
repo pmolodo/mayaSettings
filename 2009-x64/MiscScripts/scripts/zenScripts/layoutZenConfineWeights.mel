@@ -1,0 +1,45 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+global proc string layoutZenConfineWeights()
+{
+	global 	int 	$zenMinimumWindowWidth;
+	global 	string	$zenToolsWindow;
+
+	global 	int	$zenOptions_confineWeightsHierarchy;
+	
+	string 	$parentLayout=`zenClearToolColumn`;
+	
+	string	$column=`columnLayout -adj 1 -p $parentLayout`;
+		
+		window -e -w $zenMinimumWindowWidth -title "ZenTools : Confine Weights" $zenToolsWindow;
+				
+		checkBox
+			-p $column
+			-al left
+			-l "Include Hierarchy"
+			-v $zenOptions_confineWeightsHierarchy
+			-cc "$zenOptions_confineWeightsHierarchy=`checkBox -q -v zenOptions_confineWeightsHierarchy`"
+			zenOptions_confineWeightsHierarchy;
+
+		separator -p $column -w $zenMinimumWindowWidth;
+
+		button
+			-p $column
+			-label Apply
+			-command "doZenCommand doZenConfineWeights";
+				
+	return	$column;
+}

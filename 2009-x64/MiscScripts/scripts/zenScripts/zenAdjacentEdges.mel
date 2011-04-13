@@ -1,0 +1,53 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//return the edges which are connected to $edge
+global proc string[] zenAdjacentEdges( string $first, string $edges[] )
+{
+		$edges=`ls -fl $edges`;
+	string	$obj[]=`ls -o $edges`;
+	string	$edge=$first;
+		
+	string	$verts[]=`polyListComponentConversion -tv $first`;
+	string	$loop[]={$first};
+	string	$newEdges[]=$loop;
+	string	$prevVerts[];
+	string	$prevLoop[]=$loop;
+	string	$vert;
+	string	$intersector=`stringArrayIntersector`;
+	int	$notEndEdge=false;
+	
+		for($i=0;$i<size($edges)+1;$i++)
+		{
+			$prevLoop=$loop;
+			$verts=`polyListComponentConversion -tv $newEdges`;
+			$newEdges=`polyListComponentConversion -te $verts`;
+			$newEdges=`ls -fl $newEdges`;
+			
+			stringArrayIntersector -e -r $intersector;
+			stringArrayIntersector -e -i $newEdges $intersector;
+			stringArrayIntersector -e -i $edges $intersector;
+			$newEdges=`stringArrayIntersector -q $intersector`;
+			
+			$newEdges={(zenReturnFirstStringItem(`stringArrayRemove $loop $newEdges`))};
+						
+			$loop=`stringArrayCatenate $loop $newEdges`;
+			$loop=stringArrayRemoveDuplicates($loop);
+			$loop=stringArrayRemove({" ",""},$loop);
+			if(size($loop)==size($prevLoop)) break;
+		}
+		
+		deleteUI $intersector;
+		return $loop;
+}

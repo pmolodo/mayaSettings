@@ -1,0 +1,228 @@
+//
+// Spherical Light
+// Copyright (c) Jeremy Pronk 2005
+// www.thereisnoluck.com
+
+
+global proc AEsphericalLightTemplate ( string $nodeName )
+{
+	AEswatchDisplay $nodeName;
+	editorTemplate -beginScrollLayout;
+
+	editorTemplate -beginLayout "Common" -collapse 0;
+		
+		editorTemplate -callCustom "AEtypeNew"
+						"AEtypeReplace"
+						"type";
+		editorTemplate -addControl "tint";
+		editorTemplate -addControl "intensity";
+		editorTemplate -addControl "radius";
+		
+		editorTemplate -callCustom "AEsphericalLightDataFileButtonNew"
+						"AEsphericalLightDataFileButtonReplace"
+						"lightMapFile";
+		
+		editorTemplate -callCustom "AEshadowsNew" 
+							"AEshadowsReplace"
+							"shadows";
+		//editorTemplate -addControl "calculateShadows";
+		editorTemplate -beginLayout "Occlusion Shadow Settings" -collapse 0;
+			//editorTemplate -addControl "occlusionShadows";
+			editorTemplate -addControl "occlusionShadowSamples";
+			editorTemplate -addControl "occlusionMinSoftness";
+		editorTemplate -endLayout;
+		
+	editorTemplate -endLayout;
+
+	editorTemplate -beginLayout "Low Level Lightmap" -collapse 0;
+	
+		editorTemplate -addControl "level";
+		editorTemplate -l "Use Low Lightmap For Final Gather" -addControl "lowForFinalGather";
+		editorTemplate -callCustom "AEsphericalLightDataFileButtonNew"
+						"AEsphericalLightDataFileButtonReplace"
+						"lightMapFileLow";
+						
+		editorTemplate -callCustom "AEshadowsNew" 
+							"AEshadowsReplace"
+							"shadowsLow";
+		//editorTemplate -addControl "calculateShadowsLow";
+		editorTemplate -beginLayout "Low Level Occlusion Shadow Settings" -collapse 1;
+			//editorTemplate -addControl "occlusionShadowsLow";
+			editorTemplate -addControl "occlusionShadowSamplesLow";
+			editorTemplate -addControl "occlusionMinSoftnessLow";
+		editorTemplate -endLayout;
+	
+	editorTemplate -endLayout;
+
+	editorTemplate -beginLayout "Interleaved Sampling" -collapse 1;
+		editorTemplate -addControl "maxInterleavedShadowSamples";
+		editorTemplate -callCustom "AEinterleaveLevelSamplingTypeNew"
+						"AEinterleaveLevelSamplingTypeReplace"
+						"interleavedShadowSamplingType";
+	editorTemplate -endLayout;
+	
+	editorTemplate -beginLayout "Debug" -collapse 1;
+		editorTemplate -addControl "diagnostic";
+	editorTemplate -endLayout;
+
+	editorTemplate -endLayout;
+
+	editorTemplate -addExtraControls;
+	editorTemplate -endScrollLayout;
+
+	editorTemplate -suppress "type";
+	editorTemplate -suppress "lightMapFile";
+	editorTemplate -suppress "lightMapFileLow";
+	editorTemplate -suppress "shadows";
+	editorTemplate -suppress "shadowsLow";
+	editorTemplate -suppress "interleavedShadowSamplingType";
+}
+
+global proc AEsphericalLightDataFileButtonPress( string $node, string $attr, string $textfld )
+{
+	string $filename = `fileDialog -dm "*.lm"`;
+	textField -e -text $filename $textfld;
+	setAttr ($node+"."+$attr) -type "string" $filename;
+}
+
+global proc AEsphericalLightDataFileButtonNew( string $nodeAttr )
+{
+	string $buffer[];
+	tokenize( $nodeAttr, ".", $buffer );
+	string $node = $buffer[0];
+	string $attr = $buffer[1];
+	string $textFld = $attr+"TextFld";
+	
+	rowLayout -numberOfColumns 3;
+		text -label `interToUI( $attr )`;
+		textField -en false $textFld;
+		button -label ".." -width 20 lightMapFileButton;
+
+	AEsphericalLightDataFileButtonReplace( $nodeAttr );
+}
+
+global proc AEsphericalLightDataFileButtonReplace( string $nodeAttr )
+{
+	string $buffer[];
+	tokenize( $nodeAttr, ".", $buffer );
+	string $node = $buffer[0];
+	string $attr = $buffer[1];
+	string $textFld = $attr+"TextFld";
+	
+	button -e -command ( "AEsphericalLightDataFileButtonPress \"" + $node + "\" \"" + $attr + "\" \"" + $textFld + "\"" ) lightMapFileButton;
+	string $filename = `getAttr ($node+"."+$attr)`;
+	textField -e -text $filename $textFld;
+}
+
+
+global proc AEtypeNew( string $attr )
+{
+	columnLayout;
+	attrEnumOptionMenuGrp -l "Mode"
+		-ei 0  "Spot lights"
+		-ei 1  "Directional lights" modeeee;
+	setParent ..;
+
+	AEtypeReplace($attr);		
+}
+
+global proc AEtypeReplace( string $attr )
+{
+	attrEnumOptionMenuGrp -e -at $attr modeeee;
+}
+
+
+global proc AEinterleaveLevelSamplingTypeNew( string $attr )
+{
+	columnLayout;
+	attrEnumOptionMenuGrp -l "Interleaved Shadow Sampling"
+		-ei 0	"Random"
+		-ei 1	"mental ray"
+		levelSamplingg;
+	setParent ..;
+
+	AEinterleaveLevelSamplingTypeReplace($attr);		
+}
+
+global proc AEinterleaveLevelSamplingTypeReplace( string $attr )
+{
+	attrEnumOptionMenuGrp -e -at $attr levelSamplingg;
+}
+
+
+global proc AEshadowsNew( string $nodeAttr )
+{
+	string $buffer[];
+	tokenize( $nodeAttr, ".", $buffer );
+	string $node = $buffer[0];
+	string $attr = $buffer[1];
+	string $menu = $attr+"Menu";
+
+	columnLayout;
+	attrEnumOptionMenuGrp -l ( interToUI( $attr ) )
+		-ei 0	"none"
+		-ei 1	"mental ray"
+		-ei 2	"occlusion"
+		-ei 3	"interleaved"
+		$menu;
+	setParent ..;
+
+	//AEshadowsReplace( $attr );		
+	AEshadowsReplace( $nodeAttr );
+}
+
+global proc AEshadowsReplace( string $nodeAttr )
+{
+	string $buffer[];
+	tokenize( $nodeAttr, ".", $buffer );
+	string $node = $buffer[0];
+	string $attr = $buffer[1];
+	string $menu = $attr+"Menu";
+	attrEnumOptionMenuGrp -e -at $nodeAttr $menu;
+}
+
+
+/*
+global proc AEimportanceSamplingAreaLightExposureChange( string $nodeName )
+{
+	string $buffer[];
+	tokenize( $nodeName, ".", $buffer );
+	string $node = $buffer[0];
+
+	float $currentExposure = `floatSliderGrp -q -v exposureCorrectionSlider`;
+	setAttr ( $node+".lightMapExposure" ) $currentExposure;
+}
+
+
+global proc AEimportanceSamplingAreaLightExposureNew( string $nodeName )
+{
+	columnLayout;	
+	floatSliderGrp
+		-f true
+		-l "Exposure Correction"
+		-maxValue 10 
+		-minValue -10 
+		-value 0 
+		-pre 2
+		-s 0.25
+		-ss 0.25
+		-cc ( "AEimportanceSamplingAreaLightExposureChange " + $nodeName ) 
+		exposureCorrectionSlider;
+	setParent ..;
+
+	AEimportanceSamplingAreaLightExposureReplace( $nodeName );		
+}
+
+global proc AEimportanceSamplingAreaLightExposureReplace( string $nodeName )
+{
+	string $buffer[];
+	tokenize( $nodeName, ".", $buffer );
+	string $node = $buffer[0];
+
+	float $currentExposure = `getAttr ( $node+".lightMapExposure" )`;
+	floatSliderGrp -e -v $currentExposure exposureCorrectionSlider;
+}
+*/
+
+
+

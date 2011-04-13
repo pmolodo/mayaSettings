@@ -1,0 +1,30 @@
+global proc shelf_breakLightLinks () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Break the light links between all selected lights and objects" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "bLits" 
+        -image "pythonFamily.xpm" 
+        -image1 "pythonFamily.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "import maya.cmds as cmds\r\rdef breakSelectedLights():\r    lights = makeNoneList(cmds.ls(sl=True, lights=True, long=True))\r    shapes = makeNoneList(cmds.ls(sl=True, shapes=True, long=True))\r    transforms = makeNoneList(cmds.ls(sl=True, transforms=True, long=True))\r\r    for transform in transforms:\r        moreLights = makeNoneList(cmds.listRelatives(transform, allDescendents=True, fullPath=True, noIntermediate=True, type=\"light\"))\r        moreShapes = makeNoneList(cmds.listRelatives(transform, allDescendents=True, fullPath=True, noIntermediate=True, type=\"shape\"))\r\r        lights += moreLights\r        shapes += moreShapes\r\r    cmds.lightlink(b=True, light=lights, object=shapes)\r\rdef makeNoneList(input):\r    if input is None:\r        return []\r    else:\r        return input\r\rbreakSelectedLights()" 
+        -sourceType "python" 
+        -actionIsSubstitute 0
+    ;
+
+} 

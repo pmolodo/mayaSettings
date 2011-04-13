@@ -1,0 +1,58 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+  <meta http-equiv="content-type"
+ content="text/html; charset=ISO-8859-1">
+  <title>lightMapGen Quick Start</title>
+</head>
+<body>
+<h2>Light Map Gen</h2>
+<br>
+<h1>Quick Start</h1>
+<br>
+<h4>Creating a light map</h4>
+<br>
+1. Aquire one latitude/longitude HDR tiff image, lets call it
+probemap.tif<br>
+2. At the command prompt run:<br>
+lightMapGen.exe -in probemap.tif -s 32 -normalize -writeDiagImages<br>
+3. You should now have 2 new files, namely probemap.lm (the lightmap)
+and probemap_samplingDiag.tif (diagnostic image)<br>
+4. (optional step) Load probemap.tif and probemap_samplingDiag.tif into
+HDR imaging software of your choice, observing the sample areas (green
+boxes) and sample locations (single pixels). See <a
+ href="lightMapGen_Example.html">example</a>.<br>
+5. Load Maya<br>
+6. Continue by choosing one of the two procedures below<br>
+<br>
+<h4>Loading the light map as Maya lights</h4>
+<br>
+1. Source lightMapGen_loader.mel and execute lightMapGen_loader(0) <br>
+2. Browse to probemap.lm and select ok<br>
+3. Create a sphere and enabling shading/lighting mode<br>
+4. Adjust the dome light parameters (specifically intensity and cone
+angle)&nbsp; in the transform of the parent
+locator<br>
+5. (optional step) Set the path in the file texture attached to the
+light map dome (a low dynamic range version of the light map)<br>
+6. Create a sphere and render<br>
+<br>
+<br>
+<h4>Using the light map with the mental ray sphericalLight shader</h4>
+<br>
+1. Make sure sphericalLight is correctly installed including
+AEsphericalLightTemplate.mel<br>
+2. Source createSphericalLight.mel and execute createSphericalLight()<br>
+3. Select the new light named "sphericalLightX", then open the mental
+ray tab and find the connected custom light shader. This is the
+sphericalLight shader.<br>
+4. Click the .. button to browse for probemap.lm<br>
+5. Create a sphere and render with mental ray<br>
+<br>
+<br>
+<br>
+<br>
+-Jeremy Pronk&nbsp; 6/5/05<br>
+www.happiestdays.com<br>
+</body>
+</html>

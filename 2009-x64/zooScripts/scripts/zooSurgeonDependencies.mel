@@ -1,0 +1,28 @@
+global proc string[] zooSurgeonDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $includeFiles[] = {};
+	string $helpDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $return[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_str";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_int";
+	$melDependencies[( `size $melDependencies` )] = "zooArrays_float";
+	$melDependencies[( `size $melDependencies` )] = "zooSurgeonUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$includeFiles[( `size $includeFiles` )] = "zooBrandTools";
+	$includeFiles[( `size $includeFiles` )] = "zooCSTPrimitives";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+	$iconDependencies[( `size $iconDependencies` )] = "zooSurgeon.xpm";
+
+	if( $mode == "-deps" ) $return = $melDependencies;
+	if( $mode == "-docs" ) $return = $helpDependencies;
+	if( $mode == "-icons" ) $return = $iconDependencies;
+	if( $mode == "-scripts" ) {
+		$return = $melDependencies;
+		$return = `zooAddArray_str $return $includeFiles`;
+		$return = `stringArrayRemoveDuplicates $return`;
+		}
+	return $return;
+	}

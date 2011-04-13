@@ -1,0 +1,31 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc string[] zenStringArrayMatchOrder(string $matchFrom[], string $matchTo[], string $targetArray[])
+{
+	int	$matchNumArray[];
+	string	$returnArray[];
+		
+		for($i=0;$i<size($matchTo);$i++)
+		{
+			for($n=0;$n<size($matchFrom);$n++)
+				if($matchTo[$i]==$matchFrom[$n])
+					$matchNumArray[$i]=$n;
+		}
+		
+		for($i=0;$i<size($matchTo) && $i<size($targetArray);$i++)
+			$returnArray[$i]=$targetArray[$matchNumArray[$i]];
+		
+	return	$returnArray;
+}

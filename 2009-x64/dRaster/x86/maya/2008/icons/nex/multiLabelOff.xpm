@@ -1,0 +1,28 @@
+/* XPM */
+static char *multiLabelOff[] = {
+/* columns rows colors chars-per-pixel */
+"96 18 4 1",
+"  s bg c blue",
+". c #949493",
+"X c black",
+"o c gray100",
+/* pixels */
+"     ......................................................................................     ",
+"    .                                                                                      X    ",
+"   .                                                                                        X   ",
+"   .                                                                                        X   ",
+"   .                                                                                        X   ",
+"   .     X     X        X    X     XXXX                                                     X   ",
+"   .     X     X        X X       X    X                                             X      X   ",
+"   .     XX   XX        X X       X                                                  X      X   ",
+"   .     XX   XX  X   X X XX X    X       XXX  XXX XX  XXXX   XXX  X XX   XXX  X XX  XX     X   ",
+"   .     X X X X  X   X X X  X XX X      X   X X  X  X X   X X   X XX  X X   X XX  X X      X   ",
+"   .     X X X X  X   X X X  X    X      X   X X  X  X X   X X   X X   X XXXXX X   X X      X   ",
+"   .     X  X  X  X   X X X  X    X      X   X X  X  X X   X X   X X   X X     X   X X      X   ",
+"   .     X  X  X  X  XX X X  X    X    X X   X X  X  X X   X X   X X   X X   X X   X X      X   ",
+"   .     X     X   XX X X  X X     XXXX   XXX  X  X  X XXXX   XXX  X   X  XXX  X   X  X     X   ",
+"   .                                                   X                                    X   ",
+"   .                                                   X                                    X   ",
+"   .                                                                                        X   ",
+"   .                                                                                        X   "
+};

@@ -1,0 +1,70 @@
+p4;
+
+
+global proc p4menu() {
+	global string $gMainWindow;
+	string $menuName = "p4menu";
+
+	if( `menu -ex $menuName` ) deleteUI $menuName;
+	menu -l "Perforce" -to 1 -p $gMainWindow -pmc( "p4buildMenu "+ $menuName +" \"\";" ) $menuName;
+	}
+
+
+global proc p4buildMenu( string $parent, string $file ) {
+	menu -e -dai $parent;
+	setParent -m $parent;
+
+	//if the given file is an empty string, then query the currently opened file and use that
+	if( $file == "" ) $file = `file -q -sn`;
+
+	//if the file is still an empty string or unreadable, the currently opened file hasn't been saved - report it
+	if( !`filetest -r $file` || $file == "" ) {
+		menuItem -en 0 -l "file not saved";
+		menuItem -d 1;
+		menuItem -l "Perforce Scene File Lister" -c( "p4Lister {};" );
+		menuItem -l "List All Files Currently \"open for edit\"" -c( "p4Lister `p4_openedClient`;" );
+		return;
+		}
+
+	p4;
+	string $dataNames[] = {};
+	string $data[] = {};
+	int $isEdit = `isEdit $file $dataNames $data`;
+	int $headRev = `zooGetIdxOfElement_str $dataNames "headRev"`;
+	int $haveRev = `zooGetIdxOfElement_str $dataNames "haveRev"`;
+	int $isLatest = 0;
+
+	if( $headRev != -1 ) $isLatest = $data[$headRev] == $data[$haveRev]? 1: 0;
+	if( $isEdit == -1 ) menuItem -l "Add to Perforce" -c( "p4_add {\""+ $file +"\"};" );
+	else {
+		int $have = 0;
+		int $head = 0;
+
+		if( $haveRev != -1 ) $have = $data[$haveRev];
+		if( $headRev != -1 ) $head = $data[$headRev];
+		if( $head ) menuItem -en(!$isLatest) -l( "Sync to Latest ("+ $have +"/"+ $head +")" ) -c( "p4_sync {\""+ $file +"\"} 0;{ string $ans = `confirmDialog -m \"do you want to reload the file?\" -b \"Yes\" -b \"No\" -db \"No\"`; if( $ans == \"Yes\" ) file -f -o \""+ $file +"\"; }" );
+
+		if( $head>1 ) {
+			menuItem -l "Sync to Previous..." -sm 1;
+				int $maxToDisplay = 5;
+				int $numToShow = $head >= $maxToDisplay? $maxToDisplay: $head;
+
+				for( $n=1; $n<$numToShow; $n++ ) {
+					int $revToSync = $head - $n;
+					menuItem -l( "Sync to Revision "+ $revToSync ) -c( "p4_sync {\""+ $file +"\"} "+ $revToSync +";{ string $ans = `confirmDialog -m \"do you want to reload the file?\" -b \"Yes\" -b \"No\" -db \"No\"`; if( $ans == \"Yes\" ) file -f -o \""+ $file +"\"; }" );
+					}
+				menuItem -d 1;
+				menuItem -l "Sync to Given Version...";
+			setParent -m ..;
+			}
+		menuItem -en( $isEdit==0 ) -l "Open for Edit" -c( "p4_sync {\""+ $file +"\"} 0; p4_edit {\""+ $file +"\"};" );
+		menuItem -d 1;
+		menuItem -en $isEdit -l "Submit File" -c( "p4submitUI {\""+ $file +"\"};" );
+		menuItem -d 1;
+		menuItem -en $isEdit -l "Revert File" -c( "p4_revert {\""+ $file +"\"};{ string $ans = `confirmDialog -m \"do you want to reload the file?\" -b \"Yes\" -b \"No\" -db \"No\"`; if( $ans == \"Yes\" ) file -f -o \""+ $file +"\"; }" );
+		}
+	menuItem -d 1;
+	menuItem -l "Explore to File" -c( "zooExploreTo \""+ $file +"\";" );
+	}
+
+

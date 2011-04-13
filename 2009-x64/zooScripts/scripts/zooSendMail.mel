@@ -1,0 +1,67 @@
+zooFlags;
+zooArrays_str;
+
+
+//a simple utility to provide a front-end to a command-line mail command.
+//NOTE: if you want to use this script in your studio, you will need modify the
+//line below prefixed with ***.  you'll need to tell it what email command line
+//program to use, and add the various flags accordingly.  by default it uses
+//a command called "blat" which is an open source email commandline program
+//
+//It takes the following flags:
+//
+//-to [str]			this is a comma or space separated list of recipients.  If this flag is not specified the script sends the email to the user.  NOTE use the # symbol to specify the current user if required
+//-cc [str]			comma or space separated list of people to cc the email to.  NOTE if the to flag contains more than one person, all additional people are automatically cc'd
+//-subject [str]	the email subject - same limitations as the body flag
+//
+//NOTE: you can use the # symbol in the recipient list to send an email to the
+//current user (ie self) whoever that may be
+//
+//NOTE: if the -to flag isn't specified, the script sends to the email to the
+//current user - ie it defaults to #
+//
+//example:
+// zooSendMail "-subject testing -body this is a message to you";
+// this will send an email to yourself - the to flag defaults to the current user
+global proc zooSendMail( string $optionStr, string $body ) {
+	string $temp[] = {};
+	string $pathToEmail = "//network/apps/blat/blat.exe";
+	string $domain = "yourdomain.com";
+	string $subject = "[zooSendMail] default subject from maya";
+	string $to[] = { "#" };
+	string $cc[] = {};
+	string $tempDir = `internalVar -utd`;
+	string $mailFile = $tempDir +"zooSendMailBody.txt";
+	string $user = `getenv USER`;
+
+	if( $body == "" ) $body = "no body was included when invoking zooSendMail";
+	$temp = `zooGetFlagArguments $optionStr subject`; if( `size $temp` ) $subject = `zooArrayToStr_str $temp " "`;
+	$temp = `zooGetFlagArguments $optionStr to`; if( `size $temp` ) $to = $temp;
+	$temp = `zooGetFlagArguments $optionStr cc`; if( `size $temp` ) $cc = $temp;
+	$body += "\n\n\n\n[ sent via zooSendMail ]\nmacaroniKazoo ©2007";
+
+	for( $n=0; $n<`size $to`; $n++ ) if( $to[$n] == "#" ) $to[$n] = $user;
+	for( $n=0; $n<`size $cc`; $n++ ) if( $cc[$n] == "#" ) $cc[$n] = $user;
+	for( $n=0; $n<`size $to`; $n++ ) if( `match "@" $to[$n]` == "" ) $to[$n] = $to[$n] +"@"+ $domain;  //if the user has just entered a name, then add the @mail, otherwise assume its a valid emali address
+	for( $n=0; $n<`size $cc`; $n++ ) if( `match "@" $cc[$n]` == "" ) $cc[$n] = $cc[$n] +"@"+ $domain;
+
+	if( !`filetest -d $tempDir` ) sysFile -makeDir $tempDir;
+	int $fileId = `fopen $mailFile "w"`;
+	fprint $fileId $body;
+	fclose $fileId;
+
+	string $toStr = `zooArrayToStr_str $to ","`;
+	string $ccStr = `zooArrayToStr_str $cc ","`;
+
+	//*** this is the mail command you'll need to edit to use this script internally
+	string $sendCmd = "start \""+ (toNativePath($pathToEmail)) +"\" \""+ (toNativePath($mailFile)) +"\" -server INTERNAL_MAIL_SERVER -subject \""+ $subject +"\" -f "+ $user +"@"+ $domain;
+
+	if( $toStr != "" ) $sendCmd = $sendCmd +" -to "+ $toStr;
+	if( $ccStr != "" ) $sendCmd = $sendCmd +" -cc "+ $ccStr;
+	print( $sendCmd +"\n" );
+	system $sendCmd;
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

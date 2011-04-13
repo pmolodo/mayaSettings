@@ -1,0 +1,650 @@
+global proc ss2_controls (){
+	print"";
+}
+print "ss2_controls : sourced.\n";
+
+global proc ss2_controls_connectControl (string $blendShape, string $shape, string $frame, int $limit, string $position){
+
+	source generateChannelMenu;
+
+	string $type = "unlimited";
+	string $otherType = "limited";
+	if ($limit){
+		$type = "limited";
+		$otherType = "unlimited";
+	}
+
+	//Check for existing connections to this shape from this control (try not to double-add)
+		string $prettyName = substring($frame,1,size($frame)-5);
+
+		string $connectToAttr = `ss2_search_blendWeighted $type $blendShape $shape`;
+		string $relevantAttr = `ss2_search_blendWeighted $otherType $blendShape $shape`;
+
+		string $tokens[];
+		tokenize $connectToAttr "." $tokens;
+		string $connectTo = $tokens[0];
+		tokenize $relevantAttr "." $tokens;
+		string $relevant = $tokens[0];
+
+		string $existingThisType[] = `listConnections -destination 0 $connectTo`;
+		string $existingOtherType[] = `listConnections -destination 0 $relevant`;
+
+		int $doConnect = 1;
+		int $found = 0;
+		int $multiThis = 0;
+		int $multiThat = 0;
+
+		if (size($existingThisType)) $found++;
+		if (size($existingOtherType)) $found++;
+
+		for ($e in $existingThisType)
+			if ($e == $frame)
+				$multiThis++;
+
+		for ($e in $existingOtherType)
+			if ($e == $frame)
+				$multiThat++;
+
+	//Check if you want to REPLACE all connections with this one
+	if ($found){
+
+		string $replace = `confirmDialog -title "Stop Staring 2" -message ("Add to or Replace influence of all other controls?") -button "Add" -button "Replace" -button "Cancel" -dismissString "Cancel"`;
+
+		switch ($replace){
+
+			case "Add":
+				if($multiThis){
+					string $doubleConnect = `confirmDialog -title "Stop Staring 2" -message ("There is already at least one "+toupper($type)+" connection from "+$prettyName+" to "+$blendShape+"."+$shape) -button "Add anyways" -button "Cancel" -dismissString "Cancel"`;
+					if ($doubleConnect == "Cancel") $doConnect = 0;
+				}else if($multiThat){
+					string $doubleConnect = `confirmDialog -title "Stop Staring 2" -message ("There is already at least one "+toupper($otherType)+" connection from "+$prettyName+" to "+$blendShape+"."+$shape) -button "Add anyways" -button "Cancel" -dismissString "Cancel"`;
+					if ($doubleConnect == "Cancel") $doConnect = 0;			
+				}
+			break;
+
+			case "Replace":
+				ss2_killAllIncoming $connectTo;
+			break;
+
+			case "Cancel":
+				$doConnect = 0;
+			break;
+
+		}
+
+	}
+
+	if ($doConnect)
+		connectAttr -f ($frame+"."+$position) $connectToAttr;
+
+}
+
+global proc ss2_controls_connectWin_refresh (string $blendShape, string $frame, int $blendOrFrame){
+
+	string $sel[] = `ls -sl`;
+
+	if ($blendOrFrame){
+
+		int $found = 0;
+
+		string $selectedBlends[] = `ls -type blendShape $sel`;
+
+		if (`size($selectedBlends)`){
+
+			string $bufferPossible[] = `listConnections -type network $selectedBlends`;
+
+			for ($bp in $bufferPossible)
+				if (`attributeExists ss2_blend_direct $bp`)
+					$found++;
+
+				if (!$found) warning "ss2_controls_connectWin_refresh : you have an un-prepped blendShape selected.  Only prepped blends can be connected to controls";
+		}
+
+		string $buffer = `ss2_search_byAttr "ss2_blend_direct" $sel`;
+
+		string $grossSearch[] = `listConnections -type blendShape -source 0 $buffer`;
+
+		if (!size($grossSearch)) error "ss2_controls_connectWin : no prepped blend found";
+
+		$blendShape = $grossSearch[0];
+
+	}else{
+		$frame = `ss2_search_byAttr "ss2ControlType" $sel`;
+	}
+
+	ss2_controls_connectWin $blendShape $frame;
+	
+}
+
+global proc ss2_controls_connectWin (string $blendShape, string $frame){
+
+	string $sel[] = `ls -sl`;
+
+	if (!size($blendShape)){
+
+		string $buffer = `ss2_search_byAttr "ss2_blend_direct" $sel`;
+
+		if (!size($buffer)) error "ss2_controls_connectWin : no prepped blend found";
+
+		string $grossSearch[] = `listConnections -type blendShape -source 0 $buffer`;
+
+		if (!size($grossSearch)) error "ss2_controls_connectWin : no prepped blend found";
+
+		$blendShape = $grossSearch[0];
+
+	}
+
+	if (!size($frame)){
+		$frame = `ss2_search_byAttr "ss2ControlType" $sel`;
+		if (!size($frame)) error "ss2_controls_connectWin : no control found";		
+	}
+
+	int $frameSize = size($frame);
+	string $frameName = `substring $frame 1 ($frameSize-5)`;
+
+	int $type = `getAttr ($frame+".ss2ControlType")`+1;	
+
+//Make window and layout
+	if (`window -exists "ss2_controls_connectWin"`) deleteUI ss2_controls_connectWin;
+	window -title ($blendShape+" : "+$frameName) -widthHeight 210 105 ss2_controls_connectWin;
+
+	string $main = `formLayout -numberOfDivisions 21`;
+
+	//Blend list
+		string $listFrame = `frameLayout -label $blendShape -borderStyle etchedIn -parent $main`;
+		ss2_formLayer $main $listFrame {1,18,1,8};
+
+		string $listWidget = `formLayout -numberOfDivisions 10 -bgc .5 .5 .5 -parent $listFrame`;
+		string $list = `textScrollList -parent $listWidget`;
+
+		ss2_formLayer $listWidget $list {1,10,0,10};
+
+		string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 0`;
+		for ($b in $blendShapeWeight){
+			textScrollList -e -append $b $list;
+		}
+		textScrollList -e -sii 1 $list;
+
+	//Toggle *how* to add new controls into the mix
+		string $limit = `checkBox -label "limited" -v 1 -parent $listWidget`;
+		ss2_formLayer $listWidget $limit {0,1,0,10};
+
+	//Layouts to represent the controls
+		string $controlFrame = `frameLayout -label $frameName -borderStyle etchedIn -parent $main`;
+		string $ctrlWidget = `formLayout -numberOfDivisions 5 -bgc .5 .5 .5 -parent $controlFrame`;
+		ss2_formLayer $main $controlFrame {1,18,9,20};
+
+		string $refreshBlend = `button -label "change blend" -command ("ss2_controls_connectWin_refresh "+$blendShape+" "+$frame+" 1") -parent $main`;
+		string $refreshFrame = `button -label "change control" -command ("ss2_controls_connectWin_refresh "+$blendShape+" "+$frame+" 0") -parent $main`;
+
+		ss2_formLayer $main $refreshBlend {18,20,1,8};
+		ss2_formLayer $main $refreshFrame {18,20,9,20};
+
+	//Make the main command all the buttons call
+		string $command = ("string $shape[] = `textScrollList -q -si "+$list+"`; int $limit = `checkBox -q -v "+$limit+"`; ss2_controls_connectControl "+$blendShape+" $shape[0] "+$frame+" $limit ");
+
+		string $n  = `button -label "" -parent $ctrlWidget -command ($command+" vPos")`;
+		string $s  = `button -label "" -parent $ctrlWidget -command ($command+" vNeg")`;
+		string $w  = `button -label "" -parent $ctrlWidget -command ($command+" hNeg")`;
+		string $e  = `button -label "" -parent $ctrlWidget -command ($command+" hPos")`;
+		string $nw = `button -label "" -parent $ctrlWidget -command ($command+" hNegVPos")`;
+		string $ne = `button -label "" -parent $ctrlWidget -command ($command+" hPosVPos")`;
+		string $sw = `button -label "" -parent $ctrlWidget -command ($command+" hNegVNeg")`;
+		string $se = `button -label "" -parent $ctrlWidget -command ($command+" hPosVNeg")`;
+
+		ss2_formLayer $ctrlWidget $n {0,1,2,3};
+		ss2_formLayer $ctrlWidget $s {4,5,2,3};
+		ss2_formLayer $ctrlWidget $w {2,3,0,1};
+		ss2_formLayer $ctrlWidget $e {2,3,4,5};
+		ss2_formLayer $ctrlWidget $nw {0,1,0,1};
+		ss2_formLayer $ctrlWidget $ne {0,1,4,5};
+		ss2_formLayer $ctrlWidget $sw {4,5,0,1};
+		ss2_formLayer $ctrlWidget $se {4,5,4,5};
+
+		switch($type){
+
+			case 1:
+				button -e -enable 0 -visible 0 $w;
+				button -e -enable 0 -visible 0 $e;
+				button -e -enable 0 -visible 0 $nw;
+				button -e -enable 0 -visible 0 $ne;
+				button -e -enable 0 -visible 0 $sw;
+				button -e -enable 0 -visible 0 $se;
+				string $temp = `text -label "" -bgc 0 0 0 -enable 0 -parent $ctrlWidget`;
+				ss2_formLayer $ctrlWidget $temp {0,5,0,2};
+				string $temp = `text -label "" -bgc 0 0 0 -enable 0 -parent $ctrlWidget`;
+				ss2_formLayer $ctrlWidget $temp {0,5,3,5};
+			break;
+
+			case 2:
+				button -e -enable 0 -visible 0 $n;
+				button -e -enable 0 -visible 0 $s;
+				button -e -enable 0 -visible 0 $nw;
+				button -e -enable 0 -visible 0 $ne;
+				button -e -enable 0 -visible 0 $sw;
+				button -e -enable 0 -visible 0 $se;
+				string $temp = `text -label "" -bgc 0 0 0 -enable 0 -parent $ctrlWidget`;
+				ss2_formLayer $ctrlWidget $temp {0,2,0,5};
+				string $temp = `text -label "" -bgc 0 0 0 -enable 0 -parent $ctrlWidget`;
+				ss2_formLayer $ctrlWidget $temp {3,5,0,5};
+			break;
+
+			case 3:
+				//Nothing needs to be hidden or masked
+			break;
+
+			case 4:
+				button -e -enable 0 -visible 0 $s;
+				button -e -enable 0 -visible 0 $sw;
+				button -e -enable 0 -visible 0 $se;
+				string $temp = `text -label "" -bgc 0 0 0 -enable 0 -parent $ctrlWidget`;
+				ss2_formLayer $ctrlWidget $temp {3,5,0,5};
+			break;
+
+			case 5:
+				button -e -enable 0 -visible 0 $s;
+				button -e -enable 0 -visible 0 $w;
+				button -e -enable 0 -visible 0 $nw;
+				button -e -enable 0 -visible 0 $sw;
+				button -e -enable 0 -visible 0 $se;
+				string $temp = `text -label "" -bgc 0 0 0 -enable 0 -parent $ctrlWidget`;
+				ss2_formLayer $ctrlWidget $temp {0,5,0,2};
+				string $temp = `text -label "" -bgc 0 0 0 -enable 0 -parent $ctrlWidget`;
+				ss2_formLayer $ctrlWidget $temp {3,5,0,5};
+			break;
+
+			case 6:
+				button -e -enable 0 -visible 0 $n;
+				button -e -enable 0 -visible 0 $w;
+				button -e -enable 0 -visible 0 $e;
+				button -e -enable 0 -visible 0 $nw;
+				button -e -enable 0 -visible 0 $ne;
+				button -e -enable 0 -visible 0 $sw;
+				button -e -enable 0 -visible 0 $se;
+				string $temp = `text -label "" -bgc 0 0 0 -enable 0 -parent $ctrlWidget`;
+				ss2_formLayer $ctrlWidget $temp {0,5,0,2};
+				string $temp = `text -label "" -bgc 0 0 0 -enable 0 -parent $ctrlWidget`;
+				ss2_formLayer $ctrlWidget $temp {0,5,3,5};
+			break;
+
+		}
+
+	showWindow ss2_controls_connectWin;
+
+}
+
+
+proc string ss2_controls_generateNetwork (string $name, string $frame){
+
+	//Add network attributes
+		string $attrs[] = {"hCtrl","vCtrl","hPos","hNeg","vPos","vNeg","hPosVNeg","hPosVPos","hNegVNeg","hNegVPos"};
+
+		for ($a in $attrs)
+			addAttr -at double -k 1 -ln $a $frame;
+
+			string $posClamp = `createNode clamp -name ($name+"_posClamp")`;
+			string $negClamp = `createNode clamp -name ($name+"_negClamp")`;
+			string $hPlusOneClamp = `createNode clamp -name ($name+"_hPlusOneClamp")`;
+			string $negMult = `createNode multiplyDivide -name ($name+"_negMult")`;
+			string $vPosMult = `createNode multiplyDivide -name ($name+"_vPosMult")`;
+			string $vNegMult = `createNode multiplyDivide -name ($name+"_vNegMult")`;
+			string $hPlusOne = `createNode plusMinusAverage -name ($name+"_hPlusOne")`;
+			
+			connectAttr -f ($frame+".hCtrl") ($negMult+".input1X") ;
+			connectAttr -f ($frame+".vCtrl") ($negMult+".input1Y") ;
+			
+			setAttr ($negMult+".input2") -1 -1 0;
+			connectAttr -f ($negMult+".outputX") ($negClamp+".inputR");
+			connectAttr -f ($negMult+".outputY") ($negClamp+".inputG");
+			
+			setAttr ($negClamp+".max") 1 1 0;
+			connectAttr -f ($negClamp+".outputR") ($frame+".hNeg");
+			connectAttr -f ($negClamp+".outputG") ($frame+".vNeg");
+			
+			setAttr ($hPlusOne+".input3D[1].input3Dx") 1;
+			setAttr ($hPlusOne+".input3D[1].input3Dy") 1;
+			connectAttr -f ($hPlusOne+".output3Dx") ($hPlusOneClamp+".inputR");
+			connectAttr -f ($hPlusOne+".output3Dy") ($hPlusOneClamp+".inputG");
+			connectAttr -f ($negMult+".outputX") ($hPlusOne+".input3D[0].input3Dy");
+			connectAttr -f ($frame+".hCtrl") ($hPlusOne+".input3D[0].input3Dx");
+			
+			setAttr ($hPlusOneClamp+".max") 1 1 0;
+			connectAttr -f ($hPlusOneClamp+".outputR") ($vNegMult+".input1X");
+			connectAttr -f ($hPlusOneClamp+".outputG") ($vNegMult+".input1Y");
+			connectAttr -f ($hPlusOneClamp+".outputR") ($vPosMult+".input1X");
+			connectAttr -f ($hPlusOneClamp+".outputG") ($vPosMult+".input1Y");
+			
+			setAttr ($posClamp+".max") 1 1 0;
+			connectAttr -f ($frame+".hCtrl") ($posClamp+".inputR");
+			connectAttr -f ($frame+".vCtrl") ($posClamp+".inputG");
+			connectAttr -f ($posClamp+".outputR") ($frame+".hPos");
+			connectAttr -f ($posClamp+".outputG") ($frame+".vPos");
+			
+			connectAttr -f ($frame+".vPos") ($vPosMult+".input2X");
+			connectAttr -f ($frame+".vPos") ($vPosMult+".input2Y");
+			
+			connectAttr -f ($vPosMult+".outputX") ($frame+".hPosVPos");
+			connectAttr -f ($vPosMult+".outputY") ($frame+".hNegVPos");
+			
+			connectAttr -f ($frame+".vNeg") ($vNegMult+".input2X");
+			connectAttr -f ($frame+".vNeg") ($vNegMult+".input2Y");
+			
+			connectAttr -f ($vNegMult+".outputX") ($frame+".hPosVNeg");
+			connectAttr -f ($vNegMult+".outputY") ($frame+".hNegVNeg");
+
+		return $frame;
+
+}
+
+
+proc string ss2_controls_generateFrame (string $name, int $type){
+
+	//Generate the group node all the frame will use
+		string $transform = `group -em -name ($name+"Frame")`;
+
+		addAttr -ln ss2ControlType -at "enum" -en "A:B:C:D:E:F:"  $transform;
+		setAttr -l 1 ($transform+".ss2ControlType") ($type-1);
+
+	//This is a variable so I can recylce the same loop and increase the size of each frame curve
+		float $size = 1.0;
+
+	//Make the frame curves
+		for ($i = 0; $i < 3; $i++){
+
+			//Make the curve
+				string $curve = `curve -d 1 -p (-1*$size) $size 0 -p $size $size 0 -p $size (-1*$size) 0 -p (-1*$size) (-1*$size) 0 -p (-1*$size) $size 0 -k 0 -k 2 -k 4 -k 6 -k 8`;
+
+			//Get the shape node
+				string $children[] = `listRelatives -children -fullPath $curve`;
+
+			//Instance the curve to the frame group node
+				string $newChild[] = `parent -add -s $children[0] $transform`;
+
+			//Delete the curve transform, leaving just the instanced shape
+				delete $curve;
+
+			//Set the display information
+				setAttr ($newChild[0]+".overrideEnabled") 1;
+				setAttr ($newChild[0]+".overrideDisplayType") 1;
+
+			//Rename the shape to match it's parent
+				rename $newChild[0] ($transform+"Shape"+$i);
+
+			//Increment the size for the next loop
+			$size = $size + .05;
+
+		}
+
+	//Create and resize text to fit over the control
+		string $text[] = `textCurves -ch 0 -f "Arial|h-1|w1|c0" -t $name`;
+
+		float $bBox[] = `getAttr ($text[0]+".boundingBoxMax")`;
+
+		scale (2.0/$bBox[0]) (0.5/$bBox[1]) 1 $text[0];
+
+		move -1.0 0.15 0 $text[0];
+
+	//Create a new parent for the text curves and instance them under it
+		string $textPrnt = `group -em -name ($name+"_label")`;
+
+	//Ensure the text curves are going to cooperate
+		for ($t in $text){
+			ss2_clearAttr $t "tx";
+			ss2_clearAttr $t "ty";
+			ss2_clearAttr $t "tz";
+		}
+
+		makeIdentity -apply true -t 1 -r 1 -s 1 $text[0];
+
+	//Instance the text curves under the textPrnt
+		select -hi $text[0];
+		string $curves[] = `ls -sl -l -type nurbsCurve`;
+
+		int $i = 0;
+		for ($c in $curves){
+			string $nuShape[] = `parent -add -s $c ("|"+$textPrnt)`;
+			rename $nuShape[0] ($name+"_labelShape"+$i);
+			$i++;
+		}
+
+	//Clean out the original text curves
+		delete $text;
+
+	//Set the visibility to templated
+		setAttr ("|"+$textPrnt+".overrideEnabled") 1;
+		setAttr ("|"+$textPrnt+".overrideDisplayType") 1;
+
+	//Clean up the hierarchy
+		parent ("|"+$textPrnt) $transform;
+
+	return $transform;
+
+}
+
+
+proc string ss2_controls_generateControl (string $name, string $frame){
+
+	string $control = `curve -d 3 -p -0.391806 0.391806 0 -p 0 0 0 -p 0.391806 0.391806 0 -p 0 0 0 -p 0.391806 -0.391806 0 -p 0 0 0 -p -0.391806 -0.391806 0 -p 0 0 0 -p -0.391806 0.391806 0 -p 0 0 0 -p 0.391806 0.391806 0 -k -1.108194 -k -0.554097 -k 0 -k 0.554097 -k 1.108194 -k 1.662291 -k 2.216388 -k 2.770485 -k 3.324583 -k 3.87868 -k 4.432777 -k 4.986874 -k 5.540971 -name $name`;
+	string $children[] = `listRelatives -children $control`;
+
+	parent $control $frame;
+	reorder -front $control;
+	connectAttr ($control+".visibility") ($frame+".visibility");
+
+	setAttr -k 0 -l 1 ($control+".sx");
+	setAttr -k 0 -l 1 ($control+".sy");
+	setAttr -k 0 -l 1 ($control+".sz");
+	setAttr -k 0 -l 1 ($control+".rx");
+	setAttr -k 0 -l 1 ($control+".ry");
+	setAttr -k 0 -l 1 ($control+".rz");
+	setAttr -k 0 -l 1 ($control+".tz");
+	setAttr -k 0 ($control+".visibility");
+
+	rename $children[0] ($name+"Shape");
+
+	return `rename $control ($name+"Ctrl")`;
+
+}
+
+proc ss2_controls_reshapeFrame (string $control, string $frame, int $type){
+
+	string $curves[] = `listRelatives -fullPath -type nurbsCurve -children $frame`;
+	string $label[] = `listRelatives -fullPath -type transform -children $frame`;
+
+
+	//Reshape the frame, and set the control's translate limits to correspond to the new shape
+		switch($type){
+
+		//Vertical Line
+			case 1:
+
+				transformLimits -tx  0 0 -etx 1 1 $control;
+				transformLimits -ty -1 1 -ety 1 1 $control;
+				transformLimits -tz  0 0 -etz 1 1 $control;
+
+				for ($c in $curves){
+
+					move -r  1  0  0 ($c+".cv[0]") ($c+".cv[3:4]");
+					move -r -1  0  0 ($c+".cv[1:2]");
+
+				}
+
+				move  0.0 1.078 0 $label[1];
+				scale 0.5 0.5 1 $label[1];
+
+			break;
+
+		//Horizontal Line
+			case 2:
+
+				transformLimits -tx -1 1 -etx 1 1 $control;
+				transformLimits -ty  0 0 -ety 1 1 $control;
+				transformLimits -tz  0 0 -etz 1 1 $control;
+
+				for ($c in $curves){
+
+					move -r  0  1  0 ($c+".cv[2:3]");
+					move -r  0 -1  0 ($c+".cv[0:1]") ($c+".cv[4]");
+
+				}
+
+				//move  0.0 1.078 0 $label[1];
+
+			break;
+
+		//Square
+			case 3:
+
+				transformLimits -tx -1 1 -etx 1 1 $control;
+				transformLimits -ty -1 1 -ety 1 1 $control;
+				transformLimits -tz  0 0 -etz 1 1 $control;
+
+				move 0 1 0 $label[1];
+
+			break;
+
+		//Top Half Square
+			case 4:
+
+				transformLimits -tx -1 1 -etx 1 1 $control;
+				transformLimits -ty  0 1 -ety 1 1 $control;
+				transformLimits -tz  0 0 -etz 1 1 $control;
+
+				for ($c in $curves)
+					move -r  0 1 0 ($c+".cv[2:3]");
+
+				move 0 1 0 $label[1];
+
+			break;
+
+		//NE Quarter Square
+			case 5:
+
+				transformLimits -tx  0 1 -etx 1 1 $control;
+				transformLimits -ty  0 1 -ety 1 1 $control;
+				transformLimits -tz  0 0 -etz 1 1 $control;
+
+				for ($c in $curves){
+
+					move -r 0 1 0 ($c+".cv[2:3]");
+					move -r 1 0 0 ($c+".cv[0]") ($c+".cv[3:4]");
+
+				}
+
+				move 0.5 1.078 0 $label[1];
+				scale 0.5 0.5 1 $label[1];
+
+			break;
+
+		//Vertical Line, bottom only
+			case 6:
+
+				transformLimits -tx  0 0 -etx 1 1 $control;
+				transformLimits -ty -1 0 -ety 1 1 $control;
+				transformLimits -tz  0 0 -etz 1 1 $control;
+
+				for ($c in $curves){
+
+					move -r  1  0  0 ($c+".cv[0]") ($c+".cv[3:4]");
+					move -r -1  0  0 ($c+".cv[1:2]");
+					move -r  0 -1  0 ($c+".cv[0:1]") ($c+".cv[4]");
+
+				}
+
+				move  0.0 0.078 0 $label[1];
+				scale 0.5 0.5 1 $label[1];
+
+			break;
+
+		//Square
+			default:
+
+				transformLimits -tx -1 1 -etx 1 1 $control;
+				transformLimits -ty -1 1 -ety 1 1 $control;
+				transformLimits -tz  0 0 -etz 1 1 $control;
+
+				move 0 1 0 $label[1];
+
+			break;
+
+		}
+
+}
+
+
+global proc string[] ss2_controls_makeControl (string $name, int $type, int $makeNetwork){
+
+	//Don't let folks get into too much trouble
+		string $preExisting[] = `ls ($name+"Frame") ($name+"Ctrl")`;
+		if (size($preExisting) > 0 )
+			error ("ss2_controls_makeControl : A probable frame or control is already named with \""+$name+"\", not creating control");
+
+	//Create the visual and control elements
+		string $frame = `ss2_controls_generateFrame $name $type`;
+		string $control = `ss2_controls_generateControl $name $frame`;
+	
+	//Tweak the frame shape and control translate limits to match the desired "type"
+		ss2_controls_reshapeFrame $control $frame $type;
+
+		addAttr -at message -ln keepMe $control;
+		connectAttr ($frame+".message") ($control+".keepMe");
+
+	//Create the node network and connections to make this control "work"
+		if ($makeNetwork){
+			string $network = `ss2_controls_generateNetwork $name $frame`;
+			connectAttr ($control+".tx") ($network+".hCtrl");
+			connectAttr ($control+".ty") ($network+".vCtrl");
+		}
+
+	select $frame;
+	return {$frame, $control};
+
+}
+
+global proc ss2_controls_shelf (){
+
+	//Make window and layout
+		if (`window -exists "ss2_controlsWin"`) deleteUI ss2_controlsWin;
+		window -title "ss2_controls" -widthHeight 210 105 ss2_controlsWin;
+
+		columnLayout;
+		frameLayout -label "Generate";
+		columnLayout -adjustableColumn true;
+
+	//Create the fields and radio buttons to read from when creating a control
+		string $name = `textFieldGrp -label "name" -text "controlName" -cw 1 50 -cw 2 150`;
+
+		text -label "type" -align "center";
+
+		string $typeCollection = `radioCollection`;
+
+			string $typeLayout = `rowLayout -numberOfColumns 6 -cw 1 35 -cw 2 35 -cw 3 35 -cw 4 35 -cw 5 35 -cw 6 35`;
+
+			string $typeA = `radioButton -data 1 -label "A"`;
+			string $typeB = `radioButton -data 2 -label "B"`;
+			string $typeC = `radioButton -data 3 -label "C"`;
+			string $typeD = `radioButton -data 4 -label "D"`;
+			string $typeE = `radioButton -data 5 -label "E"`;
+			string $typeF = `radioButton -data 6 -label "F"`;
+
+			radioCollection -e -select $typeC $typeCollection;
+
+		setParent..;
+
+		string $makeNetwork = `checkBoxGrp -label "make network" -v1 1 -cw 1 100 -cw 2 50`;
+
+		string $command = ("string $radio = `radioCollection -q -select "+$typeCollection+"`; ss2_controls_makeControl `textFieldGrp -q -text "+$name+"` `radioButton -q -data $radio` `checkBoxGrp -q -v1 "+$makeNetwork+"`");
+
+	//This button launches the control creation
+		button -label "make control" -width 200 -command $command;
+
+		setParent..;setParent..;
+		frameLayout -label "Connect";
+		columnLayout -adjustableColumn true;
+		button -label "open slider connect" -width 208 -command "ss2_controls_connectWin \"\" \"\" ";
+		button -label "open shape limit" -width 208 -command "ss2_limitShape_shelf";
+
+	//Show the window
+		showWindow ss2_controlsWin;
+
+}

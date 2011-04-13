@@ -1,0 +1,9 @@
+global proc extras_to_toggleCulling()
+{
+	if (!catch(python("import extras_to_toggleCulling")))
+	{
+		python("extras_to_toggleCulling.toggleCulling()");
+	}
+	else print "extras_to_toggleCulling >> Could not import extras_to_toggleCulling.py";
+	
+}

@@ -1,0 +1,4493 @@
+/*
+
+GI_Joe mel script - version 2.1 - (c) Emmanuel Campin - 2001 / 2002
+
+
+******************************************
+version 2.1 / date: 12 26 2002
+Bugs fixed / improvements: see www.pixho.com for this bugs fixed / improvements list
+
+Features added:
+- clean scene shadows
+- clean all shadows  (please refer to the doc for more details)
+- HDRI fake feature (ray-trace only)
+******************************************
+
+This script creates a spherical based lighting (GI fake) plus a shader which allow
+the user to bake the generated shadows.
+This spherical lighting is separated in 2: skyLight_group and groundLight_group.
+Each group can be controlled in color and intensity independantly to the other.
+You can connect/disconnect any texture (environment textures excluded) you want.
+
+Usage:
+Place the GIJoe.lights scene and the GI_Joe.mel into your script directory
+IMPORTANT: You'll have to change the directory location in line 57
+(or search the string "your_script_directory_path/scripts/GIJoe.lights")
+
+Source the script and execute it.
+
+
+Go to www.pixho.com for more infos and limitations about the GI_Joe.mel script.
+
+Send your comments to pixho@pixho.com
+
+If you find a bug, send a mail at gijoe_bug@pixho.com with a precise description of the bug
+
+*/
+
+
+
+
+
+
+
+
+
+ 
+ 
+ global proc gi_loadGIJ()
+ {
+ 	global string $light_win;
+		
+	int $lightType = `radioButtonGrp -q -select lightT`;
+	int $lightNumS = `radioButtonGrp -q -select numSLights`;
+	int $lightNumG = `radioButtonGrp -q -select numGLights`;
+	
+	// modify here the path of the imported scene.
+	string $pathL = "C:/Documents and Settings/Ty Carriere/My Documents/maya/6.0/scripts/GIJoe.lights";
+	
+	string $domeLight = `file -import -type "mayaBinary" -options "v=0" $pathL`;
+	deleteUI -window $light_win;
+	
+	// how many lights and what type
+	
+	if ($lightType == 1) // Spots
+	{
+		string $g[] = `ls "SDir*"`;
+		string $s[] = `ls "GDir*"`;
+		delete $g $s;
+
+		if ($lightNumS == 1) // Sky 16
+			delete SSpot64_group SSpot256_group;
+
+		if ($lightNumS == 2) // Sky 64
+			delete SSpot256_group SSpot16_group;
+
+		if ($lightNumS == 3) // Sky 256
+			delete SSpot16_group SSpot64_group;
+
+		if ($lightNumG == 1) // Ground 16
+			delete GSpot64_group;
+
+		if ($lightNumG == 2) // Ground 64
+			delete GSpot16_group;
+	}
+	else // directionals
+	{
+		string $g[] = `ls "SSpot*"`;
+		string $s[] = `ls "GSpot*"`;
+		delete $g $s;
+
+		if ($lightNumS == 1) // Sky 16
+			delete SDir64_group SDir256_group;
+
+		if ($lightNumS == 2) // Sky 64
+			delete SDir256_group SDir16_group;
+
+		if ($lightNumS == 3) // Sky 256
+			delete SDir16_group SDir64_group;
+
+		if ($lightNumG == 1) // Ground 16
+			delete GDir64_group;
+
+		if ($lightNumG == 2) // Ground 64
+			delete GDir16_group;
+	}
+
+	string $slights[];
+	string $glights[];
+
+	if ($lightType == 1)
+	{
+		$slights = `ls "SkySpotShape*"`;
+		$glights = `ls "GroundSpotShape*"`;
+	}
+	else
+	{
+		$slights = `ls "SkyDirShape*"`;
+		$glights = `ls "GroundDirShape*"`;
+	}
+
+	int $num = 1;
+	for ($item in $slights)
+	{
+		string $par[] = `listRelatives -p $item`;
+		rename $par[0] ("skyLight" + $num);
+		rename $item ("skyLightShape" + $num);
+		$num++;
+	}
+	int $num = 1;
+	for ($item in $glights)
+	{
+		string $par[] = `listRelatives -p $item`;
+		rename $par[0] ("groundLight" + $num);
+		rename $item ("groundLightShape" + $num);
+		$num++;
+	}
+	
+	string $sgrp[] = `listRelatives -p "skyLight1"`;
+	string $ggrp[] = `listRelatives -p "groundLight1"`;
+	rename $sgrp[0] "skyLight_group";
+	rename $ggrp[0] "groundLight_group";
+
+
+	gi_main ($lightType, $lightNumS, $lightNumG);
+		
+}
+
+		
+// TEXTURES 2d
+ 
+ // connecting the texture bulge
+		
+proc gi_conBulge (string $tex, int $isSky)
+ 
+{
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr -f ($tex + ".uWidth") ($inc + ".uWidth");
+		connectAttr -f ($tex + ".vWidth") ($inc + ".vWidth");
+		connectAttr -f ($tex + ".invert") ($inc + ".invert");
+	}
+}
+ 
+ 
+ // connecting the texture checker
+ 		
+ proc gi_conChecker (string $tex, int $isSky)
+ 
+ {	
+ 	string $dupTex[];
+ 	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+  	string $inc;
+ 	for ($inc in $dupTex)
+ 	{
+ 		connectAttr -f ($tex + ".color1") ($inc + ".color1");
+ 		connectAttr -f ($tex + ".color2") ($inc + ".color2");
+ 		connectAttr -f ($tex + ".contrast") ($inc + ".contrast");
+ 	}
+ }
+ 
+ 
+ // connecting the texture cloth
+ 		
+ proc gi_conCloth (string $tex, int $isSky)
+ 
+ {		
+ 	string $dupTex[];
+ 	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+ 	string $inc;
+ 	for ($inc in $dupTex)
+ 	{
+ 		connectAttr -f ($tex + ".gapColor") ($inc + ".gapColor");
+ 		connectAttr -f ($tex + ".uColor") ($inc + ".uColor");
+ 		connectAttr -f ($tex + ".vColor") ($inc + ".vColor");
+ 		connectAttr -f ($tex + ".uWidth") ($inc + ".uWidth");
+ 		connectAttr -f ($tex + ".vWidth") ($inc + ".vWidth");
+ 		connectAttr -f ($tex + ".uWave") ($inc + ".uWave");
+ 		connectAttr -f ($tex + ".vWave") ($inc + ".vWave");
+ 		connectAttr -f ($tex + ".randomness") ($inc + ".randomness");
+ 		connectAttr -f ($tex + ".widthSpread") ($inc + ".widthSpread");
+ 		connectAttr -f ($tex + ".brightSpread") ($inc + ".brightSpread");
+ 	}
+ }
+ 
+ 
+ // connecting the texture file
+ 		
+ proc gi_conFile (string $tex, int $isSky)
+ 
+ {		
+ 	string $dupTex[];
+ 	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+ 	string $inc;
+ 	for ($inc in $dupTex)
+ 	{
+ 		connectAttr -f ($tex + ".fileTextureName") ($inc + ".fileTextureName");
+ 		connectAttr -f ($tex + ".useFrameExtension") ($inc + ".useFrameExtension");
+ 		connectAttr -f ($tex + ".frameExtension") ($inc + ".frameExtension");
+ 	}
+ }
+ 
+ // connecting the texture fractal
+ 		
+ proc gi_conFractal (string $tex, int $isSky)
+ 
+ {		
+ 	string $dupTex[];
+ 	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+ 	string $inc;
+ 	for ($inc in $dupTex)
+ 	{
+ 		connectAttr -f ($tex + ".amplitude") ($inc + ".amplitude");
+ 		connectAttr -f ($tex + ".ratio") ($inc + ".ratio");
+ 		connectAttr -f ($tex + ".threshold") ($inc + ".threshold");
+ 		connectAttr -f ($tex + ".levelMin") ($inc + ".levelMin");
+ 		connectAttr -f ($tex + ".levelMax") ($inc + ".levelMax");
+ 		connectAttr -f ($tex + ".frequencyRatio") ($inc + ".frequencyRatio");
+ 		connectAttr -f ($tex + ".bias") ($inc + ".bias");
+ 		connectAttr -f ($tex + ".inflection") ($inc + ".inflection");
+ 		connectAttr -f ($tex + ".animated") ($inc + ".animated");
+ 		connectAttr -f ($tex + ".timeRatio") ($inc + ".timeRatio");
+ 		connectAttr -f ($tex + ".time") ($inc + ".time");
+ 	}
+ }
+ 
+ // connecting the texture grid
+ 		
+ proc gi_conGrid (string $tex, int $isSky)
+ 
+ {		
+ 	string $dupTex[];
+ 	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+ 	string $inc;
+ 	for ($inc in $dupTex)
+ 	{
+ 		connectAttr -f ($tex + ".fillerColor") ($inc + ".fillerColor");
+ 		connectAttr -f ($tex + ".lineColor") ($inc + ".lineColor");
+ 		connectAttr -f ($tex + ".contrast") ($inc + ".contrast");
+ 		connectAttr -f ($tex + ".uWidth") ($inc + ".uWidth");
+ 		connectAttr -f ($tex + ".vWidth") ($inc + ".vWidth");
+ 	}
+ }
+ 
+ // connecting the texture mountain
+ 		
+ proc gi_conMountain (string $tex, int $isSky)
+ 
+ {		
+ 	string $dupTex[];
+ 	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+ 	string $inc;
+ 	for ($inc in $dupTex)
+ 	{
+ 		connectAttr -f ($tex + ".snowColor") ($inc + ".snowColor");
+ 		connectAttr -f ($tex + ".rockColor") ($inc + ".rockColor");
+ 		connectAttr -f ($tex + ".amplitude") ($inc + ".amplitude");
+ 		connectAttr -f ($tex + ".snowRoughness") ($inc + ".snowRoughness");
+ 		connectAttr -f ($tex + ".rockRoughness") ($inc + ".rockRoughness");
+ 		connectAttr -f ($tex + ".boundary") ($inc + ".boundary");
+ 		connectAttr -f ($tex + ".snowAltitude") ($inc + ".snowAltitude");
+ 		connectAttr -f ($tex + ".snowDropoff") ($inc + ".snowDropoff");
+ 		connectAttr -f ($tex + ".snowSlope") ($inc + ".snowSlope");
+ 		connectAttr -f ($tex + ".depthMax") ($inc + ".depthMax");
+ 	}
+ }
+ 
+ // connecting the texture movie
+ 		
+ proc gi_conMovie (string $tex, int $isSky)
+ 
+ {		
+ 	string $dupTex[];
+ 	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+ 	string $inc;
+ 	for ($inc in $dupTex)
+ 	{
+ 		connectAttr -f ($tex + ".fileTextureName") ($inc + ".fileTextureName");
+ 		connectAttr -f ($tex + ".useFrameExtension") ($inc + ".useFrameExtension");
+ 		connectAttr -f ($tex + ".frameExtension") ($inc + ".frameExtension");
+ 	}
+}
+ 
+// connecting the texture noise
+ 		
+proc gi_conNoise (string $tex, int $isSky)
+ 
+{		
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr -f ($tex + ".amplitude") ($inc + ".amplitude");
+		connectAttr -f ($tex + ".ratio") ($inc + ".ratio");
+		connectAttr -f ($tex + ".threshold") ($inc + ".threshold");
+		connectAttr -f ($tex + ".depthMax") ($inc + ".depthMax");
+		connectAttr -f ($tex + ".frequency") ($inc + ".frequency");
+		connectAttr -f ($tex + ".frequencyRatio") ($inc + ".frequencyRatio");
+		connectAttr -f ($tex + ".inflection") ($inc + ".inflection");
+		connectAttr -f ($tex + ".time") ($inc + ".time");
+		connectAttr -f ($tex + ".noiseType") ($inc + ".noiseType");
+		connectAttr -f ($tex + ".density") ($inc + ".density");
+		connectAttr -f ($tex + ".spottyness") ($inc + ".spottyness");
+		connectAttr -f ($tex + ".sizeRand") ($inc + ".sizeRand");
+		connectAttr -f ($tex + ".randomness") ($inc + ".randomness");
+		connectAttr -f ($tex + ".falloff") ($inc + ".falloff");
+		connectAttr -f ($tex + ".numWaves") ($inc + ".numWaves");
+	}
+}
+ 
+// connecting the texture ramp
+ 		
+proc gi_conRamp (string $tex, int $isSky)
+ 
+{		
+	global string $celBaseSky[];
+	global string $celBaseGround[];
+	string $celBase[]; 
+	string $dupTex[];
+	if ($isSky == 1)
+	{
+		$dupTex = `ls ("skyTex*")`;
+		$celBase = $celBaseSky = `listAttr -c -multi -st colorEntryList $tex`;
+	}
+	else
+	{
+		$dupTex = `ls ("groundTex*")`;
+		$celBase = $celBaseGround = `listAttr -c -multi -st colorEntryList $tex`;
+	}
+	string $inc;
+	int $num;
+	for ($inc in $dupTex)
+	{
+		connectAttr -f ($tex + ".type") ($inc + ".type");
+		connectAttr -f ($tex + ".interpolation") ($inc + ".interpolation");
+		for ($numCel in $celBase)
+		{
+			connectAttr -f ($tex + "." + $numCel) ($inc + "." + $numCel);
+		}
+		connectAttr -f ($tex + ".uWave") ($inc + ".uWave");
+		connectAttr -f ($tex + ".vWave") ($inc + ".vWave");
+		connectAttr -f ($tex + ".noise") ($inc + ".noise");
+		connectAttr -f ($tex + ".noiseFreq") ($inc + ".noiseFreq");
+		connectAttr -f ($tex + ".hueNoise") ($inc + ".hueNoise");
+		connectAttr -f ($tex + ".satNoise") ($inc + ".satNoise");
+		connectAttr -f ($tex + ".valNoise") ($inc + ".valNoise");
+		connectAttr -f ($tex + ".hueNoiseFreq") ($inc + ".hueNoiseFreq");
+		connectAttr -f ($tex + ".satNoiseFreq") ($inc + ".satNoiseFreq");
+		connectAttr -f ($tex + ".valNoiseFreq") ($inc + ".valNoiseFreq");
+		$num++;
+	}
+	global int $texChangedSJ;
+	string $stBase;
+	if($isSky == 1)
+		$stBase = "celBaseSky";
+	else
+		$stBase = "celBaseGround";
+	$texChangedSJ = `scriptJob -ac ($tex + ".outColor") ("global string $celBaseSky[]; global string $celBaseGround[] ; gi_celRamp (\"" + $tex + "\"," + $isSky + ", $" +$stBase + ");")`;
+}
+
+
+global proc gi_celRamp (string $tex, int $isSky, string $celB[])
+
+{
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+
+	string $cel_new[] = `listAttr -c -multi -st colorEntryList $tex`;
+	int $sizeBase = `size $celB`;
+	int $sizeNewCel = `size $cel_new`;
+
+	if ($sizeBase > $sizeNewCel)
+	{
+		string $celDif[] = stringArrayRemove ($cel_new, $celB);
+		string $cels;
+		for ($cels in $celDif)
+		{
+			string $dupRamp;
+			for ($dupRamp in $dupTex)
+			{
+				removeMultiInstance -break true ($dupRamp + "." + $cels);
+			}
+		}
+	}
+	else if ($sizeBase < $sizeNewCel)
+	{
+		string $celDif[] = stringArrayRemove ($celB, $cel_new);
+		string $cels;
+		for ($cels in $celDif)
+		{
+			string $dupRamp;
+			for ($dupRamp in $dupTex)
+			{
+				connectAttr -f ($tex + "." + $cels) ($dupRamp + "." + $cels);
+			}
+		}
+	}
+	global string $celBaseSky[];
+	global string $celBaseGround[];
+	if ($isSky == 1)
+		$celBaseSky = $cel_new;
+	else
+		$celBaseGround = $cel_new;
+}
+	
+
+// connecting the texture water
+ 		
+proc gi_conWater (string $tex, int $isSky)
+ 
+{		
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+ 		connectAttr -f ($tex + ".numberOfWaves") ($inc + ".numberOfWaves");
+		connectAttr -f ($tex + ".waveTime") ($inc + ".waveTime");
+		connectAttr -f ($tex + ".waveVelocity") ($inc + ".waveVelocity");
+		connectAttr -f ($tex + ".waveAmplitude") ($inc + ".waveAmplitude");
+		connectAttr -f ($tex + ".waveFrequency") ($inc + ".waveFrequency");
+		connectAttr -f ($tex + ".subWaveFrequency") ($inc + ".subWaveFrequency");
+ 		connectAttr -f ($tex + ".smoothness") ($inc + ".smoothness");
+		connectAttr -f ($tex + ".windUV") ($inc + ".windUV");
+		connectAttr -f ($tex + ".rippleTime") ($inc + ".rippleTime");
+		connectAttr -f ($tex + ".rippleFrequency") ($inc + ".rippleFrequency");
+		connectAttr -f ($tex + ".rippleAmplitude") ($inc + ".rippleAmplitude");
+		connectAttr -f ($tex + ".dropSize") ($inc + ".dropSize");
+		connectAttr -f ($tex + ".rippleOrigin") ($inc + ".rippleOrigin");
+		connectAttr -f ($tex + ".groupVelocity") ($inc + ".groupVelocity");
+		connectAttr -f ($tex + ".phaseVelocity") ($inc + ".phaseVelocity");
+		connectAttr -f ($tex + ".spreadRate") ($inc + ".spreadRate");
+		connectAttr -f ($tex + ".reflectionBox") ($inc + ".reflectionBox");
+		connectAttr -f ($tex + ".boxMin") ($inc + ".boxMin");
+		connectAttr -f ($tex + ".boxMax") ($inc + ".boxMax");
+		connectAttr -f ($tex + ".fast") ($inc + ".fast");
+	}
+}
+
+
+// TEXTURES 3d
+
+// brownian
+
+proc gi_conBrownian (string $tex, int $isSky)
+
+{
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr ($tex + ".lacunarity") ($inc + ".lacunarity");
+		connectAttr ($tex + ".increment") ($inc + ".increment");
+		connectAttr ($tex + ".octaves") ($inc + ".octaves");
+		connectAttr ($tex + ".weight3d") ($inc + ".weight3d");
+	}
+}
+
+
+// cloud
+
+proc gi_conCloud (string $tex, int $isSky)
+
+{
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr ($tex + ".color1") ($inc + ".color1");
+		connectAttr ($tex + ".color2") ($inc + ".color2");
+		connectAttr ($tex + ".contrast") ($inc + ".contrast");
+		connectAttr ($tex + ".amplitude") ($inc + ".amplitude");
+		connectAttr ($tex + ".depth") ($inc + ".depth");
+		connectAttr ($tex + ".ripples") ($inc + ".ripples");
+		connectAttr ($tex + ".softEdges") ($inc + ".softEdges");
+		connectAttr ($tex + ".edgeThresh") ($inc + ".edgeThresh");
+		connectAttr ($tex + ".centerThresh") ($inc + ".centerThresh");
+		connectAttr ($tex + ".transpRange") ($inc + ".transpRange");
+		connectAttr ($tex + ".ratio") ($inc + ".ratio");
+	}
+}
+
+
+// crater
+
+proc gi_conCrater (string $tex, int $isSky)
+{
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr ($tex + ".shaker") ($inc + ".shaker");
+		connectAttr ($tex + ".channel1") ($inc + ".channel1");
+		connectAttr ($tex + ".channel2") ($inc + ".channel2");
+		connectAttr ($tex + ".channel3") ($inc + ".channel3");
+		connectAttr ($tex + ".melt") ($inc + ".melt");
+		connectAttr ($tex + ".balance") ($inc + ".balance");
+		connectAttr ($tex + ".frequency") ($inc + ".frequency");
+	}
+}
+
+
+// granite
+
+proc gi_conGranite (string $tex, int $isSky)
+
+{
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr ($tex + ".color1") ($inc + ".color1");
+		connectAttr ($tex + ".color2") ($inc + ".color2");
+		connectAttr ($tex + ".color3") ($inc + ".color3");
+		connectAttr ($tex + ".fillerColor") ($inc + ".fillerColor");
+		connectAttr ($tex + ".cellSize") ($inc + ".cellSize");
+		connectAttr ($tex + ".density") ($inc + ".density");
+		connectAttr ($tex + ".mixRatio") ($inc + ".mixRatio");
+		connectAttr ($tex + ".spottyness") ($inc + ".spottyness");
+		connectAttr ($tex + ".randomness") ($inc + ".randomness");
+		connectAttr ($tex + ".threshold") ($inc + ".threshold");
+		connectAttr ($tex + ".creases") ($inc + ".creases");
+	}
+}
+
+
+// leather
+
+proc gi_conLeather (string $tex, int $isSky)
+
+{
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr ($tex + ".cellColor") ($inc + ".cellColor");
+		connectAttr ($tex + ".creaseColor") ($inc + ".creaseColor");
+		connectAttr ($tex + ".cellSize") ($inc + ".cellSize");
+		connectAttr ($tex + ".density") ($inc + ".density");
+		connectAttr ($tex + ".mixRatio") ($inc + ".mixRatio");
+		connectAttr ($tex + ".spottyness") ($inc + ".spottyness");
+		connectAttr ($tex + ".randomness") ($inc + ".randomness");
+		connectAttr ($tex + ".threshold") ($inc + ".threshold");
+		connectAttr ($tex + ".crease") ($inc + ".crease");
+	}
+}
+
+
+// marble
+	
+proc gi_conMarble (string $tex, int $isSky)
+
+{
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr ($tex + ".fillerColor") ($inc + ".fillerColor");
+		connectAttr ($tex + ".veinColor") ($inc + ".veinColor");
+		connectAttr ($tex + ".veinWidth") ($inc + ".veinWidth");
+		connectAttr ($tex + ".diffusion") ($inc + ".diffusion");
+		connectAttr ($tex + ".contrast") ($inc + ".contrast");
+		connectAttr ($tex + ".amplitude") ($inc + ".amplitude");
+		connectAttr ($tex + ".ratio") ($inc + ".ratio");
+		connectAttr ($tex + ".ripples") ($inc + ".ripples");
+		connectAttr ($tex + ".depth") ($inc + ".depth");
+	}
+}
+
+
+// rock
+	
+proc gi_conRock (string $tex, int $isSky)
+
+{
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr ($tex + ".color1") ($inc + ".color1");
+		connectAttr ($tex + ".color2") ($inc + ".color2");
+		connectAttr ($tex + ".diffusion") ($inc + ".diffusion");
+		connectAttr ($tex + ".grainSize") ($inc + ".grainSize");
+		connectAttr ($tex + ".mixRatio") ($inc + ".mixRatio");
+	}
+}
+
+
+// solidFractal
+	
+proc gi_conSolidFractal (string $tex, int $isSky)
+
+{
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr ($tex + ".threshold") ($inc + ".threshold");
+		connectAttr ($tex + ".amplitude") ($inc + ".amplitude");
+		connectAttr ($tex + ".ratio") ($inc + ".ratio");
+		connectAttr ($tex + ".frequencyRatio") ($inc + ".frequencyRatio");
+		connectAttr ($tex + ".ripples") ($inc + ".ripples");
+		connectAttr ($tex + ".depth") ($inc + ".depth");
+		connectAttr ($tex + ".bias") ($inc + ".bias");
+		connectAttr ($tex + ".inflection") ($inc + ".inflection");
+		connectAttr ($tex + ".animated") ($inc + ".animated");
+		connectAttr ($tex + ".time") ($inc + ".time");
+		connectAttr ($tex + ".timeRatio") ($inc + ".timeRatio");
+	}
+}
+
+
+// stucco
+	
+proc gi_conStucco (string $tex, int $isSky)
+
+{
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr ($tex + ".shaker") ($inc + ".shaker");
+		connectAttr ($tex + ".channel1") ($inc + ".channel1");
+		connectAttr ($tex + ".channel2") ($inc + ".channel2");
+	}
+}
+
+// volume noise
+		
+proc gi_conVolumeNoise (string $tex, int $isSky)
+
+{		
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr ($tex + ".threshold") ($inc + ".threshold");
+		connectAttr ($tex + ".amplitude") ($inc + ".amplitude");
+		connectAttr ($tex + ".ratio") ($inc + ".ratio");
+		connectAttr ($tex + ".frequencyRatio") ($inc + ".frequencyRatio");
+		connectAttr ($tex + ".depthMax") ($inc + ".depthMax");
+		connectAttr ($tex + ".inflection") ($inc + ".inflection");
+		connectAttr ($tex + ".time") ($inc + ".time");
+		connectAttr ($tex + ".frequency") ($inc + ".frequency");
+		connectAttr ($tex + ".scale") ($inc + ".scale");
+		connectAttr ($tex + ".origin") ($inc + ".origin");
+		connectAttr ($tex + ".noiseType") ($inc + ".noiseType");
+		connectAttr ($tex + ".density") ($inc + ".density");
+		connectAttr ($tex + ".spottyness") ($inc + ".spottyness");
+		connectAttr ($tex + ".sizeRand") ($inc + ".sizeRand");
+		connectAttr ($tex + ".randomness") ($inc + ".randomness");
+		connectAttr ($tex + ".falloff") ($inc + ".falloff");
+		connectAttr ($tex + ".numWaves") ($inc + ".numWaves");
+	}
+}
+
+// wood
+		
+proc gi_conWood (string $tex, int $isSky)
+
+{		
+	string $dupTex[];
+	if ($isSky == 1)
+		$dupTex = `ls ("skyTex*")`;
+	else
+		$dupTex = `ls ("groundTex*")`;
+	string $inc;
+	for ($inc in $dupTex)
+	{
+		connectAttr ($tex + ".fillerColor") ($inc + ".fillerColor");
+		connectAttr ($tex + ".veinColor") ($inc + ".veinColor");
+		connectAttr ($tex + ".veinSpread") ($inc + ".veinSpread");
+		connectAttr ($tex + ".layerSize") ($inc + ".layerSize");
+		connectAttr ($tex + ".randomness") ($inc + ".randomness");
+		connectAttr ($tex + ".age") ($inc + ".age");
+		connectAttr ($tex + ".grainColor") ($inc + ".grainColor");
+		connectAttr ($tex + ".grainContrast") ($inc + ".grainContrast");
+		connectAttr ($tex + ".grainSpacing") ($inc + ".grainSpacing");
+		connectAttr ($tex + ".center") ($inc + ".center");
+		connectAttr ($tex + ".amplitudeX") ($inc + ".amplitudeX");
+		connectAttr ($tex + ".amplitudeY") ($inc + ".amplitudeY");
+		connectAttr ($tex + ".ratio") ($inc + ".ratio");
+		connectAttr ($tex + ".ripples") ($inc + ".ripples");
+		connectAttr ($tex + ".depth") ($inc + ".depth");
+	}
+}
+
+ 
+ 
+proc gi_type2d (string $tex, int $isSky)
+ 
+{
+	// Which 2d texture??
+	
+	if (`nodeType $tex` == "bulge")
+	{
+		gi_conBulge ($tex, $isSky);
+		return;
+	}
+	
+	if (`nodeType $tex` == "checker")
+	{
+		gi_conChecker ($tex, $isSky);
+		return;
+	} 
+	
+	if (`nodeType $tex` == "cloth")
+	{
+		gi_conCloth ($tex, $isSky);
+		return;
+	}
+	
+	if (`nodeType $tex` == "file")
+	{
+		gi_conFile ($tex, $isSky);
+		return;
+	}
+	
+	if (`nodeType $tex` == "fractal")
+	{
+		gi_conFractal ($tex, $isSky);
+		return;
+	}
+	
+	if (`nodeType $tex` == "grid")
+	{
+		gi_conGrid ($tex, $isSky);
+		return;
+	}
+	
+	if (`nodeType $tex` == "mountain")
+	{
+		gi_conMountain ($tex, $isSky);
+		return;
+	}
+	
+	if (`nodeType $tex` == "movie")
+	{
+		gi_conMovie ($tex, $isSky);
+		return;
+	}
+	
+	if (`nodeType $tex` == "noise")
+	{
+		gi_conNoise ($tex, $isSky);
+		return;
+	}
+	
+	if (`nodeType $tex` == "ramp")
+	{
+		gi_conRamp ($tex, $isSky);
+		return;
+	}
+	
+	if (`nodeType $tex` == "water")
+ 	{
+		gi_conWater ($tex, $isSky);
+		return;
+	}
+}
+
+
+proc gi_type3d (string $tex, int $isSky)
+
+{
+	// which 3d texture?
+	
+	if (`nodeType $tex` == "brownian")
+	{
+		gi_conBrownian ($tex, $isSky);
+		return;
+	}
+		
+	if (`nodeType $tex` == "cloud")
+	{
+		gi_conCloud ($tex, $isSky);
+		return;
+	} 
+		
+	if (`nodeType $tex` == "crater")
+	{
+		gi_conCrater ($tex, $isSky);
+		return;
+	}
+		
+	if (`nodeType $tex` == "granite")
+	{
+		gi_conGranite ($tex, $isSky);
+		return;
+	}
+		
+	if (`nodeType $tex` == "leather")
+	{
+		gi_conLeather ($tex, $isSky);
+		return;
+	}
+		
+	if (`nodeType $tex` == "marble")
+	{
+		gi_conMarble ($tex, $isSky);
+		return;
+	}
+		
+	if (`nodeType $tex` == "rock")
+	{
+		gi_conRock ($tex, $isSky);
+		return;
+	}
+
+		
+	if (`nodeType $tex` == "solidFractal")
+	{
+		gi_conSolidFractal ($tex, $isSky);
+		return;
+	}
+		
+	if (`nodeType $tex` == "stucco")
+	{
+		gi_conStucco ($tex, $isSky);
+		return;
+	}
+		
+	if (`nodeType $tex` == "volumeNoise")
+	{
+		gi_conVolumeNoise ($tex, $isSky);
+		return;
+	}
+	
+	if (`nodeType $tex` == "wood")
+	{
+		gi_conWood ($tex, $isSky);
+		return;
+	}
+}
+
+
+proc gi_con2dTexSky (string $skyTex)
+ 
+{
+	textFieldGrp -e -tx "Texture2d" SColStat;
+	string $tex = $skyTex;
+	if (`objExists "skyTex1"` == 1)
+	{
+		return;
+	}
+	else
+	{
+		string $lights[] = `ls ("skyLightShape*")`;
+		string $inc;
+		int $num = 0;
+		string $place2d[];
+		string $conInfo = `connectionInfo -sfd ($skyTex + ".uvCoord")`;
+		
+		if (`size $conInfo` == 0)
+		{
+			string $creaPlace = `shadingNode -au place2dTexture`;
+			connectAttr -f ($creaPlace + ".outUV") ($tex + ".uvCoord");
+			connectAttr -f ($creaPlace + ".outUvFilterSize") ($tex + ".uvFilterSize");
+			$place2d[0] = $creaPlace;
+		}
+		else
+			tokenize $conInfo "." $place2d;
+ 		
+		string $transformSky[] = `listRelatives -p $lights`;
+		for ($inc in $lights)
+		{
+			// connections closestPointOnSurface & other needed nodes
+			string $cposSky = `createNode closestPointOnSurface -n cposSky1`;
+			string $skyDupTex[] = `duplicate -n skyTex1 -ic $skyTex`;
+			string $sr = `shadingNode -au setRange -n sky_SR1`;
+			connectAttr -f ($transformSky[$num] + ".translate") ($cposSky + ".inPosition");
+			connectAttr -f domeSurfaceShape.worldSpace ($cposSky + ".inputSurface");
+			connectAttr -f ($place2d[0] + ".repeatU") ($sr + ".maxX");
+			connectAttr -f ($place2d[0] + ".repeatV") ($sr + ".maxZ");
+			connectAttr -f ($cposSky + ".parameterU") ($sr + ".valueX");
+			connectAttr -f ($cposSky + ".parameterV") ($sr + ".valueZ");
+			setAttr ($sr + ".oldMax") 1 1 1;
+			connectAttr -f ($sr + ".outValueX") ($skyDupTex[0] + ".uCoord");
+			connectAttr -f ($sr + ".outValueZ") ($skyDupTex[0] + ".vCoord");
+
+			connectAttr -f ($skyDupTex[0] + ".outColor") ($inc + ".color");
+			$num++;
+		}
+	}
+	select -cl;
+	gi_type2d ($tex, 1);
+	int $spec = `radioButtonGrp -q -select skySpec`;
+	if ($spec == 1)
+		gi_SSpecT;
+}
+
+
+proc gi_con3dTexSky (string $skyTex)
+ 
+{
+	textFieldGrp -e -tx "Texture3d" SColStat;
+	string $tex = $skyTex;
+	if (`objExists skyTex1` == 1)
+	{
+		return;
+	}
+	else
+	{
+		string $lights[] = `ls ("skyLightShape*")`;
+		string $inc;
+		int $num = 0;
+
+		string $transformSky[] = `listRelatives -p $lights`;
+		for ($inc in $lights)
+		{
+			// connections closestPointOnSurface & other needed nodes
+			string $cposSky = `createNode closestPointOnSurface -n cposSky1`;
+			string $skyDupTex[] = `duplicate -n skyTex1 -ic $skyTex`;
+			connectAttr -f ($transformSky[$num] + ".translate") ($cposSky + ".inPosition");
+			connectAttr -f domeSurfaceShape.worldSpace ($cposSky + ".inputSurface");
+			connectAttr -f ($cposSky + ".parameterU") ($skyDupTex[0] + ".refPointCameraX");
+			connectAttr -f ($cposSky + ".parameterV") ($skyDupTex[0] + ".refPointCameraY");
+			
+			connectAttr -f ($skyDupTex[0] + ".outColor") ($inc + ".color");
+			
+			$num++;
+		}
+	}
+	select -cl;
+	gi_type3d ($tex, 1);
+	int $spec = `radioButtonGrp -q -v skySpec`;
+	if ($spec == 1)
+		gi_skySpec;
+}
+
+
+
+proc gi_con2dTexGround (string $groundTex)
+ 
+{
+	textFieldGrp -e -tx "Texture2d" GColStat;
+	string $tex = $groundTex;
+	if (`objExists groundTex1` == 1)
+	{
+		return;
+	}
+	else
+	{
+		string $lights[] = `ls ("groundLightShape*")`;
+		string $inc;
+		int $num = 0;
+		string $place2d[];
+		string $conInfo = `connectionInfo -sfd ($groundTex + ".uvCoord")`;
+
+		if (`size $conInfo` == 0)
+		{
+			string $creaPlace = `shadingNode -au place2dTexture`;
+			connectAttr -f ($creaPlace + ".outUV") ($tex + ".uvCoord");
+			connectAttr -f ($creaPlace + ".outUvFilterSize") ($tex + ".uvFilterSize");
+			$place2d[0] = $creaPlace;
+		}
+		else
+			tokenize $conInfo "." $place2d;
+
+		string $transformGround[] = `listRelatives -p $lights`;
+		for ($inc in $lights)
+		{
+			// connections closestPointOnSurface & other needed nodes
+			string $cposGround = `createNode closestPointOnSurface -n cposGround1`;
+			string $groundDupTex[] = `duplicate -n groundTex1 -ic $groundTex`;
+			string $sr = `shadingNode -au setRange -n ground_SR1`;
+			connectAttr -f ($transformGround[$num] + ".translate") ($cposGround + ".inPosition");
+			connectAttr -f domeSurfaceShape.worldSpace ($cposGround + ".inputSurface");
+			connectAttr -f ($place2d[0] + ".repeatU") ($sr + ".maxX");
+			connectAttr -f ($place2d[0] + ".repeatV") ($sr + ".maxZ");
+			connectAttr -f ($cposGround + ".parameterU") ($sr + ".valueX");
+			connectAttr -f ($cposGround + ".parameterV") ($sr + ".valueZ");
+			setAttr ($sr + ".oldMax") 1 1 1;
+			connectAttr -f ($sr + ".outValueX") ($groundDupTex[0] + ".uCoord");
+			connectAttr -f ($sr + ".outValueZ") ($groundDupTex[0] + ".vCoord");
+
+			connectAttr -f ($groundDupTex[0] + ".outColor") ($inc + ".color");
+			$num++;
+		}
+	}
+	gi_type2d ($tex, 0);
+	select -cl;
+}
+
+
+proc gi_con3dTexGround (string $groundTex)
+ 
+{
+	textFieldGrp -e -tx "Texture3d" GColStat;
+	string $tex = $groundTex;
+	if (`objExists groundTex1` == 1)
+	{
+		return;
+	}
+	else
+	{
+		string $lights[] = `ls ("groundLightShape*")`;
+		string $inc;
+		int $num = 0;
+
+		string $transformGround[] = `listRelatives -p $lights`;
+		for ($inc in $lights)
+		{
+			// connections closestPointOnSurface & other needed nodes
+			string $cposGround = `createNode closestPointOnSurface -n cposGround1`;
+			string $groundDupTex[] = `duplicate -n groundTex1 -ic $groundTex`;
+			connectAttr -f ($transformGround[$num] + ".translate") ($cposGround + ".inPosition");
+			connectAttr -f domeSurfaceShape.worldSpace ($cposGround + ".inputSurface");
+			connectAttr -f ($cposGround + ".parameterU") ($groundDupTex[0] + ".refPointCameraX");
+			connectAttr -f ($cposGround + ".parameterV") ($groundDupTex[0] + ".refPointCameraY");
+		
+			connectAttr -f ($groundDupTex[0] + ".outColor") ($inc + ".color");
+			$num++;
+		}
+	}
+	gi_type3d ($tex, 0);
+	select -cl;
+}
+
+
+global proc GI_Joe()
+ 
+{		
+	global string $light_win = "";
+	global string $GIj_UI;
+	
+	if (`window -ex $GIj_UI` == 1)
+		return;
+		
+	int $gi_reload;
+	int $lightType;
+	int $lightNumS;
+	int $lightNumG;
+	
+	if (`objExists "GIJoe_group"` == 1)
+	{
+		string $lights[] = `ls "skyLightShape*"`;
+		string $lightT = `nodeType $lights[0]`;
+		if ($lightT == "spotLight")
+			$lightType = 1;
+		else
+			$lightType = 0;
+		string $slight[] = `ls "skyLight*"`;
+		if (`size $slight` == 16)
+			$lightNumS = 1;
+		else if (`size $slight` == 64)
+			$lightNumS = 2;
+		else if (`size $slight` == 256)
+			$lightNumS = 3;
+			
+		string $glight[] = `ls "groundLight*"`;
+		if (`size $glight` == 16)
+			$lightNumG = 1;
+		else if (`size $glight` == 64)
+			$lightNumG = 2;
+		else
+			$lightNumG = 3;
+		
+		$gi_reload = 1;
+		gi_GIUI ($gi_reload, $lightType, $lightNumS, $lightNumG);
+	}
+	else
+	{
+		string $sceneName;
+		if( `window -exists $light_win` == true)
+			deleteUI -window $light_win;
+
+		$light_win = `window -in "GI_Joe_preload" -t "GI_Joe preload"
+			-widthHeight 300 100
+			-s 1`;
+
+			columnLayout -adjustableColumn 1;
+			frameLayout
+				-label "Light type"
+				-labelAlign "top"
+				-bs "etchedIn";
+				columnLayout;
+					radioButtonGrp
+						-l1 "spot"
+						-numberOfRadioButtons 2
+						-sl 2
+						-l2 "directional" lightT;
+					setParent ..;
+				setParent ..;
+			frameLayout
+				-label "Number of lights"
+				-bs "etchedIn";
+				columnLayout;
+					radioButtonGrp
+						-label "skyLight"
+						-numberOfRadioButtons 3
+						-l1 "16"
+						-l2 "64"
+						-l3 "256"
+						-sl 2 numSLights;
+					radioButtonGrp
+						-label "groundLight"
+						-numberOfRadioButtons 2
+						-l1 "16"
+						-l2 "64"
+						-sl 1 numGLights;
+					setParent ..;
+				setParent ..;
+			frameLayout
+				-bs "etchedIn"
+				-label "Creation";
+					button
+						-label "Go create"
+						-c gi_loadGIJ createGIJ;
+					setParent ..;
+				setParent ..;
+
+		showWindow $light_win;
+	}
+}
+
+
+
+global proc gi_conGlobal ()
+  
+{
+	string $skylights[] = `ls "skyLightShape*"`;
+	string $groundlights[] = `ls "groundLightShape*"`;
+	string $inc;
+	int $num = 0;
+	string $ppath = `workspace -q -rd`;
+	string $sdir = `chdir ($ppath + "/renderData/GIJoe_shadows")`;
+	string $pwdShadows = `pwd`;
+	print ("A GIJoe_shadows directory has been created in: " + $pwdShadows + "\n");
+	string $bakedShdws = `chdir ($ppath + "/sourceimages/baked_shadows")`;
+	string $pwdBaked = `pwd`;
+	print ("A baked_shadows directory has been created in: " + $pwdBaked + "\n");
+	
+	string $fileName = `file -q -sn`;
+	string $buffer[];
+	tokenize $fileName "/" $buffer;
+	string $sceneName[];
+	tokenize $buffer[`size $buffer`-1] "." $sceneName;
+ 
+ 	int $sres = `intSliderGrp -q -v SDmapRes`;
+ 	int $gres = `intSliderGrp -q -v GDmapRes`;
+ 	float $sint = `floatSliderGrp -q -v SkyInt`;
+ 	int $sres = `intSliderGrp -q -v SDmapRes`;
+ 	float $gint = `floatSliderGrp -q -v GroundInt`;
+ 	int $gres = `intSliderGrp -q -v GDmapRes`;
+
+	for ($inc in $skylights)
+	{
+		setAttr -type "string" ($inc + ".dmapName") ($pwdShadows + "/" + $sceneName[0] + "_skyShadow" + ($num+1) + "_" + $sres);
+		setAttr ($inc + ".dmapLightName") 0;
+		setAttr ($inc + ".dmapSceneName") 1;
+		connectAttr -f GIJoe_group.skyColor ($inc + ".color");
+		connectAttr -f GIJoe_group.shadowSColor ($inc + ".shadowColor");
+		setAttr ($inc + ".intensity") $sint;
+		setAttr ($inc + ".useDepthMapShadows") 1;
+		setAttr ($inc + ".dmapResolution") $sres;
+		setAttr ($inc + ".emitSpecular") 0;
+		setAttr ($inc + ".dmapFilterSize") 3;
+		$num++;
+	}
+	for ($inc in $groundlights)
+	{
+		setAttr -type "string" ($inc + ".dmapName") ($pwdShadows + "/" + $sceneName[0] + "groundShadow" + ($num+1) + "_" + $gres);
+		setAttr ($inc + ".dmapLightName") 0;
+		setAttr ($inc + ".dmapSceneName") 1;
+		connectAttr -f GIJoe_group.groundColor ($inc + ".color");
+		connectAttr -f GIJoe_group.shadowGColor ($inc + ".shadowColor");
+		setAttr ($inc + ".intensity") $gint;
+		setAttr ($inc + ".dmapResolution") $gres;
+		setAttr ($inc + ".emitSpecular") 0;
+		setAttr ($inc + ".useDepthMapShadows") 0;
+		setAttr ($inc + ".dmapFilterSize") 3;
+		$num++;
+	}
+}
+
+
+global proc gi_main (int $lightType, int $lightNumS, int $lightNumG)
+ 
+{		
+	string $GIJ_Surface[] = `sphere -n domeSurface`;
+	reverseSurface -d 3 -ch 0 -rpo 1 $GIJ_Surface[0];
+	setAttr ($GIJ_Surface[0] + ".scale") 15 15 15;
+	setAttr ($GIJ_Surface[0] + ".rotateZ") 90;
+	setAttr ($GIJ_Surface[0] + ".primaryVisibility") 0;
+	setAttr ($GIJ_Surface[0] + ".doubleSided") 0;
+	setAttr ($GIJ_Surface[0] + ".castsShadows") 0;
+	setAttr ($GIJ_Surface[0] + ".receiveShadows") 0;
+	$domeSurface = $GIJ_Surface[0];
+	
+	rebuildSurface -ch 1 -rpo 1 -rt 0 -end 1 -kr 0 -kcp 0 -kc 0 -su 4 -du 3 -sv 4 -dv 3 -tol 0.01  -dir 2 $domeSurface;
+	
+	FreezeTransformations;
+	DeleteHistory;
+
+	string $sphere_shader = `shadingNode -as surfaceShader -n GIJoe_SS`;
+	string $blend = `shadingNode -au blendColors -n blendMat1`;
+	string $rampMat = `shadingNode -at ramp -n rampMat`;
+	setAttr ($rampMat + ".colorEntryList[2].color") 0 0 0;
+	setAttr ($rampMat + ".colorEntryList[0].color") 1 1 1;
+	removeMultiInstance -break true ($rampMat + ".colorEntryList[1]");
+	setAttr ($rampMat + ".colorEntryList[0].position") 0.5;
+	setAttr ($rampMat + ".interpolation") 0;
+	setAttr ($rampMat + ".type") 0;
+	connectAttr -f ($rampMat + ".outAlpha") ($blend + ".blender");
+	connectAttr -f ($blend + ".output") ($sphere_shader + ".outColor");
+	select -cl; select $domeSurface;
+	hyperShade -assign GIJoe_SS;
+
+	select -cl; select -add domeSurface skyLight_group groundLight_group;
+	group -n GIJoe_group;
+	
+	// adding color (RGB) attributes to be linked with UI
+	addAttr -ln skyColor -at float3 -uac GIJoe_group;
+	addAttr -ln skyColorR -at "float" -p skyColor GIJoe_group;
+	addAttr -ln skyColorG -at "float" -p skyColor GIJoe_group;
+	addAttr -ln skyColorB -at "float" -p skyColor GIJoe_group;
+	
+	addAttr -ln shadowSColor -at float3 -uac GIJoe_group;
+	addAttr -ln shadowSColorR -at "float" -p shadowSColor GIJoe_group;
+	addAttr -ln shadowSColorG -at "float" -p shadowSColor GIJoe_group;
+	addAttr -ln shadowSColorB -at "float" -p shadowSColor GIJoe_group;
+	
+	addAttr -ln groundColor -at float3 -uac GIJoe_group;
+	addAttr -ln groundColorR -at "float" -p groundColor GIJoe_group;
+	addAttr -ln groundColorG -at "float" -p groundColor GIJoe_group;
+	addAttr -ln groundColorB -at "float" -p groundColor GIJoe_group;
+	
+	addAttr -ln shadowGColor -at float3 -uac GIJoe_group;
+	addAttr -ln shadowGColorR -at "float" -p shadowGColor GIJoe_group;
+	addAttr -ln shadowGColorG -at "float" -p shadowGColor GIJoe_group;
+	addAttr -ln shadowGColorB -at "float" -p shadowGColor GIJoe_group;
+	
+	addAttr -ln bakeColor1 -at float3 -uac GIJoe_group;
+	addAttr -ln bakeColor1R -at "float" -p bakeColor1 GIJoe_group;
+	addAttr -ln bakeColor1G -at "float" -p bakeColor1 GIJoe_group;
+	addAttr -ln bakeColor1B -at "float" -p bakeColor1 GIJoe_group;
+	
+	addAttr -ln bakeColor2 -at float3 -uac GIJoe_group;
+	addAttr -ln bakeColor2R -at "float" -p bakeColor2 GIJoe_group;
+	addAttr -ln bakeColor2G -at "float" -p bakeColor2 GIJoe_group;
+	addAttr -ln bakeColor2B -at "float" -p bakeColor2 GIJoe_group;
+	
+	// general sky params
+	addAttr -ln SkyInt -at time GIJoe_group;
+	setAttr GIJoe_group.SkyInt 0.1;
+	
+	if ($lightType == 1)
+	{
+		addAttr -ln SConeAngle -at time GIJoe_group;
+		setAttr GIJoe_group.SConeAngle 40;
+		addAttr -ln SPenumbra -at time GIJoe_group;
+		setAttr GIJoe_group.SPenumbra 1;
+		addAttr -ln SDropOff -at time GIJoe_group;
+		setAttr GIJoe_group.SDropOff 0;
+	}
+	
+	addAttr -ln numLs -at time GIJoe_group;
+	addAttr -ln numLg -at time GIJoe_group;
+	if ($lightNumS == "1")
+		setAttr GIJoe_group.numLs 16;
+	else if ($lightNumS == "2")
+		setAttr GIJoe_group.numLs 64;
+	else if ($lightNumS == "3")
+		setAttr GIJoe_group.numLs 256;
+	
+	if ($lightNumG == "1")
+		setAttr GIJoe_group.numLg 16;
+	else if ($lightNumG == "2")
+		setAttr GIJoe_group.numLg 64;
+	
+	addAttr -ln SkySpec -at time GIJoe_group;
+	setAttr GIJoe_group.SkySpec 2;
+	addAttr -ln SpecTres -at time GIJoe_group;
+	setAttr GIJoe_group.SpecTres 0;
+	addAttr -ln MultHigh -at time GIJoe_group;
+	setAttr GIJoe_group.MultHigh 1;
+	addAttr -ln LumTres -at time GIJoe_group;
+	setAttr GIJoe_group.LumTres 0;
+	addAttr -ln ShadOptType -at time GIJoe_group;
+	setAttr GIJoe_group.ShadOptType 2;
+	addAttr -ln SShado -at time GIJoe_group;
+	setAttr GIJoe_group.SShado 1;
+	addAttr -ln SColCal -at bool GIJoe_group;
+	setAttr GIJoe_group.SColCal 0;
+	
+	// ground
+	addAttr -ln GrInt -at time GIJoe_group;
+	setAttr GIJoe_group.GrInt 0.1;
+	if ($lightType == 1)
+	{
+		addAttr -ln GConeAngle -at time GIJoe_group;
+		setAttr GIJoe_group.GConeAngle 40;
+		addAttr -ln GPenumbra -at time GIJoe_group;
+		setAttr GIJoe_group.GPenumbra 1;
+		addAttr -ln GDropOff -at time GIJoe_group;
+		setAttr GIJoe_group.GDropOff 0;
+	}
+	addAttr -ln linkSky -at bool GIJoe_group;
+	setAttr GIJoe_group.linkSky 0;
+	addAttr -ln linkMult -at time GIJoe_group;
+	setAttr GIJoe_group.linkMult 1;
+	addAttr -ln HideGr -at bool GIJoe_group;
+	setAttr GIJoe_group.HideGr 0;
+	addAttr -ln GLumT -at time GIJoe_group;
+	setAttr GIJoe_group.GLumT 0;
+	addAttr -ln GShadOptType -at time GIJoe_group;
+	setAttr GIJoe_group.GShadOptType 2;
+	addAttr -ln GShado -at time GIJoe_group;
+	setAttr GIJoe_group.GShado 2;
+	addAttr -ln GColCal -at bool GIJoe_group;
+	setAttr GIJoe_group.GColCal 0;
+	// end of attributes
+	
+	select -cl;
+
+	print ("\n");
+	print ("###################################################" + "\n");
+	print ("# GI_Joe v2.1 - (c) Emmanuel Campin - 2001 / 2002 #" + "\n");
+	print ("###################################################" + "\n");
+	print ("\n");
+
+	string $shdwDir = `workspace -q -rd`;
+	string $shadowsDir = `workspace -cr ($shdwDir + "renderData/GIJoe_shadows")`;
+	print ("Current project path: " + $shdwDir + "\n");
+	string $convertDir = `workspace -cr ($shdwDir + "sourceimages/baked_shadows")`;
+
+	connectAttr -f GIJoe_group.skyColor ($blend + ".color1");
+	connectAttr -f GIJoe_group.groundColor ($blend + ".color2");
+
+	global int $sj3, $sj4;
+	$sj3 = `scriptJob -con GIJoe_group.skyColor gi_changeSkyCol`;
+	$sj4 = `scriptJob -con GIJoe_group.groundColor gi_changeGroundCol`;
+	
+	int $gi_reload;
+	
+	gi_GIUI ($gi_reload, $lightType, $lightNumS, $lightNumG);
+	gi_conGlobal ();
+}
+
+
+global proc gi_GIUI (int $gi_reload, int $lightType, int $lightNumS, int $lightNumG)
+{	
+
+	// GI_Joe UserInterface
+	
+	global string $GIj_UI;
+	if( `window -exists $GIj_UI` == 1)
+ 		deleteUI -window $GIj_UI;
+	
+	float $bcol1[], $bcol2[];
+	if (`attributeExists "bden" GIJoe_group` == 1)
+	{
+		$bcol1 = `getAttr GIJoe_group.bakeColor1`;
+		$bcol2 = `getAttr GIJoe_group.bakeColor2`;
+	}
+	else
+	{
+		$bcol1[0] = 0; $bcol1[1] = 0; $bcol1[2] = 0;
+		$bcol2[0] = 1; $bcol2[1] = 1; $bcol2[2] = 1;
+	}
+	
+	float $skyCol[], $skyShad[], $gCol[], $gshadCol[];
+	
+	if ($gi_reload == 1)
+	{
+		$skyCol = `getAttr GIJoe_group.skyColor`;
+		$skyShad = `getAttr GIJoe_group.shadowSColor`;
+		$gCol = `getAttr GIJoe_group.groundColor`;
+		$gshadCol = `getAttr GIJoe_group.shadowGColor`;
+	}
+	else
+	{
+		$skyCol[0] = 0.746; $skyCol[1] = 0.895; $skyCol[2] = 1;
+		$skyShad[0] = 0; $skyShad[1] = 0; $skyShad[2] = 0; 
+		$gCol[0] = 1; $gCol[1] = 0.813; $gCol[2] = 0.625;
+		$gshadCol[0] = 0; $gshadCol[0] = 0; $gshadCol[0] = 0;
+	}
+
+	$GIj_UI = `window -t "GI_Joe version 2.1 - UI build1" -w 450 -s 1 -in "GI_Joe UI"`;
+	scrollLayout Main;
+		columnLayout;
+			frameLayout -label "General Attributes"
+				-mh 5
+				-w 460
+				-cll 1
+				-bs "etchedIn" GalAttr;
+				columnLayout;
+					button
+						-label "Delete GI_Joe"
+						-c gi_delGIJ delGIJ;
+					button -label "Clean scene shadows"
+						-c gi_clean shadClean;
+					button -label "Clean ALL shadows"
+						-c gi_cleanAll shadCleanA;
+					checkBox
+						-label "Quick help"
+						-cc gi_help giHelp;
+					setParent ..;
+				setParent ..;
+			frameLayout -label "Sky Attributes"
+				-mh 5
+				-w 460
+				-cll 1
+				-bs "etchedIn" SkyAttr;
+				columnLayout;
+					attrColorSliderGrp
+						-label "Color"
+						-rgb $skyCol[0] $skyCol[1] $skyCol[2]
+						-at GIJoe_group.skyColor skyCol;
+					textFieldGrp
+						-label "Color status"
+						-cal 1 "left"
+						-tx "Solid Color"
+						-ed 0 SColStat;
+					floatSliderGrp
+						-cal 1 "left"
+						-label "Intensity"
+						-cc gi_SkyInt
+						-dc gi_SkyInt
+						-field 1
+						-s 0.01
+						-min 0 -max 1 -value 0.1 SkyInt;
+	if ($lightType == 1)
+	{
+					floatSliderGrp
+						-label "Cone Angle"
+						-cal 1 "left"
+						-field 1
+						-cc gi_SConeAngle
+						-dc gi_SConeAngle
+						-min 0.01 -max 179.9 -value 40 SConeAngle;
+					floatSliderGrp
+						-label "Penumbra Angle"
+						-cal 1 "left"
+						-field 1
+						-dc gi_SPenumbra
+						-cc gi_SPenumbra
+						-min -10 -max 10 -value 1 SPenumbra;
+					floatSliderGrp
+						-label "Dropoff"
+						-cal 1 "left"
+						-field 1
+						-dc gi_SDropOff
+						-cc gi_SDropOff
+					-min 0 -max 255 -value 0 SDropOff;
+	}
+					radioButtonGrp
+						-label "Specular"
+						-numberOfRadioButtons 2
+						-on1 gi_specOn
+						-l1 "On"
+						-on2 gi_specOff
+						-l2 "Off"
+						-cal 1 "left"
+						-sl 2 skySpec;
+					floatSliderGrp
+						-label "Specular Threshold"
+						-cc gi_SSpecT
+						-dc gi_SSpecT
+						-field 1
+						-cal 1 "left"
+						-en 0
+						-min 0 -max 1 -value 0
+						-s 0.01 SSpecT;
+					floatSliderGrp
+						-label "Multiplicator highlights"
+						-cal 1 "left"
+						-field 1
+						-dc gi_SkyInt
+						-cc gi_SkyInt
+						-en 0
+						-min 1 -max 10 -value 1 SmultBoost;
+				frameLayout -label "HDRI fake"
+						-mh 5
+						-w 455
+						-cll 1
+						-cl 1
+						-bs "etchedIn" SkyAttr;
+						columnLayout;
+							checkBox
+								-label "Enable HDRI fake"
+								-align "left"
+								-cc gi_HDR HDR;
+							intSliderGrp
+								-label "HDRI intensity"
+								-cal 1 "left"
+								-field 1
+								-en 0
+								-min 1 -max 20 -value 1
+								-cc gi_HDRint HDRint;
+							intSliderGrp
+								-label "HDRI power"
+								-cal 1 "left"
+								-field 1
+								-s 10
+								-en 0
+								-min 1 -max 100 -value 20
+								-cc gi_HDRPow HDRPow;
+							floatSliderGrp
+								-label "HDRI texture gamma"
+								-cal 1 "left"
+								-field 1
+								-en 0
+								-pre 3
+								-min 0.01 -max 1 -value -0.1
+								-cc gi_HDRGam
+								-dc gi_HDRGam HDRGam;
+							setParent ..;
+						setParent ..;
+					frameLayout
+						-label "Special"
+						-cll 1
+						-cl 1
+						-mh 5
+						-w 455
+						-bs "etchedIn" SSpe;
+						columnLayout;
+				if ($lightType == 1)
+				{
+							intFieldGrp
+								-label "Random translate min / max"
+								-nf 2
+								-v1 -1
+								-cal 1 "left"
+								-v2 1 SshadRand;
+				}
+				else
+				{
+							intFieldGrp
+								-label "Random rotate min / max"
+								-nf 2
+								-v1 -1
+								-cal 1 "left"
+								-v2 1 SshadRand;
+				}
+							button
+								-label "Randomize"
+								-c gi_SRand
+								-align "left" SRand;
+							setParent ..;
+						setParent ..;
+					frameLayout
+						-label "Optimization"
+						-cll 1
+						-cl 1
+						-mh 5
+						-w 455
+						-bs "etchedIn" SOptAttr;
+						columnLayout;
+							floatSliderGrp
+								-label "Luminance Threshold"
+								-cc gi_SLumT
+								-dc gi_SLumT
+								-field 1
+								-cal 1 "left"
+								-min 0 -max 1 -value 0
+								-s 0.01 SLumT;
+							radioButtonGrp
+								-numberOfRadioButtons 2
+								-l "Optimize"
+								-l1 "Shadows"
+								-l2 "Lights"
+								-sl 2
+								-cal 1 "left" gi_Sopt;
+							textFieldGrp
+								-label "Result"
+								-cal 1 "left"
+								-ed 0 SOptResult;
+							button
+								-label "Optimize"
+								-c gi_SDoOpt SDoOpt;
+							checkBox
+								-label "Freeze lighting"
+								-v 0
+								-align "left"
+								-cc gi_Sfreeze SFreeze;
+							setParent ..;
+						setParent ..;
+					frameLayout -label "Shadows"
+						-mh 5
+						-w 455
+						-cll 1
+						-cl 0
+						-bs "etchedIn" SShadowsAttr;
+						columnLayout;
+							radioButtonGrp
+								-label "Shadows"
+								-l1 "On"
+								-l2 "Off"
+								-cal 1 "left"
+								-numberOfRadioButtons 2
+								-on1 gi_SshadowsOn
+								-on2 gi_SshadowsOff
+								-sl 1 SshadowsOnOff;
+							attrColorSliderGrp
+								-label "Shadow Color"
+								-at GIJoe_group.shadowSColor
+								-rgb $skyShad[0] $skyShad[1] $skyShad[2] gi_SshadCol;
+							checkBox
+								-label "Reuse dmaps"
+								-cc gi_SReUseDmap
+								-align "left" SReUseDmap;
+							intSliderGrp
+								-label "Dmap Filter Size"
+								-cc gi_SDmapFS
+								-dc gi_SDmapFS
+								-field 1
+								-step 1
+								-cal 1 "left"
+								-min 1 -max 20 -value 3 SDmapFS;
+							intSliderGrp
+								-label "Dmap Resolution"
+								-cc gi_SDmapRes
+								-cal 1 "left"
+								-field 1
+								-step 64
+								-min 64 -max 1024 -value 128 SDmapRes;
+							floatSliderGrp
+								-label "Dmap Bias"
+								-dc gi_SDmapBias
+								-field 1
+								-cal 1 "left"
+								-pre 3
+								-min 0 -max 2 -value 0.01
+								-s 0.001 SDmapBias;
+							checkBox
+								-label "Use MidDist Dmap"
+								-cc gi_SUseMidDist
+								-align "left"
+								-v 1 SUseMidDist;
+							checkBox
+								-label "Use Dmap autoFocus"
+								-align "left"
+								-cc gi_SAutoFocOnOff
+								-v 1 SAutoFocOnOff;
+							intFieldGrp
+								-label "Dmap widthFocus"
+								-cc gi_SDmapWF
+								-cal 1 "left"
+								-v1 90
+								-en 0 SDmapWF;
+							setParent ..;
+						setParent ..;
+					frameLayout -label "Color Calibration"
+						-mh 5
+						-w 455
+						-cll 1
+						-cl 1
+						-bs "etchedIn" SColCal;
+						columnLayout;
+							checkBox -label "Enable Color calibration"
+								-align "left"
+								-cc gi_SColorCal SColorCal;
+							floatSliderGrp
+								-label "Contrast"
+								-dc gi_SContrast
+								-cc gi_SContrast
+								-field 1
+								-cal 1 "left"
+								-min 0 -max 4 -value 1
+								-s 0.01
+								-en 0 SContrast;
+							floatSliderGrp
+								-label "ContrastBias"
+								-dc gi_SContrastB
+								-cc gi_SContrastB
+								-field 1
+								-cal 1 "left"
+								-min 0 -max 1 -value 0.5
+								-s 0.01
+								-en 0 SContrastB;
+							floatSliderGrp
+								-label "Hue"
+								-dc gi_SHue
+								-cc gi_SHue
+								-field 1
+								-cal 1 "left"
+								-min 0 -max 2 -value 1
+								-s 0.01
+								-en 0 SHue;
+							floatSliderGrp
+								-label "Saturation"
+								-dc gi_SSat
+								-cc gi_SSat
+								-field 1
+								-cal 1 "left"
+								-min 0 -max 2 -value 1
+								-s 0.01
+								-en 0 SSat;
+							floatSliderGrp
+								-label "Gamma"
+								-dc gi_SGam
+								-cc gi_SGam
+								-field 1
+								-cal 1 "left"
+								-min 0 -max 4 -value 1
+								-s 0.01
+								-en 0 SGam;
+							checkBox
+								-en 0
+								-label "Freeze color calibration"
+								-align "left"
+								-cc gi_SFrCol SFrCol;
+							setParent;
+						setParent;
+					setParent ..;
+				setParent ..;
+			setParent ..;
+		setParent ..;
+			frameLayout -label "Ground Attributes"
+				-mh 5
+				-w 460
+				-cll 1
+				-cl 1
+				-bs "etchedIn" GAttr;
+				columnLayout;
+					attrColorSliderGrp
+						-label "Color"
+						-at GIJoe_group.groundColor
+						-rgb $gCol[0] $gCol[1] $gCol[2] groundCol;
+					textFieldGrp
+						-label "Color status"
+						-cal 1 "left"
+						-tx "Solid Color"
+						-ed 0 GColStat;
+					floatSliderGrp
+						-cal 1 "left"
+						-label "Intensity"
+						-dc gi_GroundInt
+						-cc gi_GroundInt
+						-field 1
+						-s 0.01
+						-min 0 -max 1 -value 0.05 GroundInt;
+	if ($lightType == 1)
+	{
+					floatSliderGrp
+						-label "Cone Angle"
+						-field 1
+						-dc gi_GConeAngle
+						-cc gi_GConeAngle
+						-cal 1 "left"
+						-min 0 -max 179.9 -value 40 GConeAngle;
+					floatSliderGrp
+						-label "Penumbra Angle"
+						-field 1
+						-cal 1 "left"
+						-dc gi_GPenumbra
+						-cc gi_GPenumbra
+						-min -10 -max 10 -value 1 GPenumbra;
+					floatSliderGrp
+						-label "Dropoff"
+						-field 1
+						-cal 1 "left"
+						-cc gi_GDropOff
+						-dc gi_GDropOff
+						-min 0 -max 255 -value 0 GDropOff;
+	}
+					checkBox
+						-label "link to sky intensity"
+						-cc gi_linkSkyInt
+						-align "left" linkSkyInt;
+					floatSliderGrp
+						-label "Multiplicator"
+						-en 0
+						-cal 1 "left"
+						-field 1
+						-step 0.01
+						-dc gi_GrIntMult
+						-cc gi_GrIntMult
+						-min 0 -max 2 -value 1 GrIntMult;
+					frameLayout
+						-label "Special"
+						-cll 1
+						-cl 1
+						-mh 5
+						-w 455
+						-bs "etchedIn" GSpe;
+						columnLayout;
+							checkBox
+								-label "Hide GroundLights"
+								-cc gi_HideGr
+								-align "left" HideGr;
+							checkBox
+								-label "Delete GroundLights"
+								-cc gi_delGrL
+								-align "left" DelGr;
+							setParent ..;
+						setParent ..;
+					frameLayout
+						-label "Optimization"
+						-cll 1
+						-cl 1
+						-mh 5
+						-w 455
+						-bs "etchedIn" GOptAttr;
+						columnLayout;
+							floatSliderGrp
+								-label "Luminance Threshold"
+								-dc gi_GLumT
+								-field 1
+								-min 0 -max 1 -value 0
+								-s 0.01 GLumT;
+							radioButtonGrp
+								-numberOfRadioButtons 2
+								-l1 "Optimize Shadows"
+								-l2 "Optimize Lights"
+								-sl 2
+								-cal 1 "left" gi_Gopt;
+							textFieldGrp
+								-label "Result"
+								-cal 1 "left"
+								-ed 0 GOptResult;
+							button
+								-label "Optimize"
+								-c gi_GDoOpt GDoOpt;
+							checkBox
+								-label "Freeze lighting"
+								-v 0
+								-align "left"
+								-cc gi_Gfreeze GFreeze;
+							setParent ..;
+						setParent ..;
+					frameLayout -label "Shadows"
+						-mh 5
+						-w 455
+						-cll 1
+						-cl 0
+						-bs "etchedIn" GShadAttr;
+						columnLayout;
+							radioButtonGrp
+								-l "Shadows"
+								-l1 "On"
+								-l2 "Off"
+								-numberOfRadioButtons 2
+								-on1 gi_GshadowsOn
+								-on2 gi_GshadowsOff
+								-sl 2 GShadOnOff;
+							attrColorSliderGrp
+								-label "Shadow Color"
+								-at GIJoe_group.shadowGColor
+								-rgb $gshadCol[0] $gshadCol[1] $gshadCol[2] gi_GshadCol;
+							checkBox
+								-label "Reuse dmaps"
+								-cc gi_GReUseDmap
+								-align "left" GReUseDmap;
+							intSliderGrp
+								-label "Dmap Filter Size"
+								-cc gi_GDmapFS
+								-dc gi_GDmapFS
+								-field 1
+								-cal 1 "left"
+								-step 1
+								-min 1 -max 20 -value 3 GDmapFS;
+							intSliderGrp
+								-label "Dmap Resolution"
+								-cc gi_GDmapRes
+								-cal 1 "left"
+								-field 1
+								-min 64 -max 1024 -value 128
+								-s 64 GDmapRes;
+							floatSliderGrp
+								-label "Dmap Bias"
+								-cc gi_GDmapBias
+								-dc gi_GDmapBias
+								-field 1
+								-cal 1 "left"
+								-pre 3
+								-min 0 -max 2 -value 0.01
+								-s 0.001 GDmapBias;
+							checkBox
+								-label "Use MidDist Dmap"
+								-cc gi_GUseMidDist
+								-align "left"
+								-v 1 GUseMidDist;
+							checkBox
+								-label "Use Dmap autoFocus"
+								-align "left"
+								-cc gi_GAutoFocOnOff
+								-v 1 GAutoFocOnOff;
+							intFieldGrp
+								-label "Dmap widthFocus"
+								-cc gi_GDmapWF
+								-cal 1 "left"
+								-v1 90
+								-en 0 GDmapWF;
+							setParent ..;
+						setParent ..;
+					frameLayout -label "Color Calibration"
+						-mh 5
+						-w 455
+						-cll 1
+						-cl 1
+						-bs "etchedIn" GColCal;
+						columnLayout;
+							checkBox -label "Enable Color calibration"
+								-align "left"
+								-cc gi_GColorCal GColorCal;
+							floatSliderGrp
+								-label "Contrast"
+								-cc gi_GContrast
+								-dc gi_GContrast
+								-field 1
+								-cal 1 "left"
+								-min 0 -max 4 -value 1
+								-s 0.01
+								-en 0 GContrast;
+							floatSliderGrp
+								-label "ContrastBias"
+								-cc gi_GContrastB
+								-dc gi_GContrastB
+								-field 1
+								-cal 1 "left"
+								-min 0 -max 1 -value 0.5
+								-s 0.01
+								-en 0 GContrastB;
+							floatSliderGrp
+								-label "Hue"
+								-dc gi_GHue
+								-cc gi_GHue
+								-field 1
+								-cal 1 "left"
+								-min 0 -max 2 -value 1
+								-s 0.01
+								-en 0 GHue;
+							floatSliderGrp
+								-label "Saturation"
+								-cc gi_GSat
+								-dc gi_GSat
+								-field 1
+								-cal 1 "left"
+								-min 0 -max 2 -value 1
+								-s 0.01
+								-en 0 GSat;
+							floatSliderGrp
+								-label "Gamma"
+								-cc gi_GGam
+								-dc gi_GGam
+								-field 1
+								-cal 1 "left"
+								-min 0 -max 4 -value 1
+								-s 0.01
+								-en 0 GGam;
+							checkBox
+								-en 0
+								-label "Freeze color calibration"
+								-align "left"
+								-cc gi_GFrCol GFrCol;
+							setParent;
+						setParent;
+					setParent ..;
+				setParent ..;
+			setParent ..;
+		setParent ..;
+			frameLayout -label "Bake Shadows"
+				-bs "etchedIn"
+				-w 460
+				-cll 1
+				-cl 1 BakeShad;
+				columnLayout;
+					checkBox -label "Enable bake shader"
+						-align "left"
+						-cc gi_BakeShad bakeOnOff;
+					checkBox -label "Retrieve shadow maps"
+						-align "left"
+						-cc gi_readB bRb;
+					attrColorSliderGrp
+						-label "Shadow Color 1"
+						-at GIJoe_group.bakeColor1
+						-rgb $bcol1[0] $bcol1[1] $bcol1[2] gi_BakShadCol1;
+					attrColorSliderGrp
+						-label "Shadow Color 2"
+						-at GIJoe_group.bakeColor2
+						-rgb $bcol2[0] $bcol2[1] $bcol2[2] gi_BakShadCol2;
+					floatSliderGrp
+						-label "Density Mult"
+						-cc gi_BakDensity
+						-dc gi_BakDensity
+						-field 1
+						-cal 1 "left"
+						-min 0 -max 4 -value 1
+						-s 0.01
+						-en 0 BakDensity;
+					floatSliderGrp
+						-label "Contrast"
+						-cc gi_BakeCon
+						-field 1
+						-cal 1 "left"
+						-min 0 -max 4 -value 1
+						-s 0.01
+						-en 0 BakCon;
+					floatSliderGrp
+						-label "Contrast Bias"
+						-cc gi_BakConBias
+						-field 1
+						-cal 1 "left"
+						-min 0 -max 1 -value 0.5
+						-s 0.01
+						-en 0 BakeConB;
+					intSliderGrp
+						-label "Bake Min Resolution"
+						-field 1
+						-cal 1 "left"
+						-min 64 -max 512 -value 128
+						-s 1
+						-cc gi_mres
+						-en 0 BakMinRes;
+					intSliderGrp
+						-label "Bake Max Resolution"
+						-field 1
+						-cal 1 "left"
+						-min 64 -max 1024 -value 512
+						-s 1
+						-cc gi_Mres
+						-en 0 BakMaxRes;
+					optionMenuGrp
+						-en 0
+						-label "File format" FF;
+						menuItem "IFF";
+						menuItem "JPG";
+						menuItem "TGA";
+						menuItem "TIF";
+						menuItem "BMP";
+					textFieldGrp
+						-label "Output Baked Shadows Directory"
+						-text ""
+						-cal 1 "left"
+						-cc gi_bdir
+						-en 0 gi_outputShadDir;
+					checkBox
+						-label "Preview mode"
+						-en 0
+						-align "left" BakePr;
+					button
+						-label "Bake All Assigned"
+						-en 0
+						-c gi_bakAll bakAll;
+					button
+						-label "Get Files"
+						-en 0
+						-c gi_bakeGetFil bakeGetFil;
+					setParent;
+	
+	global int $sjUI, $sj1, $sj2;
+	
+	$sjUI = `scriptJob -uid $GIj_UI gi_delSJs`;
+	$sj1 = `scriptJob -e deleteAll gi_delGI_UI`;
+	$sj2 = `scriptJob -e SceneOpened gi_delGI_UI`;
+	
+	if ($gi_reload == 1)
+		gi_assignUI ();
+	
+	showWindow $GIj_UI;
+}
+
+
+global proc gi_assignUI ()
+{	
+	// sky
+	// intensity params
+	
+	string $slight[] = `ls "skyLightShape*"`;
+	string $consCol = `connectionInfo -sfd GIJoe_group.skyColor`;
+	string $sTex[] = `ls "skyTex*"`;
+	float $scol[];
+	if ((`size $consCol` > 0) && (`size $sTex` > 0))
+		textFieldGrp -e -tx "Texture2d" SColStat;
+	else if ((`size $consCol` > 0) && (`size $sTex` == 0))
+		textFieldGrp -e -tx "Frozen" SColStat;
+	else
+	{
+		$scol = `getAttr GIJoe_group.skyColor`;
+		textFieldGrp -e -tx "Solid Color" SColStat;
+	}
+	float $SkyInt = `getAttr GIJoe_group.SkyInt`;
+	floatSliderGrp -edit -v $SkyInt SkyInt;
+	if (`attributeExists "coneAngle" $slight[0]` == 1)
+	{
+		float $cang = `getAttr ($slight[0] + ".coneAngle")`;
+		float $pen = `getAttr ($slight[0] + ".penumbraAngle")`;
+		float $dropo = `getAttr ($slight[0] + ".dropoff")`;
+		floatSliderGrp -edit -v $cang SConeAngle;
+		floatSliderGrp -edit -v $pen SPenumbra;
+		floatSliderGrp -e -v $dropo SDropOff;
+	}
+	
+	// specular
+	
+	int $skySpec = `getAttr GIJoe_group.SkySpec`;
+	radioButtonGrp -e -sl $skySpec skySpec;
+	
+	float $SpecTres = `getAttr GIJoe_group.SpecTres`;
+	float $lumTres = `getAttr GIJoe_group.LumTres`;
+	float $SpecMult = `getAttr GIJoe_group.MultHigh`;
+	if ($skySpec == 1)
+	{
+		floatSliderGrp -e -en 1 -v $SpecTres SSpecT;
+		floatSliderGrp -e -en 1 -v $lumTres SLumT;
+		floatSliderGrp -e -en 1 -v $SpecMult SmultBoost;
+	}
+	
+	// HDRI fake
+	
+	if (`attributeExists "HDR" GIJoe_group` == 1)
+	{
+		int $HDR = `getAttr GIJoe_group.HDR`;
+		int $HDRInt = `getAttr GIJoe_group.HDRInt`;
+		int $HDRPow = `getAttr GIJoe_group.HDRPow`;
+		float $HDRGam = `getAttr GIJoe_group.HDRGam`;
+		
+		checkBox -e -en 1 -v 1 HDR;
+		intSliderGrp -e -en 1 -v $HDRInt HDRint;
+		intSliderGrp -e -en 1 -v $HDRPow HDRPow;
+		floatSliderGrp -e -en 1 -v $HDRGam HDRGam;
+	}
+	
+	// optimization
+	
+	int $shadOptType = `getAttr GIJoe_group.ShadOptType`;
+	radioButtonGrp -e -sl $shadOptType gi_Sopt;
+	
+	int $SShado = `getAttr GIJoe_group.SShado`;
+	radioButtonGrp -e -sl $SShado SshadowsOnOff;
+	
+	int $SColCal = `getAttr GIJoe_group.SColCal`;
+	checkBox -e -v $SColCal SColorCal;
+	
+	if ($SColCal == 1)
+	{
+		float $scon = `getAttr GIJoe_group.SCon`;
+		floatSliderGrp -e -v $scon SContrast;
+		float $sconb = `getAttr GIJoe_group.SConB`;
+		floatSliderGrp -e -v $sconb SContrastB;
+		float $shue = `getAttr GIJoe_group.SHue`;
+		floatSliderGrp -e -v $shue SHue;
+		float $ssat = `getAttr GIJoe_group.SSat`;
+		floatSliderGrp -e -v $ssat SSat;
+		float $sgam = `getAttr GIJoe_group.SGam`;
+		floatSliderGrp -e -v $sgam SGam;
+		
+		floatSliderGrp -e -en 1 SContrast;
+		floatSliderGrp -e -en 1 SContrastB;
+		floatSliderGrp -e -en 1 SHue;
+		floatSliderGrp -e -en 1 SSat;
+		floatSliderGrp -e -en 1 SGam;
+	}
+	
+	
+	int $reuseS = `getAttr ($slight[0] + ".reuseDmap")`;
+	checkBox -e -v $reuseS SReUseDmap;
+	int $dmapFS = `getAttr ($slight[0] + ".dmapFilterSize")`;
+	intSliderGrp -e -v $dmapFS SDmapFS;
+	int $dmapRS = `getAttr ($slight[0] + ".dmapResolution")`;
+	intSliderGrp -e -v $dmapRS SDmapRes;
+	float $dmapBias = `getAttr ($slight[0] + ".dmapBias")`;
+	floatSliderGrp -e -v $dmapBias SDmapBias;
+	int $useMid = `getAttr ($slight[0] + ".useMidDistDmap")`;
+	checkBox -e -v $useMid SUseMidDist;
+	int $useAF = `getAttr ($slight[0] + ".useDmapAutoFocus")`;
+	checkBox -e -v $useAF SAutoFocOnOff;
+	if ($useAF == 0)
+		intFieldGrp -e -en 1 SDmapWF;
+	int $SWF = `getAttr ($slight[0] + ".dmapWidthFocus")`;
+	intFieldGrp -e -v1 $SWF SDmapWF;
+	
+	
+	// ground
+	string $glight[] = `ls "groundLightShape*"`;
+	if (`size $glight` == 0)
+		return;
+	
+	string $congCol = `connectionInfo -sfd GIJoe_group.groundColor`;
+	string $gTex[] = `ls "groundTex*"`;
+	float $gcol[];
+	if ((`size $congCol` > 0) && (`size $gTex` > 0))
+		textFieldGrp -e -tx "Texture2d" GColStat;
+	else if ((`size $congCol` > 0) && (`size $gTex` == 0))
+		textFieldGrp -e -tx "Frozen" GColStat;
+	else
+	{
+		$gcol = `getAttr GIJoe_group.groundColor`;
+		textFieldGrp -e -tx "Solid Color" GColStat;
+	}
+	
+	float $GrInt = `getAttr GIJoe_group.GrInt`;
+	floatSliderGrp -edit -v $GrInt GroundInt;
+	if (`attributeExists "coneAngle" $glight[0]` == 1)
+	{
+		float $cang = `getAttr ($glight[0] + ".coneAngle")`;
+		float $pen = `getAttr ($glight[0] + ".penumbraAngle")`;
+		float $dropo = `getAttr ($glight[0] + ".dropoff")`;
+		floatSliderGrp -edit -v $cang SConeAngle;
+		floatSliderGrp -edit -v $pen SPenumbra;
+		floatSliderGrp -e -v $dropo SDropOff;
+	}
+	
+	int $link = `getAttr GIJoe_group.linkSky`;
+	checkBox -e -v $link linkSkyInt;
+	float $GMult = `getAttr GIJoe_group.linkMult`;
+	floatSliderGrp -e -v $GMult GrIntMult;
+	int $Ghide = `getAttr GIJoe_group.HideGr`;
+	checkBox -e -v $Ghide HideGr;
+	float $GLumt = `getAttr GIJoe_group.GLumT`;
+	floatSliderGrp -e -v $GLumt GLumT;
+	int $GShado = `getAttr GIJoe_group.GShado`;
+	radioButtonGrp -e -sl $GShado GShadOnOff;
+	
+	int $Greuse = `getAttr ($glight[0] + ".reuseDmap")`;
+	checkBox -e -v $Greuse GReUseDmap;
+	int $GDmapFS = `getAttr ($glight[0] + ".dmapFilterSize")`;
+	intSliderGrp -e -v $GDmapFS GDmapFS;
+	int $GDMapRS =` getAttr ($glight[0] + ".dmapResolution")`;
+	intSliderGrp -e -v $GDMapRS GDmapRes;
+	float $GBias = `getAttr ($glight[0] + ".dmapBias")`;
+	floatSliderGrp -e -v $GBias GDmapBias;
+	
+	int $GuseMid = `getAttr ($glight[0] + ".useMidDistDmap")`;
+	checkBox -e -v $GuseMid GUseMidDist;
+	int $GuseAF = `getAttr ($glight[0] + ".useDmapAutoFocus")`;
+	checkBox -e -v $GuseAF GAutoFocOnOff;
+	if ($GuseAF == 0)
+		intFieldGrp -e -en 1 GDmapWF;
+	int $GWF = `getAttr ($glight[0] + ".dmapWidthFocus")`;
+	intFieldGrp -e -v1 $GWF GDmapWF;
+	
+	int $GColCal = `getAttr GIJoe_group.GColCal`;
+	checkBox -e -v $GColCal GColorCal;
+	
+	if ($GColCal == 1)
+	{
+		float $gcon = `getAttr GIJoe_group.GCon`;
+		floatSliderGrp -e -v $gcon GContrast;
+		float $gconb = `getAttr GIJoe_group.GConB`;
+		floatSliderGrp -e -v $gconb GContrastB;
+		float $ghue = `getAttr GIJoe_group.GHue`;
+		floatSliderGrp -e -v $ghue GHue;
+		float $gsat = `getAttr GIJoe_group.GSat`;
+		floatSliderGrp -e -v $gsat GSat;
+		float $ggam = `getAttr GIJoe_group.GGam`;
+		floatSliderGrp -e -v $ggam GGam;
+
+		floatSliderGrp -e -en 1 GContrast;
+		floatSliderGrp -e -en 1 GContrastB;
+		floatSliderGrp -e -en 1 GHue;
+		floatSliderGrp -e -en 1 GSat;
+		floatSliderGrp -e -en 1 GGam;
+		
+	}
+	
+	// bake
+	
+	if (`attributeExists "bden" GIJoe_group` == 1)
+	{
+		float $col1[] = `getAttr GIJoe_group.bakeColor1`;
+		float $col2[] = `getAttr GIJoe_group.bakeColor2`;
+		float $den = `getAttr GIJoe_group.bden`;
+		float $bcon = `getAttr GIJoe_group.bcon`;
+		float $bconb = `getAttr GIJoe_group.bconb`;
+		int $mres = `getAttr GIJoe_group.mres`;
+		int $Mres = `getAttr GIJoe_group.Mres`;
+		string $bdir = `getAttr GIJoe_group.bdir`;
+		
+		floatSliderGrp -e -en 1 -v $den BakDensity;
+		floatSliderGrp -e -en 1 -v $bcon BakCon;
+		floatSliderGrp -e -en 1 -v $bconb BakeConB;
+		intSliderGrp -e -en 1 -v $mres BakMinRes;
+		intSliderGrp -e -en 1 -v $Mres BakMaxRes;
+		textFieldGrp -e -en 1 -ed 1 -tx $bdir gi_outputShadDir;
+		checkBox -e -en 1 -v 1 bakeOnOff;
+		optionMenuGrp -e -en 1 FF;
+		checkBox -e -en 1 BakePr;
+		button -e -en 1 bakAll;
+		button -e -en 0 bakeGetFil;
+	}
+	
+	// retrieve
+	
+	if (`attributeExists "breadSM" GIJoe_group` == 1)
+	{
+		string $bdir = `getAttr GIJoe_group.bdir`;
+		textFieldGrp -e -en 1 -ed 1 -tx $bdir gi_outputShadDir;
+		checkBox -e -v 1 bRb;
+		button -e -en 1 bakeGetFil;
+	}
+	
+	// scriptJobs
+	
+	global int $sj3,  $sj4;
+	$sj3 = `scriptJob -con GIJoe_group.skyColor gi_changeSkyCol`;
+	$sj4 = `scriptJob -con GIJoe_group.groundColor gi_changeGroundCol`;
+}
+	
+
+global proc gi_changeSkyCol ()
+ 
+{
+	string $sTex[] = `listConnections -d off -s on GIJoe_group.skyColor`;
+	string $lights[] = `ls "skyLightShape*"`;
+	string $texSky[] = `ls "skyTex*"`;
+	if (`size $sTex[0]` > 0)
+	{
+		string $skyTex = $sTex[0];
+		string $nType = `nodeType $skyTex`;
+		if (($nType == "snow") || ($nType == "layeredTexture") || ($nType == "envBall") || ($nType == "envChrome") || ($nType == "envCube") || ($nType == "envSky") || ($nType == "envSphere"))
+		{
+			warning "Not a useable texture selected...!!";
+			disconnectAttr ($skyTex + ".outColor") GIJoe_group.skyColor;
+			return;
+		}
+		string $class[] = `getClassification $nType`;
+		// selected texture: 2d or 3d?
+		if ($class[0] == "texture/2d")
+			gi_con2dTexSky ($skyTex);
+		else if ($class[0] == "texture/3d")
+			gi_con3dTexSky ($skyTex);
+	}
+	else if (`isConnected GIJoe_group.skyColor ($lights[0] + ".color")` == 0)
+	{
+		string $skyTex[] = `ls "skyTex*" "skyMult*" "skyRgb2Hsv*" "skyContrast*" "skyHsv2Rgb*" "skyGamma*" "sky_SR*"`;
+		string $inc;
+		for ($inc in $skyTex)
+		{
+			delete $inc;
+		}
+		
+		textFieldGrp -e -tx "Solid Color" SColStat;
+
+		for ($inc in $lights)
+		{
+			connectAttr -f GIJoe_group.skyColor ($inc + ".color");
+		}
+		
+		if (`objExists "HDR_limit"` == 1)
+		{
+			checkBox -e -v 0 HDR;
+			intSliderGrp -e -en 0 -v 1 HDRint;
+			intSliderGrp -e -en 0 -v 200 HDRPow;
+			floatSliderGrp -e -en 0 -v 0.1 HDRGam;
+			deleteAttr GIJoe_group.HDR;
+			deleteAttr GIJoe_group.HDRInt;
+			deleteAttr GIJoe_group.HDRPow;
+			deleteAttr GIJoe_group.HDRGam;
+			delete "HDR_shader" "HDR_shaderSG" "HDR_texture" "HDR_ramp" "HDR_limit" "HDR_gamma" "HDR_Hsv" "HDR_Surface";
+		}
+	}
+	else
+		return;
+}
+
+
+
+
+global proc gi_changeGroundCol ()
+ 
+{
+	if (`objExists "GIJoe_group"` == 1)
+	{
+		string $gTex[] = `listConnections -d off -s on GIJoe_group.groundColor`;
+		string $texGround[] = `ls ("groundTex*")`;
+		if (`size $gTex[0]` > 0)
+		{
+			string $groundTex = $gTex[0];
+			string $nType = `nodeType $groundTex`;
+			if (($nType == "snow") || ($nType == "layeredTexture") || ($nType == "envBall") || ($nType == "envChrome") || ($nType == "envCube") || ($nType == "envSky") || ($nType == "envSphere"))
+			{
+				warning "Not a useable texture selected...!!";
+				disconnectAttr ($groundTex + ".outColor") GIJoe_group.groundColor;
+				return;
+			}
+			string $class[] = `getClassification $nType`;
+			// selected texture: 2d or 3d?
+
+			if ($class[0] == "texture/2d")
+				gi_con2dTexGround ($groundTex);
+			else if ($class[0] == "texture/3d")
+				gi_con3dTexGround ($groundTex);
+		}
+		else if (`isConnected GIJoe_group.groundColor groundLightShape1.color` == 0)
+		{
+			string $groundTex[] = `ls "groundTex*" "groundMult*" "groundRgb2Hsv*" "groundContrast*" "groundHsv2Rgb*" "groundGamma*" "ground_SR*"`;
+			string $inc;
+			for ($inc in $groundTex)
+			{
+				delete $inc;
+			}
+			textFieldGrp -e -tx "Solid Color" GColStat;
+			string $lights[] = `ls ("groundLightShape*")`;
+			string $inc;
+			for ($inc in $lights)
+			{
+				connectAttr -f GIJoe_group.groundColor ($inc + ".color");
+			}
+		}
+		else
+			return;
+	}
+	else
+		return;
+}
+
+
+global proc gi_updateShadowsNames()
+
+{
+
+	// setting up the shadows names.
+		
+	string $slights[] = `ls ("skyLightShape*")`;
+	string $glights[] = `ls ("groundLightShape*")`;
+	string $fileName = `file -q -sn`;
+	string $ppath = `workspace -q -rd`;
+	string $sdir = `chdir ($ppath + "/renderData/GIJoe_shadows")`;
+	string $pwdShadows = `pwd`;
+	string $scene[];
+	tokenize $fileName "/" $scene;
+	int $sizeFile = `size($scene)`;
+	string $sceneName[];
+	tokenize $scene[$sizeFile-1] "." $sceneName;
+	
+	string $inc;
+	int $num = 0;
+	
+	int $sres = `intSliderGrp -q -v SDmapRes`;
+ 	int $gres = `intSliderGrp -q -v GDmapRes`;
+	
+	for ($inc in $slights)
+	{
+		setAttr -type "string" ($inc + ".dmapName") ($pwdShadows + "/" + $sceneName[0] + "_skyShadow" + ($num+1) + "_" + $sres);
+		setAttr ($inc + ".dmapLightName") 0;
+		setAttr ($inc + ".dmapSceneName") 1;
+		$num++;
+	}
+	for ($inc in $glights)
+	{
+		setAttr -type "string" ($inc + ".dmapName") ($pwdShadows + "/" + $sceneName[0] + "_skyShadow" + ($num+1) + "_" + $sres);
+		setAttr ($inc + ".dmapLightName") 0;
+		setAttr ($inc + ".dmapSceneName") 1;
+		$num++;
+	}
+	
+	// clean shadows test
+	
+	string $test = `system "dir /B"`;
+	string $maps[];
+	tokenize $test "\n" $maps;
+	if (`size $maps` > 1000)
+		warning "Attention, the number of shadow maps in the GIJoe_shadows exceeds 1000 files: you should clean the directory!!";
+}
+
+
+global proc gi_BakeShad()
+
+{
+	int $bakOn = `checkBox -q -v bakeOnOff`;
+	if (($bakOn == 1) && (`objExists "pma_bake"` == 0))
+	{
+		floatSliderGrp -e -en 1 BakDensity;
+		floatSliderGrp -e -en 1 BakCon;
+		floatSliderGrp -e -en 1 BakeConB;
+		intSliderGrp -e -en 1 BakMinRes;
+		intSliderGrp -e -en 1 BakMaxRes;
+		textFieldGrp -e -en 1 -ed 1 gi_outputShadDir;
+		optionMenuGrp -e -en 1 FF;
+		checkBox -e -en 1 BakePr;
+		button -e -en 1 bakAll;
+		checkBox -e -en 0 bRb;
+		
+		string $testGrSh[] = `ls "groundLightShape*"`;
+		string $alights[];
+		if (`getAttr ($testGrSh[0] + ".useDepthMapShadows")` == 1)
+			$alights = `ls "skyLightShape*" "groundLightShape*"`;
+		else
+			$alights = `ls "skyLightShape*"`;
+		string $inc;
+		string $pma_bake = `shadingNode -au plusMinusAverage -n pma_bake`;
+		setAttr ($pma_bake + ".operation") 3;
+		int $num;
+		for ($inc in $alights)
+		{
+			connectAttr -f ($inc + ".lightShadowFraction") ($pma_bake + ".input1D[" + $num + "]");
+			$num++;
+		}
+
+		string $bc_bake = `shadingNode -au blendColors -n bc_bake`;
+		string $bakeMat = `shadingNode -as surfaceShader -n SS_bake`;
+		string $bc_contrast = `shadingNode -au contrast -n bc_contrast`;
+		string $sr = `shadingNode -au setRange -n bake_sr`;
+		setAttr ($sr + ".oldMaxX") 1;
+		setAttr ($sr + ".maxX") 1;
+		setAttr ($bc_contrast + ".contrastX") 1;
+		connectAttr -f ($bc_bake + ".output") ($bakeMat + ".outColor");
+		connectAttr -f ($pma_bake + ".output1D") ($sr + ".valueX");
+		connectAttr -f ($sr + ".outValueX") ($bc_contrast + ".valueX");
+		connectAttr -f ($bc_contrast + ".outValueX") ($bc_bake + ".blender");
+		connectAttr -f GIJoe_group.bakeColor1 ($bc_bake + ".color1");
+		connectAttr -f GIJoe_group.bakeColor2 ($bc_bake + ".color2");
+		
+		addAttr -ln bden -at time GIJoe_group;
+		setAttr GIJoe_group.bden 1;
+		addAttr -ln bcon -at time GIJoe_group;
+		setAttr GIJoe_group.bcon 1;
+		addAttr -ln bconb -at time GIJoe_group;
+		setAttr GIJoe_group.bconb 0.5;
+		addAttr -ln mres -at time GIJoe_group;
+		setAttr GIJoe_group.mres 128;
+		addAttr -ln Mres -at time GIJoe_group;
+		setAttr GIJoe_group.Mres 512;
+		addAttr -dt "string" -ln bdir GIJoe_group;
+		
+		select "SS_bake";
+	}
+	else
+	{
+		delete "bc_bake" "bc_contrast" "bake_sr" "SS_bake" "pma_bake";
+		floatSliderGrp -e -en 0 -v 1 BakDensity;
+		floatSliderGrp -e -en 0 -v 1 BakCon;
+		floatSliderGrp -e -en 0 -v 0.5 BakeConB;
+		intSliderGrp -e -en 0 -v 128 BakMinRes;
+		intSliderGrp -e -en 0 -v 512 BakMaxRes;
+		textFieldGrp -e -en 0 -ed 0 -tx "" gi_outputShadDir;
+		setAttr GIJoe_group.bakeColor1 0 0 0;
+		setAttr GIJoe_group.bakeColor2 1 1 1;
+		optionMenuGrp -e -en 0 -sl 1 FF;
+		checkBox -e -en 0 BakePr;
+		button -e -en 0 bakAll;
+		checkBox -e -en 1 bRb;
+		
+		deleteAttr GIJoe_group.bden;
+		deleteAttr GIJoe_group.bcon;
+		deleteAttr GIJoe_group.bconb;
+		deleteAttr GIJoe_group.mres;
+		deleteAttr GIJoe_group.Mres;
+		deleteAttr GIJoe_group.bdir;
+	}
+}
+
+global proc gi_readB()
+{
+	int $test = `checkBox -q -v bRb`;
+	if ($test == 1)
+	{
+		button -e -en 1 bakeGetFil;
+		textFieldGrp -e -en 1 -ed 1 -tx "" gi_outputShadDir;
+		checkBox -e -en 0 bakeOnOff;
+		addAttr -dt "string" -ln bdir GIJoe_group;
+		addAttr -ln breadSM -at bool GIJoe_group;
+	}
+	else
+	{
+		button -e -en 0 bakeGetFil;
+		textFieldGrp -e -en 0 -tx "" gi_outputShadDir;
+		checkBox -e -en 1 bakeOnOff;
+		deleteAttr GIJoe_group.bdir;
+		deleteAttr GIJoe_group.breadSM;
+	}
+}
+
+
+global proc gi_bakAll()
+ 
+ {
+ 	int $previewM = `checkBox -q -v BakePr`;
+ 	if ($previewM == 1)
+ 	{
+ 		print "\n";
+ 		print "PREVIEW MODE ON: the bake process is disabled\n";
+		print "\n";
+	}
+	string $ppath, $bdir, $pwdBaked, $dirName;
+	
+	if ($previewM == 0)
+	{
+		$ppath = `workspace -q -rd`;
+		$bdir = `chdir ($ppath + "/sourceimages/baked_shadows")`;
+		$pwdBaked = `pwd`;
+		$dirName = `textFieldGrp -q -tx gi_outputShadDir`;
+		if ($dirName == "")
+		{
+			warning "You must specify an output directory name...!!";
+			return;
+		}
+	}
+ 	
+ 	string $bakeSel[] = `hyperShade -objects SS_bake`;
+	string $selected[] = `ls -sl`;
+	if (`size $selected` == 0)
+	{
+		warning "You must select the objects to bake their shadows";
+		return;
+	}
+	
+	for ($inc in $selected)
+	{
+		if (`nodeType $inc` == "transform")
+		{
+			performFreezeTransformations 0;
+		}
+		else
+		{
+			string $transform[] = `listRelatives -fullPath -p $inc`;
+			select $transform[0];
+			performFreezeTransformations 0;
+		}
+	}
+	
+	int $sizes = `size $selected`;
+	int $res;
+	float $tab[];
+	int $i= 0;
+	for ($inc in $selected)
+	{
+		float $bbox[] = `getAttr ($inc + ".boundingBoxSize")`;
+		vector $box = << $bbox[0], $bbox[1], $bbox[2]>>;
+		float $boxS = ($box.x)*($box.y) + ($box.x)*($box.z) + ($box.y)*($box.z);
+		$tab[$i] = $boxS;
+		$i++;
+	}
+	
+	float $sort0, $tab0;
+	float $sort[] = `sort $tab`;
+	int $resMin = `intSliderGrp -q -v BakMinRes`;
+	int $resMax = `intSliderGrp -q -v BakMaxRes`;		
+	int $bakeRes;
+	int $i=0;
+	
+	string $dirExist = `system ("dir " + "/B")`;
+	string $dirs[];
+	int $dirOk = 0;
+	tokenize $dirExist "\n" $dirs;
+
+	for ($inc in $dirs)
+	{
+		int $si = (`size $inc`) - 1;
+		$inc = `substring $inc 1 $si`;
+		if ($inc == $dirName)
+		{
+			$dirOk = 1;
+			break;
+		}
+		else
+		{
+			continue;
+		}
+	}
+	
+	if (($previewM == 0) && ($dirOk == 0))
+	{
+		string $outDir = `workspace -cr ($pwdBaked + "/" + $dirName)`;
+		print "\n";
+		print ($dirName + " has been created in " + $pwdBaked + " directory..." + "\n");
+		print "\n";
+	}
+	
+	string $FF = `optionMenuGrp -q -v FF`;
+	
+	for ($tab0 in $tab)
+	{
+		if ($sort[$sizes-1] == $sort[0])
+		{
+			$bakeRes = $resMax;
+		}
+		
+		else if (`size $bakeSel` == 1)
+			$bakeRes = $resMax;
+		else
+		{
+			$bakeRes = $resMin + (($tab0-$sort[0])/($sort[$sizes-1]-$sort[0]))*($resMax - $resMin);
+		}
+		select -cl;
+		if (`attributeExists "GIJoe_baked" $selected[$i]` == 0)
+		{
+			string $pipe = `substituteAllString $selected[$i] "|" "_"`;
+			rename $selected[$i] $pipe;
+			print ($selected[$i] + " has been renamed: " + $pipe + "\n");
+			print ("converting " + $pipe + " with boundingBoxSum of " + $tab[$i] + " in " + $bakeRes + " * " + $bakeRes + " in " + $FF + "\n");
+			print "\n";
+			if ($previewM == 0)
+			{
+				convertSolidTx -rx $bakeRes -ry $bakeRes -fin ($pwdBaked + "/" + $dirName + "/" + $pipe + "_" + $bakeRes + "." + $FF) bc_bake.output $pipe;
+				addAttr -ln GIJoe_baked -at bool $pipe;
+				setAttr ($pipe + ".GIJoe_baked") 1;
+			}
+			$i++;
+		}
+		else
+		{
+			print "\n";
+			print ("Found object " + $selected[$i] + " already baked. Skipped!!");
+			print "\n";
+			continue;
+		}
+	}
+}
+
+
+global proc gi_bakeGetFil()
+
+{
+	string $selected[] = `ls -sl`;
+	if (`size $selected` == 0)
+	{
+		warning "You must select the objects to retrieve their shadows";
+		return;
+	}
+	
+	string $ppath = `workspace -q -rd`;
+	string $bdir = `chdir ($ppath + "/sourceimages/baked_shadows")`;
+	string $pwdBaked = `pwd`;
+	string $dirName = `textFieldGrp -q -tx gi_outputShadDir`;
+	if ($dirName == "")
+	{
+		warning "You must specify an output directory name...!!";
+		return;
+	}
+	
+	string $dirExist = `system ("dir " + "/B")`;
+	string $dirs[];
+	int $dirOk = 0;
+	tokenize $dirExist "\n" $dirs;
+	
+	for ($inc in $dirs)
+	{
+		int $si = (`size $inc`) - 1;
+		$inc = `substring $inc 1 $si`;
+		if ($inc == $dirName)
+		{
+			print ("Output directory " + $dirName + " found!!\n");
+			$dirOk = 1;
+			break;
+		}
+		else
+			continue;
+	}
+	if ($dirOk == 0)
+	{
+		warning "The specified directory doesn't exist. Process stopped!\n";
+		return;
+	}
+	
+	string $content = `system ("dir " + "/B " + $dirName)`;
+	print ($content + "\n");
+	if (`size $content` == 0)
+	{
+		warning ("directory " + $dirName + " contains nothing...!!!");
+		return;
+	}
+	else
+	{
+		string $tab[];
+		tokenize $content "\n" $tab;
+		string $sortDir[] = `sort ($tab)`;
+		string $item, $sel;
+		int $num;
+		int $m = 0;
+
+		for ($sel in $selected)
+		{
+			if ($sel == "GIJoe_group")
+				continue;
+			string $shape[] = `listRelatives -s $sel`;
+			for( $item in $sortDir)
+			{
+				string $matche = `match ($shape[0]+"_[0-9]+") $item`;
+				if ($matche != "")
+				{
+					$m = 1;
+					break;
+				}
+			}
+			
+			if ($m == 0)
+			{
+				warning "No corresponding files were found!! Process stopped!\n";
+				return;
+			}
+
+			string $texFile = `shadingNode -at file -n ($item + "BShadow")`;
+			int $len = size ($item);
+			$fileName = `substring $item 1 ($len-1)`; 
+			setAttr -type "string" ($texFile + ".fileTextureName") ($dirName + "\\" + $fileName);
+
+			string $SG[] = `listConnections -s off -d on $shape`;
+			print ("Shading Group: " + $SG[0] + "\n");
+			if (`size $shape[0]` == 0)
+				$shape[0] = $sel;
+
+			string $mat[] = `listConnections -d off $SG[0]`;
+			print ("material found: " + $mat[0] + "\n");
+			int $num2;
+			
+			if (`attributeExists "shadowMap" $mat[0]` == 1)
+			{
+				print ("Shader " + $mat[0] + " already has a shadowMap..." + "\n");
+				print ("Creating a new one..." + "\n");
+				
+				addAttr -ln ("shadowMap" + $num2) -at float3 -uac $mat[0];
+				addAttr -ln ("shadowMap" + $num2 + "R") -at "float" -dv 0 -p ("shadowMap" + $num2) $mat[0];
+				addAttr -ln ("shadowMap" + $num2 + "G") -at "float" -dv 0 -p ("shadowMap" + $num2) $mat[0];
+				addAttr -ln ("shadowMap" + $num2 + "B") -at "float" -dv 0 -p ("shadowMap" + $num2) $mat[0];
+				print ("connecting " + $texFile + ".outColor  " + $mat[0] + ".shadowMap" +  $num2 + "\n");
+				connectAttr -f ($texFile + ".outColor") ($mat[0] + ".shadowMap" + $num2);
+				$num2++;
+			}
+			else
+			{
+				addAttr -ln shadowMap -at float3 -uac $mat[0];
+				addAttr -ln shadowMapR -at "float" -dv 0 -p shadowMap $mat[0];
+				addAttr -ln shadowMapG -at "float" -dv 0 -p shadowMap $mat[0];
+				addAttr -ln shadowMapB -at "float" -dv 0 -p shadowMap $mat[0];
+	
+				print ("connecting " + $texFile + ".outColor  " + $mat[0] + ".shadowMap" + "\n");
+				connectAttr -f ($texFile + ".outColor") ($mat[0] + ".shadowMap");
+				$num++;
+			}
+		}
+	}
+}
+
+
+global proc gi_delSJs()
+{
+	global int $sjUI, $sj1, $sj2, $sj3, $sj4;
+	scriptJob -kill $sj1;
+	scriptJob -kill $sj2;
+	scriptJob -kill $sj3;
+	scriptJob -kill $sj4;
+}
+
+global proc gi_delGI_UI ()
+{
+	global string $GIj_UI;
+	deleteUI -window $GIj_UI;
+	global int $texChangedSJ;
+	if (`scriptJob -ex $texChangedSJ` == 1)
+		scriptJob -kill $texChangedSJ;
+}
+
+global proc gi_delGIJ()
+{	
+	delete GIJoe_group;
+	
+	if (`objExists "skyTex1"` == 1)
+		delete "skyTex*";
+
+	if (`objExists "sky_SR1"` == 1)
+		delete "sky_SR*";
+	
+	delete GIJoe_SS rampMat blendMat1;
+	
+	if (`objExists "skyContrast1"` == 1)
+		delete "skyRgb2Hsv*" "skyMult*" "skyHsv2Rgb*" "skyGamma*" "skyContrast*";
+
+	if (`objExists "groundContrast1"` == 1)
+		delete "groundRgb2Hsv*" "groundMult*" "groundHsv2Rgb*" "groundGamma*" "groundContrast*";
+	
+	if (`objExists "SS_bake"` == 1)
+		delete "bc_bake" "bc_contrast" "bake_sr" "SS_bake";
+	
+	if (`objExists "GIJoe_brush*"` == 1)
+		delete "GIJoe_brush*";
+	if (`objExists "GIJoe_sceneConfigurationScriptNode*"` == 1)
+		delete "GIJoe_sceneConfigurationScriptNode*";
+	if (`objExists "GIJoe_uiConfigurationScriptNode*"` == 1)
+		delete "GIJoe_uiConfigurationScriptNode*";
+	delete "GIJoe_SSSG";
+	
+	if (`objExists "HDR_shader"` == 1)
+		delete "HDR_shader" "HDR_shaderSG" "HDR_texture" "HDR_ramp" "HDR_limit" "HDR_hsv" "HDR_gamma";
+	
+	gi_delGI_UI;
+}
+
+global proc gi_HideGr()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	int $hid = `checkBox -q -v HideGr`;
+	setAttr GIJoe_group.HideGr $hid;
+	if ($hid == 1)
+		hide $lights;
+	else
+		showHidden $lights;
+}
+
+global proc gi_delGrL()
+{
+	frameLayout -edit -vis 0 GAttr;
+	string $lights[] = `ls "groundLight*"`;
+	delete $lights;
+	deleteAttr GIJoe_group.groundColor;
+	deleteAttr GIJoe_group.shadowGColor;
+	if (`objExists "groundTex1"` == 1)
+		delete "groundTex*";
+		
+	if (`objExists "groundContrast1"` == 1)
+		delete "groundRgb2Hsv*" "groundMult*" "groundHsv2Rgb*" "groundGamma*" "groundContrast*";
+}
+
+global proc gi_help()
+{
+	int $hlp = `checkBox -q	-v giHelp`;
+	if ($hlp == 1)
+	{
+		// Gal
+		button -e -ann "Click me to delete the whole GI_Joe setup" delGIJ;
+		button -e -ann "Click me to delete all the shadows under the scene's name" shadClean;
+		button -e -ann "Click me to delete ALL the shadows stored in the GI_Joe shadows directory" shadCleanA;
+		checkBox -e -ann "Quick help toggle on / off in English please!!" giHelp;
+	
+		// sky int
+		floatSliderGrp -e -ann "Set a plain color or drag a texture into it" skyCol;
+		textFieldGrp -e -ann "The color statuts shows the status: Solid Color, Texture2d / Texture3d, or Frozen" SColStat;
+		floatSliderGrp -e -ann "Sky intensity: adjust it to modify the intensity of the skyLight lighting" SkyInt;
+	
+		if (`floatSliderGrp -ex SConeAngle` == 1)
+		{
+			floatSliderGrp -e -ann "Common spotlight attribute: for more infos, please refer to Maya's doc" SConeAngle;
+			floatSliderGrp -e -ann "Common spotlight attribute: for more infos, please refer to Maya's doc" SPenumbra;
+			floatSliderGrp -e -ann "Common spotlight attribute: for more infos, please refer to Maya's doc" SDropOff;
+		}
+		
+		radioButtonGrp -e -ann "Sets the specular on / off" skySpec;
+		floatSliderGrp -e -ann "Modify the threshold to set what lights will 'cast' specular according the luminance of the texture plugged into the skyColor" SSpecT;
+		floatSliderGrp -e -ann "Modify the multiplicator to force the highlights (specular lights) to illuminate the scene as real ponctual lights" SmultBoost;
+		
+		// sky HDRI
+		checkBox -e -ann "Enables the fake HDRI lighting)" HDR;
+		intSliderGrp -e -ann "Sets the specularRollOff value of the HDR_shader" HDRint;
+		intSliderGrp -e -ann "Sets the level of specular reflectivity of the HDR_shader" HDRPow;
+		floatSliderGrp -e -ann "Sets the gamma level of the HDR_texture used by the HDR_shader" HDRGam;
+		
+		// sky special
+		intFieldGrp -e -ann "If you use directional lights, enter minimum and maximum values to randomize the rotation of the lights. If you use spotlights, these values will affect the translation of the lights" SshadRand;
+		button -e -ann "Click me to randomize the rotation (directional lights) or translation (spot lights)" SRand;
+				
+		// sky opt
+		floatSliderGrp -e -ann "Adjust this threshold to set the minimum level of luminance used for the optimization" SLumT;
+		radioButtonGrp -e -ann "Sets here if you want to optimize the shadows (selected light.castShadows OFF) or the lights (deletion)" gi_Sopt;
+		button -e -ann "Click me to perform the optimization (Note: the lights to be optimized have to be selected)" SDoOpt;
+		checkBox -e -ann "Freezing the lighting will remove the shading nodes necessary to get the color from the texture, but the light will still emit the correct color" SFreeze;
+		
+		// sky shadows
+		radioButtonGrp -e -ann "Shadows On or Off?? Your call!!" SshadowsOnOff;
+		checkBox -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" SReUseDmap;
+		intSliderGrp -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" SDmapFS;
+		intSliderGrp -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" SDmapRes;
+		floatSliderGrp -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" SDmapBias;
+		checkBox -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" SUseMidDist;
+		checkBox -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" SAutoFocOnOff;
+		intFieldGrp -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" SDmapWF;
+		
+		// skyColorCal
+		checkBox -e -ann "Enables or disables the color calibration" SColorCal;
+		floatSliderGrp -e -ann "Sets the contrast value of the texture" SContrast;
+		floatSliderGrp -e -ann "Sets the contrastBias value of the texture" SContrastB;
+		floatSliderGrp -e -ann "Sets the hue value of the texture" SHue;
+		floatSliderGrp -e -ann "Sets the saturation value of the texture" SSat;
+		floatSliderGrp -e -ann "Sets the gamma value of the texture" SGam;
+		checkBox -e -ann "Freezes the color calibration by deleting the color calibration nodes" SFrCol;
+		
+		// ground int
+		floatSliderGrp -e -ann "Set a plain color or drag a texture into it" groundCol;
+		textFieldGrp -e -ann "The color statuts shows the status: Solid Color, Texture2d / Texture3d, or Frozen" GColStat;
+		floatSliderGrp -e -ann "Sky intensity: adjust it to modify the intensity of the skyLight lighting" GroundInt;
+	
+		if (`floatSliderGrp -ex GConeAngle` == 1)
+		{
+			floatSliderGrp -e -ann "Common spotlight attribute: for more infos, please refer to Maya's doc" GConeAngle;
+			floatSliderGrp -e -ann "Common spotlight attribute: for more infos, please refer to Maya's doc" GPenumbra;
+			floatSliderGrp -e -ann "Common spotlight attribute: for more infos, please refer to Maya's doc" GDropOff;
+		}
+		
+		checkBox -e -ann "Click me to link the ground intensity to the sky intensity" linkSkyInt;
+		floatSliderGrp -e -ann "Sets the multiplicator value of the sky intensity: a value of 0.5 will give half of the skyIntensity" GrIntMult;
+		
+		// special
+		checkBox -e -ann "Click me to hide the groundLights (not deleted)" HideGr;
+		checkBox -e -ann "Delete the whole groundLights and its UI attributes. NOT UNDOABLE!!" DelGr;
+		
+		// ground opt
+		floatSliderGrp -e -ann "Adjust this threshold to set the minimum level of luminance used for the optimization" GLumT;
+		radioButtonGrp -e -ann "Sets here if you want to optimize the shadows (selected light.castShadows OFF) or the lights (deletion)" gi_Gopt;
+		button -e -ann "Click me to perform the optimization (Note: the lights to be optimized have to be selected)" GDoOpt;
+		checkBox -e -ann "Freezing the lighting will remove the shading nodes necessary to get the color from the texture, but the light will still emit the correct color" GFreeze;
+		
+		// ground shadows
+		radioButtonGrp -e -ann "Shadows On or Off?? You decide!!" GShadOnOff;
+		floatSliderGrp -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" gi_GshadCol;
+		checkBox -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" GReUseDmap;
+		intSliderGrp -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" GDmapFS;
+		intSliderGrp -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" GDmapRes;
+		floatSliderGrp -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" GDmapBias;
+		checkBox -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" GUseMidDist;
+		checkBox -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" GAutoFocOnOff;
+		intFieldGrp -e -ann "Common shadow attribute: for more infos, please refer to Maya's doc" GDmapWF;
+		
+		// groundColorCal
+		checkBox -e -ann "Enables or disables the color calibration" GColorCal;
+		floatSliderGrp -e -ann "Sets the contrast value of the texture" GContrast;
+		floatSliderGrp -e -ann "Sets the contrastBias value of the texture" GContrastB;
+		floatSliderGrp -e -ann "Sets the hue value of the texture" GHue;
+		floatSliderGrp -e -ann "Sets the saturation value of the texture" GSat;
+		floatSliderGrp -e -ann "Sets the gamma value of the texture" GGam;
+		checkBox -e -ann "" GFrCol;
+		
+		// bake
+		checkBox -e -ann "Enables or not the bakeShader" bakeOnOff;
+		floatSliderGrp -e -ann "Sets here the color of the baked 'light' color" gi_BakShadCol1;
+		floatSliderGrp -e -ann "Sets here the color of the baked 'shadow' color" gi_BakShadCol2;
+		floatSliderGrp -e -ann "Sets here the multiplicator value of the sum of all 'lights.lightShadowFraction'" BakDensity;
+		floatSliderGrp -e -ann "Sets the contrast value of the 'light' & 'shadow' colors" BakCon;
+		floatSliderGrp -e -ann "Sets the contrastBias value of the 'light' & 'shadow' colors" BakeConB;
+		intSliderGrp -e -ann "Sets here the minimum resolution of the baked texture" BakMinRes;
+		intSliderGrp -e -ann "Sets here the maximum resolution of the baked texture" BakMaxRes;
+		optionMenuGrp -e -ann "Select here the output file format of the baked shadows files. Formats available: Maya IFF, Jpeg JPG, Targa TGA, Tiff TIF and Windows BMP" FF;
+		textFieldGrp -e -ann "Sets here the name of the baked directory where the baked texture will be stored" gi_outputShadDir;
+		checkBox -e -ann "Sets the Preview mode ON or OFF. The preview mode doesn't bake the shadows. It displays the bake infos in the scriptEditor" BakePr;
+		button -e -ann "Click me to bake all the textures of the objects the bakeShader is assigned to" bakAll;
+		button -e -ann "Click me to retrieve the baked textures" bakeGetFil;
+	}
+	else
+	{
+		// Gal
+		button -e -ann "" delGIJ;
+		button -e -ann "" shadClean;
+		button -e -ann "" shadCleanA;
+		checkBox -e -ann "" giHelp;
+
+		// sky int
+		floatSliderGrp -e -ann "" skyCol;
+		textFieldGrp -e -ann "" SColStat;
+		floatSliderGrp -e -ann "" SkyInt;
+		if (`floatSliderGrp -ex GConeAngle` == 1)
+		{
+			floatSliderGrp -e -ann "" SConeAngle;
+			floatSliderGrp -e -ann "" SPenumbra;
+			floatSliderGrp -e -ann "" SDropOff;
+		}
+		radioButtonGrp -e -ann "" skySpec;
+		floatSliderGrp -e -ann "" SSpecT;
+		floatSliderGrp -e -ann "" SmultBoost;
+		
+		// sky HDRI
+		checkBox -e -ann "" HDR;
+		intSliderGrp -e -ann "" HDRint;
+		intSliderGrp -e -ann "" HDRPow;
+		floatSliderGrp -e -ann "" HDRGam;
+		
+		// sky opt
+		floatSliderGrp -e -ann "" SLumT;
+		radioButtonGrp -e -ann "" gi_Sopt;
+		button -e -ann "" SDoOpt;
+		checkBox -e -ann "" SFreeze;
+
+		// sky shadows
+		radioButtonGrp -e -ann "" SshadowsOnOff;
+		checkBox -e -ann "" SReUseDmap;
+		intSliderGrp -e -ann "" SDmapFS;
+		intSliderGrp -e -ann "" SDmapRes;
+		floatSliderGrp -e -ann "" SDmapBias;
+		checkBox -e -ann "" SUseMidDist;
+		checkBox -e -ann "" SAutoFocOnOff;
+		intFieldGrp -e -ann "" SDmapWF;
+
+		// skyColorCal
+		checkBox -e -ann "" SColorCal;
+		floatSliderGrp -e -ann "" SContrast;
+		floatSliderGrp -e -ann "" SContrastB;
+		floatSliderGrp -e -ann "" SHue;
+		floatSliderGrp -e -ann "" SSat;
+		floatSliderGrp -e -ann "" SGam;
+
+		// ground int
+		floatSliderGrp -e -ann "" groundCol;
+		textFieldGrp -e -ann "" GColStat;
+		floatSliderGrp -e -ann "" GroundInt;
+		if (`floatSliderGrp -ex GConeAngle` == 1)
+		{
+			floatSliderGrp -e -ann "" GConeAngle;
+			floatSliderGrp -e -ann "" GPenumbra;
+			floatSliderGrp -e -ann "" GDropOff;
+		}
+		checkBox -e -ann "" linkSkyInt;
+		floatSliderGrp -e -ann "" GrIntMult;
+
+		// special
+		checkBox -e -ann "" HideGr;
+		checkBox -e -ann "" DelGr;
+
+		// ground opt
+		floatSliderGrp -e -ann "" GLumT;
+		radioButtonGrp -e -ann "" gi_Gopt;
+		button -e -ann "" GDoOpt;
+		checkBox -e -ann "" GFreeze;
+
+		// ground shadows
+		radioButtonGrp -e -ann "" GShadOnOff;
+		floatSliderGrp -e -ann "" gi_GshadCol;
+		checkBox -e -ann "" GReUseDmap;
+		intSliderGrp -e -ann "" GDmapFS;
+		intSliderGrp -e -ann "" GDmapRes;
+		floatSliderGrp -e -ann "" GDmapBias;
+		checkBox -e -ann "" GUseMidDist;
+		checkBox -e -ann "" GAutoFocOnOff;
+		intFieldGrp -e -ann "" GDmapWF;
+
+		// groundColorCal
+		checkBox -e -ann "" GColorCal;
+		floatSliderGrp -e -ann "" GContrast;
+		floatSliderGrp -e -ann "" GContrastB;
+		floatSliderGrp -e -ann "" GHue;
+		floatSliderGrp -e -ann "" GSat;
+		floatSliderGrp -e -ann "" GGam;
+
+		// bake
+		checkBox -e -ann "" bakeOnOff;
+		floatSliderGrp -e -ann "" gi_BakShadCol1;
+		floatSliderGrp -e -ann "" gi_BakShadCol2;
+		floatSliderGrp -e -ann "" BakDensity;
+		floatSliderGrp -e -ann "" BakCon;
+		floatSliderGrp -e -ann "" BakeConB;
+		intSliderGrp -e -ann "" BakMinRes;
+		intSliderGrp -e -ann "" BakMaxRes;
+		optionMenuGrp -e -ann "" FF;
+		textFieldGrp -e -ann "" gi_outputShadDir;
+		checkBox -e -ann "" BakePr;
+		button -e -ann "" bakAll;
+		button -e -ann "" bakeGetFil;
+	}
+}
+
+// LIGHT ATTRIBUTES
+
+global proc gi_SkyInt()
+{	
+	string $lights[] = `ls "skyLightShape*"`;
+	float $intensity = `floatSliderGrp -q -v SkyInt`;
+	float $mult = `floatSliderGrp -q -v SmultBoost`;
+	int $numLs = `getAttr GIJoe_group.numLs`;
+	float $newInt;
+	if ($numLs == "16")
+		$newInt = $intensity;
+	if ($numLs == "64")
+		$newInt = $intensity / 4;
+	if ($numLs == "256")
+		$newInt = $intensity / 16;
+	for ($inc in $lights)
+	{
+		if (`getAttr ($inc + ".emitSpecular")` == 1)
+			setAttr ($inc + ".intensity") ($newInt * $mult);
+		else
+			setAttr ($inc + ".intensity") $newInt;
+	}
+	setAttr GIJoe_group.SkyInt $intensity;
+	setAttr GIJoe_group.MultHigh $mult;
+	
+	int $link = `checkBox -q -v linkSkyInt`;
+	if ($link == 1)
+	{
+		string $lights[] = `ls "groundLightShape*"`;
+		float $Mult = `floatSliderGrp -q -v GrIntMult`;
+
+		for ($inc in $lights)
+			setAttr ($inc + ".intensity") ($newInt * $Mult);
+	}
+}
+
+global proc gi_GroundInt()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	float $intensity = `floatSliderGrp -q -v GroundInt`;
+	float $newInt;
+	int $numLg = `getAttr GIJoe_group.numLg`;
+	if ($numLg == "16")
+		$newInt = $intensity;
+	if ($numLg == "64")
+		$newInt = $intensity / 4;
+	setAttr GIJoe_group.GrInt $intensity;
+	for ($inc in $lights)
+		setAttr ($inc + ".intensity") $newInt;
+}
+
+global proc gi_linkSkyInt()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	int $link = `checkBox -q -v linkSkyInt`;
+	setAttr GIJoe_group.linkSky $link;
+	if ($link == 1)
+	{
+		floatSliderGrp -edit -en 1 GrIntMult;
+		float $skyInt = `floatSliderGrp -q -v SkyInt`;
+		floatSliderGrp -edit -v $skyInt GroundInt;
+		float $mult = `floatSliderGrp -q -v GrIntMult`; 
+		floatSliderGrp -edit -en 0 GroundInt;
+		int $testSpot = `floatSliderGrp -ex GConeAngle`;
+		if ( $testSpot == 1)
+		{
+			floatSliderGrp -edit -en 0 GConeAngle;
+			floatSliderGrp -edit -en 0 GPenumbra;
+			floatSliderGrp -edit -en 0 GDropOff;
+		}
+		for ($inc in $lights)
+			setAttr ($inc + ".intensity") ($skyInt * $mult);
+	}
+	else 
+	{
+		floatSliderGrp -edit -en 0 GrIntMult;
+		floatSliderGrp -edit -en 1 GroundInt;
+		string $lights[] = `ls "groundLightShape*"`; 
+		float $intensity = `floatSliderGrp -q -v GroundInt`;
+		for ($inc in $lights)
+			setAttr ($inc + ".intensity") $intensity;
+		
+		int $testSpot = `floatSliderGrp -ex GConeAngle`;
+		if ($testSpot == 1)
+		{
+			floatSliderGrp -edit -en 1 GConeAngle;
+			floatSliderGrp -edit -en 1 GPenumbra;
+			floatSliderGrp -edit -en 1 GDropOff;
+		}
+	}	
+}
+
+global proc gi_GrIntMult()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	float $mult = `floatSliderGrp -q -v GrIntMult`;
+	setAttr GIJoe_group.linkMult $mult;
+	float $sint = `floatSliderGrp -q -v SkyInt`;
+	for ($inc in $lights)
+		setAttr ($inc + ".intensity") ($sint * $mult);
+}
+
+// SPOT ATTR
+
+global proc gi_SConeAngle()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	float $coneAngle = `floatSliderGrp -q -v SConeAngle`;
+	setAttr GIJoe_group.SConeAngle $coneAngle;
+	for ($inc in $lights)
+		setAttr ($inc + ".coneAngle") $coneAngle;
+}
+
+global proc gi_GConeAngle()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	float $coneAngle = `floatSliderGrp -q -v GConeAngle`;
+	setAttr GIJoe_group.GConeAngle $coneAngle;
+	for ($inc in $lights)
+		setAttr ($inc + ".coneAngle") $coneAngle;
+}
+
+global proc gi_SPenumbra()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	float $penumbra = `floatSliderGrp -q -v SPenumbra`;
+	setAttr GIJoe_group.SPenumbra $penumbra;
+	for ($inc in $lights)
+		setAttr ($inc + ".penumbraAngle") $penumbra;
+}
+
+global proc gi_GPenumbra()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	float $penumbra = `floatSliderGrp -q -v GPenumbra`;
+	setAttr GIJoe_group.GPenumbra $penumbra;
+	for ($inc in $lights)
+		setAttr ($inc + ".penumbraAngle") $penumbra;
+}
+
+global proc gi_SDropOff()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	float $dropOff = `floatSliderGrp -q -v SDropOff`;
+	setAttr GIJoe_group.SDropOff $dropOff;
+	for ($inc in $lights)
+		setAttr ($inc + ".dropoff") $dropOff;
+}
+
+global proc gi_GDropOff()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	float $dropOff = `floatSliderGrp -q -v GDropOff`;
+	setAttr GIJoe_group.GDropOff $dropOff;
+	for ($inc in $lights)
+		setAttr ($inc + ".dropoff") $dropOff;
+}
+
+// HDRI fake
+
+global proc gi_HDR()
+{
+	int $hdr = `checkBox -q -v HDR`;
+	string $skytex[] = `listConnections -d 0 -s 1 GIJoe_group.skyColor`;
+	
+	if ((`objExists "HDR_ramp"` == 1) && ($hdr == 0))
+	{
+			intSliderGrp -e -en 0 -v 1 HDRint;
+			intSliderGrp -e -en 0 -v 200 HDRPow;
+			floatSliderGrp -e -en 0 -v 0.1 HDRGam;
+			deleteAttr GIJoe_group.HDR;
+			deleteAttr GIJoe_group.HDRInt;
+			deleteAttr GIJoe_group.HDRPow;
+			deleteAttr GIJoe_group.HDRGam;
+			delete "HDR_shader" "HDR_shaderSG" "HDR_texture" "HDR_ramp" "HDR_limit" "HDR_gamma" "HDR_Hsv" "HDR_Surface";
+			return;
+	}
+	
+	if (`size $skytex[0]` == 0)
+	{
+		warning "Please set a texture to the skyColor to perform HDRI fake!!";
+		checkBox -e -v 0 HDR;
+		intSliderGrp -e -en 0 HDRint;
+		intSliderGrp -e -en 0 HDRPow;
+		floatSliderGrp -e -en 0 HDRGam;
+		return;
+	}
+	
+	int $specTest = `radioButtonGrp -q -select skySpec`;
+	if ($specTest == 0)
+	{
+		warning "Please set Specular to On to perform HDRI fake";
+		checkBox -e -v 0 HDR;
+		intSliderGrp -e -en 0 HDRint;
+		intSliderGrp -e -en 0 HDRPow;
+		floatSliderGrp -e -en 0 HDRGam;
+		return;
+	}
+	
+	if ($hdr == 1)
+	{
+		intSliderGrp -e -en 1 HDRint;
+		intSliderGrp -e -en 1 HDRPow;
+		floatSliderGrp -e -en 1 HDRGam;
+		int $HDRint = `intSliderGrp -q -v HDRint`;
+		int $HDRPow = `intSliderGrp -q -v HDRPow`;
+		float $HDRGam = `floatSliderGrp -q -v HDRGam`;
+		if (`attributeExists "HDRInt" GIJoe_group` == 0)
+		{
+			addAttr -ln HDR -at bool GIJoe_group;
+			addAttr -ln HDRInt -at time GIJoe_group;
+			setAttr GIJoe_group.HDR 1;
+			setAttr GIJoe_group.HDRInt $HDRint;
+			addAttr -ln HDRPow -at time GIJoe_group;
+			setAttr GIJoe_group.HDRPow $HDRPow;
+			addAttr -ln HDRGam -at time GIJoe_group;
+			setAttr GIJoe_group.HDRGam $HDRGam;
+		}
+		else
+		{
+			setAttr GIJoe_group.HDR 1;
+			setAttr GIJoe_group.HDRInt $HDRint;
+			setAttr GIJoe_group.HDRPow $HDRPow;
+			setAttr GIJoe_group.HDRGam $HDRGam;
+		}
+	}
+	
+	// HDR surface
+	
+	string $dup_Surf[] = `duplicate "domeSurface"`;
+	string $HDR_Surf = `rename $dup_Surf[0] "HDR_Surface"`;
+	setAttr ($HDR_Surf + ".explicitTessellationAttributes") 1;
+	setAttr ($HDR_Surf + ".numberU") 20;
+	setAttr ($HDR_Surf + ".numberV") 20;
+	setAttr ($HDR_Surf + ".primaryVisibility") 0;
+	
+	float $sca[] = `getAttr "domeSurface.scale"`;
+	float $HDRSca[];
+	$HDRSca[0] = $sca[0] * .95;
+	$HDRSca[1] = $sca[1] * .95;
+	$HDRSca[2] = $sca[2] * .95;
+	setAttr ($HDR_Surf + ".scale") -type double3 $HDRSca[0] $HDRSca[1] $HDRSca[2];
+	
+	// Surface's shader
+	
+	string $HDR_shader = `shadingNode -as blinn -n "HDR_shader"`;
+	setAttr ($HDR_shader + ".transparency") -type double3 1 1 1;
+	setAttr ($HDR_shader + ".specularRollOff") 1;
+	setAttr ($HDR_shader + ".eccentricity") 1;
+	setAttr ($HDR_shader + ".reflectivity") 0;
+	
+	// HDR texture shading nodes 
+	
+	string $skytex[] = `listConnections -d 0 -s 1 GIJoe_group.skyColor`;
+	string $tex[] = `duplicate -ic $skytex[0]`;
+	string $HDR_tex = `rename $tex[0] "HDR_texture"`;
+	
+	string $HDRRp1 = `shadingNode -at ramp -n HDR_limit`;
+	string $HDRGam = `shadingNode -au gammaCorrect -n HDR_gamma`;
+	string $HDRRamp = `shadingNode -at ramp -n HDR_ramp`;
+	string $HDRHsv = `shadingNode -au rgbToHsv -n HDR_Hsv`;
+	
+	removeMultiInstance -break true ($HDRRp1 + ".colorEntryList[2]");
+	setAttr ($HDRRp1 + ".colorEntryList[1].color") -type double3 1 1 1;
+	setAttr ($HDRRp1 + ".colorEntryList[1].position") 0.525;
+	setAttr ($HDRRp1 + ".colorEntryList[0].color") -type double3 0 0 0;
+	setAttr ($HDRRp1 + ".colorEntryList[0].position") 0.4;
+	setAttr ($HDRRp1 + ".interpolation") 4;
+	
+	removeMultiInstance -break true ($HDRRamp + ".colorEntryList[1]");
+	setAttr ($HDRRamp + ".colorEntryList[2].color") -type double3 1 1 1;
+	setAttr ($HDRRamp + ".colorEntryList[0].color") -type double3 0 0 0;
+	setAttr ($HDRRamp + ".colorEntryList[2].position") 1;
+	setAttr ($HDRRamp + ".interpolation") 2;
+	setAttr ($HDRGam + ".gamma") -type double3 0.1 0.1 0.1;
+	connectAttr ($HDR_tex + ".outColor") ($HDRHsv + ".inRgb");
+	connectAttr ($HDRHsv + ".outHsvH") ($HDRRamp + ".uCoord");
+	connectAttr ($HDRHsv + ".outHsvV") ($HDRRamp + ".vCoord");
+	connectAttr ($HDR_tex + ".outColor") ($HDRRamp + ".colorGain");
+	connectAttr ($HDRRamp + ".outColor") ($HDRGam + ".value");
+	connectAttr ($HDRGam + ".outValue") ($HDR_shader + ".specularColor");
+	connectAttr ($HDRRp1 + ".outColor") ($HDR_tex + ".colorGain");
+	
+	connectAttr GIJoe_group.HDRPow ($HDR_shader + ".reflectionSpecularity");
+	
+	select $HDR_Surf;
+	hyperShade -a $HDR_shader;
+	
+	gi_HDRint;
+}
+
+
+global proc gi_HDRint() // specular rolloff value
+{
+	int $HDRint = `intSliderGrp -q -v HDRint`;
+	setAttr GIJoe_group.HDRInt $HDRint;
+	setAttr HDR_shader.specularRollOff $HDRint;
+}
+
+
+global proc gi_HDRPow()
+{
+	int $HDRpow = `intSliderGrp -q -v HDRPow`;
+	setAttr GIJoe_group.HDRPow $HDRpow;
+}
+
+global proc gi_HDRGam()
+{
+	float $HDRGam = `floatSliderGrp -q -v HDRGam`;
+	setAttr GIJoe_group.HDRGam $HDRGam;
+	setAttr HDR_gamma.gamma -type double3 $HDRGam $HDRGam $HDRGam;
+}
+
+
+// SKY SPECIAL 
+
+global proc gi_SRand()
+{
+	string $lightsS[] = `ls "skyLightShape*"`; 
+	
+	int $randMin = `intFieldGrp -q -v1 SshadRand`;
+	int $randMax =` intFieldGrp -q -v2 SshadRand`;
+	
+	for ($inc in $lightsS)
+	{
+		string $Light[] = `listRelatives -p $inc`;
+		if (`nodeType $inc` == "directionalLight")
+		{
+			float $rotaX = `getAttr ($Light[0] + ".rotateX")`;
+			float $rotaY = `getAttr ($Light[0] + ".rotateY")`;
+			float $rotaZ = `getAttr ($Light[0] + ".rotateZ")`;
+
+			$rotaX = (rand ($randMin, $randMax) + $rotaX);
+			$rotaY = (rand ($randMin, $randMax) + $rotaY);
+			$rotaZ = (rand ($randMin, $randMax) + $rotaZ);
+
+			setAttr ($Light[0]+ ".rotateX") $rotaX;
+			setAttr ($Light[0]+ ".rotateY") $rotaY;
+			setAttr ($Light[0]+ ".rotateZ") $rotaZ;
+		}
+		else
+		{
+			float $traX = `getAttr ($Light[0] + ".translateX")`;
+			float $traY = `getAttr ($Light[0] + ".translateY")`;
+			float $traZ = `getAttr ($Light[0] + ".translateZ")`;
+
+			$traX = (rand ($randMin, $randMax) + $traX);
+			$traY = (rand ($randMin, $randMax) + $traY);
+			$traZ = (rand ($randMin, $randMax) + $traZ);
+
+			setAttr ($Light[0]+ ".translateX") $traX;
+			setAttr ($Light[0]+ ".translateY") $traY;
+			setAttr ($Light[0]+ ".translateZ") $traZ;
+		}
+	}
+}
+
+// SPECULAR FEATURES
+
+global proc gi_specOn()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	for ($inc in $lights)
+		setAttr ($inc + ".emitSpecular") 1;
+	
+	setAttr GIJoe_group.SkySpec 1;
+	floatSliderGrp -e -en 1 SSpecT;
+	floatSliderGrp -e -en 1 SmultBoost;
+	gi_SSpecT;
+}
+
+global proc gi_specOff()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	for ($inc in $lights)
+		setAttr ($inc + ".emitSpecular") 0;
+	
+	floatSliderGrp -e -en 0 -v 0 SSpecT;
+	floatSliderGrp -e -en 0 -v 1 SmultBoost;
+	
+	setAttr GIJoe_group.SkySpec 2;
+	
+	string $testHDR[] = `ls "DRLight*"`;
+	if (`size $testHDR` > 0)
+	{
+		delete "DRLight*";
+		checkBox -e -v 0 DR;
+		floatSliderGrp -e -en -0 -v 0.1 DRint;
+		intSliderGrp -e -en 0 DRPow;
+		floatSliderGrp -e -en 0 DRGam;
+		deleteAttr GIJoe_group.DR;
+		deleteAttr GIJoe_group.DRInt;
+		deleteAttr GIJoe_group.DRPow;
+		deleteAttr GIJoe_group.DRGam;
+		delete "DR_shader" "DRS_texture" "DR_ramp" "DR_gamma" "DR_Hsv" "DR_Surface";
+	}
+}
+
+global proc gi_SSpecT()
+{
+	float $TresSpec = `floatSliderGrp -q -v SSpecT`;
+	string $lights[] = `ls "skyLightShape*"`;
+	int $specOn = `radioButtonGrp -q -select skySpec`;
+	
+	setAttr GIJoe_group.SpecTres $TresSpec;
+	select -cl;
+	
+	if ($specOn == 1)
+	{
+		for ($inc in $lights)
+		{
+			setAttr ($inc + ".emitSpecular") 0;
+			float $lumR = `getAttr ($inc + ".colorR")`;
+			float $lumG = `getAttr ($inc + ".colorG")`;
+			float $lumB = `getAttr ($inc + ".colorB")`;
+
+			float $lum = (0.3 * $lumR) + (0.59 * $lumG) + (0.11 * $lumB);
+
+			if ($lum < $TresSpec)
+				setAttr ($inc + ".emitSpecular") 0;
+			else
+			{
+				setAttr ($inc + ".emitSpecular") 1;
+				select -add $inc;
+			}
+		}
+		
+		//for ($inc in $lights)
+		//{
+		//	if (`getAttr ($inc + ".emitSpecular")` == 1)
+		//		select -add $inc;
+		//}
+		
+		string $DRL[] = `ls "DRLight*"`;
+		if (`size $DRL` > 0)
+			gi_DR;
+	}
+	
+	else
+		return;
+}
+
+// SHADOWS
+
+global proc gi_clean()
+{
+	string $ppath = `workspace -q -rd`;
+	string $bdir = `chdir ($ppath + "/renderData/GIJoe_shadows")`;
+	string $shadDir = `pwd`;
+	string $scN = `file -q -sn`;
+	string $scene[];
+	string $sceneName[];
+	tokenize $scN "/" $scene;
+	tokenize $scene[`size $scene`-1] "." $sceneName;
+	system ("del " + $sceneName[0] + "*");
+	print ("Scene lights maps deleted!!\n");
+}
+
+global proc gi_cleanAll()
+{
+	string $ppath = `workspace -q -rd`;
+	string $bdir = `chdir ($ppath + "/renderData/GIJoe_shadows")`;
+	string $shadDir = `pwd`;
+	system "del /Q *.*";
+	print ("All lights maps deleted!!\n");
+}
+
+global proc gi_SshadowsOn()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	setAttr GIJoe_group.SShado 1;
+	for ($inc in $lights)
+		setAttr ($inc + ".useDepthMapShadows") 1;
+}
+
+global proc gi_SshadowsOff()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	setAttr GIJoe_group.SShado 2;
+	for ($inc in $lights)
+		setAttr ($inc + ".useDepthMapShadows") 0;
+}
+
+global proc gi_GshadowsOn()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	setAttr GIJoe_group.GShado 1;
+	for ($inc in $lights)
+		setAttr ($inc + ".useDepthMapShadows") 1;
+}
+
+global proc gi_GshadowsOff()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	setAttr GIJoe_group.GShado 2;
+	for ($inc in $lights)
+		setAttr ($inc + ".useDepthMapShadows") 0;
+}
+
+global proc gi_SReUseDmap()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	int $reuse = `checkBox -q -v SReUseDmap`;
+	for ($inc in $lights)
+		setAttr ($inc + ".reuseDmap") $reuse;
+}
+
+global proc gi_GReUseDmap()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	int $reuse = `checkBox -q -v GReUseDmap`;
+	for ($inc in $lights)
+		setAttr ($inc + ".reuseDmap") $reuse;
+}
+
+global proc gi_SDmapFS()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	int $fs = `intSliderGrp -q -v SDmapFS`;
+	for ($inc in $lights)
+		setAttr ($inc + ".dmapFilterSize") $fs;
+}
+
+global proc gi_GDmapFS()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	int $fs = `intSliderGrp -q -v GDmapFS`;
+	for ($inc in $lights)
+		setAttr ($inc + ".dmapFilterSize") $fs;
+}
+
+global proc gi_SDmapRes()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	int $res = `intSliderGrp -q -v SDmapRes`;
+	for ($inc in $lights)
+		setAttr ($inc + ".dmapResolution") $res;
+	
+	gi_updateShadowsNames;
+}
+
+global proc gi_GDmapRes()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	int $res = `intSliderGrp -q -v GDmapRes`;
+	for ($inc in $lights)
+		setAttr ($inc + ".dmapResolution") $res;
+	
+	gi_updateShadowsNames;
+}
+
+global proc gi_SDmapBias()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	float $bias = `floatSliderGrp -q -v SDmapBias`;
+	for ($inc in $lights)
+		setAttr ($inc + ".dmapBias") $bias;
+}
+
+global proc gi_GDmapBias()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	float $bias = `floatSliderGrp -q -v GDmapBias`;
+	for ($inc in $lights)
+		setAttr ($inc + ".dmapBias") $bias;
+}
+
+global proc gi_SUseMidDist()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	int $midDist = `checkBox -q -v SUseMidDist`;
+	for ($inc in $lights)
+		setAttr ($inc + ".useMidDistDmap") $midDist;
+}
+
+global proc gi_GUseMidDist()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	int $midDist = `checkBox -q -v GUseMidDist`;
+	for ($inc in $lights)
+		setAttr ($inc + ".useMidDistDmap") $midDist;
+}
+
+global proc gi_SAutoFocOnOff()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	int $autoF = `checkBox -q -v SAutoFocOnOff`;
+	if ($autoF == 1)
+	{
+		intFieldGrp -edit -en 0 SDmapWF;
+		for ($inc in $lights)
+			setAttr ($inc + ".useDmapAutoFocus") $autoF;
+	}
+	else if ($autoF == 0)
+	{
+		intFieldGrp -edit -en 1 SDmapWF;
+		for ($inc in $lights)
+			setAttr ($inc + ".useDmapAutoFocus") $autoF;
+	}
+}
+
+global proc gi_GAutoFocOnOff()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	int $autoF = `checkBox -q -v GAutoFocOnOff`;
+	if ($autoF == 1)
+	{
+		intFieldGrp -edit -en 0 GDmapWF;
+		for ($inc in $lights)
+			setAttr ($inc + ".useDmapAutoFocus") $autoF;
+	}
+	else if ($autoF == 0)
+	{
+		intFieldGrp -edit -en 1 GDmapWF;
+		for ($inc in $lights)
+			setAttr ($inc + ".useDmapAutoFocus") $autoF;
+	}
+}
+
+global proc gi_SDmapWF()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	int $wf = `intFieldGrp -q -v1 SDmapWF`;
+	for ($inc in $lights)
+		setAttr ($inc + ".dmapWidthFocus") $wf;
+}
+
+global proc gi_GDmapWF()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	int $wf = `intFieldGrp -q -v1 GDmapWF`;
+	for ($inc in $lights)
+		setAttr ($inc + ".dmapWidthFocus") $wf;
+}
+
+// SKY COLOR CALIBRATION
+
+global proc gi_SColorCal()
+{
+	int $scolCal = `checkBox -q -v SColorCal`;
+	string $stat = `textFieldGrp -q -tx SColStat`;
+	string $sTex[] = `listConnections -d off -s on GIJoe_group.skyColor`;
+	
+	if (`size $sTex` == 0)
+	{
+		warning "No texture plugged into skyColor!!\n";
+		checkBox -edit -v 0 SColorCal;
+		return;
+	}
+	else if ($stat == "Frozen")
+	{
+		warning "The sky lighting is frozen. Please disconnect and reconnect the texture to calibrate it";
+		checkBox -edit -v 0 SColorCal;
+		return;
+	}
+	
+	string $texSky[] = `ls ("skyTex*")`;
+	
+	if (($scolCal == 1) && (`size $texSky` > 0))
+	{
+		addAttr -ln SCon -at time GIJoe_group;
+		addAttr -ln SConB -at time GIJoe_group;
+		addAttr -ln SHue -at time GIJoe_group;
+		addAttr -ln SSat -at time GIJoe_group;
+		addAttr -ln SGam -at time GIJoe_group;
+		setAttr GIJoe_group.SColCal 1;
+		
+		floatSliderGrp -edit -en 1 SContrast;
+		floatSliderGrp -edit -en 1 SContrastB;
+		floatSliderGrp -edit -en 1 SHue;
+		floatSliderGrp -edit -en 1 SSat;
+		floatSliderGrp -edit -en 1 SGam;
+		checkBox -e -en 1 SFrCol;
+		
+		// creating nodes
+		
+		int $num = 0;
+		string $lights[] = `ls "skyLightShape*"`;
+		
+		for ($inc in $lights)
+		{
+			string $rgb2Hsv = `shadingNode -au rgbToHsv -n skyRgb2Hsv1`;
+			string $mult = `shadingNode -au multiplyDivide -n skyMult1`;
+			string $hsv2Rgb = `shadingNode -au hsvToRgb -n skyHsv2Rgb1`;
+			string $contrast = `shadingNode -au contrast -n skyContrast1`;
+			setAttr ($contrast + ".contrast") 1 1 1;
+			string $gamma = `shadingNode -au gammaCorrect -n skyGamma1`;
+			
+			connectAttr -f ($texSky[$num] + ".outColor") ($rgb2Hsv + ".inRgb");
+			connectAttr -f ($rgb2Hsv + ".outHsv") ($mult + ".input1");
+			connectAttr -f ($mult + ".output") ($hsv2Rgb + ".inHsv");
+			connectAttr -f ($hsv2Rgb + ".outRgb") ($contrast + ".value");
+			connectAttr -f ($contrast + ".outValue") ($gamma + ".value");
+			connectAttr -f ($gamma + ".outValue") ($inc + ".color");
+			$num++;
+		}
+		
+		connectAttr -f "skyMult1.input2X" GIJoe_group.SHue;
+		connectAttr -f "skyMult1.input2Y" GIJoe_group.SSat;
+		connectAttr -f "skyContrast1.contrastX" GIJoe_group.SCon;
+		connectAttr -f "skyContrast1.biasX" GIJoe_group.SConB;
+		connectAttr -f "skyGamma1.gammaX" GIJoe_group.SGam;
+	}
+	else if ($scolCal == 0)
+	{
+		floatSliderGrp -edit -v 1 SContrast;
+		floatSliderGrp -edit -v 0.5 SContrastB;
+		floatSliderGrp -edit -v 1 SHue;
+		floatSliderGrp -edit -v 1 SSat;
+		floatSliderGrp -edit -v 1 SGam;
+		
+		floatSliderGrp -edit -en 0 SContrast;
+		floatSliderGrp -edit -en 0 SContrastB;
+		floatSliderGrp -edit -en 0 SHue;
+		floatSliderGrp -edit -en 0 SSat;
+		floatSliderGrp -edit -en 0 SGam;
+		checkBox -e -en 0 SFrCol;
+		
+		deleteAttr GIJoe_group.SCon;
+		deleteAttr GIJoe_group.SConB;
+		deleteAttr GIJoe_group.SHue;
+		deleteAttr GIJoe_group.SSat;
+		deleteAttr GIJoe_group.SGam;
+		
+		setAttr GIJoe_group.SColCal 0;
+		
+		string $lights[] = `ls "skyLightShape*"`;
+		int $num = 0;
+		for ($inc in $lights)
+		{
+			connectAttr -f ($texSky[$num] + ".outColor") ($inc + ".color");
+			$num++;
+		}
+		
+		if (`objExists "skyRgb2Hsv1"` == 1)
+			delete "skyRgb2Hsv*" "skyMult*" "skyHsv2Rgb*" "skyGamma*" "skyContrast*";
+	}
+}
+
+global proc gi_SContrast()
+{
+	float $scon = `floatSliderGrp -q -v SContrast`;
+	string $conNode[] = `ls "skyContrast*"`;
+	for ($inc in $conNode)
+	{
+		setAttr ($inc + ".contrastX") $scon;
+		setAttr ($inc + ".contrastY") $scon;
+		setAttr ($inc + ".contrastZ") $scon;
+	}
+}
+
+global proc gi_SContrastB()
+{
+	float $sconB = `floatSliderGrp -q -v SContrastB`;
+	string $conNode[] = `ls "skyContrast*"`;
+	for ($inc in $conNode)
+	{
+		setAttr ($inc + ".biasX") $sconB;
+		setAttr ($inc + ".biasY") $sconB;
+		setAttr ($inc + ".biasZ") $sconB;
+	}
+}
+
+global proc gi_SHue()
+{
+	float $shue = `floatSliderGrp -q -v SHue`;
+	string $multNode[] = `ls "skyMult*"`;
+	for ($inc in $multNode)
+		setAttr ($inc + ".input2X") $shue;
+}
+
+global proc gi_SSat()
+{
+	float $sSat = `floatSliderGrp -q -v SSat`;
+	string $multNode[] = `ls "skyMult*"`;
+	for ($inc in $multNode)
+		setAttr ($inc + ".input2Y") $sSat;
+}
+
+global proc gi_SGam()
+{
+	float $sGam = `floatSliderGrp -q -v SGam`;
+	string $conNode[] = `ls "skyGamma*"`;
+	for ($inc in $conNode)
+	{
+		setAttr ($inc + ".gammaX") $sGam;
+		setAttr ($inc + ".gammaY") $sGam;
+		setAttr ($inc + ".gammaZ") $sGam;
+	}
+}
+
+global proc gi_SFrCol()
+{
+	string $lights[] = `ls "skyLightShape*"`;
+	float $colL[];
+	
+	for ($inc in $lights)
+	{
+		$colL = `getAttr ($inc +  ".color")`;
+		string $con = `connectionInfo -sfd ($inc + ".color")`;
+		disconnectAttr $con ($inc + ".color");
+		setAttr ($inc + ".color") $colL[0] $colL[1] $colL[2];
+	}
+
+	delete "skyRgb2Hsv*" "skyMult*" "skyHsv2Rgb*" "skyGamma*" "skyContrast*";
+	
+	deleteAttr GIJoe_group.SCon;
+	deleteAttr GIJoe_group.SConB;
+	deleteAttr GIJoe_group.SHue;
+	deleteAttr GIJoe_group.SSat;
+	deleteAttr GIJoe_group.SGam;
+	
+	floatSliderGrp -edit -v 1 SContrast;
+	floatSliderGrp -edit -v 0.5 SContrastB;
+	floatSliderGrp -edit -v 1 SHue;
+	floatSliderGrp -edit -v 1 SSat;
+	floatSliderGrp -edit -v 1 SGam;
+
+	floatSliderGrp -edit -en 0 SContrast;
+	floatSliderGrp -edit -en 0 SContrastB;
+	floatSliderGrp -edit -en 0 SHue;
+	floatSliderGrp -edit -en 0 SSat;
+	floatSliderGrp -edit -en 0 SGam;
+	checkBox -e -en 0 -v 0 SFrCol;
+	checkBox -e -v 0 SColorCal;
+	
+	textFieldGrp -e -tx "Frozen" SColStat;
+	setAttr GIJoe_group.SColCal 0;
+	
+	delete "skyTex*" "sky_SR*" "cposSky*";	
+}
+
+
+// GROUND COLOR CALIBRATION
+
+global proc gi_GColorCal()
+{
+	int $gcolCal = `checkBox -q -v GColorCal`;
+	string $stat = `textFieldGrp -q -tx GColStat`;
+	string $gTex[] = `listConnections -d off -s on GIJoe_group.groundColor`;
+	
+	if (`size $gTex` == 0)
+	{
+		warning "No texture plugged into groundColor!!\n";
+		checkBox -edit -v 0 GColorCal;
+		return;
+	}
+	else if ($stat == "Frozen")
+	{
+		warning "The ground lighting is frozen. Please disconnect and reconnect the texture to calibrate it";
+		checkBox -edit -v 0 GColorCal;
+		return;
+	}
+	
+	string $texGround[] = `ls ("groundTex*")`;
+	
+	if (($gcolCal == 1) && (`size $texGround` > 0))
+	{
+		addAttr -ln GCon -at time GIJoe_group;
+		addAttr -ln GConB -at time GIJoe_group;
+		addAttr -ln GHue -at time GIJoe_group;
+		addAttr -ln GSat -at time GIJoe_group;
+		addAttr -ln GGam -at time GIJoe_group;
+		setAttr GIJoe_group.GColCal 1;
+		
+		floatSliderGrp -edit -en 1 GContrast;
+		floatSliderGrp -edit -en 1 GContrastB;
+		floatSliderGrp -edit -en 1 GHue;
+		floatSliderGrp -edit -en 1 GSat;
+		floatSliderGrp -edit -en 1 GGam;
+		checkBox -e -en 1 GFrCol;
+		
+		// creating nodes
+		
+		int $num = 0;
+		string $lights[] = `ls "groundLightShape*"`;
+		
+		for ($inc in $lights)
+		{
+			string $rgb2Hsv = `shadingNode -au rgbToHsv -n groundRgb2Hsv1`;
+			string $mult = `shadingNode -au multiplyDivide -n groundMult1`;
+			string $hsv2Rgb = `shadingNode -au hsvToRgb -n groundHsv2Rgb1`;
+			string $contrast = `shadingNode -au contrast -n groundContrast1`;
+			setAttr ($contrast + ".contrast") 1 1 1;
+			string $gamma = `shadingNode -au gammaCorrect -n groundGamma1`;
+			
+			connectAttr -f ($texGround[$num] + ".outColor") ($rgb2Hsv + ".inRgb");
+			connectAttr -f ($rgb2Hsv + ".outHsv") ($mult + ".input1");
+			connectAttr -f ($mult + ".output") ($hsv2Rgb + ".inHsv");
+			connectAttr -f ($hsv2Rgb + ".outRgb") ($contrast + ".value");
+			connectAttr -f ($contrast + ".outValue") ($gamma + ".value");
+			connectAttr -f ($gamma + ".outValue") ($inc + ".color");
+			$num++;
+		}
+		
+		connectAttr -f "groundMult1.input2X" GIJoe_group.GHue;
+		connectAttr -f "groundMult1.input2Y" GIJoe_group.GSat;
+		connectAttr -f "groundContrast1.contrastX" GIJoe_group.GCon;
+		connectAttr -f "groundContrast1.biasX" GIJoe_group.GConB;
+		connectAttr -f "groundGamma1.gammaX" GIJoe_group.GGam;
+	}
+	else if ($gcolCal == 0)
+	{
+		floatSliderGrp -edit -en 0 -v 1 GContrast;
+		floatSliderGrp -edit -en 0 -v 0.5 GContrastB;
+		floatSliderGrp -edit -en 0 -v 1 GHue;
+		floatSliderGrp -edit -en 0 -v 1 GSat;
+		floatSliderGrp -edit -en 0 -v 1 GGam;
+		checkBox -e -en 0 GFrCol;
+		
+		deleteAttr GIJoe_group.GCon;
+		deleteAttr GIJoe_group.GConB;
+		deleteAttr GIJoe_group.GHue;
+		deleteAttr GIJoe_group.GSat;
+		deleteAttr GIJoe_group.GGam;
+		
+		string $lights[] = `ls "groundLightShape*"`;
+		int $num = 0;
+		for ($inc in $lights)
+		{
+			connectAttr -f ($texGround[$num] + ".outColor") ($inc + ".color");
+			$num++;
+		}
+		
+		if (`objExists "groundRgb2Hsv1"` == 1)
+			delete "groundRgb2Hsv*" "groundMult*" "groundHsv2Rgb*" "groundGamma*" "groundContrast*";
+	}
+}
+
+global proc gi_GContrast()
+{
+	float $gcon = `floatSliderGrp -q -v GContrast`;
+	string $conNode[] = `ls "groundContrast*"`;
+	for ($inc in $conNode)
+	{
+		setAttr ($inc + ".contrastX") $gcon;
+		setAttr ($inc + ".contrastY") $gcon;
+		setAttr ($inc + ".contrastZ") $gcon;
+	}
+}
+
+global proc gi_GContrastB()
+{
+	float $gconB = `floatSliderGrp -q -v GContrastB`;
+	string $conNode[] = `ls "groundContrast*"`;
+	for ($inc in $conNode)
+	{
+		setAttr ($inc + ".biasX") $gconB;
+		setAttr ($inc + ".biasY") $gconB;
+		setAttr ($inc + ".biasZ") $gconB;
+	}
+}
+
+global proc gi_GHue()
+{
+	float $ghue = `floatSliderGrp -q -v GHue`;
+	string $multNode[] = `ls "groundMult*"`;
+	for ($inc in $multNode)
+		setAttr ($inc + ".input2X") $ghue;
+}
+
+global proc gi_GSat()
+{
+	float $gSat = `floatSliderGrp -q -v GSat`;
+	string $multNode[] = `ls "groundMult*"`;
+	for ($inc in $multNode)
+		setAttr ($inc + ".input2Y") $gSat;
+}
+
+global proc gi_GGam()
+{
+	float $gGam = `floatSliderGrp -q -v GGam`;
+	string $conNode[] = `ls "groundGamma*"`;
+	for ($inc in $conNode)
+	{
+		setAttr ($inc + ".gammaX") $gGam;
+		setAttr ($inc + ".gammaY") $gGam;
+		setAttr ($inc + ".gammaZ") $gGam;
+	}
+}
+
+global proc gi_GFrCol()
+{
+	string $lights[] = `ls "groundLightShape*"`;
+	for ($inc in $lights)
+	{
+		float $lcol[] = `getAttr ($inc + ".color")`;
+		string $con = `connectionInfo -sfd ($inc + ".color")`;
+		disconnectAttr $con ($inc + ".color");
+		setAttr ($inc + ".color") $lcol[0] $lcol[1] $lcol[2];
+	}
+	
+	delete "groundRgb2Hsv*" "groundMult*" "groundHsv2Rgb*" "groundGamma*" "groundContrast*";
+	deleteAttr GIJoe_group.GCon;
+	deleteAttr GIJoe_group.GConB;
+	deleteAttr GIJoe_group.GHue;
+	deleteAttr GIJoe_group.GSat;
+	deleteAttr GIJoe_group.GGam;
+	
+	floatSliderGrp -edit -en 0 -v 1 GContrast;
+	floatSliderGrp -edit -en 0 -v 0.5 GContrastB;
+	floatSliderGrp -edit -en 0 -v 1 GHue;
+	floatSliderGrp -edit -en 0 -v 1 GSat;
+	floatSliderGrp -edit -en 0 -v 1 GGam;
+	checkBox -e -en 0 -v 0 GFrCol;
+	checkBox -e -v 0 GColorCal;
+	
+	delete "groundTex*" "ground_SR*" "cposGround*";
+	
+	textFieldGrp -e -tx "Frozen" GColStat;
+	setAttr GIJoe_group.GColCal 0;
+}
+
+// OPTIMISATION
+
+global proc gi_SLumT()
+{
+	float $lumSTres = `floatSliderGrp -q -v SLumT`;
+	setAttr GIJoe_group.LumTres $lumSTres;
+	int $optShad = `radioButtonGrp -q -sl gi_Sopt`;
+	setAttr GIJoe_group.ShadOptType $optShad;
+	
+	string $texCon[] = `listConnections -s 1 -d 0 GIJoe_group.skyColor`;
+	if (`size $texCon` == 0)
+	{
+		textFieldGrp -edit -text "Optimize needs a texture!!" SOptResult;
+		return;
+	}
+	
+	string $lights[] = `ls "skyLightShape*"`;
+	select -cl;
+	int $numL;
+	
+	for ($inc in $lights)
+	{
+		float $lintR = `getAttr ($inc + ".colorR")`;
+		float $lintG = `getAttr ($inc + ".colorG")`;
+		float $lintB = `getAttr ($inc + ".colorB")`;
+		float $lint = (0.3 * $lintR) + (0.59 * $lintG) + (0.11 * $lintB);
+		if ($lint < $lumSTres)
+		{
+			select -add $inc;
+			$numL++;
+		}
+	}
+	
+	string $lightOpt[] = `ls -sl`;
+	int $sizeL = `size $lightOpt`;
+	int $sl = `size $lights`;
+	textFieldGrp -edit -text ("Selected lights (" + $sizeL + ") of " + $sl + " will be optimized") SOptResult;
+}
+
+global proc gi_SDoOpt()
+{
+	int $optShad = `radioButtonGrp -q -sl gi_Sopt`;
+	
+	string $lights[] = `ls -sl`;
+	string $preLights[] = `ls "skyLightShape*"`;
+	for ($inc in $preLights)
+		setAttr ($inc + ".useDepthMapShadows") 1;
+		
+	if (`match "skyLightShape[0-9]+" $lights[0]` != $lights[0])
+	{
+		textFieldGrp -edit -text "Lights to be optimized have to be selected!!" SOptResult;
+		return;
+	}
+	if ($optShad == 1)
+	{
+		for ($inc in $lights)
+			setAttr ($inc + ".useDepthMapShadows") 0;
+			
+		textFieldGrp -edit -text "Shadows optimized!!" SOptResult;
+	}
+	else
+	{
+		for ($inc in $lights)
+		{
+			string $T[] = `listRelatives -p $inc`;
+			delete $T;
+		}
+		textFieldGrp -edit -text "Lights optimized!!" SOptResult;
+	}
+}
+
+global proc gi_GLumT()
+{
+	float $lumGTres = `floatSliderGrp -q -v GLumT`;
+	setAttr GIJoe_group.GLumT $lumGTres;
+	int $optShad = `radioButtonGrp -q -sl gi_Gopt`;
+	setAttr GIJoe_group.GShadOptType $optShad;
+	
+	string $texCon[] = `listConnections -s 1 -d 0 GIJoe_group.groundColor`;
+	if (`size $texCon` == 0)
+	{
+		textFieldGrp -edit -text "Optimize needs a texture!!" GOptResult;
+		return;
+	}
+	
+	string $lights[] = `ls "groundLightShape*"`;
+	select -cl;
+	int $numL;
+	
+	for ($inc in $lights)
+	{
+		float $lintR = `getAttr ($inc + ".colorR")`;
+		float $lintG = `getAttr ($inc + ".colorG")`;
+		float $lintB = `getAttr ($inc + ".colorB")`;
+		float $lint = (0.3 * $lintR) + (0.59 * $lintG) + (0.11 * $lintB);
+		if ($lint < $lumGTres)
+		{
+			select -add $inc;
+			$numL++;
+		}
+	}
+	
+	string $lightOpt[] = `ls -sl`;
+	int $sizeL = `size $lightOpt`;
+	int $sl = `size $lights`;
+	textFieldGrp -edit -text ("Selected lights (" + $sizeL + ") of " + $sl + " will be optimized") GOptResult;
+}
+
+global proc gi_GDoOpt()
+{
+	int $optShad = `radioButtonGrp -q -sl gi_Gopt`;
+	string $lights[] = `ls -sl`;
+	if (`match "groundLightShape[0-9]+" $lights[0]` != $lights[0])
+	{
+		textFieldGrp -edit -text "Lights to be optimized have to be selected!!" GOptResult;
+		return;
+	}
+	if ($optShad == 1)
+	{
+		
+		for ($inc in $lights)
+			setAttr ($inc + ".useDepthMapShadows") 0;
+			
+		textFieldGrp -edit -text "Shadows optimized!!" GOptResult;
+	}
+	else
+	{
+		for ($inc in $lights)
+		{
+			string $T[] = `listRelatives -p $inc`;
+			delete $T;
+		}
+		textFieldGrp -edit -text "Lights optimized!!" GOptResult;
+	}
+}
+
+// BAKE CONTROLS
+
+global proc gi_BakDensity()
+{
+	float $bakden = `floatSliderGrp -q -v BakDensity`;
+	setAttr GIJoe_group.bden $bakden;
+	setAttr "bake_sr.maxX" $bakden;
+}
+
+global proc gi_BakeCon()
+{
+	float $bakCon = `floatSliderGrp -q -v BakCon`;
+	setAttr GIJoe_group.bcon $bakCon;
+	setAttr "bc_contrast.contrastX" $bakCon;
+}
+
+global proc gi_BakConBias()
+{
+	float $bakConB = `floatSliderGrp -q -v BakeConB`;
+	setAttr GIJoe_group.bconb $bakConB;
+	setAttr "bc_contrast.biasX" $bakConB;
+}
+
+global proc gi_mres()
+{
+	int $mres = `intSliderGrp -q -v BakMinRes`;
+	setAttr GIJoe_group.mres $mres;
+}
+
+global proc gi_Mres()
+{
+	int $Mres = `intSliderGrp -q -v BakMaxRes`;
+	setAttr GIJoe_group.Mres $Mres;
+}
+
+global proc gi_bdir()
+{
+	string $bdir = `textFieldGrp -q -tx gi_outputShadDir`;
+	setAttr -type "string" GIJoe_group.bdir $bdir;
+}
+
+
+// Freeze
+
+global proc gi_Sfreeze()
+{
+	int $test = `checkBox -q -v SFreeze`;
+	string $stat = `textFieldGrp -q -tx SColStat`;
+	if (($test == 1) && ($stat == "Frozen"))
+	{
+		warning "The sky lighting is already frozen";
+		checkBox -e -v 0 SFreeze;
+		return;
+	}
+	
+	if ($test == 1) 
+	{
+		string $texTest[] = `listConnections -s 1 -d 0 GIJoe_group.skyColor`;
+		string $sTex[] = `ls "skyTex*"`;
+		
+		if (`size $texTest` == 0)
+		{
+			warning "No texture plugged in sky! Stopped!!";
+			checkBox -e -v 0 SFreeze;
+			return;
+		}
+		
+		string $lights[] = `ls "skyLightShape*"`;
+		for ($inc in $lights)
+		{
+			float $lcol[] = `getAttr ($inc + ".color")`;
+			string $con = `connectionInfo -sfd ($inc + ".color")`;
+			disconnectAttr $con ($inc + ".color");
+			setAttr ($inc + ".color") $lcol[0] $lcol[1] $lcol[2];
+		}
+		delete "cposSky*" "sky_SR*" "skyTex*";
+		checkBox -e -v 0 SFreeze;
+		textFieldGrp -e -tx "Frozen" SColStat;
+	}
+	else
+		return;
+}
+
+global proc gi_Gfreeze()
+{
+	int $test = `checkBox -q -v GFreeze`;
+	string $stat = `textFieldGrp -q -tx GColStat`;
+	if (($test == 1) && ($stat == "Frozen"))
+	{
+		warning "The ground lighting is already frozen";
+		checkBox -e -v 0 GFreeze;
+		return;
+	}
+	if ($test == 1)
+	{
+		string $texTest[] = `listConnections -s 1 -d 0 GIJoe_group.groundColor`;
+		if (`size $texTest` == 0)
+		{
+			warning "No texture plugged in ground! Stopped!!";
+			checkBox -e -v 0 GFreeze;
+			return;
+		}
+
+		string $lights[] = `ls "groundLightShape*"`;
+		for ($inc in $lights)
+		{
+			float $lcol[] = `getAttr ($inc + ".color")`;
+			string $con = `connectionInfo -sfd ($inc + ".color")`;
+			disconnectAttr $con ($inc + ".color");
+			setAttr ($inc + ".color") $lcol[0] $lcol[1] $lcol[2];
+		}
+		delete "cposGround*" "ground_SR*" "groundTex*";
+		checkBox -e -v 0 GFreeze;
+		textFieldGrp -e -tx "Frozen" GColStat;
+	}
+	else
+		return;
+}

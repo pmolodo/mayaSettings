@@ -1,0 +1,207 @@
+/*  This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: Multiple Lights Relationship Editor v0.1
+''    Author: Pramod Patel
+''    Last Updated: January 15, 2002
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=utilities#1439
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+///Created on 11/01/2002 ---Pramod Patel email me at illych_sanchez@hotmail.com//////
+
+/// This enables us to make or break multiple light relationships////
+
+
+	window -title "---------------Eagle 3d Multiple Light Linker--------------" -widthHeight 350 200 -maximizeButton false carl;
+
+    string $form = `formLayout -numberOfDivisions 100`;
+    string $button1 = `button -label "Break Relation"`; ///// selection done through scrolllist
+    string $button2 = `button -label "Make Relation"`;  ///// selection done through scrolllist
+
+
+    string $button3 = `button -label "Break Relation Manually"`; ///// Lights Manually Selected
+    string $button4 = `button -label "Make Relation Manually"`;  ///// Lights Manually Selected
+    string $button5 = `button -label "Refresh"`; ///// As it says ...referesh the list
+
+    button -edit -command ("breakrelation") $button1;
+    button -edit -command ("makerelation") $button2;
+
+    button -edit -command ("breakownrelation") $button3;
+    button -edit -command ("makeownrelation") $button4;
+    button -edit -command ("refresh") $button5;
+
+$radioButton1 = `textScrollList -numberOfRows 7 -allowMultiSelection false -width 100 -height 150 -selectCommand("getnameshaders") me1`; 
+$radioButton2 = `textScrollList -numberOfRows 7 -allowMultiSelection true -width 100 -height 150 -selectCommand("getnamelights") me2`; 
+
+
+///create the form
+
+formLayout -edit
+
+-attachForm            $radioButton1     "top"    25
+-attachForm            $radioButton1     "left"   1
+
+
+-attachForm            $radioButton2     "top"    25
+-attachForm            $radioButton2     "left"   300
+
+
+-attachForm            $button1     "top"    50
+-attachForm            $button1     "left"   125
+
+
+-attachForm            $button2     "top"    75
+-attachForm            $button2     "left"   125
+
+
+-attachForm            $button3     "top"    100
+-attachForm            $button3     "left"   125
+
+
+-attachForm            $button4     "top"    125
+-attachForm            $button4     "left"   125
+
+
+-attachForm            $button5     "top"    25
+-attachForm            $button5     "left"   125
+
+$form;
+
+showWindow carl;
+
+///get all shading groups and materials
+
+
+global proc listshaders()
+{
+hyperShadePanelMenuCommand("hyperShadePanel1", "selectShadingGroupsAndMaterials");
+string $object_names[] = `ls -sl`; 
+$count = size($object_names); 
+$count = $count - 1;
+
+while ($count > -1){ textScrollList-e  -append $object_names[$count] me1;
+$count = $count - 1; 
+}
+}
+
+
+/////get all lights
+
+global proc selectalllights()
+{
+SelectAllLights;
+string $object_names[] = `ls -sl`; 
+$count = size($object_names); 
+$count = $count - 1;
+
+while ($count > -1){ textScrollList-e  -append $object_names[$count] me2;
+$count = $count - 1; 
+}
+}
+
+
+global proc getnamelights()
+{
+string $selection[] = `textScrollList -q -si me2`;
+print $selection;
+}
+
+///print name of selected shader---for debug only///
+
+global proc getnameshaders()
+{
+string $selection[] = `textScrollList -q -si me1`;
+print $selection;
+}
+
+
+//// break relation of selected lights from scrolllist
+
+global proc breakrelation()
+{
+string $sselection[] = `textScrollList -q -si me1`;
+string $lselection[] = `textScrollList -q -si me2`;
+
+
+$count = size($lselection); 
+$count = $count - 1;
+while ($count > -1){ lightlink -break -light $lselection[$count] -object $sselection; 
+$count = $count - 1; 
+}
+lightLinkingEditor;
+}
+
+//// Make relation of selected lights from scrolllist
+
+global proc makerelation()
+{
+string $sselection[] = `textScrollList -q -si me1`;
+string $lselection[] =  `textScrollList -q -si me2`;
+
+
+$count = size($lselection); 
+$count = $count - 1;
+while ($count > -1){ lightlink -make -light $lselection[$count] -object $sselection; 
+$count = $count - 1; 
+}
+lightLinkingEditor;
+}
+
+
+//// break relation of selected lights from scene
+
+global proc breakownrelation()
+{
+string $sselection[] = `textScrollList -q -si me1`;
+string $lselection[] =  `ls -sl -transforms`; 
+
+
+
+$count = size($lselection); 
+$count = $count - 1;
+while ($count > -1){ lightlink -break -light $lselection[$count] -object $sselection; 
+$count = $count - 1; 
+}
+lightLinkingEditor;
+}
+
+
+//// break relation of selected lights from Scene
+global proc makeownrelation()
+{
+string $sselection1[] = `textScrollList -q -si me1`;
+string $lselection1[] =  `ls -sl -transforms`; 
+
+
+
+$count = size($lselection1); 
+$count = $count - 1;
+while ($count > -1){ lightlink -make -light $lselection1[$count] -object $sselection1; 
+$count = $count - 1; 
+}
+lightLinkingEditor;
+}
+
+
+////Referesh Lists
+
+global proc refresh()
+{
+textScrollList -e -removeAll me1;
+textScrollList -e -removeAll me2;
+list;
+}
+
+/////List All
+
+global proc list()
+{
+listshaders;
+selectalllights;
+}

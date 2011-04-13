@@ -1,0 +1,104 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+proc string[] zenVertDistanceList(string $vert, string $stopVert)
+{
+	string	$obj=zenReturnFirstStringItem(`ls -o $vert`);
+	int	$vertCount=zenReturnFirstIntegerItem(`polyEvaluate -v $obj`);
+	string	$tempArray[];
+	string	$vertices[]={$vert};
+	string	$flattenedListVerts[];
+	string	$returnStrings[];
+	int	$estimate=25;
+	
+	//float	$t=`timerX`;
+	
+		progressWindow -ii 1 -title "Working" -status "Sorting" -max $estimate -progress 0;
+
+		for($i=0;$i<$vertCount;$i++)
+		{
+			$tempArray=`ls -fl $vertices`;
+			$vertices=`polyListComponentConversion -te $vertices`;
+			$vertices=`polyListComponentConversion -tv $vertices`;
+			$flattenedListVerts=`ls -fl $vertices`;
+			$tempArray=`stringArrayRemove $tempArray $flattenedListVerts`;
+			$tempArray=`polyListComponentConversion -fv -tv $tempArray`;
+			$returnStrings[$i]=`stringArrayToString $tempArray ","`;
+			
+			if(`stringArrayContains $stopVert $flattenedListVerts`) break;
+			
+			progressWindow -e -s 1;
+			
+			if(`progressWindow -q -ic`)
+			{
+				progressWindow -endProgress;
+				error "User Interupt.";				
+			}
+			
+			if(`progressWindow -q -progress`>=`progressWindow -q -max`)
+			{
+				progressWindow -ep;
+				progressWindow -progress 0;
+			}
+		}
+		
+		//print("mel time:\n");
+		//print(`timerX -st $t`);
+		
+		progressWindow -endProgress;
+		
+	return	$returnStrings;
+}
+
+global proc string[] zenShortestVertexPath(string $vertA,string $vertB)
+{
+	string	$obj=zenReturnFirstStringItem(`ls -o $vertA`);
+	int	$vertCount=zenReturnFirstIntegerItem(`polyEvaluate -v $obj`);
+	string	$tempArray[];
+	string	$vertices[];
+	string	$vertPath[]={$vertA};
+	string	$vert=$vertA;
+	string	$distanceList[]=`zenVertDistanceList $vertB $vertA`;
+	int	$sizeList=size($distanceList);
+	
+	//float	$startTime=`timerX`;
+	
+	string	$intersector=`stringArrayIntersector`;
+	
+		for($i=1;$i<$sizeList;$i++)
+		{
+			$tempArray=`stringToStringArray ($distanceList[$sizeList-$i-1]) ","`;
+			$tempArray=`ls -fl $tempArray`;
+			$vertices=`polyListComponentConversion -te $vert`;
+			$vertices=`polyListComponentConversion -tv $vertices`;
+			$vertices=`ls -fl $vertices`;
+			$vertices=`stringArrayRemove {$vert} $vertices`;
+			
+			stringArrayIntersector -e -r $intersector;
+			stringArrayIntersector -e -i $vertices $intersector;
+			stringArrayIntersector -e -i $tempArray $intersector;
+			
+			$vert=zenReturnFirstStringItem(`stringArrayIntersector -q $intersector`);
+			
+			$vertPath[$i]=$vert;
+		}
+		
+		//print("Operation took "+`timerX -st $startTime`+" seconds.\n");
+		
+		deleteUI $intersector;
+		
+		$vertPath[size($vertPath)]=$vertB;
+		
+	return	$vertPath;
+}

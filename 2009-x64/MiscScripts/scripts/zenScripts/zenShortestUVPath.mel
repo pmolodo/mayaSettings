@@ -1,0 +1,66 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//returns the shortest possible path connecting two uv points
+global proc string[] zenShortestUVPath(string $uvA,string $uvB)
+{
+	string	$obj=zenReturnFirstStringItem(`ls -o $uvA`);
+	int	$uvCount=zenReturnFirstIntegerItem(`polyEvaluate -v $obj`);
+	string	$tempArray[];
+	string	$uvs[];
+	string	$uvPath[]={$uvA};
+	string	$uv=$uvA;
+	string	$distanceList[]=`zenUVDistanceList $uvB $uvA`;
+	int	$sizeList=size($distanceList);
+	
+	print 	$sizeList;print "\n";
+	
+		progressWindow -ii 1 -title "Working" -status "Finding Shortest UV Path." -progress 0 -max (size($distanceList));
+		
+		for($i=1;$i<$sizeList;$i++)
+		{
+			$tempArray=`stringToStringArray ($distanceList[$sizeList-$i-1]) ","`;
+			$uvs=`polyListComponentConversion -te $uv`;
+			$uvs=`polyListComponentConversion -tuv $uvs`;
+			$uvs=`ls -fl $uvs`;
+			$uvs=`stringArrayRemove {$uv} $uvs`;
+			
+			for($v in $uvs)
+			{
+				if(`stringArrayContains $v $tempArray`)
+				{
+					$uv=$v;
+					break;
+				}
+			}
+			
+			$uvPath[$i]=$uv;
+			
+			progressWindow -e -s 1;
+			if(`progressWindow -q -ic`==1)
+			{
+				progressWindow -endProgress;
+				error "User Interupt.";
+			}
+			
+			if(`progressWindow -q -progress`==`progressWindow -q -max`)
+				progressWindow -e -progress 0;
+		}
+		
+		$uvPath[size($uvPath)]=$uvB;
+		
+		progressWindow -endProgress;
+		
+	return	$uvPath;
+}

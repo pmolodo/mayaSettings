@@ -1,0 +1,66 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//creates a node network measuring the collective distance between given attributes within a given objects matrix
+//return an attribute holding the measurement
+global proc string zenObjectSpaceDistanceNode(string $attributes[], string $obj)
+{	
+	string	$distanceBetweenNodes[];
+		for($i=0;$i<(size($attributes)-1);$i++) $distanceBetweenNodes[$i]=`shadingNode -asUtility distanceBetween`;
+		
+	string	$pointMatrixMultNode1;
+	string	$pointMatrixMultNode2;
+	
+	string	$attrObj;
+		
+		for($i=0;$i<size($attributes);$i++)
+		{		
+			$pointMatrixMultNode2=`createNode pointMatrixMult`;
+			$attrObj=zenReturnFirstStringItem(`ls -o $attributes[$i]`);
+			
+			if(`objExists ($attrObj+".matrix")`)//use objects world matrix
+			{
+				$pointMatrixMultNode1=`createNode pointMatrixMult`;
+				connectAttr $attributes[$i] ($pointMatrixMultNode1+".inPoint");
+				connectAttr ($attrObj+".worldMatrix") ($pointMatrixMultNode1+".inMatrix");
+				connectAttr ($pointMatrixMultNode1+".output") ($pointMatrixMultNode2+".inPoint");
+			}
+			else//node is not a dag node, assume measurements are in world space
+				connectAttr  ($attributes[$i]) ($pointMatrixMultNode2+".inPoint");
+				
+			connectAttr ($obj+".worldInverseMatrix[0]") ($pointMatrixMultNode2+".inMatrix");
+						
+			if($i<(size($attributes)-1))
+				connectAttr ($pointMatrixMultNode2+".output") ($distanceBetweenNodes[$i]+".point1");
+			
+			if($i>0)
+				connectAttr ($pointMatrixMultNode2+".output") ($distanceBetweenNodes[($i-1)]+".point2");
+		}
+		
+	string	$plusMinusAverageNode;
+	string	$returnAttr;
+	
+		if(size($distanceBetweenNodes)>1)
+		{
+			$plusMinusAverageNode=`shadingNode -asUtility plusMinusAverage`;
+
+			for($i=0;$i<(size($distanceBetweenNodes));$i++) connectAttr ($distanceBetweenNodes[$i]+".distance") ($plusMinusAverageNode+".input1D["+(string($i))+"]");
+			
+			$returnAttr=($plusMinusAverageNode+".output1D");
+		}
+		else
+			$returnAttr=($distanceBetweenNodes[0]+".distance");
+						
+	return	$returnAttr;
+}

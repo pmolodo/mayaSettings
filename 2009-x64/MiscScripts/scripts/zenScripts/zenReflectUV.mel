@@ -1,0 +1,183 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//mirrors uvs along the specified u axis
+global proc int zenReflectUV(float $mirrorAt,int $axis)
+{
+	string	$sel[]=`ls -sl -fl`;
+		$sel=stringArrayRemove(`ls -sl -tr`,$sel);
+		$sel=stringArrayRemove(`ls -sl -o`,$sel);
+		$sel=`polyListComponentConversion -ff -tf $sel`;
+		$sel=`ls -fl $sel`;
+		$sel=`stringArrayRemoveDuplicates $sel`;
+		
+		if(size($sel)==0) error("Procedure requires a selection of polygon faces.");
+		
+	string	$obj=zenReturnFirstStringItem(`ls -o $sel`);
+		delete -ch $obj;
+		
+	string	$tr=zenReturnFirstStringItem(`listRelatives -p $obj`);
+		
+	float	$pivot[]=`xform -q -rp $tr`;	
+		
+	float	$coordinates[];
+	string	$correspondingFace;
+	string	$allOpposingFaces[];
+	string	$nearestPointNode=`createNode closestPointOnMesh`;
+	string	$pointOnMeshNode=`createNode pointOnMeshInfo`;
+	string	$sourceFaceUVs[];
+	string	$targetFaceUVs[];
+	vector	$sourceFaceUV_xyz[];
+	vector	$targetFaceUV_xyz[];
+	float	$tempArray[];
+	string	$closestVertFace[];
+	float	$distance;
+	float	$shortestDistance;
+	string	$command;
+	vector	$tempVector;
+	int	$faceIndex;
+	
+		connectAttr ($obj+".outMesh") ($nearestPointNode+".inMesh");
+		connectAttr ($obj+".outMesh") ($pointOnMeshNode+".inMesh");
+		
+		delete -ch $obj;
+		
+	float	$startTime=`timerX`;
+	
+		undoInfo -swf 0;
+		
+		progressWindow -isInterruptable 1 -title "Working" -status "Mirroring UV Coordinates" -max (size($sel)*3) -progress 0;
+		
+	//create a new uv set in which to normalize the values for mirror-checking
+	string	$uvOrig=zenReturnFirstStringItem(`polyUVSet -q -cuv $obj`);
+	string	$uvNew=zenReturnFirstStringItem(`polyUVSet -cp -uvs $uvOrig $obj`);
+	
+		polyUVSet -cuv -uvs $uvNew $obj;
+		
+	//forcing uv's twice inexplicably seems to help with erradically anchored faces
+		polyForceUV -unitize `polyListComponentConversion -tf $obj`;
+
+		
+		for($face in $sel)
+		{	
+			polyUVSet -cuv -uvs $uvNew $obj;
+			//find opposing coordinates
+			$faceIndex=`zenCompID $face`;
+			setAttr ($pointOnMeshNode+".faceIndex") $faceIndex;
+			$coordinates=`getAttr ($pointOnMeshNode+".position")`;
+			
+			if($axis==1) $coordinates[0]=-($coordinates[0])+$pivot[0];
+			if($axis==2) $coordinates[1]=-($coordinates[1])+$pivot[1];
+			if($axis==3) $coordinates[2]=-($coordinates[2])+$pivot[2];
+			
+			//find opposing face
+			setAttr ($nearestPointNode+".inPosition") $coordinates[0] $coordinates[1] $coordinates[2];
+			$correspondingFace=$obj+".f["+(string(`getAttr ($nearestPointNode+".closestFaceIndex ")`))+"]";
+			$allOpposingFaces[size($allOpposingFaces)]=$correspondingFace;
+			
+			polyUVSet -cuv -uvs $uvOrig $obj;
+			
+			//create uv's for opposing face if none exist
+			$targetFaceUVs=`polyListComponentConversion -ff -tuv $correspondingFace`;
+			$targetFaceUVs=`ls -fl $targetFaceUVs`;
+			
+			if(size($targetFaceUVs)==0)
+			{
+				polyForceUV -cp -uvs $uvOrig $correspondingFace;
+				$targetFaceUVs=`polyListComponentConversion -ff -tuv $correspondingFace`;
+				$targetFaceUVs=`ls -fl $targetFaceUVs`;
+				delete -ch $obj;
+			}
+
+			//find the world space coordinates for each vertex face
+			$sourceFaceUVs=`polyListComponentConversion -ff -tuv $face`;
+			$sourceFaceUVs=`ls -fl $sourceFaceUVs`;
+			
+			for($i=0;$i<size($sourceFaceUVs);$i++)
+			{		
+				$sourceFaceUV_xyz[$i]=zenArrayToVector(`xform -q -t $sourceFaceUVs[$i]`);
+			}
+			
+			for($i=0;$i<size($targetFaceUVs);$i++)
+			{	
+				$tempArray=`xform -q -t $targetFaceUVs[$i]`;
+				if($axis==1) $tempArray[0]=-($tempArray[0]);
+				if($axis==2) $tempArray[1]=-($tempArray[1]);
+				if($axis==3) $tempArray[2]=-($tempArray[2]);				
+				$targetFaceUV_xyz[$i]=`zenArrayToVector $tempArray`;
+			}
+
+			//find the opposing source vert-face for each target vert-face
+			for($i=0;$i<size($targetFaceUVs);$i++)
+			{	
+				$shortestDistance=100;
+				for($n=0;$n<size($sourceFaceUVs);$n++)
+				{
+					$distance=mag(($sourceFaceUV_xyz[$n])-($targetFaceUV_xyz[$i]));
+					
+					if($distance<$shortestDistance)
+					{
+						$shortestDistance=$distance;
+						$closestVertFace[$i]=$sourceFaceUVs[$n];
+						if($shortestDistance==0) break;
+					}
+				}
+			}
+						
+			//move uv's
+			for($i=0;$i<size($targetFaceUVs);$i++)
+			{				
+					$uvSource=$closestVertFace[$i];
+					$tempArray=`polyEditUV -q $uvSource`;
+
+					$tempArray[0]=$mirrorAt+($mirrorAt-$tempArray[0]);
+					$uvTarget=zenReturnFirstStringItem(`polyListComponentConversion -fvf -tuv $targetFaceUVs[$i]`);
+					
+					polyEditUV -r 0 -u $tempArray[0] -v $tempArray[1] -uvs $uvOrig $uvTarget;
+			}
+			
+			if(`progressWindow -q -ic`)
+			{
+				delete $nearestPointNode;
+				delete $pointOnMeshNode;
+				progressWindow -ep;
+				error "User Interupt.";
+			}
+			
+			delete -ch $obj;
+			
+			progressWindow -e -s 2;
+		}
+		
+		delete -ch $obj;
+		
+		polyUVSet -cuv -uvs $uvOrig $obj;
+		polyUVSet -d -uvs $uvNew $obj;
+		
+		delete -ch $sel;
+		
+		undoInfo -swf 1;
+		progressWindow -endProgress;
+		
+	string	$opposingUVs[]=`polyListComponentConversion -ff -tuv $allOpposingFaces`;
+		select $opposingUVs;
+		polyMergeUV -d .001;
+		delete $nearestPointNode;
+		delete $pointOnMeshNode;
+		
+	float	$time=`timerX -startTime $startTime`;
+		print("Operation took "+(string($time/(size($sel))))+" seconds per face, "+(string($time))+" seconds total\n");
+
+	return	1;
+}

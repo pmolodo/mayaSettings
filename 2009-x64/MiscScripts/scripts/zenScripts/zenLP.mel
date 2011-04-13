@@ -1,0 +1,563 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+/*
+
+David Belais
+Nov 11, 2006
+
+zenLP.mel automates the rendering and compositing of light passes using Maya and Shake. 
+It is intended to facilitate interactive relighting of Maya Scenes. For maximum flexibility, render
+images in 16 or 32 bit image formats. Works with Maya Software, Mental Ray, and Renderman for Maya.
+
+The "Save Command" function appends the currently open scene with the commands necessary to create light passes 
+and write a comp file. The scene must be written in ascii file format. zenLP.mel must be in your scripts path. 
+This is intended for use with handwritten render files which are not intended to go live.
+
+The "Create Passes" function creates a new render layer for each light in each layer in the scene and turns off
+rendering of the source layer. It also adds attributes to each light layer indicating which layer it was created from.
+
+The "Remove Passes" function deletes all light layers created by zenLP, and resets their parent layers.
+
+The "Create Comp" function creates a Shake Script based on the render layers in the scene.
+The Shake Script is organized as follows: 
+	A base MultiLayer node consisting of each render layer in the scene.
+	MultiLayer nodes for each render layer, containing a layer for each visible light in that layer, additively composited.
+	An AdjustHSV node and SFileIn node for each light.
+
+Currently "Create Comp" accounts for Maya's render passes: beauty,color,diffuse,shadow & specular. 
+It also recognizes global illumination passes for Mental Ray. It does not currently recognize the existence 
+of passes or outputs created by Renderman For Maya.
+
+This script is relatively untested, feedback is appreciated. If errors are encountered please include detailed information
+and, if possible, the scene file, and email to dbelais@gmail.com.
+
+cheers
+-db
+
+*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//User Interface
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//return the output file prefix from the scene.
+proc string zenReturnRenderPrefix()
+{
+	string 	$outputNameArray[];
+	string 	$outputName=`getAttr defaultRenderGlobals.imageFilePrefix`;
+	
+		if($outputName=="")
+		{
+			$outputName=`file -q -shn -sn`;
+			$outputNameArray=`stringToStringArray $outputName "."`;
+			$outputName=$outputNameArray[0];
+		}
+		
+	return 	$outputName;
+}
+
+//return a list of renderable cameras
+global proc string[] zenListRenderableCameras()
+{
+	string	$cameras[]=`listCameras`;
+	string	$renderable[];
+	
+		for($camera in $cameras)
+			if (`getAttr ($camera+".renderable")`) $renderable[size($renderable)]=$camera;
+			
+	return	$renderable;
+}
+
+//turns off output for all but the designated camera
+global proc zenSoloCam(string $soloCam)
+{
+	string	$cameras[]=`listCameras`;
+	string	$renderable[];
+	
+		for($camera in $cameras)
+			setAttr ($camera+".renderable") 0;
+			
+		setAttr ($soloCam+".renderable") 1;
+}
+
+//create UI
+global proc zenLP()
+{
+	global 	string 	$zenLP_workspace,
+			$zenLP_imageOutputLoc,
+			$zenLP_shakePrefix,
+			$zenLP_renderer,
+			$zenLP_camera,
+			$zenLP_argumentFile;
+	global	string	$zenLP_lightGroups[];
+	global	int	$zenLP_relativePaths=1,
+			$zenLP_reconnectRenderLayers=0,
+			$zenLP_outputShake=1,
+			$zenLP_useSets=0;
+			
+	global	float 	$zenLP_intensityMult=1;
+		int 	$windowHeight=152;
+		int	$windowWidth=587;
+		
+	//find default ouput location
+		if($zenLP_workspace=="") $zenLP_workspace=`workspace -q -fn`+"/";
+		if($zenLP_imageOutputLoc=="") $zenLP_imageOutputLoc=$zenLP_workspace+`workspace -q -rte images`+"/";
+		if($zenLP_shakePrefix=="") $zenLP_shakePrefix=`zenReturnRenderPrefix`+".shk";
+		if(`window -ex dbLP`) deleteUI dbLP;
+		window -s 0 -rtf 1 -title "zenLP" dbLP;
+		
+		columnLayout columnMain;
+			rowColumnLayout
+				-p columnMain
+				-nc 2 
+				-cw 1 120
+				-cw 2 460 rlA;
+	//image output location
+				text -al right 
+					-annotation "Shake Script will be written relative to this directory. Default is your images directory. Will not change workspace output paths."
+					"Image Output Location: ";
+				textField -cc "$zenLP_imageOutputLoc=textField -q -tx outputLocTxt`" 
+					-tx $zenLP_imageOutputLoc 
+					-annotation "Shake Script will be written relative to this directory. Default is your images directory. Will not change workspace output paths."
+					outputLocTxt;
+				separator;separator;
+			setParent ..;
+			rowColumnLayout
+				-p columnMain
+				-nc 5 
+				-cw 1 120
+				-cw 2 120
+				-cw 3 120
+				-cw 4 120
+				-cw 5 120 rlB;
+	//shake file name
+				text 	-al right 
+					-annotation "Name of Shake Script to be written."
+					"Shake Script Name: ";
+				textField -cc "$zenLP_shakePrefix=`textField -q -tx shakePrefixTxt`" 
+					-tx $zenLP_shakePrefix 
+					-annotation "Name of Shake Script to be written."
+					shakePrefixTxt;
+				checkBox -l "Write Shake Script" 
+					-cc "$zenLP_outputShake=`checkBox -q -v shakeOutputCB`"
+					-v $zenLP_outputShake 
+					-annotation "Write a Shake Script based on Render Layers and Light Passes."
+					shakeOutputCB;
+				checkBox -l "Relative Paths" 
+					-cc "$zenLP_relativePaths=`checkBox -q -v relativePathsCB`" 
+					-v $zenLP_relativePaths 
+					-annotation "Write file paths in Shake Script relative to images directory."
+					relativePathsCB;
+				text -l "";
+				separator;separator;separator;separator;separator;
+				
+			setParent ..;
+			rowColumnLayout
+				-p columnMain
+				-nc 4
+				-cw 1 120
+				-cw 2 120
+				-cw 3 120
+				-cw 4 240 rC;
+//choose camera
+				text -al right 
+					-annotation "Camera to be used, other cameras will made non-renderable."
+					"Camera: ";
+				optionMenu -cc "$zenLP_camera=`optionMenu -q -v cameraOptionMenu`;zenSoloCam $zenLP_camera;" cameraOptionMenu;
+				for($camera in `zenListRenderableCameras`)
+					menuItem -l $camera;
+				$zenLP_camera=`optionMenu -q -v cameraOptionMenu`;
+				checkBox -l "Use Sets" 
+					-cc "$zenLP_useSets=`checkBox -q -v useSetsCB`" 
+					-v $zenLP_useSets 
+					-annotation "Conglomerate lights contained within a set other than the default light set into a single pass for each set."
+					useSetsCB;
+				checkBox -l "Reconnect Referenced Render Layers" 
+					-cc "$zenLP_reconnectRenderLayers=`checkBox -q -v reconnectRenderLayersCB`"
+					-v $zenLP_reconnectRenderLayers 
+					-annotation "Reconnect referenced and imported Render layers not connected to the Render Layer Manager."
+					reconnectRenderLayersCB;
+				separator;separator;separator;
+			setParent ..;
+			rowColumnLayout
+				-p columnMain
+				-nc 2 
+				-cw 1 120
+				-cw 2 460 rD;
+//intensity multiplier
+				text -al right 
+					-annotation "This number is used as a multiple to increase or decrease the intensity of lights in the scene." 
+					"Intensity Multiplier: ";
+				floatSliderGrp 	-cc "$zenLP_intensityMult=`floatSliderGrp -q -v intensityMultSlider`" 
+						-f 1 
+						-min 0 
+						-max 2 
+						-fmx 100 
+						-v $zenLP_intensityMult 
+						-annotation "This number is used as a multiple to increase or decrease the intensity of lights in the scene." 
+						intensityMultSlider;
+				separator;separator;
+			setParent ..;
+			rowColumnLayout
+				-p columnMain
+				-nc 4
+				-cw 1 145		
+				-cw 2 145
+				-cw 3 145 
+				-cw 4 145 
+				rE;	
+				button 	-c "zenLP_execute 2" 
+					-al center 
+					-w 200 
+					-l "Save Command"  
+					-annotation "Append the currently open file with the necessary commands for executing zenLP, must be in ascii format."
+					writeCommandBttn;
+					
+				button 	-c "zenLP_execute 3" 
+					-al center -w 200 
+					-l "Create Passes" 
+					-annotation "Create Light Passes as Render Layers."
+					createPassesBttn;
+					
+				button 	-c "dbRemoveLP" 
+					-al center -w 200 
+					-l "Remove Passes"
+					-annotation "Delete all light passes created by zenLP and restore their parent layers."
+					deleteLPBttn;
+					
+				button 	-c "zenLP_execute 4"
+					-al center 
+					-w 200 
+					-l "Create Comp" 
+					-annotation "Write a Shake Script from the Render Layers in this scene."
+					createCompBttn;	
+					
+				setParent ..;
+		setParent ..;
+		window -e -wh $windowWidth $windowHeight dbLP;
+		showWindow dbLP;
+}
+
+//get command for light pass creation
+proc string zenLP_assembleCommand(int $command)
+{
+	global 	string 	$zenLP_workspace,
+			$zenLP_imageOutputLoc,
+			$zenLP_shakePrefix,
+			$zenLP_renderer,
+			$zenLP_camera,
+			$zenLP_argumentFile;
+			
+	global	string	$zenLP_lightGroups[];
+	global	int	$zenLP_relativePaths,
+			$zenLP_reconnectRenderLayers,
+			$zenLP_outputShake,
+			$zenLP_useSets;
+			
+	global	float 	$zenLP_intensityMult;
+	
+		string	$returnCommmand="\n//zenLP\n";
+		
+			if($command==2)
+				$returnCommmand=$returnCommmand+"source zenTools;\n";
+				
+			//make sure only one camera is renderable
+			$returnCommmand=$returnCommmand+"zenSoloCam "+$zenLP_camera+";\n";
+			
+			//reconnect referenced layers
+			if($zenLP_reconnectRenderLayers) 
+				$returnCommmand=$returnCommmand+"dbReconnectRL;\n";
+				
+			//set render settings for compositing
+			$returnCommmand=$returnCommmand+"setAttr defaultRenderGlobals.composite 1;\n";
+			
+			if(`objExists miDefaultFramebuffer`)
+				$returnCommmand=$returnCommmand+"setAttr miDefaultFramebuffer.premultiply 0;\n";
+				
+			if(`objExists renderManGlobals`)
+			{
+				$returnCommmand=$returnCommmand+"setAttr renderManGlobals.rman__toropt___enableRenderLayers 1;\n";
+				
+				//if relative paths are used, conform renderman output location to match other renderers
+				if($zenLP_relativePaths)
+					$returnCommmand=$returnCommmand+"setAttr -type \"string\" renderManGlobals.rman__toropt___imageOutputLoc \""+`workspace -q -rte images`+"\";\n";
+			}
+			
+		string	$lightGroupString="{\""+`stringArrayToString $zenLP_lightGroups "\",\""`+"\"}";
+		
+			switch($command)
+			{
+				//append the current file with a pass creation command dictated by given options
+				case 2:
+					$returnCommmand=$returnCommmand+"dbLightPasses "+(string($zenLP_intensityMult))+" "+$zenLP_camera+" "+$lightGroupString+" "+$zenLP_useSets+";\n";
+					if($zenLP_outputShake)
+						$returnCommmand=$returnCommmand+"dbCompAssemble \""+$zenLP_imageOutputLoc+"\" "+$zenLP_shakePrefix+" "+$zenLP_camera+" "+(string($zenLP_relativePaths))+";\n";
+					$returnCommmand=$returnCommmand+"//end zenLP";
+				break;
+				
+				//create passes
+				case 3:
+					$returnCommmand=$returnCommmand+"dbLightPasses "+(string($zenLP_intensityMult))+" "+$zenLP_camera+" "+$lightGroupString+" "+$zenLP_useSets+";\n";
+					if($zenLP_outputShake)
+						$returnCommmand=$returnCommmand+"dbCompAssemble \""+$zenLP_imageOutputLoc+"\" "+$zenLP_shakePrefix+" "+$zenLP_camera+" "+(string($zenLP_relativePaths))+";\n";
+				break;
+				
+				//create comp only
+				case 4:
+					$returnCommmand=$returnCommmand+"dbCompAssemble \""+$zenLP_imageOutputLoc+"\" "+$zenLP_shakePrefix+" "+$zenLP_camera+" "+(string($zenLP_relativePaths))+";\n";
+				break;
+			}
+			
+			$returnCommmand=$returnCommmand+"//end zenLP";	
+			
+		return	$returnCommmand;
+}
+
+//
+global proc zenLP_execute(int $command)
+{
+	global 	string 	$zenLP_workspace,
+			$zenLP_imageOutputLoc,
+			$zenLP_shakePrefix,
+			$zenLP_renderer,
+			$zenLP_camera,
+			$zenLP_argumentFile;
+			
+	global	int	$zenLP_relativePaths,
+			$zenLP_reconnectRenderLayers,
+			$zenLP_outputShake;
+			
+	global	float 	$zenLP_intensityMult;
+	
+			if($command==2)
+			{
+					$saveCommand=`zenLP_assembleCommand $command`;
+				string	$sceneLoc=dirname(`file -q -loc`);
+				string	$scene=`file -q -sn`;
+				string	$saveFile=`substitute ".shk" ($sceneLoc+"/"+$zenLP_shakePrefix+"_zenLP_command.mel") ""`;
+				int	$commandWriteID=`fopen $scene "a"`;
+					fprint	$commandWriteID $saveCommand;
+					fclose 	$commandWriteID;						
+					print 	("Command Saved:\n"+$saveCommand);
+			}
+			else
+			{
+				eval(`zenLP_assembleCommand $command`);
+			}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Light Passes
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//returns a list of all the transforms above the given array of objects and all of the children below
+proc string[] dbAllRelatives(string $objs[])
+{
+	string 	$allRelatives[];
+	
+		for($i=0;$i<size($objs);$i++)
+		{
+			string	$fullPathName[]=`ls -l $objs[$i]`;
+			string	$ap[]=`stringToStringArray $fullPathName[0] "|"`;
+				$ap=`ls -l $ap`;
+			string	$ac[]=`listRelatives -f -ad $objs[$i]`;
+				$allRelatives=`stringArrayCatenate $allRelatives $ap`;
+				$allRelatives=`stringArrayCatenate $allRelatives $ac`;
+		}
+		
+		return $allRelatives;
+}
+
+//given a multi-input attribute, nextPlug determines the next available plug and returns it as an integer
+proc int dbNextPlug(string $attr)
+{
+	string 	$plugs[]=`ls ($attr+"[*]")`;
+	int 	$nextPlug;
+	string 	$p;
+	int 	$pNum;
+	
+		for($i=0;$i<size($plugs);$i++)
+		{
+			$p=$plugs[$i];
+			$p=`substitute $attr $plugs[$i] ""`;
+			$p=`substring $p 2 (size($p)-1)`;
+			$pNum=int($p);
+			if($pNum>$nextPlug) $nextPlug=$pNum;
+		}
+		
+	return 	($nextPlug+1);
+}
+
+//reconnects render layers dissociated by referencing or import
+global proc dbReconnectRL()
+{
+	string $renderLayersConnected[]=`listConnections -s 0 -d 1 renderLayerManager`;
+	string $renderLayers[]=`ls -typ renderLayer`;
+	string $rlConnect[]=`stringArrayRemove $renderLayersConnected $renderLayers`;
+	int $i;
+	
+	for($i=1;$i<size($rlConnect);$i++)
+	{
+		connectAttr -f -na -rd ("renderLayerManager.renderLayerId") ($rlConnect[$i]+".identification");
+	}
+}
+
+global proc int dbPlacementInStringArray(string $item, string $array[])
+{
+		$array=`ls -fl $array`;
+	int	$returnVal=-1;
+
+		for($i=0;$i<size($array);$i++)
+		{
+			if($array[$i]==$item)
+			{
+				$returnVal=$i;
+				break;
+			}
+		}
+		
+	return $returnVal;
+}
+
+//create a render layer for each light in each render layer, for all render layers containing more than 1 light
+global proc dbLightPasses(float $intensityMult, string $camera,string $lightGroups[],int $useSets)
+{
+			zenSoloCam $camera;
+		string 	$RL;
+		int 	$RLnum;
+		string 	$allSets[]=`ls -type objectSet`;
+			$allSets=`stringArrayRemove {"defaultLightSet"} $allSets`;
+		string 	$renderLayers[]=`listConnections -s 0 -d 1 renderLayerManager`;
+		int	$rlPreCount=size($renderLayers);
+		string	$sets[]=`ls -exactType objectSet`;
+			$sets=`stringArrayRemove {"defaultLightSet","defaultObjectSet"} $sets`; 
+		string	$lightSets[]=$sets;
+		string 	$allLights[]=`ls -typ light`;
+			$allLights=`ls $allLights`;
+		string	$lightsInSet[];
+		string 	$potentialLights[];
+		
+		//isolate sets which contain lights
+		string	$set;
+			for($set in $sets)
+			{
+					$potentialLights=`sets -q $set`;
+					$potentialLights=`listRelatives -s $potentialLights`;
+					$lightsInSet=`zenStringArrayIntersect $allLights $potentialLights`;
+					if(size($lightsInSet)<1)
+					{
+						$lightSets=`stringArrayRemove {$set} $lightSets`;
+					}
+					$allLights=`stringArrayRemove $lightsInSet $allLights`;
+			}
+			
+			$lightSets=`stringArrayRemove {""," "} $lightSets`;
+			$allLights=`ls -l $allLights`;
+			
+		//create a default global layer for duplication
+			if(size($renderLayers)==1)
+			{
+				$RLnum=`dbNextPlug "renderLayerManager.renderLayerId"`;
+				$RL=`createRenderLayer -n "LP" -num $RLnum`;
+				setAttr ($RL+".global") 1;
+				setAttr ("defaultRenderLayer.renderable") 0;
+				$renderLayers=`listConnections -s 0 -d 1 renderLayerManager`;
+			}
+			
+			for($i=0;$i<size($renderLayers);$i++)
+			{
+				string 	$rlCurr[]=`listConnections -s 0 -d 1 renderLayerManager`;
+				int 	$rlInitialCount=size($rlCurr);
+				string 	$rlConnected[]=`editRenderLayerMembers -fullNames -query $renderLayers[$i]`;
+				string 	$rlMemb[]=`listRelatives -f -ad $rlConnected`;
+				string 	$lights[]=zenStringArrayIntersect(`ls -l -typ light $rlMemb`,$allLights);
+				string	$lightPasses[]=`stringArrayCatenate $lights $lightSets`;
+				string	$lightRelatives[]=`dbAllRelatives $lights`;
+				string 	$nonLights[]=`stringArrayRemove $lightRelatives $rlMemb`;
+				string 	$lightsShortName[]=`listRelatives -p $lights`;
+				int 	$renderable=`getAttr ($renderLayers[$i]+".renderable")`;
+				string	$rlCurr[]=`listConnections -s 0 -d 1 renderLayerManager`;
+//for all sets that have only lights, use sets if use sets option is checked
+					if($renderable && size($lightPasses)>1)
+					{
+						print ("Creating light passes for Render Layer "+$renderLayers[$i]+"\n");
+						for($ii=0;$ii<size($lights);$ii++)
+						{
+								string 	$intensityAttr=($lights[$ii]+".intensity");
+								float 	$intensity=`getAttr $intensityAttr`;
+								setAttr $intensityAttr ($intensity*$intensityMult);
+						}
+						
+						for($ii=0;$ii<size($lights);$ii++)
+						{
+							string 	$includeInRL[]=`stringArrayCatenate $nonLights {$lights[$ii]}`;
+							string 	$layerName=($renderLayers[$i]+"_"+$lightsShortName[$ii]+"RL");
+								print ("Adding render layer "+$layerName+"\n");
+								duplicate -rr -renameChildren -ic -n $layerName $renderLayers[$i];
+								editRenderLayerMembers -remove $layerName $rlConnected;
+								editRenderLayerMembers $layerName $includeInRL;
+								
+							//attribute to indicate compositing type
+								addAttr -ln zenLP_blendMode -dt "string" $layerName;
+								setAttr -type "string" ($layerName+".zenLP_blendMode") "over";
+								if($ii>0) setAttr -type "string" ($layerName+".zenLP_blendMode") "screen";
+								addAttr -ln zenLP_parentLayer -dt "string" $layerName;
+								setAttr -type "string" ($layerName+".zenLP_parentLayer") $renderLayers[$i];
+								if($rlPreCount==1) setAttr -type "string" ($layerName+".zenLP_parentLayer") "defaultRenderLayer";
+						}
+						
+						for($ii=0;$ii<size($lightSets);$ii++)
+						{
+							string	$lightsInSet[]=`sets -q $lightSets[$ii]`;
+							string 	$includeInRL[]=`stringArrayCatenate $nonLights $lightsInSet`;
+							string 	$layerName=($renderLayers[$i]+"_"+$lightSets[$ii]+"RL");
+								print ("Adding render layer "+$layerName+"\n");
+								duplicate -rr -renameChildren -ic -n $layerName $renderLayers[$i];
+								editRenderLayerMembers -remove $layerName $rlConnected;
+								editRenderLayerMembers $layerName $includeInRL;
+								
+							//attribute to indicate compositing type
+								addAttr -ln zenLP_blendMode -dt "string" $layerName;
+								setAttr -type "string" ($layerName+".zenLP_blendMode") "over";
+								if($ii>0) setAttr -type "string" ($layerName+".zenLP_blendMode") "screen";
+								addAttr -ln zenLP_parentLayer -dt "string" $layerName;
+								setAttr -type "string" ($layerName+".zenLP_parentLayer") $renderLayers[$i];
+								if($rlPreCount==1) setAttr -type "string" ($layerName+".zenLP_parentLayer") "defaultRenderLayer";
+						}
+						
+						setAttr ($renderLayers[$i]+".renderable") 0;
+					}
+			}
+			
+			zenDeferCommand("layerEditorLayerButtonSelect 0 defaultRenderLayer");
+			if($rlPreCount==1) delete $RL;
+}
+
+//remove all light passes in the scene
+global proc dbRemoveLP()
+{
+	string	$parentLayer;
+	string 	$renderLayers[]=`listConnections -s 0 -d 1 renderLayerManager`;
+	
+		for($rl in $renderLayers)
+		{
+			if(`attributeExists zenLP_parentLayer $rl`)
+			{
+				$parentLayer=`getAttr ($rl+".zenLP_parentLayer")`;
+				setAttr ($parentLayer+".renderable") 1;
+				layerEditorDeleteLayer $rl;
+			}
+		}
+}		

@@ -1,0 +1,490 @@
+//  HK Magnet Tool 
+//
+// Created by: Henry Korol ( aka HawK )
+//  E-Mail: henrykorol@yahoo.com
+// 
+// Creation date: 25.08.2004
+//
+// This is the main script which includes all procedures and should be placed in usersetup/scripts directory.
+// 
+
+// Default Magnet parameters
+ global int $HKMComponentMode = 3; // 3 or 2
+ global int $HKMDeleteHistory = 1;
+ global int $HKMBackFaceCull = 0;
+ global int $HKMDisplayManip = 1;
+ global float $HKMagnetRadius = 1;
+ global float $HKMagnetOffset = 0.1;
+ global int $HKMagnetInterp = 1;
+
+// Internal variables
+ global int $HKMAxis[3];
+ global float $HKIP[3];
+ global string $HKMCurNode;
+ global int $HKXS; global int $HKZS;
+ global string $LastPanel;
+ global string $Obj[];
+ global string $HKMMaskedVtx[]; clear $HKMMaskedVtx;
+ global int $HKMTimer = 0;
+
+
+global proc HKMagnetToolActivation()
+{
+ global int $HKMComponentMode;
+ global int $HKMDisplayManip;
+ global string $Obj[];
+ global string $gSelect;
+   global string $HKMMaskedVtx[]; clear $HKMMaskedVtx;
+ global string $gSelect;
+ undoInfo -swf 0;
+
+ if( size( `ls -hl`)  > 0 || size( `ls -sl`)  > 0 )
+{
+if ($HKMComponentMode == 3)
+ {
+  if(size( `ls -hl`) > 0)
+    $Obj = `ls -hl`;
+   else
+   {
+     if(size(`ls -sl`) == 0)
+       { 
+         setToolTo $gSelect;
+         error "Nothing selected.";  
+       }
+     $Obj = `ls -sl`;
+   }
+   if(size(`filterExpand -sm 12 $Obj`) == 0)
+   {  
+     setToolTo $gSelect;
+     error "No polygon surfaces selected. Select polygon object to use magnet on.";
+   }
+ }
+else if($HKMComponentMode == 2)
+ {
+  if(size(`ls -hl`) == 0 || size(`ls -sl`)==0)
+   {
+     setToolTo $gSelect; 
+     error "No components selected to use in component mode.";
+    }
+  $Obj = `ls -hl`;
+  if(size(`filterExpand -sm 12 $Obj`) == 0)
+   { 
+    setToolTo $gSelect;
+    error "Selected components are not polygons components.";
+   }
+   PolySelectConvert 3;
+  $HKMMaskedVtx = `ls -sl`;
+ }
+  float $V[3]; string $cur;
+ for($cur in $Obj)
+ {
+   if(`nodeType $cur` == "transform")
+   {
+    $V = `xform -q -rotation $cur`;
+     if( $V[0] !=  0 || $V[1] !=  0 || $V[2] != 0)
+    warning "The rotation transformations are not freezed on current object. May not evaluate properly.";
+   }
+ }
+hilite $Obj;
+  
+$Panel = `getPanel -wf`;
+  modelEditor -e -nurbsCurves $HKMDisplayManip $Panel;
+  scriptJob -pro -cu 1 -ro 1 -e "ToolChanged" "if(`currentCtx` != $HKMname){undoInfo -swf 1; if($HKMDeleteHistory)  delete -ch $Obj;}"; 
+ }
+else
+ setToolTo $gSelect;
+
+}
+
+global proc HKMagnetToolEnter()
+{
+ polySelectConstraint -t 0x0001 -d 2 -va 98;
+  if(`draggerContext -ex HKMagnetTool`)
+   deleteUI HKMagnetTool;
+   draggerContext -i1 "HKMagnetIcon.bmp" -pr "objectViewPlane" -pl 0 1 0 -pc "HKMagnetPress" -dc  "HKMagnetDrag" -hc "HKMagnetHold" -rc "HKMagnetRelease;" -ch 0 -cur "crossHair" -sp "world" HKMagnetTool;
+   
+   setToolTo HKMagnetTool;
+}
+
+
+global proc HKCleanNode(string $Name)
+{
+ string $Name;
+ if(`objExists $Name`)
+ {
+  $Name = `substring $Name 1 (size ($Name)-6)`;
+   setAttr -l 1 -k 0 ($Name + ".fr");
+   setAttr -l 1 -k 0 ($Name + ".fcx");
+   setAttr -l 1 -k 0 ($Name + ".fcy");
+   setAttr -l 1 -k 0 ($Name + ".fcz");
+   setAttr -l 1 -k 0 ($Name + ".fix");
+   setAttr -l 1 -k 0 ($Name + ".fiy");
+   setAttr -l 1 -k 0 ($Name + ".fiz");
+   setAttr -l 1 -k 0 ($Name + ".fas");
+   setAttr -l 1 -k 0 ($Name + ".fm");
+  }
+}
+
+global proc HKMagnetPress()
+{     
+      select -clear;
+      global int $HKMagnetInterp; global float $HKCamPos[3]; 
+      global float $HKBase; global float $HKProp;
+      global string $Obj[];
+      global int $HKMAxis[];
+      global float $HKIP[3];
+      global int $HKMBackFaceCull;
+      global int $HKMComponentMode;
+      global string $HKMMaskedVtx[];
+      global float $HKMagnetRadius;
+      global float $HKMagnetOffset;
+      global string $HKMCurNode;
+      global int $HKPersp;     global int $HKXS; global int $HKZS;
+      int $Ax; float $Base;
+        $Panel = `getPanel -wf`;
+        string $Cam = `modelPanel -q -camera $Panel`; 
+         float $pos[3] = `xform -q -t -ws $Cam`;
+         float $Rot[] = `xform -q -ro $Cam`;
+           $Rot[0] = HKNormAng($Rot[0]);
+           $Rot[1] = HKNormAng($Rot[1]);
+        if($Rot[0] > 0 && $Rot[1] > 0)
+         $HKPersp = 1;
+        else $HKPersp = 0;
+      
+      float $Cord[] = `draggerContext -q -ap  HKMagnetTool`;
+      string $Mod   = `draggerContext -q -mo  HKMagnetTool`;
+      int   $But     = `draggerContext -q -bu  HKMagnetTool`;
+   
+      if( ($Rot[0] > 45 && $Rot[0] < 135)||($Rot[0] > 225 && $Rot[0] < 315))    
+        { $HKMAxis = {0,1,0}; $Ax = 1; print "Slide Plane XZ";}
+      else if( $Rot[1] < 45 || ($Rot[1] > 135 && $Rot[1] < 225) || $Rot[1] > 315) 
+        { $HKMAxis = {0,0,1};$Ax = 2; print "Slide Plane XY";}
+      else  {$HKMAxis = {1,0,0};$Ax = 0; print "Slide Plane YZ";}
+      if( ($Rot[1] > 90) &&($Rot[1] < 270) )
+         $HKXS = -1;
+        else $HKXS = 1;
+     if( ( $Rot[1] > 180)&&($Rot[1] < 360))
+          $HKZS = -1;
+         else $HKZS = 1;
+     if($HKPersp)
+     {
+       float $Axis[3];
+         $Axis[0] = $pos[0] - $Cord[0];
+         $Axis[1] = $pos[1] - $Cord[1];
+         $Axis[2] = $pos[2] - $Cord[2];       
+      
+       circle -nr 0 0 1 -r 1 -ch 0 -n Magnet_Radius;
+       circle -nr 0 0 1 -r 1 -ch 0 -n Magnet_Offset;
+       parent Magnet_Offset Magnet_Radius;       
+     aimConstraint -n HKAimConstraint -w 1 -aim 0 0 1 -u 0 1 0 -wut "vector" -wu 0 1 0 $Cam Magnet_Radius;
+     hilite $Obj; 
+      if($HKMComponentMode == 2)
+        select -r $HKMMaskedVtx;
+      polySelectConstraint -m $HKMComponentMode -db 0 $HKMagnetRadius -v $HKMBackFaceCull -dp $Cord[0] $Cord[1] $Cord[2] -vp $pos[0] $pos[1] $pos[2] -da $Axis[0] $Axis[1] $Axis[2]; 
+      $List = `ls -sl`;
+      float $T[];
+      $T = `polyEvaluate  -bc`; 
+      if( abs($pos[$Ax]-$T[2*$Ax]) > abs($pos[$Ax]-$T[2*$Ax+1]) )
+        $Base = $T[2*$Ax+1];
+      else
+        $Base = $T[2*$Ax];
+      float $Prop = ($pos[$Ax]-$Base)/($pos[$Ax]-$Cord[$Ax]);
+          
+      float $C[3]; 
+         $C[0] = ( (1-$HKMAxis[0])*($pos[0]-($pos[0]-$Cord[0])*$Prop) + $Base*$HKMAxis[0]); 
+         $C[1] = ( (1-$HKMAxis[1])*($pos[1]-($pos[1]-$Cord[1])*$Prop) + $Base*$HKMAxis[1]); 
+         $C[2] = ( (1-$HKMAxis[2])*($pos[2]-($pos[2]-$Cord[2])*$Prop) + $Base*$HKMAxis[2]);
+          setAttr Magnet_Radius.tx  $C[0];
+          setAttr Magnet_Radius.ty  $C[1];
+          setAttr Magnet_Radius.tz  $C[2];
+          setAttr Magnet_Radius.s $HKMagnetRadius $HKMagnetRadius $HKMagnetRadius; 
+          setAttr Magnet_Offset.s $HKMagnetOffset $HKMagnetOffset $HKMagnetOffset;    
+     if(($But == 2)||(($But == 1)&&( $Mod == "ctrl")))  select -add Magnet_Radius Magnet_Offset;
+     
+      if(($But == 1)&&( $Mod == "none"))  
+      {  
+       $Tmp = `softMod -n HK_Magnet1 -fc $C[0] $C[1] $C[2] -fbx (1-$HKMAxis[0]) -fby (1-$HKMAxis[1]) -fbz (1-$HKMAxis[2]) -fm 1 -fr $HKMagnetRadius -fas 0`;   
+            setAttr ($Tmp[0] + ".fc[0].fci") $HKMagnetInterp;
+            setAttr ($Tmp[0] + ".fc[0].fcp") $HKMagnetOffset;
+            $HKMCurNode = $Tmp[0]+"Handle";
+            HideSelectedObjects;
+            select -r $List;
+           select -add Magnet_Radius Magnet_Offset;
+      }
+      $HKIP = {$C[0], $C[1], $C[2]};
+      $HKCamPos = { $pos[0], $pos[1], $pos[2]};
+      $HKBase = $Base;
+      $HKProp = $Prop;
+    }  
+    else
+    {
+      circle -nr $HKMAxis[0] $HKMAxis[1] $HKMAxis[2] -r 1 -ch 0 -n Magnet_Radius;
+      circle -nr $HKMAxis[0] $HKMAxis[1] $HKMAxis[2] -r 1 -ch 0 -n Magnet_Offset;
+      parent Magnet_Offset Magnet_Radius;  
+          setAttr Magnet_Radius.tx ($Cord[0]*(1-$HKMAxis[0])+0.95*$pos[0]*$HKMAxis[0]); 
+          setAttr Magnet_Radius.ty ($Cord[1]*(1-$HKMAxis[1])+0.95*$pos[1]*$HKMAxis[1]); 
+          setAttr Magnet_Radius.tz ($Cord[2]*(1-$HKMAxis[2])+0.95*$pos[2]*$HKMAxis[2]); 
+          setAttr Magnet_Radius.s $HKMagnetRadius $HKMagnetRadius $HKMagnetRadius; 
+          setAttr Magnet_Offset.s $HKMagnetOffset $HKMagnetOffset $HKMagnetOffset; 
+      hilite $Obj;
+       if($HKMComponentMode == 2)
+        select -r $HKMMaskedVtx; 
+     polySelectConstraint -m $HKMComponentMode -db 0 $HKMagnetRadius -v $HKMBackFaceCull -dp $Cord[0] $Cord[1] $Cord[2] -vp $pos[0] $pos[1] $pos[2] -da $HKMAxis[0] $HKMAxis[1] $HKMAxis[2];
+     $List = `ls -sl`;
+     if(($But == 2)||(($But == 1)&&( $Mod == "ctrl")))  select -add Magnet_Radius Magnet_Offset;
+       if(($But == 1)&&( $Mod == "none"))
+       {
+         $Tmp = `softMod -n HK_Magnet1 -fc $Cord[0] $Cord[1] $Cord[2] -fbx (1-$HKMAxis[0]) -fby (1-$HKMAxis[1]) -fbz (1-$HKMAxis[2]) -fm 1 -fr $HKMagnetRadius -fas 0`;
+          setAttr ($Tmp[0] + ".fc[0].fci") $HKMagnetInterp;
+          setAttr ($Tmp[0] + ".fc[0].fcp") $HKMagnetOffset;
+        $HKMCurNode = $Tmp[0]+"Handle";
+         HideSelectedObjects;
+        select -r $List;
+        select -add Magnet_Radius Magnet_Offset;
+       }
+    $HKIP = {$Cord[0], $Cord[1], $Cord[2]};
+  }
+        hilite $Obj;
+        refresh;
+ 
+}
+global proc HKMagnetDrag()
+{
+      global int $HKPersp;  global float $HKCamPos[3]; global float $HKBase;
+      global float $HKCamPos[3]; global float $HKProp;
+      global int $HKMBackFaceCull;     
+      global int $HKXS; global int $HKZS;
+      global string $HKMMaskedVtx[];
+      global int $HKMComponentMode;
+      global string $HKMCurNode; int $sign;
+      global float $HKIP[3]; float $Val;
+      global float $HKMagnetRadius;
+      global float $HKMagnetOffset;
+      global int $HKMAxis[]; 
+      float $Cord[] = `draggerContext -q -dp  HKMagnetTool`;
+       string $Mod   = `draggerContext -q -mo  HKMagnetTool`;
+       int   $But     = `draggerContext -q -bu  HKMagnetTool`;	
+     if($HKPersp)
+     {
+       $Cord[0] = ( (1-$HKMAxis[0])*($HKCamPos[0]-($HKCamPos[0]-$Cord[0])*$HKProp) + $HKBase*$HKMAxis[0]); 
+       $Cord[1] = ( (1-$HKMAxis[1])*($HKCamPos[1]-($HKCamPos[1]-$Cord[1])*$HKProp) + $HKBase*$HKMAxis[1]); 
+       $Cord[2] = ( (1-$HKMAxis[2])*($HKCamPos[2]-($HKCamPos[2]-$Cord[2])*$HKProp) + $HKBase*$HKMAxis[2]);
+     }
+
+      if(($But == 1) && ( $Mod == "none"))
+        {
+          if(!$HKMAxis[0]){ setAttr Magnet_Radius.tx $Cord[0];  setAttr ($HKMCurNode+".tx") ($Cord[0]-$HKIP[0]); }
+          if(!$HKMAxis[1]){ setAttr Magnet_Radius.ty $Cord[1]; setAttr ($HKMCurNode+".ty") ($Cord[1]-$HKIP[1]); }
+          if(!$HKMAxis[2]){ setAttr Magnet_Radius.tz $Cord[2]; setAttr ($HKMCurNode+".tz") ($Cord[2]-$HKIP[2]); }
+        }
+      else if( ($But == 2) && ($Mod != "ctrl") )
+        {
+         $Val = $HKXS*0.5*($Cord[0]-$HKIP[0] ) - $HKZS*0.5*($Cord[2]-$HKIP[2]) + $HKMagnetRadius;
+           if($Val < 0) $Val = 0;  
+         setAttr Magnet_Radius.s $Val $Val $Val;
+     
+        if($HKMComponentMode == 2)
+         select -r $HKMMaskedVtx;  
+         if($HKPersp)
+            polySelectConstraint  -db 0 $Val;
+         else
+            polySelectConstraint  -db 0 $Val;
+        select -add Magnet_Radius Magnet_Offset;
+           if(`floatSliderGrp -ex HKMRadiusSlider`)
+             floatSliderGrp -e -v $Val HKMRadiusSlider;
+        }
+      else if(($But == 2))
+        {
+         $Val = $HKXS*0.5*($Cord[0]-$HKIP[0] ) - $HKZS*0.5*($Cord[2]-$HKIP[2]) + $HKMagnetOffset;
+          if($Val < 0) $Val = 0; if($Val > 1) $Val = 1;   
+          setAttr Magnet_Offset.s $Val $Val $Val;
+          if(`floatSliderGrp -ex HKMOffsetSlider`)
+             floatSliderGrp -e -v $Val HKMOffsetSlider;
+       }
+       refresh;
+}
+ 
+global proc HKMagnetHold()
+{
+   global int $HKMTimer; int $En = 0;
+   global string $Obj[];
+   string $Mod   = `draggerContext -q -mo HKMagnetTool`;
+   int   $But  = `draggerContext -q -bu HKMagnetTool`;	 
+   if( $But == 1 && $Mod == "ctrl")
+   {
+     $HKMTimer++;
+     if($HKMTimer > 23)
+     {
+      string $Shape[2]; string $DNode[2];        
+      $Shape = `listRelatives -s -ni $Obj[0]`;
+         while(1-$En)
+           {
+              $DNode = `listConnections -s 1 -d 0 ($Shape[0]+".inMesh")`;
+              if( `nodeType $DNode[0]` != "softMod")
+                break;
+              delete $DNode;
+           }
+       $HKMTimer = 0;
+       print "All Magnet's operations deleted.";
+     }
+   }
+}
+
+global proc HKMagnetRelease()
+ {
+        global string $Obj[]; global string $LastPanel;
+        global int $HKMDisplayManip;
+        global string $HKMCurNode;
+        global float $HKMagnetRadius; float $Tmp;
+        global float $HKMagnetOffset;
+        global float $HKIP[3]; 
+        float $Cord[] = `draggerContext -q -dp  HKMagnetTool`;
+        int   $But     = `draggerContext -q -bu  HKMagnetTool`;	
+        string $Mod   = `draggerContext -q -mo  HKMagnetTool`; 
+        if($But == 2)
+          {
+           $Tmp = `getAttr Magnet_Radius.sx`;
+           $HKMagnetRadius = abs($Tmp); print $HKMagnetRadius ;
+           $Tmp = `getAttr Magnet_Offset.sx`;
+           $HKMagnetOffset = $Tmp;
+          }
+       polySelectConstraint -m 0;
+       HKCleanNode($HKMCurNode);
+       delete Magnet_Radius Magnet_Offset;
+       $Panel = `getPanel -wf`;
+       $LastPanel = $Panel;
+       
+    if(($But == 1) && ( $Mod == "ctrl"))     
+      {
+        string $Shape[];
+          $Shape = `listRelatives -s -ni $Obj[0]`;
+         string $DNode[];
+          $DNode = `listConnections -s 1 -d 0 ($Shape[0]+".inMesh")`;
+         if( `nodeType $DNode[0]` == "softMod")
+          delete $DNode;
+      }       
+    if(($But == 2) && ( $Mod == "shift"))     
+      {
+        
+        $HKMDisplayManip = 1 - $HKMDisplayManip;
+         if($HKMDisplayManip)
+           print "Display Manipulator ON";
+         else 
+           print "Display Manipulator OFF";
+        modelEditor -e -nurbsCurves $HKMDisplayManip $Panel;
+        if(`checkBox -ex HKMDispCheck`)
+          checkBox -e -v $HKMDisplayManip HKMDispCheck;
+     }      
+}
+global proc float HKNormAng(float $Angle)
+{
+ float $Angle;
+ int $Piece = $Angle/360;
+  $Angle = $Angle - $Piece*360;
+  if($Angle < 0)
+   $Angle = 360+$Angle;
+  return $Angle;
+}  
+
+$HKMname = "HKMagnetTool";
+global int $HKMJobActive;
+ if(!$HKMJobActive)
+ {
+  scriptJob -cu 1 -e "ToolChanged" "if(`currentCtx` == $HKMname) { HKMagnetToolActivation;}" -permanent; 
+  $HKMJobActive = 1;
+ }
+ 
+global proc HKMInstallShelfIcon()
+{
+  global string $gShelfTopLevel;
+  $ShelfName = `tabLayout -q -selectTab $gShelfTopLevel`;
+   shelfButton -l "HKMagnet Tool" -i "HKMagnetIcon.bmp" -c "HKMagnetToolEnter;" -p $ShelfName -dcc "HKMOptionBox;";
+}
+
+global proc HKMDispSet()
+{
+ global string $LastPanel;
+ global int $HKMDisplayManip;
+ $val = `checkBox -q -v HKMDispCheck`;
+ if(`draggerContext -ex HKMagnetTool`)
+ if( (`getPanel -to $LastPanel`) == "modelPanel" )
+  modelEditor -e -nurbsCurves $val $LastPanel;
+  $HKMDisplayManip = $val;
+}
+global proc HKMAboutPopUp()
+{
+ if(`window -ex HKMAboutWin`)
+  deleteUI HKMAboutWin;
+  window  -t "About Magnet Tool" -wh 300 180 HKMAboutWin;
+   frameLayout -bs "in" -l "";
+  formLayout HKMAWForm;
+  columnLayout -rs 1 -cal left -cat left 10;
+   text -l "Magnet Tool V 1.0" -fn "boldLabelFont" -w 130;
+   text -l "\nCopyright 2004, Henry Korol." -w 190;
+   text -l "All rights reserved." -w 130;
+   text -l "\nFor a full tool description refer to Documentation.txt file.";
+  button -l "Ok" -c "deleteUI HKMAboutWin;" -w 60 -p HKMAWForm HKMAColse;
+   formLayout -e
+   -af HKMAColse bottom 5
+   -ap HKMAColse right -30 49
+   HKMAWForm;
+ showWindow;
+}
+
+global proc HKMOptionBox()
+{
+  global int $HKMComponentMode; 
+  global int $HKMDeleteHistory;
+  global int $HKMBackFaceCull;
+  global int $HKMDisplayManip;
+  global float $HKMagnetRadius;
+  global float $HKMagnetOffset;
+  global int $HKMagnetInterp;
+ if(`window -ex HKMagnetOptionWindow`)
+  deleteUI HKMagnetOptionWindow;
+ window -t "HKMagnet Tool Options" -wh 420 305 HKMagnetOptionWindow;
+ formLayout HKMForm;
+ rowLayout  -nc 2 -cat 1 left 0 -cat 2 left -98 HKMrow;
+   radioButtonGrp  -sl (4-$HKMComponentMode)  -cw2 70 70 -l "Apply Tool On:" -nrb 2 -l1 "Whole Object" -l2 "Components" -cc "$v = `radioButtonGrp -q -sl HKMagnetApply`;if($v == 2){$HKMComponentMode = 2;setToolTo $gSelect;} else $HKMComponentMode = 3 " -w 450 HKMagnetApply; 
+   shelfButton -i "HKMagnetIcon.bmp" -w 30 -h 30 -c "HKMAboutPopUp" HKMAbout;
+  setParent ..;
+ columnLayout -rs 9 -w 450 -p HKMForm HKMagnetForm;
+  frameLayout -l "Common Controls:" -cll 1 -bs "etchedIn" -w 400 -p HKMagnetForm HKMFrame;  
+   columnLayout -rs 3;
+     floatSliderGrp -l "Radius" -f 1 -min 0 -max 20 -pre 2 -fmx 300 -cc "$HKMagnetRadius = `floatSliderGrp -q -v HKMRadiusSlider`;" -v $HKMagnetRadius HKMRadiusSlider;
+     floatSliderGrp -l "Offset" -f 1 -min 0 -max 1 -pre 2 -v $HKMagnetOffset -cc "$HKMagnetOffset = `floatSliderGrp -q -v HKMOffsetSlider`;" HKMOffsetSlider;
+     radioButtonGrp -sl $HKMagnetInterp -l "Falloff Interpolation:" -nrb 2 -l1 "Linear" -l2 "Smooth" -w 450 -on1 "$HKMagnetInterp=1;" -on2 "$HKMagnetInterp=2;" HKMagnetFalloff;
+   setParent ..;
+ frameLayout -l "Misc:" -cll 1 -bs "etchedIn" -w 400 -p HKMagnetForm HKMFrame1;  
+   columnLayout -rs 6 -cat "left" 5 -w 450;
+     radioButtonGrp -sl (2-$HKMBackFaceCull) -l "Backface Culling:" -on1 "$HKMBackFaceCull=1;" -on2 "$HKMBackFaceCull=0;" -nrb 2 -l1 "On" -l2 "Off" -w 450 HKMBFCullRad;  
+     checkBox  -l "Display Control Curves" -v $HKMDisplayManip -cc "HKMDispSet;" HKMDispCheck;
+  checkBox -l "Kill History on Tool completion" -v $HKMDeleteHistory -onc"$HKMDeleteHistory=1" -ofc"$HKMDeleteHistory=0";
+  setParent ..;
+  setParent ..;
+    button -l " Enter Magnet Tool " -c "HKMagnetToolEnter;" -h 27 -p HKMForm HKMEnterToolBut;
+    button -l " Close " -c "deleteUI HKMagnetOptionWindow;" -h 27 -p HKMForm HKMCloseBut;
+ 
+  formLayout -e 
+     -af HKMrow top 4
+     -af HKMrow left 1
+     -ac HKMagnetForm top 0 HKMrow 
+     -af HKMagnetForm left 5
+     -ac HKMagnetForm bottom 5 HKMEnterToolBut
+     -af HKMEnterToolBut bottom 5
+     -af HKMEnterToolBut left 5
+     -af HKMEnterToolBut right 5
+     -ap HKMEnterToolBut right 2 55
+     -af HKMCloseBut right 5
+     -af HKMCloseBut bottom 5
+     -ac HKMCloseBut left 5 HKMEnterToolBut
+   HKMForm;
+  showWindow HKMagnetOptionWindow;
+}
+global proc HKMagnetTool()
+{
+  source HKMagnetTool;
+}
+
+
+// End  of the script //

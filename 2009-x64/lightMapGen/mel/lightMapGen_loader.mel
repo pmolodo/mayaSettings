@@ -1,0 +1,171 @@
+/*
+
+lightMapGen light map loader for Maya
+
+Uses a light map file to create a corresponding light map "dome"
+
+Usage:
+lightMapGen_loader( 0 ) for directional lights
+lightMapGen_loader( 1 ) for spot lights
+
+
+06/06/2005
+Jeremy Pronk
+www.thereisnoluck.com
+
+*/
+
+
+proc int findLine( int $fileId, string $match )
+{
+	string $line = "";
+	while ( gmatch( $line, $match ) == 0 && feof( $fileId ) == 0 )
+		$line = `fgetline $fileId`;
+	return ( !feof( $fileId ) );
+}
+
+proc string createDomeLight( float $phi, float $theta, float $r, float $g, float $b, string $domeCenter, float $domeRadius, string $lightTypeNode )
+{
+	string $lightName = "lightMapGenLight";
+	
+	// calculate world space location from spherical coordinates
+	float $wx = $domeRadius * cos( $theta ) * sin( $phi );
+	float $wz = $domeRadius * sin( $theta ) * sin( $phi );
+	float $wy = $domeRadius * cos( $phi );
+	
+	// create a light for this sample location
+	string $tempLightName = eval( $lightTypeNode );
+	string $lightTransform[] = `listRelatives -p $tempLightName`;
+	$lightTransform[0] = `rename $lightTransform[0] ($lightName+"#")`;
+	string $lightShape[] = `listRelatives -c -type $lightTypeNode $lightTransform[0]`;
+	setAttr ( $lightShape[0]+".color" ) -type double3 $r $g $b;
+	setAttr -l true ( $lightShape[0]+".color" ); // the color should not be changed
+	
+	// move the light into position
+	string $tempAim[] = `aimConstraint -offset 0 0 0 -weight 1 -aimVector 0 0 -1 -upVector 0 1 0 -worldUpType "vector" -worldUpVector 0 1 0 $domeCenter $lightTransform[0]`;
+	move -ws $wx $wy $wz $lightTransform[0];
+	delete $tempAim[0];
+
+	return $lightTransform[0];
+}
+
+proc string[] loadLightMap( string $lightMapFilename, int $lightType, string $domeCenter, int $domeRadius )
+{
+	string $lights[];
+	int $lightMapFileId = `fopen $lightMapFilename "r"`;
+	if ( $lightMapFileId )
+	{	
+		// read the light map header
+		string $lightMapType = `fgetline $lightMapFileId`;
+		if ( gmatch( $lightMapType, "SLM*" ) )
+		{
+			findLine( $lightMapFileId, "# number samples*" );
+			int $numSamples = `fgetline $lightMapFileId`;
+			findLine( $lightMapFileId, "# phi, theta*" );
+			for ( $s=0; $s<$numSamples; $s++ )
+			{
+				if ( feof( $lightMapFileId ) )
+					error "Invalid lightmap, end of file reached permaturely..." ;
+				
+				// read the current sample
+				string $sample = `fgetline $lightMapFileId`;
+				string $buffer[];
+				tokenize( $sample, ":", $buffer );
+				string $sampleCoords[];
+				tokenize( $buffer[0], ",", $sampleCoords );
+				string $sampleColor[];
+				tokenize( $buffer[1], " ", $sampleColor );
+				
+				// create a light for the sample
+				string $lightTypeNode = "";
+				if ( $lightType == 0 )
+					$lightTypeNode = "directionalLight";
+				else 
+					$lightTypeNode = "spotLight";
+				$lights[$s] = createDomeLight( $sampleCoords[0], $sampleCoords[1], $sampleColor[0], $sampleColor[1], $sampleColor[2],
+																							$domeCenter, $domeRadius, $lightTypeNode );
+				parent $lights[$s] $domeCenter;
+			}
+		}
+		else
+		{
+			error ( "sorry I cannot read interleaved light maps, either generate a flat light map or use sphericalLight..." );
+		}
+	}
+	else
+	{
+		error ( $lightMapFilename + " could not be found" );
+	}
+	fclose $lightMapFileId;
+	
+	return $lights;
+}
+
+//
+// creates a light map reference dome with file texture oriented to match the importance sampling node
+global proc string[] createLightMapDome( string $name, string $lightGroupName, float $domeRadius )
+{
+	// create the sphere
+	string $lightMapSphere[] = `sphere -p 0 0 0 -ax 0 1 0 -ssw 0 -esw 360 -d 3 -ut 0 -tol 0.01 -s 8 -nsp 4 -ch 1 -n $name`;
+	reverseSurface -d 3 -ch 1 -rpo 1 $lightMapSphere[0];
+	setAttr ($lightMapSphere[0]+".visibleInReflections") 0;
+	setAttr ($lightMapSphere[0]+".visibleInRefractions") 0;
+	setAttr ($lightMapSphere[0]+".castsShadows") 0;
+	setAttr ($lightMapSphere[0]+".receiveShadows") 0;
+	setAttr ($lightMapSphere[0]+".doubleSided") 0;
+	setAttr ($lightMapSphere[1]+".radius") $domeRadius;
+	
+	// create the file texture to apply to the light map sphere
+	string $file = `shadingNode -asTexture file`;
+	//setAttr ($file+".fileTextureName") -type "string" $lightMapFilename;
+	string $ss = `shadingNode -asShader surfaceShader -name ( "LightMapDomeShader" )`;
+	string $sg = `sets -renderable true -noSurfaceShader true -empty -name ( "LightMapDomeShaderSG" )`;
+	connectAttr -f ( $ss+".outColor" ) ( $sg+".surfaceShader" );
+	connectAttr -f ( $file+".outColor" ) ( $ss+".outColor" );
+	sets -e -forceElement $sg $lightMapSphere[0];
+	rename $ss ( $lightGroupName+"DomeShader" );
+	
+	parent $lightMapSphere[0] $lightGroupName;
+	
+	return $lightMapSphere;
+}
+
+proc addParentLinkedAttr( string $attr, string $type, string $default, string $parentNode, string $linkedNodes[] )
+{
+	addAttr -ln $attr -k true -at $type $parentNode;
+	eval( "setAttr " + $parentNode + "." + $attr + " " + $default );
+	for ( $linkedNode in $linkedNodes )
+		connectAttr -f ( $parentNode + "." + $attr ) ( $linkedNode + "." + $attr );
+}
+
+global proc lightMapGen_loader( int $lightType )
+{
+	string $lightMapFilename = `fileDialog -dm "*.lm"`;
+	
+	if ( $lightMapFilename != "" )
+	{
+		int $domeRadius = 10;
+		string $domeCenterName = ( "lightMapGen_" + basename( $lightMapFilename, ".lm" ) ); 
+		string $domeCenter[] = `spaceLocator -p 0 0 0 -n $domeCenterName`;	
+		string $dome[] = createLightMapDome( "lightMapGenDome", $domeCenter[0], $domeRadius );
+		string $lights[] = loadLightMap( $lightMapFilename, $lightType, $domeCenter[0], $domeRadius );
+		
+		// 
+		addParentLinkedAttr( "intensity", "double", "1", $domeCenter[0], $lights );
+		if ( $lightType == 1 ) addParentLinkedAttr( "coneAngle", "double", "40", $domeCenter[0], $lights );
+		addParentLinkedAttr( "emitSpecular", "bool", "0", $domeCenter[0], $lights );
+		addParentLinkedAttr( "useDepthMapShadows", "bool", "1", $domeCenter[0], $lights );
+		addParentLinkedAttr( "dmapResolution", "short", "128", $domeCenter[0], $lights );
+		addParentLinkedAttr( "dmapFilterSize", "short", "2", $domeCenter[0], $lights );
+		addParentLinkedAttr( "reuseDmap", "bool", "0", $domeCenter[0], $lights );
+		addParentLinkedAttr( "dmapSceneName", "bool", "1", $domeCenter[0], $lights );
+		addParentLinkedAttr( "dmapLightName", "bool", "1", $domeCenter[0], $lights );
+		addParentLinkedAttr( "dmapFrameExt", "bool", "1", $domeCenter[0], $lights );
+		addParentLinkedAttr( "useRayTraceShadows", "bool", "0", $domeCenter[0], $lights );
+		addParentLinkedAttr( "shadowRays", "short", "1", $domeCenter[0], $lights );
+		addParentLinkedAttr( "rayDepthLimit", "short", "1", $domeCenter[0], $lights );
+
+		print( "Global light parameters are located in the transform of the parent locator: " + $domeCenter[0] + "\n" );
+		select -r $domeCenter[0];
+	}
+}

@@ -1,0 +1,93 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//return each each edge loop in the given edges as a comma seperated list
+global proc string[] zenIsolateLoops(string $sel[])
+{
+		$sel=`ls -fl $sel`;
+		
+	string	$edges[]=$sel;
+		
+	string	$obj=zenReturnFirstStringItem(`ls -o $sel`); 
+	string	$endEdges[]=`zenFindEdgeLoopEnds $sel`;
+	
+		$endEdges=`stringArrayRemoveDuplicates $endEdges`;
+		$endEdges=`stringArrayRemove {""} $endEdges`;
+		
+	string	$edgeLoop[];
+	string	$loop[];
+	string 	$loopStrings[];
+	int	$progress=0;
+	
+		/*
+		if(size($endEdges)>6)
+		{
+			progressWindow -ii 1 -status "Isolating Edge Loops" -progress 0 -max (ceil(size($endEdges)*.75));
+			$progress=1;
+		}
+		*/
+	
+		//isolate loops
+	
+	int	$n=0;
+	
+	int	$stop=size($endEdges);
+	string	$used[];
+	
+		for( $i=0; $i<$stop && size($endEdges); $i++ )
+		{
+			$loop=zenAdjacentEdges($endEdges[0],$sel);
+			$loopStrings[$n++]=`stringArrayToString $loop ","`;   
+			$endEdges=stringArrayRemove($loop,$endEdges);
+			$used=stringArrayCatenate($used,$loop);
+			
+			if($progress)
+			{
+				progressWindow -e -s 1;
+				if(`progressWindow -q -ic`==1)
+				{
+					progressWindow -endProgress;
+					error "User Interupt.";
+				}
+			}
+		}
+		
+		if( size($used)<size($sel) )
+		{
+			$edges=stringArrayRemove($used,$edges);
+			$stop=size($edges);
+		
+			for( $i=0; $i<$stop && size($edges); $i++ )
+			{
+				$loop=zenAdjacentEdges($edges[0],$sel);
+				$loopStrings[$n++]=`stringArrayToString $loop ","`;
+				$edges=stringArrayRemove($loop,$edges);
+				
+				if($progress)
+				{
+					progressWindow -e -s 1;
+					if(`progressWindow -q -ic`==1)
+					{
+						progressWindow -endProgress;
+						error "User Interupt.";
+					}
+				}
+			}
+		}
+		
+		if($progress)
+			progressWindow -endProgress;
+			
+	return	$loopStrings;
+}

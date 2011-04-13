@@ -1,0 +1,909 @@
+// Copyright (C) 1997-2003 Alias|Wavefront,
+// a division of Silicon Graphics Limited.
+//
+// The information in this file is provided for the exclusive use of the
+// licensees of Alias|Wavefront.  Such users have the right to use, modify,
+// and incorporate this code into other products for purposes authorized
+// by the Alias|Wavefront license agreement, without fee.
+//
+// ALIAS|WAVEFRONT DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+// INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+// EVENT SHALL ALIAS|WAVEFRONT BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+// CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+// DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+// PERFORMANCE OF THIS SOFTWARE.
+//
+// Alias|Wavefront Script File
+// MODIFY THIS AT YOUR OWN RISK
+//
+//
+// LT_displayProcs.mel
+//
+// Contains all procs used by LT_UI.mel for Display tab of LevelToolsUI
+//
+// Author:             Steven T. L. Roselle
+//                     
+//
+// Creation Date:      ( 04/04/03 )
+// Last Update:        ( 11/29/04 )
+//
+// Version:		LevelTools 2.0
+
+
+
+global proc LT_displayProcs()
+{
+	// Force loading of all LevelTools display procs
+}
+
+//////////////////////////////////////////////
+//		Display Procs
+//////////////////////////////////////////////
+
+global proc showFileInfo()
+{
+	global string $LT_FileInfoMenu;
+
+	if (`window -exists LT_fileInfo`)
+		{
+		warning "File info window is already open\n";
+		//deleteUI LT_fileInfo;
+ 		//windowPref -remove LT_fileInfo;
+		}
+	else
+		{
+		string $info = `getAttr LT_fileInfo.notes`;
+		window -tbm 0 -title "File Information" -menuBar true -width 410 -height 350 LT_fileInfo;
+			menu -tearOff 0 -label "Edit";
+			    	$LT_FileInfoMenu = `menuItem -label "Save and Close"`;
+				menuItem -label "Revert to Saved" -command "deleteUI LT_fileInfo; showFileInfo";
+				menuItem -label "Close Without Saving" - command "deleteUI LT_fileInfo";    	
+				menuItem -d 1;
+				menuItem -label "Delete File Info" -command "deleteFileInfo";
+			columnLayout -width 445;
+
+			string $infoField = `scrollField -width 400 -height 280 -ww 0 -text $info`;
+			text -align center -label "     This info will be saved with the current file and will be displayed upon reopening";
+
+			string $saveCmd = "{ string $info = `scrollField -query -text "  + $infoField + "`;  setAttr LT_fileInfo.notes -type \"string\" $info ; deleteUI LT_fileInfo; }";
+			menuItem -e -command $saveCmd $LT_FileInfoMenu; 
+
+		showWindow LT_fileInfo;
+		}
+}
+
+
+global proc deleteFileInfo()
+{
+	if (`window -exists LT_fileInfo`)
+		deleteUI LT_fileInfo ; 
+	if (`objExists "LT_fileInfoScript"`) 
+		delete LT_fileInfoScript ; 
+	if (`objExists "LT_fileInfo"`) 
+		delete LT_fileInfo;
+	warning ("All file info nodes were deleted and file information will no longer be saved with this file.");
+}
+
+
+global proc createFileInfo()
+{
+	//Create node and attr for storing info
+	if ( `objExists "LT_fileInfo"` == 0)
+		{
+		print ("Creating node LT_fileInfo.\n");
+		createNode -name "LT_fileInfo" unknown;
+		}
+	if ( `attributeQuery -exists -node "LT_fileInfo" "notes"` == 0)
+		{
+		print ("Adding notes attribute to node.\n");
+		addAttr -ln "notes" -dt "string" LT_fileInfo;
+		setAttr LT_fileInfo.notes -type "string" "Replace with info specific to the current file";
+		}
+	if ( `objExists "LT_fileInfoScript"` == 0)
+		{
+		//create scriptNode for diplaying info
+		print ("Creating scriptNode for opening file info window.\n");
+
+		//this is really confusing, but the scriptNode will contain entire body of all 3 procs : deleteFileInfo, showFileInfo, createFileInfo with line for creating itself... trust me.
+		scriptNode  -beforeScript  "\r\nglobal proc showFileInfo()\r\n{\r\n\tglobal string $LT_FileInfoMenu;\r\n\r\n\tif (`window -exists LT_fileInfo`)\r\n\t\t{\r\n\t\twarning \"File info window is already open\\n\";\r\n\t\t//deleteUI LT_fileInfo;\r\n \t\t//windowPref -remove LT_fileInfo;\r\n\t\t}\r\n\telse\r\n\t\t{\r\n\t\tstring $info = `getAttr LT_fileInfo.notes`;\r\n\t\twindow -tbm 0 -title \"File Information\" -menuBar true -width 410 -height 350 LT_fileInfo;\r\n\t\t\tmenu -tearOff 0 -label \"Edit\";\r\n\t\t\t    \t$LT_FileInfoMenu = `menuItem -label \"Save and Close\"`;\r\n\t\t\t\tmenuItem -label \"Revert to Saved\" -command \"deleteUI LT_fileInfo; showFileInfo\";\r\n\t\t\t\tmenuItem -label \"Close Without Saving\" - command \"deleteUI LT_fileInfo\";    \t\r\n\t\t\t\tmenuItem -d 1;\r\n\t\t\t\tmenuItem -label \"Delete File Info\" -command \"deleteFileInfo\";\r\n\t\t\tcolumnLayout -width 445;\r\n\r\n\t\t\tstring $infoField = `scrollField -width 400 -height 280 -ww 0 -text $info`;\r\n\t\t\ttext -align center -label \"     This info will be saved with the current file and will be displayed upon reopening\";\r\n\r\n\t\t\tstring $saveCmd = \"{ string $info = `scrollField -query -text \"  + $infoField + \"`;  setAttr LT_fileInfo.notes -type \\\"string\\\" $info ; deleteUI LT_fileInfo; }\";\r\n\t\t\tmenuItem -e -command $saveCmd $LT_FileInfoMenu; \r\n\r\n\t\tshowWindow LT_fileInfo;\r\n\t\t}\r\n}\r\n\r\n\r\nglobal proc deleteFileInfo()\r\n{\r\n\tif (`window -exists LT_fileInfo`)\r\n\t\tdeleteUI LT_fileInfo ; \r\n\tif (`objExists \"LT_fileInfoScript\"`) \r\n\t\tdelete LT_fileInfoScript ; \r\n\tif (`objExists \"LT_fileInfo\"`) \r\n\t\tdelete LT_fileInfo;\r\n}\r\n\r\n\r\nglobal proc createFileInfo()\r\n{\r\n\t//Create node and attr for storing info\r\n\tif ( `objExists \"LT_fileInfo\"` == 0)\r\n\t\t{\r\n\t\tprint (\"Creating node LT_fileInfo.\\n\");\r\n\t\tcreateNode -name \"LT_fileInfo\" unknown;\r\n\t\t}\r\n\tif ( `attributeQuery -exists -node \"LT_fileInfo\" \"notes\"` == 0)\r\n\t\t{\r\n\t\tprint (\"Adding notes attribute to node.\\n\");\r\n\t\taddAttr -ln \"notes\" -dt \"string\" LT_fileInfo;\r\n\t\tsetAttr LT_fileInfo.notes -type \"string\" \"Replace with info specific to the current file\";\r\n\t\t}\r\n\tif ( `objExists \"LT_fileInfoScript\"` == 0)\r\n\t\t{\r\n\t\t//create scriptNode for diplaying info\r\n\t\tprint (\"Creating scriptNode for opening file info window.\\n\");\r\n\t\tscriptNode  -beforeScript  \"\\r\\nglobal proc showFileInfo()\\r\\n{\\r\\n\\tglobal string $LT_FileInfoMenu;\\r\\n\\r\\n\\tif (`window -exists LT_fileInfo`)\\r\\n\\t\\t{\\r\\n\\t\\twarning \\\"File info window is already open\\\\n\\\";\\r\\n\\t\\t//deleteUI LT_fileInfo;\\r\\n \\t\\t//windowPref -remove LT_fileInfo;\\r\\n\\t\\t}\\r\\n\\telse\\r\\n\\t\\t{\\r\\n\\t\\tstring $info = `getAttr LT_fileInfo.notes`;\\r\\n\\t\\twindow -tbm 0 -title \\\"File Information\\\" -menuBar true -width 410 -height 350 LT_fileInfo;\\r\\n\\t\\t\\tmenu -tearOff 0 -label \\\"Edit\\\";\\r\\n\\t\\t\\t    \\t$LT_FileInfoMenu = `menuItem -label \\\"Save and Close\\\"`;\\r\\n\\t\\t\\t\\tmenuItem -label \\\"Revert to Saved\\\" -command \\\"deleteUI LT_fileInfo; showFileInfo\\\";\\r\\n\\t\\t\\t\\tmenuItem -label \\\"Close Without Saving\\\" - command \\\"deleteUI LT_fileInfo\\\";    \\t\\r\\n\\t\\t\\t\\tmenuItem -d 1;\\r\\n\\t\\t\\t\\tmenuItem -label \\\"Delete File Info\\\" -command \\\"deleteFileInfo\\\";\\r\\n\\t\\t\\tcolumnLayout -width 445;\\r\\n\\r\\n\\t\\t\\tstring $infoField = `scrollField -width 400 -height 280 -ww 0 -text $info`;\\r\\n\\t\\t\\ttext -align center -label \\\"     This info will be saved with the current file and will be displayed upon reopening\\\";\\r\\n\\r\\n\\t\\t\\tstring $saveCmd = \\\"{ string $info = `scrollField -query -text \\\"  + $infoField + \\\"`;  setAttr LT_fileInfo.notes -type \\\\\\\"string\\\\\\\" $info ; deleteUI LT_fileInfo; }\\\";\\r\\n\\t\\t\\tmenuItem -e -command $saveCmd $LT_FileInfoMenu; \\r\\n\\r\\n\\t\\tshowWindow LT_fileInfo;\\r\\n\\t\\t}\\r\\n}\\r\\n\\r\\n\\r\\nglobal proc deleteFileInfo()\\r\\n{\\r\\n\\tif (`window -exists LT_fileInfo`)\\r\\n\\t\\tdeleteUI LT_fileInfo ; \\r\\n\\tif (`objExists \\\"LT_fileInfoScript\\\"`) \\r\\n\\t\\tdelete LT_fileInfoScript ; \\r\\n\\tif (`objExists \\\"LT_fileInfo\\\"`) \\r\\n\\t\\tdelete LT_fileInfo;\\r\\n}\\r\\n\\r\\n\\r\\nglobal proc createFileInfo()\\r\\n{\\r\\n\\t//Create node and attr for storing info\\r\\n\\tif ( `objExists \\\"LT_fileInfo\\\"` == 0)\\r\\n\\t\\t{\\r\\n\\t\\tprint (\\\"Creating node LT_fileInfo.\\\\n\\\");\\r\\n\\t\\tcreateNode -name \\\"LT_fileInfo\\\" unknown;\\r\\n\\t\\t}\\r\\n\\tif ( `attributeQuery -exists -node \\\"LT_fileInfo\\\" \\\"notes\\\"` == 0)\\r\\n\\t\\t{\\r\\n\\t\\tprint (\\\"Adding notes attribute to node.\\\\n\\\");\\r\\n\\t\\taddAttr -ln \\\"notes\\\" -dt \\\"string\\\" LT_fileInfo;\\r\\n\\t\\tsetAttr LT_fileInfo.notes -type \\\"string\\\" \\\"Replace with info specific to the current file\\\";\\r\\n\\t\\t}\\r\\n\\tif ( `objExists \\\"LT_fileInfoScript\\\"` == 0)\\r\\n\\t\\t{\\r\\n\\t\\t//create scriptNode for diplaying info\\r\\n\\t\\tprint (\\\"Creating scriptNode for opening file info window.\\\\n\\\");\\r\\n\\t\\t//setAttr LT_fileInfoScript.scriptType 1;\\r\\n\\t\\t}\\r\\n\\r\\n\\tshowFileInfo;\\r\\n}\\r\\n\\r\\ncreateFileInfo;\" -n LT_fileInfoScript;\r\n\t\tsetAttr LT_fileInfoScript.scriptType 1;\r\n\t\t}\r\n\r\n\tshowFileInfo;\r\n}\r\n\r\ncreateFileInfo;" -n LT_fileInfoScript;
+		setAttr LT_fileInfoScript.scriptType 1;
+		}
+
+	showFileInfo;
+}
+
+
+global proc changeClippingPlane()
+{		
+	global string $LT_clipPlaneSliderName;
+	
+	$currentPanel = `getPanel -withFocus`;
+	if (`getPanel -typeOf $currentPanel` == "modelPanel")
+		{
+		$cam = `modelPanel -q -camera $currentPanel`;
+		$isOrtho = `getAttr ($cam + ".orthographic")`;
+		if ($isOrtho != 1) //if it's a perspective
+			{
+			setAttr ($cam+"Shape.farClipPlane") `intSlider -q -v $LT_clipPlaneSliderName`;
+			}
+		else 
+			warning ("Clipping place slider only works in perspective view.");
+		}
+	else
+		warning ("Set active panel to a camera.");
+	
+}
+
+
+global proc changeNormalLength()
+{		
+	global string $LT_normSliderName;
+	polyOptions -sn `floatSlider -q -v $LT_normSliderName`;
+}
+
+
+global proc changeBorderThickness()
+{		
+	global string $LT_bordSliderName;
+	polyOptions -sb `floatSlider -q -v $LT_bordSliderName`;
+}
+
+
+global proc changeGridSize()
+{		
+	global string $LT_gridSliderName;
+	grid -size `intSlider -q -v $LT_gridSliderName`;
+}
+	
+global proc float edgeLengthCalc()
+{
+// Author : Hiroyuki Haga
+// Last update : Aug 22th, 2004
+
+ string $edges[] = `filterExpand -sm 32`;
+ float $edgeLength = 0.0;
+
+ string $vertices[];
+ float $v1[3];
+ float $v2[3];
+ float $edgeFloat[3];
+ vector $edgeVector;
+ float $tmpEdgeLength;
+ string $attached[];
+
+ if ( `size($edges)` ){
+  for( $thisEdge in $edges ){
+    $attached = `polyListComponentConversion -ff -fe -fuv -fvf -tv $thisEdge`;
+    
+    $vertices = `filterExpand -sm 31 $attached`;
+
+    $v1 = `pointPosition $vertices[0]`;
+    $v2 = `pointPosition $vertices[1]`;
+    
+    for ( $i = 0; $i < 3; $i++ ){
+	$edgeFloat[$i] = $v1[$i] - $v2[$i];
+    }
+    $edgeVector = $edgeFloat;
+    
+    $tmpEdgeLength = `mag $edgeVector`;
+    $edgeLength += $tmpEdgeLength;
+  }
+ }
+ else {
+  $edgeLength = 0.0;
+ }
+    print ($edgeLength + "\n");
+
+    return $edgeLength;
+}
+
+
+global proc float VertDistanceCalc()
+{
+// Author : Hiroyuki Haga
+// Last update : Aug 22th, 2004
+
+ float $VertDistance = 0.0;
+
+ string $vertices[];
+ float $v1[3];
+ float $v2[3];
+ float $edgeFloat[];
+ vector $edgeVector;
+ $vertices = `filterExpand -sm 31`;
+ 
+ if (`size $vertices` == 2)
+ 	{
+ 	   $v1 = `pointPosition $vertices[0]`;
+    	$v2 = `pointPosition $vertices[1]`;
+    
+	    for ( $i = 0; $i < 3; $i++ ){
+		$edgeFloat[$i] = $v1[$i] - $v2[$i];
+	    }
+    	$edgeVector = $edgeFloat;
+    
+    	$VertDistance = `mag $edgeVector`;
+ 	}
+ 
+ return $VertDistance;
+}
+
+
+global proc int[] shellCounter ()
+{
+	//Count number of shells in selected poly objects
+	//
+	string $names[] = `filterExpand -sm 12` ;  // polygon
+	int $scountSelected[0];
+	
+	if (`size( $names )`) 
+		$scountSelected = `polyEvaluate -s`;
+	else 
+		$scountSelected[0] = 0;
+	
+	return $scountSelected;
+}
+
+
+proc createEdgeLengthHUD (){
+
+	headsUpDisplay
+		-section          0
+		-block            5
+		-blockSize        "small"
+		-label            "Edge Length:"
+		-labelFontSize    "small"
+		-dataFontSize	  "small"
+		-command          "edgeLengthCalc"
+		-event            "SelectionChanged"
+		-nodeChanges      "attributeChange"
+		-dp		4
+	HUDEdgeLength;
+}
+
+
+global proc createShellCountHUD (){
+
+	headsUpDisplay
+		-section          0
+		-block            7
+		-blockSize        "small"
+		-label            "Shells:"
+		-labelFontSize    "small"
+		-dataFontSize	    "small"
+		-command          "shellCounter"
+		-event            "SelectionChanged"
+		-nodeChanges      "attributeChange"
+	HUDShellCounter;
+}
+
+
+proc createVertDistanceHUD (){
+
+	headsUpDisplay
+		-section          0
+		-block            6
+		-blockSize        "small"
+		-label            "Vert Distance:"
+		-labelFontSize    "small"
+		-dataFontSize	  "small"
+		-command          "VertDistanceCalc"
+		-event            "SelectionChanged"
+		-nodeChanges      "attributeChange"
+		-dp		4
+	HUDVertDistance;
+}
+
+
+global proc toggleShellCountHUD ()
+{
+
+    if (`headsUpDisplay -ex HUDShellCounter`)
+	headsUpDisplay -rem HUDShellCounter;
+    else 
+        createShellCountHUD;
+     	
+}
+
+
+global proc toggleEdgeLengthHUD (){
+
+    if (`headsUpDisplay -ex HUDEdgeLength`)
+	headsUpDisplay -rem HUDEdgeLength;
+    else 
+        createEdgeLengthHUD;
+     	
+}
+
+global proc toggleVertDistanceHUD (){
+
+    if (`headsUpDisplay -ex HUDVertDistance`)
+	headsUpDisplay -rem HUDVertDistance;
+    else 
+        createVertDistanceHUD;
+     	
+}
+
+
+global proc cycleBGColor()
+{
+	// cycles the background color white/lightGray/middleGray/black
+	//
+
+	float $c[] = `displayRGBColor -q background`;
+	$color = $c[0];
+	
+	if ($color == 0) displayRGBColor -c background .99 .99 .99;
+	else if ($color < 0.4)  displayRGBColor -c background 0 0 0;
+	else if ($color < 0.7)  displayRGBColor -c background .357 .357 .357;
+	else if ($color < 1) displayRGBColor -c background .672 .672 .672;
+	else print ("nada \n");
+}
+
+
+global proc allSingleSided()
+{
+	//Make all polys in scene single sided
+	//
+
+	string $poly;
+	string $polys[] = `ls -type mesh`;
+
+	for ($poly in $polys)
+		{
+		//print ("\n "+$poly);
+		$attr = $poly+".doubleSided";
+		setAttr $attr off;
+		}
+}
+
+global proc toggleDoubleSided()
+{
+	//Make all polys in scene single sided
+	//
+
+	string $selected[] = `ls -sl`;
+	string $poly;
+	string $polys[] = `filterExpand -sm 12`;
+
+	for ($poly in $polys)
+		{
+		select -r $poly;
+		$shape = `listRelatives -s`;
+		$attr = $shape[0]+".doubleSided";
+		if (`getAttr $attr`)
+			setAttr $attr off;
+		else
+			setAttr $attr on;
+		}
+	select -r $selected;
+}
+
+
+global proc allDoubleSided()
+{
+	//Make all polys in scene single sided
+	//
+
+	string $poly;
+	string $polys[] = `ls -type mesh`;
+
+	for ($poly in $polys)
+		{
+		//print ("\n "+$poly);
+		$attr = $poly+".doubleSided";
+		setAttr $attr 1;
+		}
+}
+
+global proc wosToggle ()
+{
+	//Enable Wireframe on shaded
+	//
+
+	$currentPanel = `getPanel -withFocus`;
+	$wosState = `modelEditor -q -wos $currentPanel`;
+	if ($wosState == 0) 
+		{
+		modelEditor -edit -wos 1 $currentPanel;
+		}
+	else 
+		{
+		modelEditor -edit -wos 0 $currentPanel;
+		}
+}	
+
+
+
+
+global proc fastInteractToggle ()
+{
+	//Toggle wireframe for interation
+	//
+
+	$currentPanel = `getPanel -withFocus`;
+	$interactiveState = `modelEditor -q -ui $currentPanel`;
+	if ($interactiveState == 0) 
+		{
+		modelEditor -edit -ui 1 $currentPanel;
+		}
+	else 
+		{
+		modelEditor -edit -ui 0 $currentPanel;
+		}
+}	
+
+
+global proc textureFilterToggle()
+{
+	//Toggle texture filtering in panel
+	//
+
+	$currentPanel = `getPanel -withFocus`;
+	$filterState = `modelEditor -q -ts $currentPanel`;
+	if ($filterState == 2) 
+		{
+		modelEditor -e -ts 1 $currentPanel;
+		}
+	else 
+		{
+		modelEditor -e -ts 2 $currentPanel;
+		}
+}	
+
+
+global proc gridNumberToggle ()
+{
+	//toggle grid numbers
+	//
+
+	$gridNumberState = `grid -q -dpl`;
+	if ($gridNumberState == 0) 
+		{
+		grid -dpl 1;
+		grid -dol 1;
+		}
+	else 
+		{
+		grid -dpl 0;
+		grid -dol 0;
+		}
+}	
+
+
+global proc gridToggle ()
+{
+	//Show or hide grid
+	//
+
+	$currentPanel = `getPanel -withFocus`;
+	$wosState = `modelEditor -q -gr $currentPanel`;
+	if ($wosState == 0) 
+		{
+		modelEditor -edit -gr 1 $currentPanel;
+		}
+	else 
+		{
+		modelEditor -edit -gr 0 $currentPanel;
+		}
+}	
+
+global proc xRayToggle ()
+{
+	//Enable XRay Viewing
+	//
+
+	$currentPanel = `getPanel -withFocus`;
+	$xrayState = `modelEditor -q -xray $currentPanel`;
+	if ($xrayState == 0) 
+		{
+		modelEditor -edit -xray 1 $currentPanel;
+		}
+	else 
+		{
+		modelEditor -edit -xray 0 $currentPanel;
+		}
+}	
+
+
+global proc vertexColorDisplay ()
+
+{  
+	//Display Vertex Color Only 
+	//Set view mode to Emission 
+	//Set panels to view selected lights only with textures turned off
+	//
+
+	$currentPanel = `getPanel -withFocus`;   
+	string $panelType = `getPanel -to $currentPanel`;  
+	global string $gDynPaintEditorName;
+
+	if ($panelType ==  "modelPanel") 
+		{    
+		modelEditor -edit -da "smoothShaded" -displayTextures off -dl "none" $currentPanel;
+		} 
+	else if (`isTrue "MayaCreatorExists"` && `scriptedPanel -ex $currentPanel` && `scriptedPanel -q -type $currentPanel` == "dynPaintScriptedPanelType")
+		{     
+		dynPaintEditor -e -dtx 1 -dsa "smoothShaded" -dsl "default" $gDynPaintEditorName;  
+		}
+	polyOptions -global -cs 1 -cm emission;
+}
+
+
+global proc vertexColorTextureDisplay()
+{  
+	//Display Vertex Color and Textures
+	//Set view mode to Emission 
+	//Set panels to view selected lights only with textures turned on
+	//
+
+	$currentPanel = `getPanel -withFocus`;   
+	string $panelType = `getPanel -to $currentPanel`; 
+	global string $gDynPaintEditorName;
+ 
+	if ($panelType ==  "modelPanel") 
+		{    
+		modelEditor -edit -da "smoothShaded" -displayTextures on -dl "none" $currentPanel;  
+		} 
+	else if (`isTrue "MayaCreatorExists"` && `scriptedPanel -ex $currentPanel` && `scriptedPanel -q -type $currentPanel` == "dynPaintScriptedPanelType") 
+		{     
+		dynPaintEditor -e -dtx 1 -dsa "smoothShaded" -dsl "default" $gDynPaintEditorName;  
+		}
+	polyOptions -global -cs 1 -cm emission;
+}
+
+
+global proc vertexColorDefaultDisplay()
+{  
+	//Display Vertex Color Default 
+	//Set view mode to AmbientDiffuse 
+	//Set panels to view default lighting with textures on
+	//
+
+	$currentPanel = `getPanel -withFocus`;   
+	string $panelType = `getPanel -to $currentPanel`; 
+	global string $gDynPaintEditorName;
+ 
+	if ($panelType ==  "modelPanel") 
+		{    
+		modelEditor -edit -da "smoothShaded" -displayTextures on -dl "default" $currentPanel;  
+		} 
+	else if (`isTrue "MayaCreatorExists"` && `scriptedPanel -ex $currentPanel` && `scriptedPanel -q -type $currentPanel` == "dynPaintScriptedPanelType") 
+		{     
+		dynPaintEditor -e -dtx 1 -dsa "smoothShaded" -dsl "default" $gDynPaintEditorName;  
+		}
+	polyOptions -global -cs 1 -cm ambientDiffuse;
+}
+
+
+global proc disableVertexColorDisplay()
+{  
+	//Turn off Vertex Color display
+
+	$currentPanel = `getPanel -withFocus`;   
+	string $panelType = `getPanel -to $currentPanel`;  
+	global string $gDynPaintEditorName;
+
+	if ($panelType ==  "modelPanel") 
+		{    
+		modelEditor -edit -da "smoothShaded" -displayTextures on -dl "default" $currentPanel;  
+		} 
+	else if (`isTrue "MayaCreatorExists"` && `scriptedPanel -ex $currentPanel` && `scriptedPanel -q -type $currentPanel` == "dynPaintScriptedPanelType") 
+		{     
+		dynPaintEditor -e -dtx 1 -dsa "smoothShaded" -dsl "default" $gDynPaintEditorName;  
+		}
+	polyOptions -global -cs 0 ;
+}
+
+
+global proc toggleUIVisibility()
+{
+	//contains procs for setting prefs
+	source createPrefWndUI.mel;
+
+	global string $gMainWindow;
+	int $state = `optionVar -q LT_uiVisibility`;
+	
+	if ($state)
+		{
+		toggleMenuBarsInPanels false; 
+		window -e -mbv false $gMainWindow; 
+		HideUIElements;
+		optionVar -iv LT_uiVisibility 0;
+		}
+	else
+		{
+		toggleMenuBarsInPanels true; 
+		window -e -mbv true $gMainWindow; 
+		RestoreUIElements;
+		optionVar -iv LT_uiVisibility 1;
+		}
+}
+
+/////////////////////////////
+// Camera Tools
+//
+
+
+//  Creation Date:  08 June 1999
+//  Author:         bwk
+//  Modified by: Steven Roselle
+//	Last Update: 11/23/04
+//
+
+proc string getFirstPersonCamera()
+{
+	string $panel = `getPanel -underPointer`;
+	string $camera = "";
+	if ($panel != "") {
+		//
+		//	Make sure the panel is a model view and contains a
+		//	perspective camera.
+		//
+		string $type = `getPanel -typeOf $panel`;
+		if ($type == "modelPanel") {
+			$camera = `modelPanel -query -camera $panel`;
+			if (`camera -query -orthographic $camera`) {
+				warning ("First Person cam only works in perspective views");
+				$camera = "";
+			}
+		}
+	}
+	return $camera;
+}
+
+global proc firstPersonCamPress()
+{
+	float  $position[] = `draggerContext -query -anchorPoint firstPersonCamContext`;
+
+	//	Last coordinates of the mouse.
+	//
+	global float $gFirstPersonLastPosition[];
+
+	//	Last rotation values of the camera.
+	//
+	global float $gFirstPersonRotation[];
+
+	//	Coordinates of the mouse when the press happened or when the Ctrl
+	//	key was released.
+	//
+	global float $gFirstPersonAnchor[];
+
+	if (`getFirstPersonCamera` != "")
+		{
+		$gFirstPersonAnchor = `draggerContext -query -anchorPoint firstPersonCamContext`;
+		$gFirstPersonRotation = `getAttr (getFirstPersonCamera() + ".rotate")`;
+					
+		$gFirstPersonLastPosition = $position;
+	
+
+		//Just record last position and orientation for undo queue
+		setAttr (getFirstPersonCamera() + ".rotate") `getAttr (getFirstPersonCamera() + ".rx")` `getAttr (getFirstPersonCamera() + ".ry")` `getAttr (getFirstPersonCamera() + ".rz")`;
+		setAttr (getFirstPersonCamera() + ".translate") `getAttr (getFirstPersonCamera() + ".tx")` `getAttr (getFirstPersonCamera() + ".ty")` `getAttr (getFirstPersonCamera() + ".tz")`;
+		}	
+}
+
+global proc firstPersonCamRelease()
+{	
+	if (`getFirstPersonCamera` != "")
+		{
+		//Just record last position and orientation for undo queue
+		setAttr (getFirstPersonCamera() + ".rotate") `getAttr (getFirstPersonCamera() + ".rx")` `getAttr (getFirstPersonCamera() + ".ry")` `getAttr (getFirstPersonCamera() + ".rz")`;
+		setAttr (getFirstPersonCamera() + ".translate") `getAttr (getFirstPersonCamera() + ".tx")` `getAttr (getFirstPersonCamera() + ".ty")` `getAttr (getFirstPersonCamera() + ".tz")`;
+		}	
+}
+
+
+global proc firstPersonCamDrag()
+{
+	float  $position[] = `draggerContext -query -dragPoint firstPersonCamContext`;
+	int    $button     = `draggerContext -query -button firstPersonCamContext`;
+	string $modifier   = `draggerContext -query -modifier firstPersonCamContext`;
+	int    $refresh    = false;
+
+	//	These values represent the amount by which the camera will move 
+	//	forward, backward and side to side.
+	//
+	float  $stepForwardDistance = 0.5;
+	float  $stepSideDistance = 0.5;
+	
+	global float $gFirstPersonLastPosition[];
+	global float $gFirstPersonRotation[];
+	global float $gFirstPersonAnchor[];
+
+	string $camera = getFirstPersonCamera();
+	if ("" != $camera) {
+		if (1 == $button) {
+				//
+				//	No modifier button.  Interpret mouse movements as looking
+				//	around in the scene.
+				//
+
+				float $dy = $position[1] - $gFirstPersonAnchor[1];
+				float $dx = ($position[0] - $gFirstPersonAnchor[0]);
+				float $newRotation[] = $gFirstPersonRotation;
+				$newRotation[0] = $gFirstPersonRotation[0] + $dy;
+				$newRotation[1] = $gFirstPersonRotation[1] - $dx;
+
+				setAttr ($camera + ".rotate") 
+					$newRotation[0] $newRotation[1] $newRotation[2];
+
+				$refresh = true;
+
+				//	Need to update the anchor position and camera rotation so that
+				//	when the camera stops moving further look actions are relative
+				//	to where the Ctrl key was released.
+				//
+				$gFirstPersonAnchor = $position;
+				$gFirstPersonRotation = `getAttr ($camera + ".rotate")`;
+			}
+		}
+	$gFirstPersonLastPosition = $position;
+
+	if ($refresh) refresh -currentView;
+}
+
+
+global proc firstPersonCam()
+{
+    if (`draggerContext -exists firstPersonCamContext`)
+        deleteUI firstPersonCamContext;
+
+    draggerContext
+	    -pressCommand   "firstPersonCamPress"
+		-dragCommand  ("undoInfo -swf 0; firstPersonCamDrag ; undoInfo -swf 1")   // turn off undo first & turn on undo after
+		-releaseCommand "firstPersonCamRelease"
+		-cursor         "fly"
+		-image1         "flyThrough.xpm"	
+        firstPersonCamContext;
+	
+	setToolTo firstPersonCamContext;
+}
+
+
+
+global proc startWalkCam(int $direction)
+{
+	//Direction: 1=forward  0=backward  2=right  3=left
+	//
+	$currentPanel = `getPanel -withFocus`;
+	if (`getPanel -typeOf $currentPanel` == "modelPanel")
+		{
+		$cam = `modelPanel -q -camera $currentPanel`;
+		$isOrtho = `getAttr ($cam + ".orthographic")`;
+		if ($isOrtho != 1) //if it's a perspective
+			{
+			print ("walkCamera: forward\n");
+			//Just record last position and orientation for undo queue
+			setAttr ($cam + ".rotate") `getAttr ($cam + ".rx")` `getAttr ($cam + ".ry")` `getAttr ($cam + ".rz")`;
+			setAttr ($cam + ".translate") `getAttr ($cam + ".tx")` `getAttr ($cam + ".ty")` `getAttr ($cam + ".tz")`;
+			scriptJob -ie ("walkCamera " + $cam + " " +$direction);
+			undoInfo -swf 0;
+			}
+		else 
+			warning ("Walk cam only works in perspective views.");
+		}
+	else
+		warning ("Set active panel to a camera.");
+}
+
+
+global proc stopWalkCam()
+{	
+	string $lastJob;
+	// get list of script jobs
+	$jobList = `scriptJob -lj`;
+	
+	for ($lastJob in $jobList)
+	{
+		// make sure last job is walkCamera
+		string $match = match("walkCamera",$lastJob);
+	
+		if ($match == "walkCamera")
+		{		
+			// extract first 4 characters from string
+			string $ID = `substring $lastJob 1 5`;
+
+			// check to see if colan is attached to string
+			string $match = match(":",$ID);
+
+			if ($match == ":") 
+				$ID = `substring $lastJob 1 4`;
+
+			string $match = match(":",$ID);
+		
+			if ($match == ":") 
+				$ID = `substring $lastJob 1 3`;
+
+			string $match = match(":",$ID);
+
+			if ($match == ":") 
+				$ID = `substring $lastJob 1 2`;
+
+			// kill all instances of walkCamera
+			int $IDnum = $ID;
+			scriptJob -kill $IDnum ;
+			//print ("walkCamera: stop\n");
+		}
+		//else print("ERROR : wrong job");
+	}
+	
+	
+	$currentPanel = `getPanel -withFocus`;
+	if (`getPanel -typeOf $currentPanel` == "modelPanel")
+		{
+		$cam = `modelPanel -q -camera $currentPanel`;
+		$isOrtho = `getAttr ($cam + ".orthographic")`;
+		if ($isOrtho != 1) //if it's a perspective
+			{	//Just record last position and orientation for undo queue
+				setAttr ($cam + ".rotate") `getAttr ($cam + ".rx")` `getAttr ($cam + ".ry")` `getAttr ($cam + ".rz")`;
+				setAttr ($cam + ".translate") `getAttr ($cam + ".tx")` `getAttr ($cam + ".ty")` `getAttr ($cam + ".tz")`;
+			}
+		}
+	undoInfo -swf 1;
+	//print ("walkCamera: stop\n");
+			
+}
+
+
+global proc walkCamera( string $cam, int $moveMode )
+{
+	// This script moves the camera only in x and z along the view direction. 
+	// You can combine it with the walk tool, where the walk tool sets the current
+	// view direction. However you can't change the view direction while moving
+	// with the arrow keys.
+	//
+	// This moves the camera relative to its current view direction a step.
+	// It attaches a vectorProduct node to get the view direction vector from 
+	// the camera matrix.
+	//
+	// Written by Duncan Brimsmead
+	// Modified by Steven Roselle
+
+	float $speed = `optionVar -q LT_walkCamSpeed`;  
+    //float $speed = `getAttr ($cam + ".speed")`;
+    string $camMat = $cam + ".xformMatrix";
+    string $vprod = "";
+     if( `connectionInfo -is $camMat` ){
+        string $camMatConnections[] = `connectionInfo -dfs $camMat`;
+        if( size($camMatConnections) ){
+            $vprod = `basename $camMatConnections[0] ".matrix"`;
+        }
+    }
+    if( !size($vprod) ){
+        $vprod = `createNode vectorProduct`;
+        connectAttr $camMat ($vprod + ".matrix");
+        setAttr ($vprod + ".input1Z") 1;
+        setAttr ($vprod + ".operation") 3;
+    }
+    float $pt[] = getAttr($cam + ".t");
+    float $vec[] = getAttr($vprod + ".output");
+
+    // normalize the velocity
+    float $vlen = sqrt( $vec[0]*$vec[0]+$vec[2]*$vec[2]);
+    if( $vlen > 0 ){
+        $speed = $speed/$vlen;
+    } else {
+        $speed = 0;
+    }
+
+    if( $moveMode == 0 ){
+        $pt[0] += $vec[0] * $speed;
+        $pt[2] += $vec[2] * $speed;
+    } else if( $moveMode == 1 ){
+        $pt[0] -= $vec[0] * $speed;
+        $pt[2] -= $vec[2] * $speed;
+    } else if( $moveMode == 2 ){
+        $pt[0] += $vec[2] * $speed;
+        $pt[2] -= $vec[0] * $speed;
+    }  else if( $moveMode == 3 ){
+        $pt[0] -= $vec[2] * $speed;
+        $pt[2] += $vec[0] * $speed;
+    }
+    setAttr ($cam + ".t") $pt[0] $pt[1] $pt[2];
+
+    select -cl;
+}
+
+

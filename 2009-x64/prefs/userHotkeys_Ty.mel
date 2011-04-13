@@ -1,0 +1,18 @@
+//Maya Preference 7.00 (Release 1)
+//
+//
+
+hotkey -keyShortcut "0" -releaseName ("HfAttrSelect_Menu_revert");
+hotkey -keyShortcut "F6" -name ("NameComLive_UI");
+hotkey -keyShortcut "Up" -ctl -alt -name ("mlTruckUpTool");
+hotkey -keyShortcut "Left" -ctl -alt -name ("mlTruckLeftTool");
+hotkey -keyShortcut "Down" -ctl -alt -name ("mlTruckDownTool");
+hotkey -keyShortcut "Right" -ctl -alt -name ("mlTruckRightTool");
+hotkey -keyShortcut "w" -alt -name ("walkCamForwardNameCommand");
+hotkey -keyShortcut "w" -alt -releaseName ("walkCamStopNameCommand");
+hotkey -keyShortcut "s" -alt -name ("walkCamBackwardNameCommand");
+hotkey -keyShortcut "s" -alt -releaseName ("walkCamStopNameCommand");
+hotkey -keyShortcut "a" -alt -name ("walkCamLeftNameCommand");
+hotkey -keyShortcut "a" -alt -releaseName ("walkCamStopNameCommand");
+hotkey -keyShortcut "d" -alt -name ("walkCamRightNameCommand");
+hotkey -keyShortcut "d" -alt -releaseName ("walkCamStopNameCommand");

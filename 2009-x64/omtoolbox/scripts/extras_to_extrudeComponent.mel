@@ -1,0 +1,68 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	extras_componentExtrude.mel					///
+///  AUTHOR: 									///
+///										///
+///  UDTATE LOG:								///
+///										///
+///  DEPENDENCIES:								///
+///   	None									///
+///										///
+///  PURPOSE & USE:								///
+///	Select polygon component and execute to extrude				///
+///										///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Alias Maya toolbox			///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///					TOOL					///
+///	Indput: 	Selection		 				///
+///	Function: 	Executes the appropriate extrude feature		///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc extras_to_extrudeComponent() 
+{
+  if( size( `filterExpand -sm 31` ) > 0 ) {
+    ExtrudeVertex;
+  }
+  else if( size( `filterExpand -sm 32` ) > 0 ) {
+    ExtrudeEdge;
+  }
+  else if( size( `filterExpand -sm 34` ) > 0 ) {
+    ExtrudeFace;
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////////

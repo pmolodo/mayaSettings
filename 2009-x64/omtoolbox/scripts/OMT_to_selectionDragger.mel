@@ -1,0 +1,1688 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	OMT_to_selectionDragger.mel					///
+///  AUTHOR: 	Jakob Welner (jakob@welner.dk)					///
+///										///
+///  UDTATE LOG:								///
+///	21th of october: v0.2 by Jakob Welner					///
+///	- It now stores last used tool						/// 
+///	- Added OMT_to_selectionDraggerRelease which switches back to last	///
+///	  used tool								///
+///										///
+///										///
+///  DEPENDENCIES:								///
+///   	None									///
+///										///
+///  PURPOSE & USE:								///
+///	Used on a poly edge selection it enabled you do drag the edges using 	///
+///	MMB and LMB								///
+///										///
+///	Use OMT_to_selectionDraggerRelease to return to last active tool or as	///
+///	as release command for a snappy key					///
+///										///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Alias Maya toolbox			///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///		            DEFAULT SETTINGS					///
+///										///
+///		- Set default slider multiplyer -				///
+///	Set the default of your preferred multiplyer values			///
+										///
+ global	float 	$OMV_sideSlideMult = 0.001;					///
+ global	float 	$OMV_normSlideMult = 0.005;					///
+ 										///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///			Define global variables					///
+///////////////////////////////////////////////////////////////////////////////////
+
+global string 	$OMV_partials[];	//Sort LoopEdges
+
+global string 	$OMV_nodeNameDrag = 0; 	//draggeContext
+global float  	$OMV_gPrevPoint[3];	//draggeContext
+global float 	$OMV_gValueX; 		//draggerContext
+global float 	$OMV_gNValueX;
+global float 	$OMV_gNValueXlast = 0.0;
+global vector 	$OMV_AList[];		//loopSlide vectors
+global vector 	$OMV_BList[];		//loopSlide vectors
+global vector 	$OMV_NList[];
+global vector 	$OMV_startPos[];	//loopSplit vectors
+global string 	$OMV_vtxName[];		//loopSlide vectors
+global vector	$OMV_endPos[];
+global vector	$OMV_lastPos[];		//loopSlide setLast
+global float 	$OMV_gNValLast;
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	2 vertices					 	///
+///	Output: 	vector from argument one to argument two		///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc vector OM_convertToVector(string $startVtx, string $endVtx)
+{
+	float $StartVtxPos[] = `pointPosition -w $startVtx`;
+	float $EndVtxPos[] = `pointPosition -w $endVtx`;
+	
+	return <<($EndVtxPos[0] - $StartVtxPos[0]),($EndVtxPos[1] - $StartVtxPos[1]),($EndVtxPos[2] - $StartVtxPos[2])>>;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	sorted loopEdge list				 	///
+///	Output: 	calculates slideVectors for every edge in indput and 	///
+///			their start location					///
+///			and stores them in AList, BList, NList and startPos	///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OM_setLoopSlideVectors(string $loopEdgeList[])
+{
+	
+	global vector $OMV_AList[];
+	global vector $OMV_BList[];
+	global vector $OMV_NList[];
+	global vector $OMV_startPos[];
+	global string $OMV_vtxName[];
+	clear 	$OMV_AList;
+	clear 	$OMV_BList;
+	clear 	$OMV_NList;
+	clear 	$OMV_startPos;
+	clear 	$OMV_vtxName;
+	float 	$OMV_startPosTemp[];
+	float	$baseMag;
+	vector 	$baseProj;
+	vector 	$ATemp;
+	vector 	$baseVector;
+	
+	string	$pA;
+	string	$pB;
+	string	$pMid;
+	
+	string	$eA;
+	string	$eB;
+	
+	string	$nVectorStyle = `optionVar -q "OMT_nVectorStyle"`;
+	
+	string	$token[];
+	string	$dump[];
+	string 	$object = `OM_objectName($loopEdgeList[0])`;
+	string	$edgeNvtx[2];
+	int	$stop = 0;
+	int	$int;
+	
+	int	$endVtx = 0;
+	int	$last = 0;
+	string	$tempEdge;
+	
+	
+	
+	$edgeNvtx[0] = $loopEdgeList[0];	
+	
+	$token = `polyInfo -ev $loopEdgeList[0]`;
+	tokenize ($token[0], $dump);
+	
+
+	// Get starting vertex/edge
+	if (OM_isVtxQuad(($object + ".vtx[" + $dump[2] + "]")) == 1)
+	{
+	   $token = OM_OppEdgeOnVtx($loopEdgeList[0], ($object + ".vtx[" + $dump[2] + "]") );
+	   if ($token[0] != $loopEdgeList[1] ) $edgeNvtx[1] = ($object + ".vtx[" + $dump[2] + "]");
+	   else 
+	   {
+	   	$edgeNvtx[1] = ($object + ".vtx[" + $dump[3] + "]");
+	   	if (OM_isVtxTris($edgeNvtx[1])) $endVtx = 1;
+	   }
+	}
+	else if	(OM_isVtxTris(($object + ".vtx[" + $dump[2] + "]")) == 1)
+	{
+	   $edgeNvtx[1] = ($object + ".vtx[" + $dump[2] + "]");
+	   $endVtx = 1;
+	}
+	else $edgeNvtx[1] = ($object + ".vtx[" + $dump[2] + "]");
+		   
+	   
+	   // running through indput loop and setting vectors
+	   do
+	   {
+	   	if ($last == 1) 
+	   	{
+	   	    $edgeNvtx[0] = $tempEdge; 
+	   	    $stop = 1;
+	   	}
+
+  		if (OM_isVtxQuad($edgeNvtx[1]) != 1 && $endVtx == 0) break;
+  		if (OM_inArray($edgeNvtx[0], $loopEdgeList) == 0) 
+  		{
+  		    $stop = 1; 
+  		    if (OM_isVtxTris($edgeNvtx[1])) $last = 1;
+  		}
+
+	   	$token = `polyInfo -ve $edgeNvtx[1]`;
+	   	tokenize ($token[0], $dump);
+	   	for ($int = 2; $int < 6; $int++)
+	   	{
+	   	   if ( ($object + ".e[" + $dump[$int] + "]") == $edgeNvtx[0] )
+	   	   {
+	   	   	if($int == 2)
+	   	   	{
+
+	   	   	   if($endVtx == 0)
+	   	   	   {
+	   	   	   	if ($last == 0){
+	   	   	   	$eA = ($object + ".e[" + $dump[3] + "]");
+	   	   	   	$eB = ($object + ".e[" + $dump[5] + "]");
+	   	   		}
+	   	   		else {
+	   	   	   	$eA = ($object + ".e[" + $dump[5] + "]");
+	   	   	   	$eB = ($object + ".e[" + $dump[3] + "]");
+	   	   		}	   	   		
+	   	   	   }
+	   	   	   if($endVtx == 1)
+	   	   	   {
+	   	   	   	if ($last == 0){
+	   	   	   	$eA = ($object + ".e[" + $dump[3] + "]");
+	   	   	   	$eB = ($object + ".e[" + $dump[4] + "]");
+	   	   		}
+	   	   		else {
+	   	   	   	$eA = ($object + ".e[" + $dump[4] + "]");
+	   	   	   	$eB = ($object + ".e[" + $dump[3] + "]");
+	   	   		}
+	   	   	   }
+	   	   	   
+	   	   	}
+	   	   	
+	   	   	else if($int == 3)
+	   	   	{
+	   	   	   if ($last == 0){
+	   	   	   $eA = ($object + ".e[" + $dump[4] + "]");
+	   	   	   $eB = ($object + ".e[" + $dump[2] + "]");
+	   	   	   }
+	   	   	   else {
+	   	   	   $eA = ($object + ".e[" + $dump[2] + "]");
+	   	   	   $eB = ($object + ".e[" + $dump[4] + "]");
+	   	   	   }
+	   		}
+	   		
+	   		else if($int == 4)
+	   	   	{
+	   	   	   if($endVtx == 0)
+	   	   	   {
+	   	   	   	if ($last == 0){
+	   	   	   	$eA = ($object + ".e[" + $dump[5] + "]");
+	   	   	   	$eB = ($object + ".e[" + $dump[3] + "]");
+	   	   		}
+	   	   		else {
+	   	   	   	$eA = ($object + ".e[" + $dump[3] + "]");
+	   	   	   	$eB = ($object + ".e[" + $dump[5] + "]");
+	   	   		}
+	   	   	   }
+	   	   	   if($endVtx == 1)
+	   	   	   {
+	   	   	   	if ($last == 0){
+	   	   	   	$eA = ($object + ".e[" + $dump[2] + "]");
+	   	   	   	$eB = ($object + ".e[" + $dump[3] + "]");
+	   	   		}
+	   	   		else {
+	   	   	   	$eA = ($object + ".e[" + $dump[3] + "]");
+	   	   	   	$eB = ($object + ".e[" + $dump[2] + "]");
+	   	   		}
+	   	   	   }
+	   	   	   
+	   		}
+	   		
+	   	   	else if($int == 5)
+	   	   	{
+	   	   	   if ($endVtx == 1) break;
+	   	   	   if ($last == 0){
+	   	   	   $eA = ($object + ".e[" + $dump[2] + "]");
+	   	   	   $eB = ($object + ".e[" + $dump[4] + "]");
+	   	   	   }
+	   	   	   else {
+	   	   	   $eA = ($object + ".e[" + $dump[4] + "]");
+	   	   	   $eB = ($object + ".e[" + $dump[2] + "]");
+	   	   	   }
+	   		}
+	   		
+	   		else break;
+	   	   }
+	   	   
+	   	}
+	   	
+	   	$token = `polyInfo -ev $eA`;
+	   	tokenize ($token[0], $dump);
+	   	
+	   	if ( ($object + ".vtx[" + $dump[2] + "]") == $edgeNvtx[1] ) 	$pA = ($object + ".vtx[" + $dump[3] + "]");
+	   	else $pA = ($object + ".vtx[" + $dump[2] + "]");
+	   	
+	   	$token = `polyInfo -ev $eB`;
+	   	tokenize ($token[0], $dump);
+	   	
+	   	if ( ($object + ".vtx[" + $dump[2] + "]") == $edgeNvtx[1] ) 	$pB = ($object + ".vtx[" + $dump[3] + "]");
+	   	else $pB = ($object + ".vtx[" + $dump[2] + "]");
+	   	
+
+
+
+
+		// set slide vectors
+
+	   	$pMid = $edgeNvtx[1];
+	   	
+	   	$OMV_AList[ size($OMV_AList) ] = OM_convertToVector($pA, $pMid);
+	   	$OMV_BList[ size($OMV_BList) ] = OM_convertToVector($pMid, $pB);
+	   	
+	   	$OMV_startPosTemp = `pointPosition -w $pA`;
+	   	$OMV_startPos[ size($OMV_startPos) ] = << $OMV_startPosTemp[0] , $OMV_startPosTemp[1] , $OMV_startPosTemp[2] >>;
+
+	   	$OMV_vtxName[ size($OMV_vtxName) ] = $pMid;
+	
+	
+		switch( $nVectorStyle ) {
+		    case "Flow Dependent":	
+		    	$OMV_NList[ size($OMV_NList) ] = OM_getBezierNormalVector($eA, $eB, $pMid); 
+		    	break;
+		    
+		    case "Similiar":		
+			// nothing here yet
+
+		    
+		    case "Projection":	
+		    default:
+			$baseVector = OM_convertToVector($pA, $pB);
+			$ATemp = $OMV_AList[ size($OMV_AList)-1 ];
+			$baseMag = $baseVector;
+			$baseProj = ((dot($ATemp, $baseVector) / ($baseMag*$baseMag)) * $baseVector);
+			$OMV_NList[ size($OMV_NList) ] = ($ATemp - $baseProj); 
+		    	break;
+		}		
+		
+	   	
+	   	$tempEdge = $edgeNvtx[0];
+	   	$edgeNvtx = OM_OppVtxOnEdge($edgeNvtx[0], $edgeNvtx[1]);
+	   	if ($edgeNvtx[0] == $loopEdgeList[0]) $stop = 1;
+	   	
+	   	$endVtx = 0;
+	   	$last = 0;
+	   	
+		if (OM_isVtxTris($edgeNvtx[1])) 
+		{
+
+		    $endVtx = 1; 
+		    $last = 1; 
+		}
+	   	
+	   	
+	   }
+	   while ($stop != 1);
+	   
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	a vertex and an edge				 	///
+///	Output: 	outputs the sideIndputVector for the given vertex	///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc vector OM_getSideVector(string $baseVtx, string $edge)
+{
+	
+	int 	$int;
+	string 	$token[];
+	string 	$dump[];
+	string 	$object = `OM_objectName($edge)`;
+	string 	$tempVtx[];
+	vector	$return;
+	
+
+	$token = `polyInfo -ve $baseVtx`;
+	tokenize ($token[0], $dump);
+	
+	for ($int = 2 ; $int < size($dump) ; $int++) 
+	{
+	   if (($object + ".e[" + $dump[$int] + "]") == $edge) break;
+	}
+
+	if (size($dump) >= 6)
+	{
+
+	   string $tempEdge1;
+	   string $tempEdge2;
+	   
+	   if ($int == 3)
+	   {
+	   	$tempEdge1 = ($object + ".e[" + $dump[(size($dump)-1)] + "]");
+	   	$tempEdge2 = ($object + ".e[" + $dump[($int+2)] + "]");
+	   }
+	   else if ($int == 2)
+	   {
+	   	$tempEdge1 = ($object + ".e[" + $dump[(size($dump)-2)] + "]");
+	   	$tempEdge2 = ($object + ".e[" + $dump[($int+2)] + "]");	   	
+	   }
+	   else if ($int == (size($dump) - 1))
+	   {
+	   	$tempEdge1 = ($object + ".e[" + $dump[($int-2)] + "]");
+	   	$tempEdge2 = ($object + ".e[" + $dump[3] + "]");
+	   }
+	   else if ($int == (size($dump) - 2))
+	   {
+	   	$tempEdge1 = ($object + ".e[" + $dump[($int-2)] + "]");
+	   	$tempEdge2 = ($object + ".e[" + $dump[2] + "]");
+	   }
+	   else
+	   {
+	   	$tempEdge1 = ($object + ".e[" + $dump[($int-2)] + "]");
+	   	$tempEdge2 = ($object + ".e[" + $dump[($int+2)] + "]");	   	
+	   }
+	   
+	   // first vector \\
+	   $token = `polyInfo -ev $tempEdge1`;
+	   tokenize ($token[0], $tempVtx);
+	   
+	   vector $tempVector1;
+	   vector $tempVector2;
+	   
+	   if ($baseVtx == ($object + ".vtx[" + $tempVtx[2] + "]"))
+	   {
+	   	$tempVector1 = OM_convertToVector(($object + ".vtx[" + $tempVtx[3] + "]"),($object + ".vtx[" + $tempVtx[2] + "]"));
+	   }
+	   else
+	   {
+	   	$tempVector1 = OM_convertToVector(($object + ".vtx[" + $tempVtx[2] + "]"),($object + ".vtx[" + $tempVtx[3] + "]"));
+	   }
+	   
+	   // second vector \\
+	   $token = `polyInfo -ev $tempEdge2`;
+	   tokenize ($token[0], $tempVtx);
+	   
+	   if ($baseVtx == ($object + ".vtx[" + $tempVtx[2] + "]"))
+	   {
+	   	$tempVector2 = OM_convertToVector(($object + ".vtx[" + $tempVtx[3] + "]"),($object + ".vtx[" + $tempVtx[2] + "]"));
+	   }
+	   else
+	   {
+	   	$tempVector2 = OM_convertToVector(($object + ".vtx[" + $tempVtx[2] + "]"),($object + ".vtx[" + $tempVtx[3] + "]"));
+	   }
+	   
+	   $return = (($tempVector1 + $tempVector2) / 2);
+	
+	}
+	
+	else if(size($dump) == 5)
+	{
+
+	   string $tempEdge1;
+	   string $tempEdge2;
+	   
+	   if ($int == 2)
+	   {
+	   	$tempEdge1 = ($object + ".e[" + $dump[4] + "]");
+	   	$tempEdge2 = ($object + ".e[" + $dump[3] + "]");
+	   }
+	   else if ($int == 4)
+	   {
+	   	$tempEdge1 = ($object + ".e[" + $dump[3] + "]");
+	   	$tempEdge2 = ($object + ".e[" + $dump[2] + "]");	   	
+	   }
+	   else if ($int == 3)
+	   {
+	   	$tempEdge1 = ($object + ".e[" + $dump[2] + "]");
+	   	$tempEdge2 = ($object + ".e[" + $dump[4] + "]");
+	   }
+	   
+	   // first vector \\
+	   $token = `polyInfo -ev $tempEdge1`;
+	   tokenize ($token[0], $tempVtx);
+	   
+	   vector $tempVector1;
+	   vector $tempVector2;
+	   
+	   if ($baseVtx == ($object + ".vtx[" + $tempVtx[2] + "]"))
+	   {
+	   	$tempVector1 = OM_convertToVector(($object + ".vtx[" + $tempVtx[3] + "]"),($object + ".vtx[" + $tempVtx[2] + "]"));
+	   }
+	   else
+	   {
+	   	$tempVector1 = OM_convertToVector(($object + ".vtx[" + $tempVtx[2] + "]"),($object + ".vtx[" + $tempVtx[3] + "]"));
+	   }
+	   
+	   // second vector \\
+	   $token = `polyInfo -ev $tempEdge2`;
+	   tokenize ($token[0], $tempVtx);
+	   
+	   if ($baseVtx == ($object + ".vtx[" + $tempVtx[2] + "]"))
+	   {
+	   	$tempVector2 = OM_convertToVector(($object + ".vtx[" + $tempVtx[3] + "]"),($object + ".vtx[" + $tempVtx[2] + "]"));
+	   }
+	   else
+	   {
+	   	$tempVector2 = OM_convertToVector(($object + ".vtx[" + $tempVtx[2] + "]"),($object + ".vtx[" + $tempVtx[3] + "]"));
+	   }
+	   
+	   $return = (($tempVector1 + $tempVector2) / 2);
+	
+	}
+	
+/*	else if (size($dump) == 4)
+	{
+
+	   
+	   string $tempEdge;
+	   
+	   if ($int >= 4)
+	   {
+	      $tempEdge = ($object + ".e[" + $dump[($int-2)] + "]");
+	   }
+	   else $tempEdge = ($object + ".e[" + $dump[($int+2)] + "]");
+	   
+	   $token = `polyInfo -ev $tempEdge`;
+	   tokenize ($token[0], $tempVtx);
+	   
+	   if ($baseVtx == ($object + ".vtx[" + $tempVtx[2] + "]"))
+	   {
+	   	$return = OM_convertToVector(($object + ".vtx[" + $tempVtx[3] + "]"),($object + ".vtx[" + $tempVtx[2] + "]"));
+	   }
+	   else
+	   {
+	   	$return = OM_convertToVector(($object + ".vtx[" + $tempVtx[2] + "]"),($object + ".vtx[" + $tempVtx[3] + "]"));
+	   }
+	}
+*/	
+	else
+	{
+	   $token = `polyInfo -ev $edge`;
+	   tokenize ($token[0], $dump);
+	   
+	   if (($object + ".vtx[" + $dump[2] + "]") == $baseVtx ) $return = OM_convertToVector(($object + ".vtx[" + $dump[2] + "]"), $baseVtx);
+	   else $return = OM_convertToVector(($object + ".vtx[" + $dump[3] + "]"), $baseVtx);
+		
+	}	
+
+	return $return;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	loop edge string				 	///
+///	Output: 	returns the normalvector for the given vertex		///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc vector OM_getBezierNormalVector(string $edgeA, string $edgeB, string $vtx)
+{
+
+	string	$token[];
+	string	$dump[];
+	float	$temp[];
+	string	$baseVtx[];
+	vector	$return;
+	string 	$object = `OM_objectName($edgeA)`;
+	int	$int;
+	
+	// Get Base vertices \\
+	$token = `polyInfo -ev $edgeA`;
+	tokenize ($token[0], $dump);
+	
+	if ( ($object + ".vtx[" + $dump[2] + "]") == $vtx )
+	{
+	   $baseVtx[0] = ($object + ".vtx[" + $dump[3] + "]");
+	}
+	else $baseVtx[0] = ($object + ".vtx[" + $dump[2] + "]");
+	
+	$token = `polyInfo -ev $edgeB`;
+	tokenize ($token[0], $dump);
+	
+	if ( ($object + ".vtx[" + $dump[2] + "]") == $vtx )
+	{
+	   $baseVtx[1] = ($object + ".vtx[" + $dump[3] + "]");
+	}
+	else $baseVtx[1] = ($object + ".vtx[" + $dump[2] + "]");
+
+
+	vector $indputVector0 = OM_getSideVector(($baseVtx[0]), ($edgeA));
+	vector $indputVector1 = OM_getSideVector(($baseVtx[1]), ($edgeB));
+	
+	$return = (OM_calcBezier($baseVtx[0] , $indputVector0 , $indputVector1 , $baseVtx[1]));
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Function:	Calculates the vector perpendicular to the line from 	///
+///			$p0 to $p3 which ends in the bezier curve at t=0.5	///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc vector OM_calcBezier(string $name0 , vector $name0Vec , vector $name3Vec , string $name3)
+{
+
+	vector $return;
+
+	float	$X;
+	float	$Y;
+	float	$Z;
+
+	float	$Cx;
+	float	$Bx;
+	float	$Ax;
+	
+	float	$Cy;
+	float	$By;
+	float	$Ay;
+	
+	float	$Cz;
+	float	$Bz;
+	float	$Az;
+	
+	float 	$p0[] = `pointPosition -w $name0`;
+	float 	$p3[] = `pointPosition -w $name3`;
+	float 	$p1[];
+	float 	$p2[];
+	
+	//normalizing vectors:
+	float $length = (sqrt( pow(($p0[0]-$p3[0]),2) + pow(($p0[1]-$p3[1]),2) + pow(($p0[2]-$p3[2]),2) )) / 2;
+	float $vec0Mag = $name0Vec;
+	float $vec3Mag = $name3Vec;
+	
+	if ($vec0Mag > 0.00001) $name0Vec = ($name0Vec / $vec0Mag) * $length;
+	if ($vec3Mag > 0.00001) $name3Vec = ($name3Vec / $vec3Mag) * $length;
+	
+	$p1[0] = $p0[0] + ($name0Vec.x);
+	$p1[1] = $p0[1] + ($name0Vec.y);
+	$p1[2] = $p0[2] + ($name0Vec.z);
+	
+	$p2[0] = $p3[0] + ($name3Vec.x);
+	$p2[1] = $p3[1] + ($name3Vec.y);
+	$p2[2] = $p3[2] + ($name3Vec.z);
+	
+	$Cx = ( 3*( $p1[0]-$p0[0] ) );
+	$Bx = ( ( 3*( $p2[0]-$p1[0] ) ) - $Cx);
+	$Ax = ($p3[0]-$p0[0]-$Cx-$Bx);
+	
+	$Cy = ( 3*( $p1[1]-$p0[1] ) );
+	$By = ( ( 3*( $p2[1]-$p1[1] ) ) - $Cy);
+	$Ay = ($p3[1]-$p0[1]-$Cy-$By);
+	
+	$Cz = ( 3*( $p1[2]-$p0[2] ) );
+	$Bz = ( ( 3*( $p2[2]-$p1[2] ) ) - $Cz );
+	$Az = ( $p3[2]-$p0[2]-$Cz-$Bz );
+	
+	
+	$X = (($Ax*pow(0.5, 3)) + ($Bx*pow(0.5, 2)) + ($Cx*0.5) + $p0[0]);
+	$Y = (($Ay*pow(0.5, 3)) + ($By*pow(0.5, 2)) + ($Cy*0.5) + $p0[1]);
+	$Z = (($Az*pow(0.5, 3)) + ($Bz*pow(0.5, 2)) + ($Cz*0.5) + $p0[2]);
+	
+	vector	$nVector = << (($p1[0]+$p2[0])/2) - $X , (($p1[1] + $p2[1])/2) - $Y , (($p1[2] + $p2[2])/2) - $Z >>;
+	
+	return $nVector;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Function:	sets the loopSlide vertices last position		///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OM_loopSlideSetLastPos() 
+{
+	global vector	$OMV_lastPos[];
+	global string 	$OMV_vtxName[];
+	
+	float $tempPos[];
+	
+	for ($int = 0; $int < size($OMV_vtxName) ; $int++)
+	{
+	   $tempPos = `pointPosition -w $OMV_vtxName[$int]`;
+	   $OMV_lastPos[$int] = << ($tempPos[0]) , ($tempPos[1]) , ($tempPos[2]) >>;
+	}
+	
+ }
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Function:	defines doRelease in OM_loopSlideDragger		///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OM_loopSlide_endDrag() 
+{
+	undoInfo -swf 0;
+	
+	global string 	$OMV_vtxName[];
+	global vector	$OMV_endPos[];
+	global vector	$OMV_lastPos[];
+	
+	float 	$tempPos[3];
+	vector 	$startTemp;
+	vector 	$endTemp;
+	int	$int;	
+	
+	for ($int = 0; $int < size($OMV_vtxName) ; $int++)
+	{
+	   $tempPos = `pointPosition -w $OMV_vtxName[$int]`;
+	   $OMV_endPos[$int] = << ($tempPos[0]) , ($tempPos[1]) , ($tempPos[2]) >>;
+	   
+	   $lastTemp = $OMV_lastPos[$int];
+	   move ($lastTemp.x) ($lastTemp.y) ($lastTemp.z) ($OMV_vtxName[$int]);
+	}
+	
+	
+	undoInfo -swf 1;
+	
+	
+	for ($int = 0; $int < size($OMV_vtxName) ; $int++)
+	{
+	   $endTemp = $OMV_endPos[$int];
+	   move ($endTemp.x) ($endTemp.y) ($endTemp.z) ($OMV_vtxName[$int]);
+	}
+ }
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Function:	defines doPress in OM_loopSlideDragger			///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OM_loopSlideDragger_doPress() 
+{
+	global float 	$OMV_gPrevPoint[];
+	
+	OM_loopSlideSetLastPos;
+	$OMV_gPrevPoint = `draggerContext -query -anchorPoint OMT_selectionDragger`;
+	
+	undoInfo -swf 0;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Function:	Defines doDrag in OM_loopSlideDragger			///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OM_loopSlideDragger_doDrag() 
+{
+
+	global vector 	$OMV_AList[];
+	global vector 	$OMV_BList[];
+	global vector 	$OMV_NList[];
+	global string 	$OMV_vtxName[];
+	global vector 	$OMV_startPos[];
+	global vector	$OMV_lastPos[];
+
+	global string 	$execString;
+	
+	global float 	$OMV_gPrevPoint[];
+	global float 	$OMV_gValueX;
+	global float 	$OMV_gNValueX;
+	global float 	$OMV_sideSlideMult;
+	global float 	$OMV_normSlideMult;
+	       float 	$dragPoint[];
+	       float 	$deltaX;
+	       int	$int;
+	       
+	       vector 	$ATemp;
+	       vector 	$BTemp;
+	       vector 	$NTemp;
+	       vector 	$StartTemp;
+	       string	$tempString;
+
+	       float 	$AClamp;
+	       float 	$BClamp;
+	       
+
+	int $button = `draggerContext -query -button OMT_selectionDragger`;
+	string $modifier = `draggerContext -query -modifier OMT_selectionDragger`;
+	
+	$dragPoint = `draggerContext -query -dragPoint OMT_selectionDragger`;
+	$deltaX = ($dragPoint[0] - $OMV_gPrevPoint[0]) ;
+
+
+	if ($modifier == "none" && $button == 2)
+	{
+	   $OMV_gValueX += $deltaX * $OMV_sideSlideMult;	
+	   $OMV_gValueX = `clamp 0.0001 0.9999 $OMV_gValueX`;	
+	
+	   $AClamp = `clamp 0.0001 0.9999 (2 * $OMV_gValueX)`;
+	   $BClamp = `clamp 0.0001 0.9999 (($OMV_gValueX - 0.5) * 2)`;
+	}
+	
+	
+	else if ($modifier == "none" && $button == 1)
+	{
+	   $OMV_gNValueX += $deltaX * $OMV_normSlideMult;
+	   $OMV_gValueX = `clamp 0.0001 0.9999 $OMV_gValueX`;	
+	
+	   $AClamp = `clamp 0.0001 0.9999 (2 * $OMV_gValueX)`;
+	   $BClamp = `clamp 0.0001 0.9999 (($OMV_gValueX - 0.5) * 2)`;
+	}
+	
+	
+	else if ($modifier == "shift" && $button == 2)
+	{
+	   $OMV_gValueX += $deltaX * $OMV_sideSlideMult;	
+	   $OMV_gValueX = `clamp 0.0001 0.9999 $OMV_gValueX`;	
+	
+	   $AClamp = `clamp 0.0001 0.9999 (2 * $OMV_gValueX)`;
+	   $AClamp = ((trunc(($AClamp + 0.0001) * 5))/5);
+	   $AClamp = `clamp 0.0001 0.9999 $AClamp`;
+	   $BClamp = `clamp 0.0001 0.9999 (($OMV_gValueX - 0.5) * 2)`;
+	   $BClamp = ((trunc(($BClamp + 0.0002) * 5))/5);
+	   $BClamp = `clamp 0.0001 0.9999 $BClamp`;
+	}
+	
+	
+	else if ($modifier == "shift" && $button == 1)
+	{
+	   if ($deltaX < 0) $OMV_gNValueX = 0;
+	   else $OMV_gNValueX = 1;
+	   
+	   $OMV_gValueX = `clamp 0.0001 0.9999 $OMV_gValueX`;	
+	
+	   $AClamp = `clamp 0.0001 0.9999 (2 * $OMV_gValueX)`;
+	   $BClamp = `clamp 0.0001 0.9999 (($OMV_gValueX - 0.5) * 2)`;
+	}	
+	
+	
+	else if ($modifier == "ctrl" && $button == 2)
+	{
+	   $OMV_sideSlideMult += $deltaX * 0.001;
+	   $OMV_sideSlideMult = `clamp 0.0001 1 $OMV_sideSlideMult`;
+	   print ("SideSlide Multiplier: " + $OMV_sideSlideMult + "\n");
+	}
+	
+	
+	else if ($modifier == "ctrl" && $button == 1)
+	{
+	   $OMV_normSlideMult += $deltaX * 0.005;
+	   $OMV_normSlideMult = `clamp 0.0001 1 $OMV_normSlideMult`;
+	   print ("NormalSlide Multiplier: " + $OMV_normSlideMult + "\n");	
+	}
+
+
+
+
+	if ($modifier != "ctrl")
+	{
+		
+	   for ($int = 0 ; $int < size($OMV_vtxName) ; $int++)
+	   {
+	   	$ATemp = $OMV_AList[$int];
+	   	$BTemp = $OMV_BList[$int];
+	   	$NTemp = $OMV_NList[$int];
+	   	$StartTemp = $OMV_startPos[$int];
+
+	   	move -ws 
+	  	   ( ($StartTemp.x) + ((($ATemp.x) * $AClamp) + (($BTemp.x) * $BClamp)) + (($NTemp.x) * $OMV_gNValueX) )
+	   	   ( ($StartTemp.y) + ((($ATemp.y) * $AClamp) + (($BTemp.y) * $BClamp)) + (($NTemp.y) * $OMV_gNValueX) )
+	  	   ( ($StartTemp.z) + ((($ATemp.z) * $AClamp) + (($BTemp.z) * $BClamp)) + (($NTemp.z) * $OMV_gNValueX) )
+	  	   $OMV_vtxName[$int];
+	   }
+	}
+	
+	
+	$OMV_gPrevPoint = $dragPoint;
+	refresh -currentView;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Function:	Returns to last tool used				///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OMT_to_selectionDraggerRelease()
+{
+	global string $gLastAction;
+	eval $gLastAction;	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Function:	Creates loopSlideDragger template and initiates it	///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OMT_to_selectionDragger() 
+{
+
+	global vector 	$OMV_AList[];
+	global vector 	$OMV_BList[];
+	global vector 	$OMV_NList[];
+	global string 	$OMV_vtxName[];
+	global vector 	$OMV_startPos[];
+	
+	global string 	$execString;
+
+
+	string $selection[] = `filterExpand -sm 32`;
+	
+	if(size($selection) > 0)
+	{
+
+	    $startTime = `timerX`;
+	    
+	    string $sortedEdges[] = OM_sortLoopEdges($selection);
+	    
+	    $totalTime = `timerX -startTime $startTime`;
+	    print ("SortEdges: "+$totalTime+"\n");
+	   
+	    
+	    
+	    $startTime = `timerX`;
+	    
+	    OM_setLoopSlideVectors($sortedEdges);
+	    
+	    $totalTime = `timerX -startTime $startTime`;
+	    print ("SetSlideVectors: "+$totalTime+"\n");
+
+	    
+	    if (!`draggerContext -exists OMT_selectionDragger`)
+		draggerContext OMT_selectionDragger;
+	
+	    draggerContext -e 
+		-pressCommand "OM_loopSlideDragger_doPress"
+		-dragCommand "OM_loopSlideDragger_doDrag"
+		-releaseCommand "OM_loopSlide_endDrag"
+		-cursor "crossHair"
+		OMT_selectionDragger;
+
+	    global float $OMV_gValueX;
+	    global float $OMV_gNValueX;
+	
+	    $OMV_gValueX = 0.5;
+	    $OMV_gNValueX = 0.0;
+			
+	    storeLastAction( "restoreLastContext " + `currentCtx` );setToolTo OMT_selectionDragger;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge array						///
+///	Output: 	array with organized edges. Each loop seperated by 0	///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc string[] OM_sortLoopEdges(string $edgeSelection[])
+{
+	
+ global string 	$OMV_partials[];
+	clear 	$OMV_partials;
+	
+	string	$dump[];
+	string 	$tempArray1[];
+	string 	$tempArray2[];
+	string 	$vtx[2];
+	string	$edgeNvtx[2];
+	string	$return[];
+	int	$int;
+	int	$stop;
+	
+
+	
+	for ($int = 0; $int < size($edgeSelection) ; $int++)
+	{
+		
+	   if ( OM_inArray($edgeSelection[$int], $OMV_partials) == 1) continue;
+	   
+	   clear $tempArray1;
+	   clear $tempArray2;
+	   $tempArray1[0] = $edgeSelection[$int];
+	   $tempArray2[0] = $edgeSelection[$int];
+	   
+	   $vtx = OM_edge2vtx($edgeSelection[$int]);
+	   
+	   if (OM_haveIndex($vtx[0]) == 1 && OM_isVtxQuad($vtx[0]) == 1)
+	   {
+		$edgeNvtx[1] = $vtx[0];	
+		do
+		{
+		   $stop = 0;
+		   
+		   $edgeNvtx = (OM_oppEdgeOnVtxInArray( $tempArray1[ (size($tempArray1) -1) ] , $edgeNvtx[1], $edgeSelection));
+		   if ($edgeNvtx[0] != 0) 
+		   {
+		   	$tempArray1[ size($tempArray1) ] = $edgeNvtx[0];
+		   	$OMV_partials[ size($OMV_partials) ] = $edgeNvtx[0];
+		   	if (OM_haveIndex($edgeNvtx[1]) != 1 || OM_isVtxQuad($vtx[0]) == 0 || $edgeNvtx[0] == $edgeSelection[$int]) $stop = 1;
+		   }
+		   else $stop = 1;
+		   
+		} 
+		while ($stop == 0);
+	   }
+	   				
+	   if (OM_haveIndex($vtx[1]) == 1 && OM_isVtxQuad($vtx[1]) == 1)
+	   {
+		$edgeNvtx[1] = $vtx[1];
+		do
+		{
+		   	
+		   $stop = 0;
+		   $edgeNvtx = (OM_oppEdgeOnVtxInArray( $tempArray2[ (size($tempArray2) -1) ] , $edgeNvtx[1], $edgeSelection));
+		   if ($edgeNvtx[0] != 0) 
+		   {
+		   	$tempArray2[ size($tempArray2) ] = $edgeNvtx[0];
+		   	$OMV_partials[ size($OMV_partials) ] = $edgeNvtx[0];
+		   	if (OM_haveIndex($edgeNvtx[1]) != 1 || OM_isVtxQuad($vtx[0]) == 0 || $edgeNvtx[0] == $edgeSelection[$int]) $stop = 1;
+		   }
+		   else $stop = 1;
+		   	
+		} 
+		while ($stop == 0);
+
+		
+	   }
+	   
+	   $dump = OM_combineStringArray($tempArray1 , $tempArray2);
+	   $return = OM_addStringArray($return, $dump);
+	   $return[ size($return) ] = 0;	   
+	   
+	}
+	
+	return $return;
+		
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Indput selection	 				///
+///	Output: 	String: Object name			 		///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc string OM_objectName(string $objSelection)
+{
+	string	$name[];
+	
+	tokenize $objSelection "." $name;
+	
+	return $name[0];
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	a vertex 						///
+///	Output: 	returns 1 if the vertex's a quad and 0 if it isn't	///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc int OM_isVtxQuad(string $vtx )
+{
+
+	string 	$token[];
+	string	$dump[];
+
+	int $result = 0;
+	
+	if( OM_haveIndex($vtx) == 1 )
+	{
+	   $token = `polyInfo -ve $vtx`;
+	   tokenize ($token[0], $dump);	
+
+	   if (size($dump) == 6 )
+	   { 
+		$result = 1;
+	   }
+	}
+	
+	return $result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	a vertex 						///
+///	Output: 	returns 1 if the vertex's a tris and 0 if it isn't	///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc int OM_isVtxTris(string $vtx )
+{
+
+	string 	$token[];
+	string	$dump[];
+
+	int $result = 0;
+	
+	if( OM_haveIndex($vtx) == 1 )
+	{
+	   $token = `polyInfo -ve $vtx`;
+	   tokenize ($token[0], $dump);	
+
+	   if (size($dump) == 5 )
+	   { 
+		$result = 1;
+	   }
+	}
+	
+	return $result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	a component name	 				///
+///	Output: 	returns 1 if the indput name has a number and 0 if	/// 
+///			it hasn't						///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc int OM_haveIndex(string $indput)
+{
+	string	$dump[];
+	
+	int $size = `tokenize $indput "[]" $dump`;
+	
+	int $return = 0;
+	
+	if ($size == 2)
+	{
+	   $return = 1;
+	}
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge plus a quad vertex adjacent to the edge.		///
+///	Output: 	string array, where [0] is the edge on the opposite side///
+///			of the vertex and [1] is the new vertex adjacent to the ///
+///			new edge, where the vtx isn't similar to the input 	///
+///			vertex							///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc string[] OM_OppEdgeOnVtx(string $edge, string $quadVtx)
+{
+
+	string 	$token[];
+	string	$dump[];
+	string 	$return[];
+	string 	$object = `OM_objectName($edge)`;
+	int	$int;
+	
+	$token = `polyInfo -ve $quadVtx`;
+	tokenize ($token[0], $dump);
+	
+	for ($int = 2 ; $int <= 5 ; $int++)
+	{
+	   
+	   if( ($object + ".e[" + $dump[$int] + "]") == $edge)
+	   {
+		if ($int == 2 || $int == 3) 
+		{
+		   $return[0] = ($object + ".e[" + $dump[($int+2)] + "]"); 
+		}
+		else $return[0] = ($object + ".e[" + $dump[($int-2)] + "]");
+	   }	
+	}
+
+	$token = `polyInfo -ev $return[0]`;
+	tokenize ($token[0], $dump);
+	
+	if (($object + ".vtx[" + $dump[2] + "]") == $quadVtx)
+	{
+		$return[1] = $object + ".vtx[" + $dump[3] + "]";
+	}
+	else	
+	{
+		$return[1] = $object + ".vtx[" + $dump[2] + "]";
+	}
+	
+	return $return;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	string and array		 			///
+///	Output: 	returns 1 if string occurs in array, 0 if not	 	///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc int OM_inArray( string $string , string $array[])
+{
+	int	$int;
+	int 	$return = 0;
+	
+	for ($int = 0 ; $int < size($array) ; $int++)
+	{
+	   if ( $string == $array[$int] ) {$return = 1;}
+	}
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput:		edge and a quad vertex					///
+///	Output: 	returns the opposite vertex on the edge			///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc string[] OM_OppVtxOnEdge(string $edge, string $quadVtx)
+{
+
+	string 	$token[];
+	string	$dump[];
+	string 	$return[0];
+	string 	$object = `OM_objectName($edge)`;
+	int	$int;
+	
+	$token = `polyInfo -ev $edge`;
+	tokenize ($token[0], $dump);
+	
+	if ( ($object + ".vtx[" + $dump[2] + "]") == $quadVtx) $return[1] = ($object + ".vtx[" + $dump[3] + "]");
+	else $return[1] = ($object + ".vtx[" + $dump[2] + "]");
+	
+	$token = `polyInfo -ve $return[1]`;
+	tokenize ($token[0], $dump);
+	
+	for ($int = 2 ; $int <= 5 ; $int++)
+	{
+	   
+	   if( ($object + ".e[" + $dump[$int] + "]") == $edge)
+	   {
+		if ($int == 2 || $int == 3) 
+		{
+		   $return[0] = ($object + ".e[" + $dump[($int+2)] + "]"); 
+		}
+		else $return[0] = ($object + ".e[" + $dump[($int-2)] + "]");
+	   }	
+	}
+	
+	return $return;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge			 				///
+///	Output: 	returns an array with the two vertices adjacent to 	///
+///			input edge						///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc string[] OM_edge2vtx(string $edge)
+{
+	string	$dump[];
+	string 	$token[];
+	string 	$object = `OM_objectName($edge)`;
+	string 	$return[];
+	
+	$token = `polyInfo -ev $edge`;
+	tokenize ($token[0], $dump);
+	
+	$return[0] = $object + ".vtx[" + $dump[2] + "]";
+	$return[1] = $object + ".vtx[" + $dump[3] + "]";
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge, quadVtx and a selection array			///
+///	Output: 	Returns the opposite edge on given quadVtx if the new 	///
+///			edge is in $selection 					///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc string[] OM_oppEdgeOnVtxInArray(string $edge, string $quadVtx, string $selection[])
+{
+
+ global string	$OMV_partials[];
+ 
+	int 	$int;
+	string 	$dump[];
+	string 	$token[];
+	string 	$return[2];
+	string 	$object = `OM_objectName($edge)`;
+	
+	$return[0] = 0;
+	
+	$token = `polyInfo -ve $quadVtx`;
+	tokenize ($token[0], $dump);
+	
+	for ($int = 2 ; $int <= 5 ; $int++)
+	{
+	   
+	   if( ($object + ".e[" + $dump[$int] + "]") == $edge)
+	   {
+		if ($int == 2 || $int == 3) 
+		{
+		   if (OM_inArray( ($object + ".e[" + $dump[($int+2)] + "]"), $selection) == 1) $return[0] = ($object + ".e[" + $dump[($int+2)] + "]"); 
+		}
+		else if (OM_inArray( ($object + ".e[" + $dump[($int-2)] + "]"), $selection) == 1) $return[0] = ($object + ".e[" + $dump[($int-2)] + "]");
+	   }	
+	}
+
+	
+	if ( $return[0] != 0 )
+	{
+	   $token = `polyInfo -ev $return[0]`;
+	   tokenize ($token[0], $dump);
+	
+	   if (($object + ".vtx[" + $dump[2] + "]") == $quadVtx)
+	   {
+		$return[1] = $object + ".vtx[" + $dump[3] + "]";
+	   }
+	   else	
+	   {
+		$return[1] = $object + ".vtx[" + $dump[2] + "]";
+	   }
+
+	}
+	
+	return $return;   	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+global proc OMT_to_selectionDraggerOptWin()
+{
+   if (`window -exists selectionDraggerOptWin`)
+      deleteUI selectionDraggerOptWin;
+
+   window -widthHeight 400 200 -title "Tool Settings" -sizeable false selectionDraggerOptWin;
+      string $mainForm = `formLayout`;
+         columnLayout -rowSpacing 10;
+            rowLayout -numberOfColumns 1 -columnWidth 1 380;
+	    text -label "                 Selection Dragger";
+               setParent ..;
+
+            string $mainTab = `tabLayout`;
+               string $tabFrame = `frameLayout -label "Selection Dragger Options" -width 380 -collapsable true -collapse true -borderStyle "etchedIn"`;
+                  columnLayout;
+                     tabLayout -e -tabLabel $tabFrame "Tool settings" $mainTab;
+
+		       string 	$optVarSectionName = "OMT_nVectorStyle";
+		       if (`optionVar -q "OMT_nVectorStyle"` == 0) optionVar -sv "OMT_nVectorStyle" "Projection";
+
+ 			optionMenuGrp -changeCommand ("optionVar -sv OMT_nVectorStyle `optionMenuGrp -q -v optionMenu_selectionDragger`") "optionMenu_selectionDragger";	
+ 			  menuItem -label "Projection";
+ 			  menuItem -label "Flow Dependent";
+			  menuItem -label "Similiar";
+
+			  optionMenuGrp -e -v (`optionVar -q "OMT_nVectorStyle"`) ("optionMenu_selectionDragger"); // Set the default here.
+
+/*			if (`optionVar -q "OMT_selectionSliderEnable"` == 0) optionVar -sv "OMT_selectionSliderEnable" "true";			  
+			  
+			checkBox
+				-label "Enable activate as default after split"
+                -value (`optionVar -q "OMT_selectionSliderEnable"`)
+                -onc ("optionVar -sv \"OMT_selectionSliderEnable\" \"true\"")
+                -ofc ("optionVar -sv \"OMT_selectionSliderEnable\" \"false\"");
+*/			
+                     setParent ..;
+                  setParent ..;
+               setParent ..;
+            setParent ..;
+
+
+   showWindow selectionDraggerOptWin;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	2 arrays		 				///
+///	Output: 	returns an array with the first array turned backwards	///
+///			and combined with the second			 	///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc string[] OM_combineStringArray(string $backwardArray[] , string $forwardArray[])
+{
+	int	$int;
+	string 	$return[];
+	
+	for ($int = (size($backwardArray)-1) ; $int >= 0 ; $int--)
+	{
+	   $return[(size($return))] = $backwardArray[$int];
+	}
+	for ($int = 1 ; $int <= (size($forwardArray)-1) ; $int++)
+	{
+	   $return[(size($return))] = $forwardArray[$int];	
+	}
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	2 arrays			 			///
+///	Output: 	adds the second array at the end of the first 		///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc string[] OM_addStringArray(string $origArray[] , string $addArray[])
+{
+	int	$int;
+
+	for ($int = 0 ; $int < size($addArray) ; $int++)
+	{
+	   $origArray[ size($origArray) ] = $addArray[$int];
+	}
+	return $origArray;
+}
+
+///////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,66 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc string zenHistoryCleanup(string $cleanupScript,string $cleanupNodes[],string $targetAttr)
+{		
+	string	$nodeList=`zenReturnStringArrayFormat $cleanupNodes`;
+	
+	string	$type=`getAttr -type $targetAttr`;
+	
+	string	$connectionScriptNode=`scriptNode -st 1 -n "zenHistoryLink#"`;
+	
+		addAttr -at message -ln proxy $connectionScriptNode;
+		addAttr -ln "scriptJobNum" -at long $connectionScriptNode;
+			
+	string	$proxy=($connectionScriptNode+".proxy");
+	
+		connectAttr -f $targetAttr $proxy;
+		
+	string	$script=
+		(
+			"proc zenCreateHistoryLink()\n"+
+			"{\n"+
+			"	string  $targetAttrList[]=`listConnections -plugs 1 "+$proxy+"`;print $targetAttrList;\n"+
+			"	string  $targetAttr=$targetAttrList[0];\n"+
+			"\n"+
+			"	string	$disconnectCommand=\n"+
+			"		(\n"+
+			"		\"if(!size(`listConnections -s 1 -d 0 "+$targetAttr+"`))\\n\"+"+
+			"		\"{\\n\"+\n"+
+			"		\"global string  $zenHistNodes[];\\n\"+\n"+
+			"		\"$zenHistNodes="+(encodeString($nodeList))+";\\n\"+\n"+			
+			"		\"for($n in $zenHistNodes)\\n\"+\n"+
+			"		\"	if(`objExists $n`) delete $n;\\n\"+\n"+
+			"		\"zenDeferCommand\\n\"+\n"+
+			"		\"(\\n\"+\n"+
+			"		\"\\\"if(`objExists "+$connectionScriptNode+"`)\\\\n\\\"+\\n\"+\n"+
+			"		\"\\\"scriptJob -force -k (`getAttr "+$connectionScriptNode+".scriptJobNum`)\\\"\\n\"+\n"+
+			"		\");\\n\"+\n"+
+			"		\"zenDeferCommand(\\\"if(`objExists "+$connectionScriptNode+"`) delete "+$connectionScriptNode+"\\\");\\n\"+\n"+
+			"		\""+encodeString($cleanupScript)+"\"+\n"+
+			"		\"}\\n\"\n"+
+			"		);\n"+
+			"\n"+
+			"	int	$scriptJobNum=`scriptJob -pro -cu 1 -con "+$targetAttr+" $disconnectCommand`;\n"+
+			"		setAttr \""+$connectionScriptNode+".scriptJobNum\" $scriptJobNum;\n"+
+			"}\n"+
+			"zenCreateHistoryLink;\n"
+		);
+		
+		scriptNode -e -bs $script $connectionScriptNode;
+		
+		scriptNode -eb $connectionScriptNode;
+	
+	return	$connectionScriptNode;
+}

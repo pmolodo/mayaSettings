@@ -1,0 +1,539 @@
+global proc shelf_nCloth () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Given a selected triangulated mesh, create an nCloth" 
+        -align "center" 
+        -label "Create nCloth" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nClothCreate.xpm" 
+        -image1 "nClothCreate.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doCreateNCloth 0" 
+        -sourceType "mel" 
+        -doubleClickCommand "nClothCreateOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Given an object and an nCloth, make object a collider with nCloth" 
+        -align "center" 
+        -label "Create Passive" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nClothCreatePassive.xpm" 
+        -image1 "nClothCreatePassive.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "makeCollideNCloth" 
+        -sourceType "mel" 
+        -doubleClickCommand "nClothMakeCollideOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Given a selected triangulated mesh, remove it from the nCloth" 
+        -align "center" 
+        -label "Remove nCloth" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nClothRemove.xpm" 
+        -image1 "nClothRemove.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "removeNCloth \"selected\"" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Display the input mesh" 
+        -align "center" 
+        -label "Display Input Mesh" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nClothDisplayInput.xpm" 
+        -image1 "nClothDisplayInput.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "displayNClothMesh \"input\"" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Display the current mesh" 
+        -align "center" 
+        -label "Display Current Mesh" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nClothDisplayCurrent.xpm" 
+        -image1 "nClothDisplayCurrent.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "displayNClothMesh \"current\"" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Allows interaction with objects during playback" 
+        -align "center" 
+        -label "Interactive Playback" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "interactivePlayback.xpm" 
+        -image1 "interactivePlayback.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "InteractivePlayback" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Paint the mappable thickness attribute" 
+        -align "center" 
+        -label "Thickness" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "PVT" 
+        -image "nClothPaintPerVertex.xpm" 
+        -image1 "nClothPaintPerVertex.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "setNClothMapType(\"thickness\",\"\",1); artAttrNClothToolScript 3 thickness" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create a transform constraint for selected nucleus object points" 
+        -align "center" 
+        -label "Transform Constraint" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nConstraintTransform.xpm" 
+        -image1 "nConstraintTransform.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doCreateNConstraint transform 0" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Create a constraint between selected nucleus object vertices, edges or faces" 
+        -align "center" 
+        -label "Component to Component" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nConstraintComponent.xpm" 
+        -image1 "nConstraintComponent.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doCreateNConstraint pointToPoint 0" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select cloth points and a collision object to constraint to" 
+        -align "center" 
+        -label "Point to Surface" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nConstraintPointoSurface.xpm" 
+        -image1 "nConstraintPointoSurface.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doCreateNConstraint pointToSurface 0" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select cloth points and a collision object to constraint to" 
+        -align "center" 
+        -label "Slide on Surface" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nConstraintSlideonSurface.xpm" 
+        -image1 "nConstraintSlideonSurface.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doCreateNConstraint slideOnSurface 0" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select cloth objects or components to weld together" 
+        -align "center" 
+        -label "Weld Adjacent Borders" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nConstraintWeldBorders.xpm" 
+        -image1 "nConstraintWeldBorders.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doCreateNConstraint weldBorders 0" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select cloth surface to make tearable" 
+        -align "center" 
+        -label "Tearable Surface" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nConstraintTearable.xpm" 
+        -image1 "nConstraintTearable.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doCreateNConstraint tearableSurface 0" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select dynamic objects and/or cvs between which to suppress collisions" 
+        -align "center" 
+        -label "Exclude Collide Pairs" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nConstraintExcludeCollision.xpm" 
+        -image1 "nConstraintExcludeCollision.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doCreateNConstraint collisionExclusion 0" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Select cloth components for which to disable collision with all other objects" 
+        -align "center" 
+        -label "Disable Collision" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nConstraintDisableCollision.xpm" 
+        -image1 "nConstraintDisableCollision.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doCreateNConstraint disableCollision 0" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Remove the selected dynamic constraint(s)" 
+        -align "center" 
+        -label "Remove Dynamic Constraint" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nConstraintRemove.xpm" 
+        -image1 "nConstraintRemove.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "removeDynamicConstraint \"selected\"" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Paint the mappable strength attribute" 
+        -align "center" 
+        -label "Strength" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "PVS" 
+        -image "nConstraintPaintPerVertex.xpm" 
+        -image1 "nConstraintPaintPerVertex.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "setNComponentMapType(\"strength\",1); artAttrNComponentToolScript 3 strength" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Given a selected ncloth mesh, create a cache." 
+        -align "center" 
+        -label "Create New Cache" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nClothCacheCreate.xpm" 
+        -image1 "nClothCacheCreate.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doCreateNclothCache 4 { \"2\", \"1\", \"10\", \"OneFilePerFrame\", \"1\", \"\",\"1\",\"\",\"0\", \"0\", \"0\", \"1\", \"1\",\"0\",\"1\" } " 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Delete cache on selected nCloth mesh." 
+        -align "center" 
+        -label "Delete Cache" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nClothCacheDelete.xpm" 
+        -image1 "nClothCacheDelete.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "deleteNclothCache" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Disable All Caches On Selected" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nClothCacheDisable.xpm" 
+        -image1 "nClothCacheDisable.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "setCacheEnable 0 0 {}" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Enable All Caches On Selected" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nClothCacheEnable.xpm" 
+        -image1 "nClothCacheEnable.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "setCacheEnable 1 0 {}" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Given a selected nCloth, merge existing caches into a new cache." 
+        -align "center" 
+        -label "Merge Caches" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nClothCacheMerge.xpm" 
+        -image1 "nClothCacheMerge.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "doCreateNclothCache 4 { \"2\", \"1\", \"10\", \"OneFilePerFrame\", \"1\", \"\",\"1\",\"\",\"0\", \"merge\", \"0\", \"1\", \"1\",\"0\",\"1\" } " 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Replace frame(s) in nCloth cache" 
+        -align "center" 
+        -label "Replace Cache Frame" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "nClothCacheReplaceFrames.xpm" 
+        -image1 "nClothCacheReplaceFrames.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "cacheFile -refresh -replaceCachedFrame -startTime 1 -endTime 1 -simulationRate 1 -sampleMultiplier 1" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Paint cache weights tool" 
+        -align "center" 
+        -label "Paint Cache Weights Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -imageOverlayLabel "PCW" 
+        -image "attrPaint.xpm" 
+        -image1 "attrPaint.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "PaintCacheToolOptions" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+
+} 

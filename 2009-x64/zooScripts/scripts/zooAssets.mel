@@ -1,0 +1,1430 @@
+//zooAssets is an asset management script.  It is designed to store data associated
+//with some sort of in-scene asset.  These assets are generally things like
+//cameras, models or animations.  Each asset can have a number of associated
+//attributes that can store any type of data.
+//
+//this particular script handles all user interface calls.  It is through the UI
+//that the functionality of this system is defined.  The "engine" code that drives
+//this script is contained in the zooAssetsUtils script, and allows a user to add
+//any sort of data to an asset they want.  The type of data thats actually
+//freely available to the user however is defined in the interface code.  This
+//means that should multiple versions of an asset manager be required, it can be
+//done simply by writing or modifying alternative versions of the interface, while
+//maintaining a common collection of utilities via the zooAssetsUtils core.
+//
+// ©2007 macaronikazoo.com
+
+
+zooArrays_str;
+zooAssetsUtils;
+zooFlags;
+zooTips;
+zooTriggeredUtils;
+zooUtils;
+
+
+global proc zooAssets() {
+	eval( "source zooAssetsWin" );
+	}
+
+
+//------
+//this proc controls the UI - most UI control functions are done through this proc
+//------
+global proc zooAssetsWindowFunctions( string $function, string $variable01 ) {
+	string $windowName = "zooAssetsWindow";
+	int $idx_select = 0;
+	int $idx_slot = 1;
+	int $idx_obj = 2;
+	int $idx_startBut = 3;
+	int $idx_start = 4;
+	int $idx_bothBut = 5;
+	int $idx_end = 6;
+	int $idx_endBut = 7;
+	int $idx_name = 0;
+	int $idx_stage = 1;
+	int $idx_notes = 2;
+	int $idx_mel = 3;
+
+	switch( $function ) {
+		//responsible for updating static UI information
+		case "update":
+			if( !`window -ex $windowName` ) return;
+			//update the view "order by" menuItems
+			string $orderModes[] = { "slot", "range", "colour", "name" };
+			string $orderMode = `optionVar -ex zooAssetsOrderMode`? `optionVar -q zooAssetsOrderMode`: "slot";
+
+			for( $mode in $orderModes ) if( $mode == $orderMode ) menuItem -e -cb 1 ( "zooAssetsOrder_"+ $mode );
+				else menuItem -e -cb 0 ( "zooAssetsOrder_"+ $mode );
+
+			zooAssetsWindowFunctions hideDisabled n;
+			zooAssetsWindowFunctions updateMenus n;
+			zooRevertAssetColour -1;
+			zooHighlightActiveAsset 0;
+			break;
+		case "updateMenus":
+			if( !`window -ex $windowName` ) return;
+			textField -e -tx `zooGetGlobalAttrData path` zooAssetsTextGlobalPath;
+			textField -e -tx `zooGetGlobalAttrData prefix` zooAssetsTextGlobalPrefix;
+			break;
+		case "updateNote":
+			if( !`window -ex $windowName` ) return;
+			int $slot = $variable01;
+			string $noteStr = `zooGetAttrData $slot notes`;
+			float $colR = 0.831;
+			float $colG = 0.816;
+			float $colB = 0.784;
+
+			button -e -ann $noteStr -vis 0 ( "zooAssetsFormTextNotes"+ $slot );
+			if( $noteStr == "" ) button -e -l "n" -bgc $colR $colG $colB ( "zooAssetsFormTextNotes"+ $slot );
+			else button -e -bgc 0.8 0.8 1.0 ( "zooAssetsFormTextNotes"+ $slot );
+			button -e -vis 1 ( "zooAssetsFormTextNotes"+ $slot );
+			break;
+		case "updateMEL":
+			if( !`window -ex $windowName` ) return;
+			int $slot = $variable01;
+			string $preStr = `zooGetAttrData $slot preMEL`;
+			string $postStr = `zooGetAttrData $slot postMEL`;
+			float $colR = 0.831;
+			float $colG = 0.816;
+			float $colB = 0.784;
+
+			button -e -ann $noteStr -vis 0 ( "zooAssetsFormTextMEL"+ $slot );
+			if( $preStr == "" && $postStr == "" ) button -e -l "mel" -bgc $colR $colG $colB ( "zooAssetsFormTextMEL"+ $slot );
+			else button -e -bgc 0.5 0.5 0.5 ( "zooAssetsFormTextMEL"+ $slot );
+			button -e -vis 1 ( "zooAssetsFormTextMEL"+ $slot );
+			break;
+		case "updateEditable":
+			if( !`window -ex $windowName` ) return;
+			//disable the parts of the UI that are meant to be disabled, and hide the disabled slots if they're meant to be hidden
+			int $showNames = `optionVar -ex zooShowActualAssetNames`? `optionVar -q zooShowActualAssetNames`: 0;
+			int $slots[] = {};
+
+			if( $variable01 == "*" ) $slots = `zooListAssets`;
+			else $slots[0] = $variable01;
+			for( $slot in $slots ) if( `control -ex ( "zooAssetFormRanges"+ $slot )` ) {
+				string $children1[] = `formLayout -q -ca ( "zooAssetFormRanges"+ $slot )`;
+				string $children2[] = `formLayout -q -ca ( "zooAssetsFormText"+ $slot )`;
+				int $locked = `zooLockAsset ( "-slot "+ $slot )`;
+				int $disable = `zooGetAttrData $slot disable`;
+
+				if( $disable ) zooColourAsset $slot disable;
+				else zooRevertAssetColour $slot;
+
+				nameField -e -en (!$locked) $children1[$idx_obj];
+				intField -e -ed (!$disable&&!$locked) $children1[$idx_start];
+				intField -e -ed (!$disable&&!$locked) $children1[$idx_end];
+				textField -e -ed (!$locked&&!$showNames) $children2[$idx_name];
+				}
+			break;
+		case "updateHeight":
+			if( !`window -ex $windowName` ) return;
+			int $slots[] = `zooListAssets`;
+			int $hideSetting = `optionVar -ex zooHideDisabledAssets`? `optionVar -q zooHideDisabledAssets`: 0;
+			int $numVisibleSlots = 0;
+
+			for( $s in $slots ) {
+				if( `zooGetAttrData $s disable` && $hideSetting ) continue;
+				else $numVisibleSlots++;
+				}
+
+			paneLayout -e -height( $numVisibleSlots*20+4 ) zooAssetsPane;
+			break;
+		case "updateFilter":
+			if( !`window -ex $windowName` ) return;
+			string $filterStr = `textField -q -tx zooAssetsTextViewFilter`;
+			int $hideSetting = `optionVar -ex zooHideDisabledAssets`? `optionVar -q zooHideDisabledAssets`: 0;
+			int $after = `intField -q -v zooAssetsIntStartFilter`;
+			int $before = `intField -q -v zooAssetsIntEndFilter`;
+			int $enableAfter = `control -q -docTag zooAssetsIntStartFilter`;
+			int $enableBefore = `control -q -docTag zooAssetsIntEndFilter`;
+			int $selOnly = `checkBox -q -v zooAssetsCheckSelFilter`;
+			int $slots[] = `zooListAssets`;
+			int $numVis = `size $slots`;
+
+			for( $s in $slots ) {
+				string $assetName = `zooGetAttrData $s name`;
+
+				control -e -vis 1 ( "zooAssetFormRanges"+ $s );
+				control -e -vis 1 ( "zooAssetsFormText"+ $s );
+				if( $filterStr != "" ) {
+					if( `match $filterStr $assetName` == "" ) {
+						control -e -vis 0 ( "zooAssetFormRanges"+ $s );
+						control -e -vis 0 ( "zooAssetsFormText"+ $s );
+						zooAssetSelectionTools unsingle $s;
+						$numVis--;
+						continue;
+						}
+					}
+
+				if( $selOnly ) {
+					string $c[] = `formLayout -q -ca ( "zooAssetFormRanges"+ $s )`;
+					int $state = `checkBox -q -v $c[0]`;
+					if( !$state ) {
+						control -e -vis 0 ( "zooAssetFormRanges"+ $s );
+						control -e -vis 0 ( "zooAssetsFormText"+ $s );
+						$numVis--;
+						continue;
+						}
+					}
+
+				if( $enableAfter ) {
+					int $start = `zooGetAttrData $s start`;
+					if( $start < $after ) {
+						control -e -vis 0 ( "zooAssetFormRanges"+ $s );
+						control -e -vis 0 ( "zooAssetsFormText"+ $s );
+						zooAssetSelectionTools unsingle $s;
+						$numVis--;
+						continue;
+						}
+					}
+
+				if( $enableBefore ) {
+					int $end = `zooGetAttrData $s end`;
+					if( $end > $before ) {
+						control -e -vis 0 ( "zooAssetFormRanges"+ $s );
+						control -e -vis 0 ( "zooAssetsFormText"+ $s );
+						zooAssetSelectionTools unsingle $s;
+						$numVis--;
+						continue;
+						}
+					}
+
+				if( $hideSetting ) {
+					int $disable = `zooGetAttrData $s disable`;
+					if( $disable ) {
+						control -e -vis 0 ( "zooAssetFormRanges"+ $s );
+						control -e -vis 0 ( "zooAssetsFormText"+ $s );
+						zooAssetSelectionTools unsingle $s;
+						$numVis--;
+						continue;
+						}
+					}
+				}
+
+			paneLayout -e -height( $numVis*20+4 ) zooAssetsPane;
+			zooAssetsWindowFunctions updateText "*";
+			break;
+		case "updateText":
+			if( !`window -ex $windowName` ) return;
+			int $numAssets = size(`zooListAssets`);
+			int $numVis = (`paneLayout -q -height zooAssetsPane`-4)/20;
+			int $numSel = size(`zooGetSelectedAssets`);
+
+			text -e -l( "selected: "+ $numSel +"  visible: "+ $numVis +"  total: "+ $numAssets ) zooAssetsTextInfo;
+			break;
+		case "updateTime":
+			if( !`window -ex $windowName` ) return;
+			int $slots[] = {};
+
+			if( $variable01 == "*" ) $slots = `zooListAssets`;
+			else $slots[0] = $variable01;
+			for( $slot in $slots ) {
+				string $UIs[] = `formLayout -q -ca ( "zooAssetFormRanges"+ $slot )`;
+				int $start = `zooGetAttrData $slot start`;
+				int $end = `zooGetAttrData $slot end`;
+				intField -e -v $start $UIs[$idx_start];
+				intField -e -v $end $UIs[$idx_end];
+				}
+			break;
+		case "updateName":
+			if( !`window -ex $windowName` ) return;
+			int $showNames = `optionVar -ex zooShowActualAssetNames`? `optionVar -q zooShowActualAssetNames`: 0;
+			int $slots[] = {};
+
+			if( $variable01 == "*" ) $slots = `zooListAssets`;
+			else $slots[0] = $variable01;
+			for( $s in $slots ) {
+				string $UIs[] = `formLayout -q -ca ( "zooAssetsFormText"+ $s )`;
+				string $name = `zooGetAttrData $s name`;
+				string $prefix = `zooGetGlobalAttrData prefix`;
+				string $displayName = $name;
+				if( $showNames ) $displayName = $prefix + $name;
+				textField -e -ed( !$showNames ) -tx $displayName $UIs[$idx_name];
+				}
+			break;
+		//this sub-proc builds the elements of the UI - adds all managed objects to the UI
+		case "rebuild":
+			if( !`window -ex $windowName` ) return;
+			string $existingUI1[] = `columnLayout -q -ca zooAssetsListA`;
+			string $existingUI2[] = `columnLayout -q -ca zooAssetsListB`;
+			string $orderMode = `optionVar -ex zooAssetsOrderMode`? `optionVar -q zooAssetsOrderMode`: "slot";
+			int $slots[] = `zooOrderAssets $orderMode`;
+
+			if( `size $existingUI1` ) deleteUI $existingUI1;
+			if( `size $existingUI2` ) deleteUI $existingUI2;
+			control -e -vis 0 zooAssetsListA;
+			control -e -vis 0 zooAssetsListB;
+			for( $n=0; $n<`size $slots`; $n++ ) zooAddAssetToUI $slots[$n];
+
+			control -e -vis 1 zooAssetsListA;
+			control -e -vis 1 zooAssetsListB;
+			zooAssetsWindowFunctions update n;
+			zooAssetsWindowFunctions updateName "*";
+			zooAssetsWindowFunctions updateText "*";
+			break;
+		case "toggleHideOption":
+			int $val = $variable01;
+			optionVar -iv zooHideDisabledAssets $val;
+			zooAssetsWindowFunctions updateFilter n;
+			break;
+		case "toggleNameView":
+			int $val = $variable01;
+			optionVar -iv zooShowActualAssetNames $val;
+			checkBox -e -v $val zooAssetsCheckFullNames;
+			zooAssetsWindowFunctions updateName "*";
+			break;
+		case "toggleFilterEnable":
+			int $state = `control -q -docTag $variable01`;
+			$state = !$state;
+			control -e -en $state -docTag $state $variable01;
+			zooAssetsWindowFunctions updateFilter n;
+			break;
+		case "nameChange":
+			int $slot = $variable01;
+			string $uiElts[] = `formLayout -q -ca ( "zooAssetsFormText"+ $slot )`;
+			string $name = `zooGetAttrData $slot name`;
+			textField -e -tx $name $uiElts[0];
+			break;
+		case "order":
+			optionVar -sv zooAssetsOrderMode $variable01;
+			zooAssetsWindowFunctions rebuild n;
+			zooAssetsWindowFunctions updateFilter n;
+			break;
+		case "savePrefs":
+			int $paneConfig[] = `paneLayout -q -ps zooAssetsPane`;
+			optionVar -iv zooAssetsPane $paneConfig[0];
+			break;
+		case "setDefaultPath":
+			string $filepath;
+			string $previousDir = ( `optionVar -ex zooAssetsPath`)? `optionVar -q zooAssetsPath`: "c:/temp/";
+
+			$filepath = `fileDialog -directoryMask ( $previousDir + "/*.*" )`;
+			if( $filepath != "" ) optionVar -sv zooAssetsPath $filepath;
+			break;
+		//changes the timeline to the start of a shot
+		case "start":
+			float $time = `currentTime -q`;
+			int $slot = $variable01;
+			int $start = `zooGetAttrData $slot start`;
+			playbackOptions -min $start;
+			if( $time < $start ) currentTime -e $start;
+			break;
+		case "end":
+			float $time = `currentTime -q`;
+			int $slot = $variable01;
+			int $end = `zooGetAttrData $slot end`;
+			playbackOptions -max $end;
+			if( $time > $end ) currentTime -e $end;
+			break;
+		case "both":
+			float $time = `currentTime -q`;
+			int $slot = $variable01;
+			int $start = `zooGetAttrData $slot start`;
+			int $end = `zooGetAttrData $slot end`;
+			playbackOptions -min $start -max $end;
+			if( $time < $start ) currentTime -e $start;
+			if( $time > $end ) currentTime -e $end;
+			break;
+		//manages the selected object(s) - ie connects it to the management node
+		case "manage":
+			string $objs[] = {};
+			string $confirm = "";
+
+			if( $variable01 == "*" ) $objs = `ls -sl`;
+			else $objs = { $variable01 };
+
+			if( !`size $objs` ) break;
+			if( `size $objs`>5 ) $confirm = `confirmDialog -title "Adding Multiple Assets" -message "You are trying to add more than 5 assets at once.\n\nIs this what you meant to do?" -button "Yes" -button "No" -defaultButton "Yes" -cancelButton "No" -dismissString "No"`;
+			if( $confirm == "No" ) break;
+
+			for( $a in $objs ) {
+				int $slot = `zooCreateAsset $a`;
+				zooAddAssetToUI $slot;
+				}
+			zooAssetsWindowFunctions updateHeight "*";
+			zooAssetsWindowFunctions updateText "*";
+			break;
+		case "importAssets":
+			string $filepath = `fileDialog -directoryMask ( "c:/*.ma" )`;
+			string $buildImported[] = `zooGetAssetsFromFile $filepath`;
+			string $node = `zooGetAssetNode 0`;
+
+			if( `objExists $node` ) delete $node;  //delete any existing assets node
+			print $buildImported;
+			for( $cmd in $buildImported ) catch(eval($cmd));
+			zooAssetsWindowFunctions rebuild n;
+			break;
+		case "expandRefs":
+			global int $mvExpandReferences;
+			int $val = (int)$variable01;
+			$mvExpandReferences = $val;
+			break;
+		case "exportObj":
+			string $objs[] = {};
+			int $slots[] = `zooGetSelectedAssets`;
+
+			if( `size $slots` ) $slots[0] = $variable01;
+			for( $s in $slots ) $objs[( `size $objs` )] = `zooGetAssetObj $s`;
+			$objs = `stringArrayRemoveDuplicates $objs`;
+			for( $obj in $objs ) zooExportObj $obj;
+			break;
+		case "emptySlot":
+			int $slot = `zooCreateAsset ""`;
+			zooAddAssetToUI $slot;
+			zooAssetsWindowFunctions updateHeight "*";
+			break;
+		case "delete":
+			int $slots[] = `zooGetSelectedAssets`;
+			int $slot = $variable01;
+			string $ret = "";
+
+			if( `size $slots` ) $ret = `confirmDialog -title "Delete Selected Slots?" -message "You sure you want to delete the selected slots?" -button "Yes" -button "No" -defaultButton "Darn Tootin!" -cancelButton "No" -dismissString "No"`;
+			else {
+				$slots = { $slot };
+				$ret = `confirmDialog -title ( "Delete Slot "+ $slot +"?" ) -message ( "You sure you want to delete slot "+ $slot +"?" ) -button "Yes" -button "No" -defaultButton "Darn Tootin!" -cancelButton "No" -dismissString "No"`;
+				}
+
+			if( $ret == "No" ) break;
+			for( $a in $slots ) {
+				zooRemoveAsset $a;
+				deleteUI ( "zooAssetFormRanges"+ $a );
+				deleteUI ( "zooAssetsFormText"+ $a );
+				}
+
+			zooAssetsWindowFunctions updateHeight "*";
+			zooAssetsWindowFunctions updateText "*";
+			break;
+		case "deleteUnused":
+			int $slots[] = `zooListAssets`;
+			for( $a in $slots ) if( !`zooIsSlotUsed $a` ) {
+				zooRemoveAsset $a;
+				deleteUI ( "zooAssetFormRanges"+ $a );
+				deleteUI ( "zooAssetsFormText"+ $a );
+				}
+
+			zooAssetsWindowFunctions updateHeight "*";
+			zooAssetsWindowFunctions updateText "*";
+			break;
+		case "deleteDisabled":
+			int $slots[] = `zooListAssets`;
+			for( $a in $slots ) if( `zooGetAttrData $a disable` ) {
+				zooRemoveAsset $a;
+				deleteUI ( "zooAssetFormRanges"+ $a );
+				deleteUI ( "zooAssetsFormText"+ $a );
+				}
+
+			zooAssetsWindowFunctions updateHeight "*";
+			zooAssetsWindowFunctions updateText "*";
+			break;
+		case "duplicate":
+			int $slot = $variable01;
+			int $slots[] = `zooGetSelectedAssets`;
+			int $newSlots[] = {};
+
+			if( !`size $slots` ) $slots = { $slot };
+			for( $s in $slots ) $newSlots[( `size $newSlots` )] = `zooDuplicateAsset $s`;print $newSlots;
+			for( $n in $newSlots ) zooAddAssetToUI $n;
+			zooAssetsWindowFunctions updateHeight "*";
+			zooAssetsWindowFunctions updateText "*";
+			break;
+		case "replaceObj":
+			string $obj = zooGetElement_str(0,`ls -sl`);
+			int $slot = $variable01;
+			int $slots[] = `zooGetSelectedAssets`;
+
+			if( !`size $slots` ) $slots = { $slot };
+			for( $n in $slots ) {
+				string $nameField = zooGetElement_str($idx_obj,`formLayout -q -ca ( "zooAssetFormRanges"+ $n )`);
+				if( `objExists $obj` ) zooSetAssetObj $n $obj;
+				nameField -e -o $obj $nameField;
+				}
+			break;
+		case "lock":
+			int $slots[] = `zooGetSelectedAssets`;
+			if( !`size $slots` ) $slots = { (int)$variable01 };
+			for( $slot in $slots ) zooLockAsset ( "-edit 1 -val 2 -slot "+ $slot );
+			zooAssetsWindowFunctionsSel updateEditable $slot;
+			break;
+		case "disable":
+			int $slot = $variable01;
+			int $slots[] = `zooGetSelectedAssets`;
+			int $disable = `zooGetAttrData $slot disable`;
+
+			if( !`size $slots` ) $slots = { $slot };
+			for( $slot in $slots ) zooChangeDataWrapper $slot disable ( !$disable );
+			zooAssetsWindowFunctionsSel updateEditable $slot;
+			break;
+		case "copyFrom":
+			int $slot = $variable01;
+			zooCopyAttrDataTo $slot {"name"} `zooGetSelectedAssets`;
+			zooAssetsWindowFunctionsSel updateEditable $slot;
+			zooAssetsWindowFunctionsSel updateTime $slot;
+			zooAssetsWindowFunctionsSel updateName $slot;
+			zooAssetsWindowFunctionsSel updateMEL $slot;
+			zooAssetsWindowFunctionsSel updateNote $slot;
+			break;
+		case "select":
+			int $slot = $variable01;
+			select -add `zooGetAssetObj $slot`;
+			break;
+		}
+	}
+
+
+//------
+//zooAssetsWindowFunctionsSel functions simply checks to see if assets are selected,
+//and if so, calls the zooAssetsWindowFunctions function for each selected asset,
+//otherwise it does it on the asset specified
+//------
+global proc zooAssetsWindowFunctionsSel( string $function, string $variable01 ) {
+	int $slots[] = `zooGetSelectedAssets`;
+	if( !`size $slots` ) $slots[0] = $variable01;
+	for( $slot in $slots ) zooAssetsWindowFunctions $function $slot;
+	}
+
+
+//------
+//adds an asset slot to the UI
+//------
+global proc zooAddAssetToUI( int $slot ) {
+	string $obj = `zooGetAssetObj $slot`;
+	string $noteStr = `zooGetAttrData $slot notes`;
+	int $start = `zooGetAttrData $slot start`;
+	int $end = `zooGetAttrData $slot end`;
+	int $locked = `zooLockAsset ( "-slot "+ $slot )`;
+	int $disable = `zooGetAttrData $slot disable`;
+
+	setParent zooAssetsListA;
+	string $form1 = `formLayout ( "zooAssetFormRanges"+ $slot )`;
+		string $selectShot = `checkBox -height 20 -width 14 -label "" -ann "select this slot" -cc( "zooAssetsWindowFunctions updateMenus n; zooAssetsWindowFunctions updateText n;" )`;
+		string $idLbl = `text -width 20 -l $slot -ann "this is the slot number for the asset"`;
+		string $obj = `nameField -height 20 -ann "this is the object connected to this slot" -o $obj`;
+		string $startGoto = `button -height 20 -width 12 -l "<" -ann "go to the start time for this slot" -c ( "zooAssetsWindowFunctions start "+ $slot )`;
+		string $startTime = `intField -height 20 -width 35 -ed (!$disable||!$locked) -v $start -ann "this is the start time for this slot" -cc ( "zooSetAttrData "+ $slot +" start #1" )`;
+		string $goToButton = `button -height 20 -width 19 -label "<>" -ann "go to the time range for this slot" -c ( "zooAssetsWindowFunctions both "+ $slot )`;
+		string $endTime = `intField -height 20 -width 35 -ed (!$disable||!$locked) -v $end -ann "this is the end time for this slot" -cc ( "zooSetAttrData "+ $slot +" end #1" )`;
+		string $endGoto = `button -height 20 -width 12 -l ">" -ann "go to the end time for this slot" -c ( "zooAssetsWindowFunctions end "+ $slot )`;
+	setParent..;
+
+	setParent zooAssetsListB;
+	string $form2 = `formLayout ( "zooAssetsFormText"+ $slot )`;
+		string $name = `textField -height 20 -cc( "zooSetAttrData "+ $slot +" name \"#1\"; zooAssetsWindowFunctions nameChange "+ $slot ) ( "zooAssetNameInput"+ $slot )`;
+		string $notes = `button -height 20 -width 15 -ann $noteStr -l "n" -c( "zooAssetsOpenNotesWindow "+ $slot ) ( "zooAssetsFormTextNotes"+ $slot )`;
+		string $mel = `button -height 20 -width 15 -ann "edit pre/post export MEL commands" -l "mel" -c( "zooAssetsMELWindow "+ $slot ) ( "zooAssetsFormTextMEL"+ $slot )`;
+	setParent..;
+
+	formLayout -e
+		-af $selectShot "left" 2
+
+		-af $idLbl "top" 2
+		-ac $idLbl "left" 3 $selectShot
+
+		-af $obj "top" 0
+		-ac $obj "left" 0 $idLbl
+		-ac $obj "right" 0 $startGoto
+
+		-ac $startGoto "right" 0 $startTime
+
+		-ac $startTime "right" 0 $goToButton
+
+		-ac $goToButton "right" 0 $endTime
+
+		-ac $endTime "right" 0 $endGoto
+
+		-af $endGoto "top" 0
+		-af $endGoto "right" 2
+		$form1;
+
+	formLayout -e
+		-af $name "left" 0
+		-af $name "right" 30
+
+		-ac $notes "left" 0 $name
+
+		-ac $mel "left" 0 $notes
+		$form2;
+
+	popupMenu -p $selectShot -mm 1 -pmc( "zooBuildAssetSelectMenu zooPopSel"+ $slot +" "+ $slot ) ( "zooPopSel"+ $slot );
+	popupMenu -p $obj -aob 1 -pmc( "zooBuildAssetMenu zooPopObj"+ $slot +" "+ $slot ) ( "zooPopObj"+ $slot );
+	popupMenu -p $startTime -aob 1 -pmc( "zooBuildAssetTimeMenu zooPopTimeStart"+ $slot +" start "+ $slot ) ( "zooPopTimeStart"+ $slot );
+	popupMenu -p $goToButton -aob 1 -pmc( "zooBuildAssetTimeMenu zooPopTimeBoth"+ $slot +" both "+ $slot ) ( "zooPopTimeBoth"+ $slot );
+	popupMenu -p $endTime -aob 1 -pmc( "zooBuildAssetTimeMenu zooPopTimeEnd"+ $slot +" end "+ $slot ) ( "zooPopTimeEnd"+ $slot );
+	popupMenu -p $name -aob 1 -pmc( "zooBuildAssetMenu zooPopPath"+ $slot +" "+ $slot ) ( "zooPopPath"+ $slot );
+	popupMenu -p $mel;
+		menuItem -l "execute PRE MEL" -c( "eval( `zooGetAssetMEL "+ $slot +" pre` )" );
+		menuItem -d 1;
+		menuItem -l "execute POST MEL" -c( "eval( `zooGetAssetMEL "+ $slot +" post` )" );
+		setParent -m ..;
+
+	zooAssetsWindowFunctions updateNote $slot;
+	zooAssetsWindowFunctions updateMEL $slot;
+	zooAssetsWindowFunctions updateEditable $slot;
+	zooAssetsWindowFunctions updateName $slot;
+	zooRevertAssetColour $slot;
+	}
+
+
+//------
+//handles all asset selection functions
+//------
+global proc zooAssetSelectionTools( string $function, int $slot ) {
+	string $UIs[] = `columnLayout -q -ca zooAssetsListA`;
+	int $hideSetting = `optionVar -ex zooHideDisabledAssets`? `optionVar -q zooHideDisabledAssets`: 0;
+	int $slots[] = `zooOrderAssets ""`;
+	int $state = 1;
+
+	switch( $function ) {
+		case "unsingle":
+		$state = 0;
+		case "single":
+		if( `control -ex ( "zooAssetFormRanges"+ $slot )` ) {
+			string $checkBox = zooGetElement_str(0,`formLayout -q -ca ( "zooAssetFormRanges"+ $slot )`);
+			int $slotVis = `control -q -vis ( "zooAssetFormRanges"+ $slot )`;
+			checkBox -e -v( $state*$slotVis ) $checkBox;
+			}
+		break;
+
+		case "unall":
+		$state = 0;
+		case "all":
+		for( $a in $slots ) {
+			string $checkBox = zooGetElement_str(0,`formLayout -q -ca ( "zooAssetFormRanges"+ $a )`);
+			int $slotVis = `control -q -vis ( "zooAssetFormRanges"+ $a )`;
+			checkBox -e -v( $state*$slotVis ) $checkBox;
+			}
+		break;
+
+		case "unabove":
+		$state = 0;
+		case "above":
+		int $start = $slots[0];
+		for( $n=0; $n<`size $slots`; $n++ ) if( $slots[$n] == $slot ) $start = $n;
+		for( $n=$start; $n>=0; $n-- ) {
+			string $UIName = $UIs[$n];
+			string $checkBox = zooGetElement_str(0,`formLayout -q -ca $UIName`);
+			int $slotVis = `control -q -vis ( "zooAssetFormRanges"+ $slots[$n] )`;
+			if( `checkBox -q -v $checkBox` == $state ) break;  //if the current checkbox is checked, break - selected assets serve as break points
+			checkBox -e -v( $state*$slotVis ) $checkBox;
+			}
+		break;
+
+		case "unbelow":
+		$state = 0;
+		case "below":
+		int $start = $slots[0];
+		for( $n=0; $n<`size $slots`; $n++ ) if( $slots[$n] == $slot ) $start = $n;
+		for( $n=$start; $n<`size $slots`; $n++ ) {
+			string $UIName = $UIs[$n];
+			string $checkBox = zooGetElement_str(0,`formLayout -q -ca $UIName`);
+			int $slotVis = `control -q -vis ( "zooAssetFormRanges"+ $slots[$n] )`;
+			if( `checkBox -q -v $checkBox` == $state ) break;  //if the current checkbox is checked, break - selected assets serve as break points
+			checkBox -e -v( $state*$slotVis ) $checkBox;
+			}
+		break;
+		}
+
+	zooAssetsWindowFunctions updateMenus "*";
+	zooAssetsWindowFunctions updateText "*";
+	}
+
+
+//------
+//creates a window to allow the user to add a list of shots to be associated with a slot
+//------
+global proc zooAssetsOpenShotsWindow( int $slot ) {
+	string $windowName = "zooAssetsShotListWindow";
+	string $windowTitle = "shotlist for slot "+ $slot;
+	string $shots = `zooGetAttrData $slot shots`;
+	int $locked = `zooLockAsset ( "-slot "+ $slot )`;
+	int $startShot = 0;
+	int $endShot = 1;
+
+	string $temp[] = {};
+	if( $shots != "" ) tokenize $shots ":" $temp;
+	if( `size $temp` ) {
+		$startShot = $temp[0];
+		$endShot = $temp[1];
+		}
+
+	if( `window -exists $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -width 200 -height 150 $windowName;
+	string $form = `formLayout`;
+		string $startLbl = `text -l "start shot"`;
+		string $start = `intField -v $startShot -width 35`;
+		string $endLbl = `text -l "end shot"`;
+		string $end = `intField -v $endShot -width 35`;
+		string $save = `button -en( !$locked ) -l "save" -c( "zooChangeDataWrapper "+ $slot +" shots ( `intField -q -v "+ $start +"`+ \":\"+ `intField -q -v "+ $end +"` ); deleteUI "+ $windowName +"; zooAssetsWindowFunctionsSel updateTime "+ $slot )`;
+		string $canc = `button -l "cancel" -c( "deleteUI "+ $windowName )`;
+
+	formLayout -e
+		-af $startLbl "top" 3
+		-af $startLbl "left" 0
+
+		-af $start "top" 0
+		-ac $start "left" 5 $startLbl
+		-ap $start "right" 1 50
+
+		-af $endLbl "top" 3
+		-ap $endLbl "left" 1 50
+
+		-af $end "top" 0
+		-ac $end "left" 5 $endLbl
+		-af $end "right" 0
+
+		-ac $save "top" 0 $start
+		-af $save "left" 0
+		-ap $save "right" 1 50
+
+		-ac $canc "top" 0 $start
+		-ap $canc "left" 1 50
+		-af $canc "right" 0
+		$form;
+
+	showWindow $windowName;
+	}
+
+
+global proc zooAssetsSearchReplaceWindow( int $slot ) {
+	string $windowName = "zooAssetsSearchReplaceWindow";
+	string $windowTitle = "search & replace attr data for slot:"+ $slot;
+	string $slotsStr = "{";
+	int $slots[] = `zooGetSelectedAssets`;
+	int $locked = `zooLockAsset ( "-slot "+ $slot )`;
+
+	if( !`size $slots` ) $slots[0] = $slot;
+	if( `window -exists $windowName` ) deleteUI $windowName;
+	$slotsStr = "{"+ $slots[0];
+	for( $n=1; $n<`size $slots`; $n++ ) $slotsStr = $slotsStr +","+ $slots[$n];
+	$slotsStr = $slotsStr +"}";
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -width 250 -height 50 $windowName;
+	string $form = `formLayout`;
+		string $attrLbl = `text -l "act on attribute:"`;
+		string $attrList = `textField -tx name zooSearchReplaceMenuAttr`;
+		popupMenu -p $attrList;
+			menuItem -l "name" -c( "textField -e -tx name zooSearchReplaceMenuAttr" );
+			menuItem -l "notes" -c( "textField -e -tx notes zooSearchReplaceMenuAttr" );
+			menuItem -l "preMEL" -c( "textField -e -tx preMEL zooSearchReplaceMenuAttr" );
+			menuItem -l "postMEL" -c( "textField -e -tx postMEL zooSearchReplaceMenuAttr" );
+			menuItem -l "path" -c( "textField -e -tx path zooSearchReplaceMenuAttr" );
+		string $searchLbl = `text -l "search for:"`;
+		string $search = `textField -width 35 zooAssetsSearchString`;
+		string $replaceLbl = `text -l "replace with:"`;
+		string $replace = `textField -width 35 zooAssetsReplaceString`;
+		string $go = `button -en( !$locked ) -l "go" -c( "{ string $attr = `textField -q -tx zooSearchReplaceMenuAttr`; zooSearchReplaceAttrData "+ $slotsStr +" $attr `textField -q -tx "+ $search +"` `textField -q -tx "+ $replace +"`; deleteUI "+ $windowName +"; zooAssetsWindowFunctionsSel updateName "+ $slot +";}" )`;
+		string $canc = `button -l "cancel" -c( "deleteUI "+ $windowName )`;
+
+	formLayout -e
+		-af $attrLbl "top" 3
+		-af $attrLbl "left" 5
+
+		-af $attrList "top" 0
+		-ac $attrList "left" 5 $attrLbl
+		-af $attrList "right" 0
+
+		-ac $searchLbl "top" 3 $attrList
+		-af $searchLbl "left" 5
+		-ap $searchLbl "right" 1 50
+
+		-ac $search "top" 3 $searchLbl
+		-af $search "left" 0
+		-ap $search "right" 1 50
+
+		-ac $replaceLbl "top" 3 $attrList
+		-ap $replaceLbl "left" 5 50
+		-af $replaceLbl "right" 0
+
+		-ac $replace "top" 3 $replaceLbl
+		-ap $replace "left" 1 50
+		-af $replace "right" 0
+
+		-ac $go "top" 0 $search
+		-af $go "left" 0
+		-ap $go "right" 1 50
+
+		-ac $canc "top" 0 $search
+		-ap $canc "left" 1 50
+		-af $canc "right" 0
+		$form;
+
+	showWindow $windowName;
+	}
+
+
+//------
+//this proc opens a window to set any sort of asset attribue.  it opens a very simple
+//window with a textField input, a "set" button and a "remove" button.  This window
+//can be used to provide a basic interface to set any asset attribute
+//
+//however, its used almost exclusively to set the custom export path attribute
+//------
+global proc zooSetAssetAttrWindow( int $slot, string $attr ) {
+	string $windowName = "zooAssetsSetAttrWindow";
+	string $windowTitle = "set "+ $attr +" for slot "+ $slot;
+	string $attrCap = toupper(`substring $attr 1 1`) + `substring $attr 2 (size($attr))`;
+	int $locked = `zooLockAsset ( "-slot "+ $slot )`;
+
+	if( `window -exists $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -width 350 -height 20 $windowName;
+	string $form = `formLayout`;
+		string $textField = `textField -tx( zooGetAttrData($slot,$attr)) -cc( "{string $new = \"#1\"; if( `match \"/$\" $new` == \"\" ) $new += \"/\"; textField -e -tx $new zooAssetsSetAttrInput; }" ) zooAssetsSetAttrInput`;
+		string $goButt = `button -l "set" -c( "zooChangeDataWrapper "+ $slot +" "+ $attr +" `textField -q -tx zooAssetsSetAttrInput`; deleteUI "+ $windowName +"; zooAssetsWindowFunctionsSel update"+ $attrCap +" "+ $slot +";" )`;
+		string $cancButt = `button -l "remove" -c( "zooChangeDataWrapper "+ $slot +" "+ $attr +" \"\"; deleteUI "+ $windowName )`;
+		popupMenu -p $textField -pmc( "zooBuildSlotExportPathMenu "+ $slot +" zooAssetsPopupSetAttr" ) zooAssetsPopupSetAttr;
+
+	formLayout -e
+		-af $textField "top" 0
+		-af $textField "left" 0
+		-ac $textField "right" 0 $goButt
+
+		-af $goButt "top" 0
+		-ac $goButt "right" 0 $cancButt
+
+		-af $cancButt "top" 0
+		-af $cancButt "right" 0
+		$form;
+	showWindow $windowName;
+	}
+
+
+//------
+//opens a window for adding/editing notes
+//------
+global proc zooAssetsOpenNotesWindow( int $slot ) {
+	string $windowName = "zooAssetsNoteWindow";
+	string $windowTitle = "notes for slot "+ $slot;
+	string $noteText = "";
+	string $saveLbl = "save note";
+	string $deleteLbl = "delete note";
+	int $locked = 0;
+	int $sel = size(`zooGetSelectedAssets`);
+
+	if( $sel ) $saveLbl = "*save notes";
+	if( $sel ) $deleteLbl = "*delete notes";
+	if( $slot < 0 ) {
+		$noteText = `zooGetGlobalAttrData notes`;
+		$windowTitle = "global notes";
+		}
+	else {
+		$noteText = `zooGetAttrData $slot notes`;
+		$locked = `zooLockAsset ( "-slot "+ $slot )`;
+		}
+
+	if( `window -exists $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -resizeToFitChildren 0 -maximizeButton 0 -sizeable 1 -width 200 -height 150 $windowName;
+	string $form = `formLayout`;
+		string $text = `scrollField -ed( !$locked ) -tx $noteText -ww 1`;
+		string $save = `button -en( !$locked ) -l $saveLbl -c( "zooChangeDataWrapper "+ $slot +" notes `scrollField -q -tx "+ $text +"`; deleteUI "+ $windowName +"; zooAssetsWindowFunctionsSel updateNote "+ $slot )`;
+		string $rem = `button -en( !$locked ) -l $deleteLbl -c( "zooChangeDataWrapper "+ $slot +" notes \"\"; deleteUI "+ $windowName +"; zooAssetsWindowFunctionsSel updateNote "+ $slot )`;
+		string $canc = `button -l "cancel" -c( "deleteUI "+ $windowName )`;
+
+	formLayout -e
+		-af $text "top" 0
+		-af $text "left" 0
+		-af $text "right" 0
+		-ac $text "bottom" 0 $save
+
+		-af $save "left" 0
+		-ap $save "right" 0 38
+		-af $save "bottom" 0
+
+		-ap $rem "left" 0 38
+		-ap $rem "right" 0 76
+		-af $rem "bottom" 0
+
+		-ap $canc "left" 0 76
+		-af $canc "right" 0
+		-af $canc "bottom" 0
+		$form;
+
+	//if the slot specified is -1, the the notes are to be added to the global slot
+	if( $slot < 0 ) {
+		button -e -l "send email" -c( "zooSetGlobalAttrData notes `scrollField -q -tx "+ $text +"`; deleteUI "+ $windowName +"; zooSendEmailForSlot `zooGetSelectedAssets` \"-notes 1\";" ) $save;
+		button -e -l "delete note" -c( "zooSetGlobalAttrData notes \"\"; deleteUI "+ $windowName ) $rem;
+		}
+
+	showWindow $windowName;
+	}
+
+
+//------
+//window for pre/post mel command editing
+//------
+global proc zooAssetsMELWindow( int $slot ) {
+	zooPresetManager;
+
+	string $windowName = "zooAssetsMELWindow";
+	string $windowTitle = "pre/post MEL for slot "+ $slot;
+	string $preMELStr = `zooGetAttrData $slot preMEL`;
+	string $postMELStr = `zooGetAttrData $slot postMEL`;
+	int $slots[] = `zooGetSelectedAssets`;
+	int $locked = `zooLockAsset ( "-slot "+ $slot )`;
+	string $x = `size $slots`? "*": "";
+
+	if( `window -ex $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -width 200 -height 150 $windowName;
+	string $form = `formLayout`;
+		string $preMELLbl = `text -l "pre MEL command"`;
+		string $preMEL = `scrollField -tx $preMELStr`;
+		string $preMELPrev = `checkBox -l "preview" -cc( "{ if( #1 ) zooSetAttrData "+ $slot +" preMEL ( `scrollField -q -tx "+ $preMEL +"` ); string $c = `zooGetAttrData "+ $slot +" preMEL`; if( #1 ) $c = `zooGetAssetMEL "+ $slot +" pre`; scrollField -e -ed (!(#1)) -tx $c "+ $preMEL +"; }" ) zooAssetsPreMELCheckPreview`;
+		string $postMELLbl = `text -l "post MEL command"`;
+		string $postMEL = `scrollField -tx $postMELStr`;
+		string $postMELPrev = `checkBox -l "preview" -cc( "{ if( #1 ) zooSetAttrData "+ $slot +" postMEL ( `scrollField -q -tx "+ $postMEL +"` ); string $c = `zooGetAttrData "+ $slot +" postMEL`; if( #1 ) $c = `zooGetAssetMEL "+ $slot +" post`; scrollField -e -ed (!(#1)) -tx $c "+ $postMEL +"; }" ) zooAssetsPostMELCheckPreview`;
+		string $save = `button -en( !$locked ) -l( $x +"save" ) -c( "if( !`checkBox -q -v zooAssetsPreMELCheckPreview` ) zooChangeDataWrapper "+ $slot +" preMEL ( `scrollField -q -tx "+ $preMEL +"` ); if( !`checkBox -q -v zooAssetsPostMELCheckPreview` ) zooChangeDataWrapper "+ $slot +" postMEL ( `scrollField -q -tx "+ $postMEL +"` ); deleteUI "+ $windowName +"; zooAssetsWindowFunctionsSel updateMEL "+ $slot )`;
+		string $delete = `button -l( $x +"delete cmds" ) -c( "zooChangeDataWrapper "+ $slot +" preMEL \"\"; zooChangeDataWrapper "+ $slot +" postMEL \"\"; deleteUI "+ $windowName +"; zooAssetsWindowFunctionsSel updateMEL "+ $slot )`;
+		string $canc = `button -l "cancel" -c( "deleteUI "+ $windowName )`;
+
+	popupMenu -p $preMELLbl -pmc( "zooPrePostPresetMenu "+ $slot +" zooAssetsPreMELPresetPup "+ $preMEL +";" ) zooAssetsPreMELPresetPup;
+	popupMenu -p $postMELLbl -pmc( "zooPrePostPresetMenu "+ $slot +" zooAssetsPostMELPresetPup "+ $postMEL +";" ) zooAssetsPostMELPresetPup;
+	formLayout -e
+		-af $preMELLbl "top" 1
+		-af $preMELLbl "left" 0
+
+		-af $preMELPrev "top" 1
+		-af $preMELPrev "right" 0
+
+		-ac $preMEL "top" 1 $preMELLbl
+		-af $preMEL "left" 0
+		-af $preMEL "right" 0
+		-ap $preMEL "bottom" 10 48
+
+		-ac $postMELLbl "top" 1 $preMEL
+		-af $postMELLbl "left" 0
+
+		-ac $postMELPrev "top" 1 $preMEL
+		-af $postMELPrev "right" 0
+
+		-ac $postMEL "top" 1 $postMELLbl
+		-af $postMEL "left" 0
+		-af $postMEL "right" 0
+		-ac $postMEL "bottom" 0 $save
+
+		-af $save "left" 0
+		-ap $save "right" 0 33
+		-af $save "bottom" 0
+
+		-ap $delete "left" 0 33
+		-ap $delete "right" 0 67
+		-af $delete "bottom" 0
+
+		-ap $canc "left" 0 67
+		-af $canc "right" 0
+		-af $canc "bottom" 0
+		$form;
+
+	showWindow $windowName;
+	}
+
+
+global proc zooPrePostPresetMenu( int $slot, string $parent, string $textField ) {
+	string $locales[] = {};
+	string $presets[] = `zooListAllPresets zooAssets txt $locales 1`;
+	//string $presets[] = `zooListPresets "global" zooAssets txt`;
+
+	setParent -m $parent;
+	menu -e -dai $parent;
+
+	for( $n=0; $n<`size $presets`; $n++ ) {
+		string $file = `zooGetPresetDirectory $locales[$n] zooAssets` + $presets[$n];
+		menuItem -l( `match "^[^.]+" $presets[$n]` ) -c( "{string $contents[] = `zooReadFile \""+ $file +"\" \"\"`; string $contentsStr = `zooArrayToStr_str $contents \"\"`; scrollField -e -tx $contentsStr "+ $textField +";}" );
+		}
+	menuItem -d 1;
+	menuItem -l "save preset" -c( "{string $ans = `promptDialog -m \"preset name:\" -b \"OK\" -b \"Cancel\" -db \"OK\"`; if( $ans == \"OK\" ) {string $name = `promptDialog -q -tx`;zooSavePreset \"global\" zooAssets txt $name `scrollField -q -tx "+ $textField +"`;}}" );
+	menuItem -d 1;
+	menuItem -l "manage presets" -c( "zooPresetManagerWin \"global\" zooAssets txt;" );
+	}
+
+
+global proc zooAssetsArithmeticWindow( int $slot, int $startEnabled, int $endEnabled ) {
+	string $windowName = "zooAssetsArithmeticWindow";
+	string $windowTitle = "shotlist for slot "+ $slot;
+
+	if( `size (zooGetSelectedAssets())`) $windowTitle = "shotlist for selected slots";
+	if( `window -exists $windowName` ) deleteUI $windowName;
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 1 -width 200 -height 100 $windowName;
+	string $form = `formLayout`;
+		string $rads = `radioCollection zooAssetsArithmeticRadios`;
+		string $opsCol = `columnLayout -rs 5 -adj 1`;
+			string $addRad = `radioButton -sl -l "add" add`;
+			string $multRad = `radioButton -l "muliply" mult`;
+		setParent ..;
+		string $startChk = `checkBox -l "start" -v $startEnabled -cc( "control -e -en #1 zooAssetsArithmeticStart;" )`;
+		string $start = `floatField -en $startEnabled -v 0 -w 70 zooAssetsArithmeticStart`;
+		string $endChk = `checkBox -l "end" -v $endEnabled -cc( "control -e -en #1 zooAssetsArithmeticEnd;" )`;
+		string $end = `floatField -en $endEnabled -v 0 -w 70 zooAssetsArithmeticEnd`;
+		string $save = `button -l "apply" -c( "zooApplyArithmetic "+ $slot )`;
+		string $canc = `button -l "cancel" -c( "deleteUI "+ $windowName )`;
+
+	formLayout -e
+		-af $opsCol "top" 0
+		-af $opsCol "left" 0
+
+		-af $startChk "top" 3
+		-ac $startChk "left" 10 $opsCol
+		-an $startChk "bottom"
+
+		-af $start "top" 3
+		-af $start "right" 0
+		-an $start "bottom"
+
+		-ac $endChk "top" 3 $start
+		-ac $endChk "left" 10 $opsCol
+		-an $endChk "bottom"
+
+		-ac $end "top" 0 $start
+		-af $end "right" 0
+		-an $end "bottom"
+
+		-af $save "left" 0
+		-ap $save "right" 1 50
+		-af $save "bottom" 0
+
+		-ap $canc "left" 1 50
+		-af $canc "right" 0
+		-af $canc "bottom" 0
+		$form;
+
+	showWindow $windowName;
+	}
+
+
+global proc zooApplyArithmetic( int $slot ) {
+	string $operation = `radioCollection -q -sl zooAssetsArithmeticRadios`;
+	string $optionStr = "-operation "+ $operation;
+	float $start = `floatField -q -v zooAssetsArithmeticStart`;
+	float $end = `floatField -q -v zooAssetsArithmeticEnd`;
+	int $doStart = `control -q -en zooAssetsArithmeticStart`;
+	int $doEnd = `control -q -en zooAssetsArithmeticEnd`;
+	int $slots[] = `zooGetSelectedAssets`;
+
+	if( !`size $slots` ) $slots = { $slot };
+	if( $doStart ) $optionStr += " -startFactor "+ $start;
+	if( $doEnd ) $optionStr += " -endFactor "+ $end;
+	zooRangeArithmetic $optionStr $slots;
+	zooAssetsWindowFunctionsSel updateTime $slot;
+	}
+
+
+//------
+//highlights (changes the colour) the current shot in the UI.  it is usually called by a scriptJob triggered by time change
+//------
+global proc zooHighlightActiveAsset( int $force ) {
+	int $userSetting = `optionVar -ex zooHighlightActiveAsset`? `optionVar -q zooHighlightActiveAsset`: 0;
+	if( !$userSetting && !$force ) return;
+
+	int $slots[] = `zooListAssets`;
+	int $currentSlots[] = `zooGetCurrentAssets`;
+
+	zooRevertAssetColour -1;
+	for( $n in $currentSlots ) zooColourAsset $n active;
+	}
+
+
+//------
+//reverts all slot colours to their pre-determined colours
+//------
+global proc zooRevertAssetColour( int $slot ) {
+	int $slots[] = `zooListAssets`;
+
+	if( $slot > -1 ) $slots = { $slot };
+	for( $n in $slots ) {
+		zooColourAsset $n `zooGetAttrData $n colour`;
+		if( `zooGetAttrData $n disable` == "1" ) zooColourAsset $n disable;
+		}
+	}
+
+
+//------
+//changes the colour of a shot in the UI - NOTE: this is a purely UI function.  It only changes the colour of the UI elements.  Setting, and querying a slot's colour is done using the standard slot querying and setting functions
+//------
+global proc zooColourAssetWrapper( int $slot, string $colour ) {
+	int $selected[] = `zooGetSelectedAssets`;
+	if( `size $selected` ) for( $a in $selected ) zooColourAsset $a $colour;
+	else zooColourAsset $slot $colour;
+	}
+
+
+//------
+//changes the colour of a shot in the UI - NOTE: this is a purely UI function.  It only changes the colour of the UI elements.  Setting, and querying a slot's colour is done using the standard slot querying and setting functions
+//------
+global proc zooColourAsset( int $slot, string $colour ) {
+	int $disable = `zooGetAttrData $slot disable`;
+	if( $disable ) $colour = "disable";
+
+	string $UIElts[] = `formLayout -q -ca ( "zooAssetFormRanges" + $slot )`;
+	int $buttsToChange[] = { 2, 4, 6 };
+	float $colR = 0.831;
+	float $colG = 0.816;
+	float $colB = 0.784;
+
+	//otherwise, set the colour attributes
+	if( $colour == "active" ) { $colR = 0.0; $colG = 1.0; $colB = 0.0; }
+	if( $colour == "red" ) { $colR = 0.784; $colG = 0.176; $colB = 0.176; }
+	if( $colour == "orange" ) { $colR = 1.0; $colG = 0.549; $colB = 0.157; }
+	if( $colour == "yellow" ) { $colR = 0.922; $colG = 0.922; $colB = 0.447; }
+	if( $colour == "green" ) { $colR = 0.518; $colG = 0.825; $colB = 0.227; }
+	if( $colour == "blue" ) { $colR = 0.376; $colG = 0.392; $colB = 0.573; }
+	if( $colour == "purple" ) { $colR = 0.537; $colG = 0.294; $colB = 0.612; }
+	if( $colour == "disable" ) { $colR = 0.55; $colG = 0.55; $colB = 0.55; }
+
+	for( $num in $buttsToChange ) {
+		control -e -bgc $colR $colG $colB -vis 0 $UIElts[$num];
+		control -e -vis 1 $UIElts[$num];
+		}
+	}
+
+
+//------
+//returns a list of selected slots
+//------
+global proc int[] zooGetSelectedAssets() {
+	int $slots[] = `zooListAssets`;
+	int $sel[] = {};
+
+	if( `size $slots` ) for( $a in $slots ) if( `control -ex ( "zooAssetFormRanges"+ $a )` ) {
+		string $children[] = `formLayout -q -ca ( "zooAssetFormRanges"+ $a )`;
+		if( `checkBox -q -v $children[0]` ) $sel[( `size $sel` )] = $a;
+		}
+
+	return $sel;
+	}
+
+
+//------
+//this wrapper function basically just calls the zooSetAttrData function, but if slots are selected, then it batch changes relevant slots
+//NOTE: this proc actually unlocks each slot before setting its value - so whats the point of locking then you ask?  well locking is more of a UI feature than anything else
+//editing attributes manually is already hard enough so the locking is more of a UI lock. most functions are disabled when a slot is locked anyway
+//------
+global proc zooChangeDataWrapper( int $slot, string $flag, string $value ) {
+	int $selected[] = `zooGetSelectedAssets`;
+	int $lockStates[] = {};
+
+	if( !`size $selected` ) $selected = { $slot };
+	for( $a in $selected ) {
+		$lockStates[( `size $lockStates` )] = `zooLockAsset ( "-slot "+ $a )`;
+		zooLockAsset ( "-edit 1 -val 0 -slot "+ $a );
+		}
+
+	//batch set the values
+	for( $a in $selected ) zooSetAttrData $a $flag $value;
+
+	//revert the slot's locked status
+	for( $n=0; $n<`size $lockStates`; $n++ ) zooLockAsset ( "-edit 1 -val "+ $lockStates[$n] +" -slot "+ $selected[$n] );
+	}
+
+
+//------
+//builds the RMB menu attached to the object name in the UI
+//------
+global proc zooBuildAssetMenu( string $parent, string $slot ) {
+	string $selObjs[] = `ls -sl`;
+	string $template = `zooGetAttrData $slot template`;
+	string $path = `zooGetAttrData $slot path`;
+	string $prefix = "";
+	string $exportFile = `zooGetSlotExportFilepath $slot` +".ext";
+	int $disable = `zooGetAttrData $slot disable`;
+	int $locked = `zooLockAsset ( "-slot "+ $slot )`;
+	int $linkToShots = `zooGetAttrData $slot linkToShots`;
+	int $anim = `zooGetAttrData $slot anim`;
+	int $shapes = `zooGetAttrData $slot shapes`;
+	int $start = `zooGetAttrData $slot start`;
+	int $end = `zooGetAttrData $slot end`;
+	int $selected[] = `zooGetSelectedAssets`;
+	int $sel = size($selected);
+	int $warn = $sel;
+	int $p4Menu = `optionVar -ex zooAssetsP4Menu`? `optionVar -q zooAssetsP4Menu`: 1;
+
+	if( $sel ) $prefix = "*selected* ";
+	for( $x in $selected ) if( $slot == $x ) $warn = 0;
+
+	setParent -m $parent;
+	menu -e -dai $parent;
+	if( $warn ) {
+		warning "The current slot isn't part of the selection - changing any values will NOT affect this slot";
+		menuItem -l "WARNING" -c( "warning \"The current slot isn't part of the selection - changing any values will NOT affect this slot\";" );
+		menuItem -l "copy this assets attributes" -ann "copy this asset's attributes to the currently selected assets" -c( "zooAssetsWindowFunctions copyFrom "+ $slot );
+		menuItem -l "unselect all" -ann "un-select all selected assets" -c( "zooAssetSelectionTools unall "+ $slot );
+		menuItem -l "select this slot" -ann "add this asset to the selection list" -c( "zooAssetSelectionTools select "+ $slot );
+		menuItem -d 1;
+		}
+
+	if( $sel ) menuItem -l "export selected..." -enable $sel -ann "export all selected assets" -c( "{ for( $a in `zooGetSelectedAssets` ) zooExportAsset $a; }" );
+	else menuItem -l "export..." -ann "export this asset" -c( "zooExportAsset "+ $slot );
+	menuItem -l "export all object's assets" -ann "export all assets that the current asset's object is associated with" -c( "zooAssetsWindowFunctions exportObj "+ $slot );
+	menuItem -l "explore to file" -ann "opens explorer with the dmx file selected" -c( "zooExploreTo \""+ $exportFile +"\";" );
+	menuItem -d 1;
+
+	menuItem -en(`size $selObjs`) -l( $prefix + "use selected object" ) -c( "zooAssetsWindowFunctions replaceObj "+ $slot );
+	menuItem -d 1;
+
+	//add perforce menu items
+	if( $p4Menu ) {
+		string $data[] = {};
+		string $dataNames[] = {};
+		int $isEdit = `isEdit $exportFile $dataNames $data`;
+
+		if( $isEdit != -1 ) {
+			menuItem -en $isEdit -l "Submit" -c( "p4submitUI {\""+ $exportFile +"\"};" );
+			menuItem -l "Open for Edit" -cb $isEdit -c( "p4_edit {\""+ $exportFile +"\"};" );
+			menuItem -en $isEdit -l "Revert" -c( "p4_revert {\""+ $exportFile +"\"};" );
+			}
+		else menuItem -l "Add to Perforce" -c( "" );
+		menuItem -d 1;
+		}
+
+	menuItem -l( $prefix +"custom export path" ) -cb( $path != "" ) -c( "zooSetAssetAttrWindow "+ $slot +" path" );
+
+	if( `exists zooShotsUtils` ) menuItem -l( $prefix +"link to shots" ) -cb $linkToShots -c( "zooChangeDataWrapper "+ $slot +" linkToShots "+ (!$linkToShots) +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+	if( `exists zooShotsUtils` ) menuItem -ob 1 -c( "zooAssetsOpenShotsWindow "+ $slot );
+
+	menuItem -l "set attribute" -sm 1;
+		menuItem -l "name" -c( "zooSetAssetAttrWindow "+ $slot +" name;" );
+		menuItem -l "start" -c( "zooSetAssetAttrWindow "+ $slot +" start;" );
+		menuItem -l "end" -c( "zooSetAssetAttrWindow "+ $slot +" end;" );
+	setParent -m ..;
+	menuItem -l( $prefix +"search & replace data..." ) -ann "open the search/replace data window" -c( "zooAssetsSearchReplaceWindow "+ $slot );
+	menuItem -l( $prefix +"select asset's object" ) -ann "select the object that this asset manages" -c( "select -cl; zooAssetsWindowFunctionsSel select "+ $slot );
+	menuItem -l( $prefix +"duplicate asset" ) -ann "duplicate this asset and all its settings" -c( "zooAssetsWindowFunctions duplicate "+ $slot );
+
+	menuItem -d 1;
+	menuItem -l( $prefix +"lock asset" ) -cb $locked -c( "zooAssetsWindowFunctions lock "+ $slot );
+	menuItem -en(!$locked) -l( $prefix +"disable asset" ) -cb $disable -c( "zooAssetsWindowFunctions disable "+ $slot );
+	menuItem -d 1;
+	menuItem -en(!$locked) -l( $prefix +"delete asset" ) -c( "zooAssetsWindowFunctions delete "+ $slot );
+	menuItem -d 1;
+	menuItem -enable 0 -l( "-slot "+ $slot +":  "+ ( $end-$start+1 ) +" frames-" );
+	}
+
+
+//------
+//build the rmb menu on the time buttons
+//------
+global proc zooBuildAssetTimeMenu( string $parent, string $function, string $slot ) {
+	int $current = `currentTime -q`;
+	int $timeStart = `playbackOptions -q -min`;
+	int $sceneStart = `playbackOptions -q -ast`;
+	int $timeEnd = `playbackOptions -q -max`;
+	int $sceneEnd = `playbackOptions -q -aet`;
+	int $locked = `zooLockAsset ( "-slot "+ $slot )`;
+	int $disable = `zooGetAttrData $slot disable`;
+	int $linkToShots = `zooGetAttrData $slot linkToShots`;
+
+	setParent -m $parent;
+	menu -e -dai $parent;
+	if( $linkToShots ) if( !`exists zooGetCurrentShot` ) zooShotsUtils;
+	switch( $function ) {
+		case "start":
+			if( $linkToShots ) {
+				int $currentShot = `zooGetCurrentShot`;
+				int $shots[] = `zooListShots`;
+
+				if( `size $shots` ) {
+					menuItem -en(!$locked) -l( "to current shot: "+ $currentShot ) -c( "zooChangeDataWrapper "+ $slot +" shots \""+ $currentShot +":"+ $currentShot +"\"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+					menuItem -en(!$locked) -l( "to all shots: "+ $shots[0] +" - "+ $shots[( `size $shots`-1 )] ) -c( "zooChangeDataWrapper "+ $slot +" shots \""+ $shots[0] +":"+ $shots[( `size $shots`-1 )] +"\"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+					}
+				}
+			else {
+				menuItem -en(!$locked) -l( "to current: "+ $current ) -c( "zooChangeDataWrapper "+ $slot +" start "+ $current +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+				menuItem -en(!$locked) -l( "to timeline: "+ $timeStart ) -c( "zooChangeDataWrapper "+ $slot +" start "+ $timeStart +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+				menuItem -en(!$locked) -l( "to scene: "+ $sceneStart ) -c( "zooChangeDataWrapper "+ $slot +" start "+ $sceneStart +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+				}
+			menuItem -d 1;
+			menuItem -l "shot arithmetic" -c( "zooAssetsArithmeticWindow "+ $slot +" 1 0;" );
+			menuItem -d 1;
+			menuItem -l "link to shots" -cb $linkToShots -c( "zooChangeDataWrapper "+ $slot +" linkToShots "+ (!$linkToShots) +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+			menuItem -ob 1 -c( "zooAssetsOpenShotsWindow "+ $slot );
+			break;
+
+		case "end":
+			if( $linkToShots ) {
+				int $currentShot = `zooGetCurrentShot`;
+				int $shots[] = `zooListShots`;
+
+				if( `size $shots` ) {
+					menuItem -en(!$locked) -l( "to current shot: "+ $currentShot ) -c( "zooChangeDataWrapper "+ $slot +" shots \""+ $currentShot +":"+ $currentShot +"\"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+					menuItem -en(!$locked) -l( "to all shots: "+ $shots[0] +" - "+ $shots[( `size $shots`-1 )] ) -c( "zooChangeDataWrapper "+ $slot +" shots \""+ $shots[0] +":"+ $shots[( `size $shots`-1 )] +"\"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+					}
+				}
+			else {
+				menuItem -en(!$locked) -l( "to current: "+ $current ) -c( "zooChangeDataWrapper "+ $slot +" end "+ $current +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+				menuItem -en(!$locked) -l( "to timeline: "+ $timeEnd ) -c( "zooChangeDataWrapper "+ $slot +" end "+ $timeEnd +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+				menuItem -en(!$locked) -l( "to scene: "+ $sceneEnd ) -c( "zooChangeDataWrapper "+ $slot +" end "+ $sceneEnd +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+				}
+			menuItem -d 1;
+			menuItem -l "shot arithmetic" -c( "zooAssetsArithmeticWindow "+ $slot +" 0 1;" );
+			menuItem -d 1;
+			menuItem -l "link to shots" -cb $linkToShots -c( "zooChangeDataWrapper "+ $slot +" linkToShots "+ (!$linkToShots) +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+			menuItem -ob 1 -c( "zooAssetsOpenShotsWindow "+ $slot );
+			break;
+
+		case "both":
+			string $colours[] = { "red", "orange", "yellow", "green", "blue", "purple" };
+			string $slotColour = `zooGetAttrData $slot colour`;
+			if( $linkToShots ) {
+				int $currentShot = `zooGetCurrentShot`;
+				int $shots[] = `zooListShots`;
+
+				if( `size $shots` ) {
+					menuItem -en(!$locked) -l( "to current shot: "+ $currentShot ) -c( "zooChangeDataWrapper "+ $slot +" shots \""+ $currentShot +":"+ $currentShot +"\"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+					menuItem -en(!$locked) -l( "to all shots: "+ $shots[0] +" - "+ $shots[( `size $shots`-1 )] ) -c( "zooChangeDataWrapper "+ $slot +" shots \""+ $shots[0] +":"+ $shots[( `size $shots`-1 )] +"\"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+					}
+				}
+			else {
+				menuItem -en(!$locked) -l( "to timeline: "+ $timeStart +" - "+ $timeEnd ) -c( "zooChangeDataWrapper "+ $slot +" start "+ $timeStart +"; zooChangeDataWrapper "+ $slot +" end "+ $timeEnd +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+				menuItem -en(!$locked) -l( "to scene: "+ $sceneStart +" - "+ $sceneEnd ) -c( "zooChangeDataWrapper "+ $slot +" start "+ $sceneStart +"; zooChangeDataWrapper "+ $slot +" end "+ $sceneEnd +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+				}
+			menuItem -l "shot arithmetic" -c( "zooAssetsArithmeticWindow "+ $slot +" 1 1;" );
+			menuItem -d 1;
+			menuItem -l "link to shots" -cb $linkToShots -c( "zooChangeDataWrapper "+ $slot +" linkToShots "+ (!$linkToShots) +"; zooAssetsWindowFunctionsSel updateTime "+ $slot );
+			menuItem -ob 1 -c( "zooAssetsOpenShotsWindow "+ $slot );
+			menuItem -d 1;
+			for( $colour in $colours ) menuItem -l $colour -cb( $colour==$slotColour ) -c( "zooLockAsset \"-edit 1 -val 0 -slot "+ $slot +"\";zooChangeDataWrapper "+ $slot +" colour "+ $colour +"; zooColourAssetWrapper "+ $slot +" "+ $colour +"; zooLockAsset \"-edit 1 -val "+ $locked +" -slot "+ $slot +"\";" );
+			menuItem -d 1;
+			menuItem -l "none" -cb( $slotColour=="" ) -c( "zooLockAsset \"-edit 1 -val 0 -slot "+ $slot +"\";zooChangeDataWrapper "+ $slot +" colour \"\"; zooColourAssetWrapper "+ $slot +" none; zooLockAsset \"-edit 1 -val "+ $locked +" -slot "+ $slot +"\";" );
+			menuItem -d 1;
+			menuItem -l "lock slot" -cb $locked -c( "zooAssetsWindowFunctions lock "+ $slot );
+			menuItem -en(!$locked) -l "disable slot" -cb $disable -c( "zooAssetsWindowFunctions disable "+ $slot );
+			menuItem -ob 1 -c( "zooAssetsOpenShotsWindow "+ $slot );
+			break;
+		}
+	}
+
+
+global proc zooBuildAssetSelectMenu( string $parent, int $slot ) {
+	string $prefix = "";
+	int $selected[] = `zooGetSelectedAssets`;
+	int $sel = size($selected);
+	int $locked = `zooLockAsset ( "-slot "+ $slot )`;
+
+	if( $sel ) $prefix = "*selected* ";
+	setParent -m $parent;
+	menu -e -dai $parent;
+
+	menuItem -l "select all" -ann "select all assets" -c( "zooAssetSelectionTools all "+ $slot ) -rp E;
+	menuItem -l "select above" -ann "select all assets above this one" -c( "zooAssetSelectionTools above "+ $slot ) -rp NE;
+	menuItem -l "select below" -ann "select all assets below this one" -c( "zooAssetSelectionTools below "+ $slot ) -rp SE;
+	menuItem -l "unSelect above" -ann "un-select all assets above this one" -c( "zooAssetSelectionTools unabove "+ $slot ) -rp NW;
+	menuItem -l "unSelect below" -ann "un-select all assets below this one" -c( "zooAssetSelectionTools unbelow "+ $slot ) -rp SW;
+	menuItem -l "unselect all" -ann "un-select all slots" -c( "zooAssetSelectionTools unall "+ $slot ) -rp W;
+	menuItem -l "select current assets" -ann "selects all assets which are currently active - ie which encompass the current time" -c( "{zooAssetSelectionTools unall "+ $slot +"; int $slots[] = `zooGetCurrentAssets`; for( $s in $slots ) zooAssetSelectionTools single $s;}" );
+	menuItem -l "select object's assets" -ann "select all assets that this asset's object is plugged into" -c( "{string $o = `zooGetAssetObj "+ $slot +"`; int $slots[] = `zooGetObjAssets $o`; for( $s in $slots ) zooAssetSelectionTools single $s;}" );
+	menuItem -d 1;
+	menuItem -en(size(ls("-sl"))) -l( $prefix + "use selected object" ) -ann "plug the currently selected object into this asset's slot" -c( "zooAssetsWindowFunctions replaceObj "+ $slot );
+	menuItem -l( $prefix +"lock asset"+ ($sel? "s": "")) -cb $locked -ann "change the lock state of this asset" -c( "zooAssetsWindowFunctions lock "+ $slot +";zooAssetsWindowFunctions updateEditable "+ $slot +";" );
+	}
+
+
+//------
+//
+//------
+global proc zooBuildExportPathMenu( string $parent ) {
+	string $localAnim = "c:/project/animation/";
+	string $localMesh = "c:/project/meshes/";
+	string $localCutscene = "c:/project/cutscenes/";
+	string $serverAnim = "//network/project/animation/";
+	string $serverMesh = "//network/project/meshes/";
+	string $serverCutscene = "//network/project/cutscenes/";
+	string $curPath = `zooGetGlobalAttrData path`;
+
+	setParent -m $parent;
+	menu -e -dai $parent;
+
+	menuItem -l "local/animation" -cb( $curPath == $localAnim ) -c( "textField -e -tx \""+ $localAnim +"\" zooAssetsTextGlobalPath; zooSetGlobalAttrData path \""+ $localAnim +"\"" );
+	menuItem -l "local/meshes" -cb( $curPath == $localMesh ) -c( "textField -e -tx \""+ $localMesh +"\" zooAssetsTextGlobalPath; zooSetGlobalAttrData path \""+ $localMesh +"\"" );
+	menuItem -l "local/cutscene" -cb( $curPath == $localCutscene ) -c( "textField -e -tx \""+ $localCutscene +"\" zooAssetsTextGlobalPath; zooSetGlobalAttrData path \""+ $localCutscene +"\"" );
+	menuItem -l "network/animation" -cb( $curPath == $serverAnim ) -c( "textField -e -tx \""+ $serverAnim +"\" zooAssetsTextGlobalPath; zooSetGlobalAttrData path \""+ $serverAnim +"\"" );
+	menuItem -l "network/mesh" -cb( $curPath == $serverMesh ) -c( "textField -e -tx \""+ $serverMesh +"\" zooAssetsTextGlobalPath; zooSetGlobalAttrData path \""+ $serverMesh +"\"" );
+	menuItem -l "network/cutscene" -cb( $curPath == $serverCutscene ) -c( "textField -e -tx \""+ $serverCutscene +"\" zooAssetsTextGlobalPath; zooSetGlobalAttrData path \""+ $serverCutscene +"\"" );
+	menuItem -d 1;
+	menuItem -l "default" -cb( $curPath == `zooGetGlobalAttrDefault path` ) -c( "textField -e -tx `zooGetGlobalAttrDefault path` zooAssetsTextGlobalPath; zooSetGlobalAttrData path \"\"" );
+	}
+
+
+global proc zooBuildSlotExportPathMenu( int $slot, string $parent ) {
+	string $localAnim = "c:/project/animation/";
+	string $localMesh = "c:/project/meshes/";
+	string $localCutscene = "c:/project/cutscenes/";
+	string $serverAnim = "//network/project/animation/";
+	string $serverMesh = "//network/project/meshes/";
+	string $serverCutscene = "//network/project/cutscenes/";
+	string $curPath = `zooGetAttrData $slot path`;
+
+	setParent -m $parent;
+	menu -e -dai $parent;
+
+	menuItem -l "local/animation" -cb( $curPath == $localAnim ) -c( "textField -e -tx \""+ $localAnim +"\" zooAssetsSetAttrInput; zooSetAttrData "+ $slot +" path \""+ $localAnim +"\"" );
+	menuItem -l "local/meshes" -cb( $curPath == $localMesh ) -c( "textField -e -tx \""+ $localMesh +"\" zooAssetsSetAttrInput; zooSetAttrData "+ $slot +" path \""+ $localMesh +"\"" );
+	menuItem -l "local/cutscene" -cb( $curPath == $localCutscene ) -c( "textField -e -tx \""+ $localCutscene +"\" zooAssetsSetAttrInput; zooSetAttrData "+ $slot +" path \""+ $localCutscene +"\"" );
+	menuItem -l "network/animation" -cb( $curPath == $serverAnim ) -c( "textField -e -tx \""+ $serverAnim +"\" zooAssetsSetAttrInput; zooSetAttrData "+ $slot +" path \""+ $serverAnim +"\"" );
+	menuItem -l "network/mesh" -cb( $curPath == $serverMesh ) -c( "textField -e -tx \""+ $serverMesh +"\" zooAssetsSetAttrInput; zooSetAttrData "+ $slot +" path \""+ $serverMesh +"\"" );
+	menuItem -l "network/cutscene" -cb( $curPath == $serverCutscene ) -c( "textField -e -tx \""+ $serverCutscene +"\" zooAssetsSetAttrInput; zooSetAttrData "+ $slot +" path \""+ $serverCutscene +"\"" );
+	}
+
+
+//------
+//builds the rmb popupMenu for an asset
+//------
+global proc zooAssetsBuildPopMenu( string $parent ) {
+	string $prefix = `zooGetGlobalAttrData prefix`;
+	string $orderMode = `optionVar -ex zooAssetsOrderMode`? `optionVar -q zooAssetsOrderMode`: "slot";
+	int $showNames = `optionVar -ex zooShowActualAssetNames`? `optionVar -q zooShowActualAssetNames`: 0;
+	int $hideDisabled = `optionVar -ex zooHideDisabledAssets`? `optionVar -q zooHideDisabledAssets`: 0;
+	int $slots[] = `zooOrderAssets $orderMode`;
+	int $actSlots[] = `zooGetCurrentAssets`;
+
+	setParent -m $parent;
+	menu -e -dai $parent;
+	for( $a in $slots ) {
+		int $disable = `zooGetAttrData $a disable`;
+		if( $disable && $hideDisabled ) continue;
+
+		string $name = `zooGetAttrData $a name`;
+		float $curTime = `currentTime -q`;
+		int $start = `zooGetAttrData $a start`;
+		int $end = `zooGetAttrData $a end`;
+		int $isCurrent = 0;
+
+		if( $name == "" ) $name = "<-unnamed->";
+		if( $showNames ) $name = $prefix + $name;
+		if( $start <= $curTime && $end >= $curTime ) $isCurrent = 1;
+		string $label = $disable? ( $name +" (disabled)" ): $name;
+
+		menuItem -l $label -cb $isCurrent -c( "zooAssetsWindowFunctions both "+ $a );
+		menuItem -ob 1 -c( "zooExportAsset "+ $a );
+		}
+
+	menuItem -d 1;
+	menuItem -l "show full names" -cb $showNames -c( "zooAssetsWindowFunctions toggleNameView "+ (!$showNames));
+	menuItem -l "hide disabled" -cb $hideDisabled -c( "zooAssetsWindowFunctions toggleHideOption "+ (!$hideDisabled));
+	menuItem -l "open assets..." -c( "zooAssets;" );
+	menuItem -d 1;
+	menuItem -l "export all" -c( "zooExportAll;" );
+	}
+
+
+//installs a shelf buttons for zooTriggered on the current shelf
+global proc zooAssetsSetup() {
+	string $button = `zooInstallShelfButton zooAssets`;
+	string $image = `internalVar -userBitmapsDir` +"zooAssets.xpm";
+	string $cmd = "zooAssets;";
+
+	shelfButton -e -image1 $image -label "zooAssets shelf button" -ann "load the zooAssets UI" -command $cmd $button;
+	zooTrigInstallShelfPopup;
+	}
+
+
+//------
+//returns information about this script
+//------
+global proc string zooAssetsInfo( string $function ) {
+	string $creationDate = "09 June 2004";
+	string $currentVersion = "4.07.03";
+
+	if ( $function == "created" ) $info = $creationDate;
+	if ( $function == "version" ) $info = $currentVersion;
+	return $info;
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

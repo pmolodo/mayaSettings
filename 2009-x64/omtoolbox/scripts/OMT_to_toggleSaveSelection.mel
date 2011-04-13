@@ -1,0 +1,258 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	OMT_to_toggleSaveSelection.mel					///
+///  AUTHOR: 	Jakob Welner (jakob@welner.dk)					///
+///										///
+///  UDTATE LOG:								///
+///	16th og november: 1.00 by Jakob Welner					///
+///	- Date of first release							///
+///										///
+///										///
+///  DEPENDENCIES:								///
+///   	None									///
+///										///
+///  PURPOSE & USE:								///
+///	Toggles saving of component selections on specific components and 	///
+///	loading them when returning to that component selection.		///
+///										///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Alias Maya toolbox			///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+global	string	$faceSelection[];
+global	string	$edgeSelection[];
+global	string	$vertexSelection[];
+global	string	$uvSelection[];
+
+global	int	$active;
+
+global	int	$SelectionChangedID;
+global	int	$SelectTypeChangedID;
+global	int	$SelectModeChangedID;
+
+global	int	$compMode;
+global	int	$switch;
+
+
+
+
+
+global proc string getType()
+{
+
+	if(`selectType -q -pv`)
+	{
+		return "pVertex";
+	}
+	else if(`selectType -q -pe`)
+	{
+		return "pEdge";
+	}
+	else if(`selectType -q -pf`)
+	{
+		return "pFace";
+	}
+	else if(`selectType -q -puv`)
+	{
+		return "pUV";
+	}
+	else return "none";
+
+}
+
+
+
+proc saveSelection()
+{
+
+global	string	$faceSelection[];
+global	string	$edgeSelection[];
+global	string	$vertexSelection[];
+global	string	$uvSelection[];
+
+	string	$typeString = `getType`;
+
+
+	if($typeString == "pVertex")
+	{
+		$vertexSelection = `filterExpand -sm 31`;
+		if(size($vertexSelection) == 0) $vertexSelection = `filterExpand -sm 36`;
+	}
+	else if($typeString == "pEdge")
+	{
+		$edgeSelection = `filterExpand -sm 32`;
+		if(size($edgeSelection) == 0) $edgeSelection = `filterExpand -sm 37`;
+	}
+	else if($typeString == "pFace")
+	{
+		$faceSelection = `filterExpand -sm 34`;
+		if(size($faceSelection) == 0) $faceSelection = `filterExpand -sm 38`;
+	}
+	else if($typeString == "pUV")
+	{
+		$uvSelection = `filterExpand -sm 35`;
+		if(size($uvSelection) == 0) $uvSelection = `filterExpand -sm 73`;
+	}
+}
+
+
+
+
+proc loadSelection()
+{
+
+global	string	$faceSelection[];
+global	string	$edgeSelection[];
+global	string	$vertexSelection[];
+global	string	$uvSelection[];
+
+	string	$typeString = `getType`;
+
+
+	if($typeString == "pVertex")
+	{
+		if(catchQuiet(`select -r $vertexSelection`)) print "Tried to select a deleted object";
+	}
+	else if($typeString == "pFace")
+	{
+		if(catchQuiet(`select -r $faceSelection`)) print "Tried to select a deleted object";
+	}
+	else if($typeString == "pEdge")
+	{
+		if(catchQuiet(`select -r $edgeSelection`)) print "Tried to select a deleted object";
+	}
+	else if($typeString == "pUV")
+	{
+		if(catchQuiet(`select -r $uvSelection`)) print "Tried to select a deleted object";
+	}
+
+}
+
+
+
+
+
+
+global proc OMT_selectionChange()
+{
+
+global	int	$compMode;
+global	int	$switch;
+
+	if ( $compMode )
+	{
+		if ( !$switch ) 
+		{
+			loadSelection;
+			$switch = 1;
+		}
+		else saveSelection;
+	}
+}
+
+
+
+global proc OMT_selectModeChange()
+{
+
+global	int	$compMode;
+global	int	$switch;
+
+	$compMode = `selectMode -q -co`;
+	$switch = 0;
+}
+
+
+
+global proc OMT_selectTypeChange()
+{
+	loadSelection;
+}
+
+
+
+global proc OMT_saveFirst()
+{
+	if (`selectMode -q -co`) saveSelection;
+}
+
+
+
+
+
+
+global proc OMT_to_toggleSaveSelection()
+{
+
+global	string	$faceSelection[];
+global	string	$edgeSelection[];
+global	string	$vertexSelection[];
+global	string	$uvSelection[];
+global	int	$active;
+
+global	int	$SelectionChangedID = -1;
+global	int	$SelectTypeChangedID = -1;
+global	int	$SelectModeChangedID = -1;
+
+
+	if($active == 1)
+	{
+
+	// Clearning up when toggled off
+	//
+		scriptJob -kill $SelectionChangedID -force;
+		scriptJob -kill $SelectTypeChangedID -force;
+		scriptJob -kill $SelectModeChangedID -force;
+		$SelectionChangedID = -1;
+		$SelectTypeChangedID = -1;
+		$SelectModeChangedID = -1;
+
+		clear $faceSelection;
+		clear $edgeSelection;
+		clear $vertexSelection;
+		clear $uvSelection;
+		$active = 0;
+		print "Save Selection has been successfully deactivated.";
+	}
+	else
+	{
+
+	// Activating the script
+	//
+		$SelectionChangedID = `scriptJob -event "SelectionChanged" "OMT_selectionChange" -protected`;
+		$SelectModeChangedID = `scriptJob -event "SelectModeChanged" "OMT_selectModeChange" -protected`;
+		$SelectTypeChangedID = `scriptJob -event "SelectTypeChanged" "OMT_selectTypeChange" -protected`;
+		OMT_saveFirst;
+		$active = 1;
+		print "Save Selection has been successfully activated.";
+	}
+
+}
+
+
+/*
+
+Check for selected obejcts and only load selection when the right object is selected.
+
+*/

@@ -1,0 +1,324 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//rebuilds a surface by recreating the surface from isoparms and rebuilding those isoparms uniformly
+//creating a rebuild that is uniform over the entire surface rather than only between spans
+//to rebuild only in the U direction, set $spansV to a negative number & vice versa
+//everything but the direction of the rebuild can be changed dynamically by setting values on the returned rebuild node
+//the input for $inputSurface can be a surface or a surface attribute
+
+global proc string zenUniformSurfaceRebuild(string $inputSurface, int $spansU, int $spansV)
+{
+	string	$tr;
+	string	$sh;
+
+	string	$referenceSurface;
+
+	string	$referenceSurfaceSpansU;
+	string	$referenceSurfaceSpansV;
+
+	string	$referenceSurfaceDegreeU;
+	string	$referenceSurfaceDegreeV;
+	
+	string	$surfaceAttribute;
+	int	$keepControlPoints;
+	int	$rebuildType;
+	int	$rebuildU;
+	int	$rebuildV;
+			
+	//find out what kind of input (attribute or surface) is being given, then find a reference surface - if one exists
+	
+		if((zenReturnFirstStringItem(`ls -o $inputSurface`))==$inputSurface)
+		{
+		
+			if(nodeType($inputSurface)=="nurbsSurface")
+			{
+				$surfaceAttribute=(zenReturnFirstStringItem(`listConnections -plugs 1 ($inputSurface+".create")`));
+				
+				$tr=zenReturnFirstStringItem(`listRelatives -p $inputSurface`);
+				$sh=$inputSurface;
+			}
+			else
+			if(nodeType(zenReturnFirstStringItem(listRelatives("-s","-ni",$inputSurface)))=="nurbsSurface")
+			{			
+				$surfaceAttribute=
+				(
+					zenReturnFirstStringItem
+					(
+						listConnections
+						(
+							"-plugs",
+							((zenReturnFirstStringItem(listRelatives("-s","-ni",$inputSurface)))+".create")
+						)
+					)
+				);
+				
+				$tr=$inputSurface;
+				$sh=zenReturnFirstStringItem(listRelatives("-s","-ni",$inputSurface));
+			}
+			else
+				error("Selected surface is not valid.");
+			
+			if(size($surfaceAttribute))
+			{
+				$referenceSurface=`createNode -p $tr nurbsSurface`;
+				connectAttr -f $surfaceAttribute ($referenceSurface+".create");
+			}
+			else
+			{
+				$referenceSurface=zenReturnFirstStringItem(`duplicate $sh`);
+				zenParentShape {$referenceSurface,$tr};
+				$surfaceAttribute=$referenceSurface+".local";
+			}
+
+			$referenceSurfaceSpansU=$referenceSurface;
+			$referenceSurfaceSpansV=$referenceSurface;
+			$referenceSurfaceDegreeU=$referenceSurface;
+			$referenceSurfaceDegreeV=$referenceSurface;
+		}
+		else
+		{
+			$surfaceAttribute=$inputSurface;
+			
+			for($h in listHistory(`ls -o $surfaceAttribute`))
+			{
+				if(nodeType($h)=="nurbsSurface" || nodeType($h)=="rebuildSurface")
+				{
+					$keepControlPoints=0;
+					$rebuildType=0;
+					$rebuildU=1;
+					$rebuildV=1;
+					
+					if(nodeType($h)=="rebuildSurface")
+					{
+						$keepControlPoints=`getAttr ($h+".keepControlPoints")`;
+						$rebuildType=`getAttr ($h+".rebuildType")`;
+						
+						if(`getAttr ($h+".direction")`==1) $rebuildU=0;
+						if(`getAttr ($h+".direction")`==0) $rebuildV=0;
+					}
+				
+					if(($h+".spansU")!=0 && !(size($referenceSurfaceSpansU)) && $rebuildU)
+						$referenceSurfaceSpansU=$h;
+						
+					if(($h+".spansV")!=0 && !(size($referenceSurfaceSpansV)) && $rebuildV)
+						$referenceSurfaceSpansV=$h;
+						
+					if(($h+".degreeU")!=0 && !(size($referenceSurfaceDegreeU)) && $rebuildU)
+						$referenceSurfaceDegreeU=$h;
+						
+					if(($h+".degreeV")!=0 && !(size($referenceSurfaceDegreeV)) && $rebuildV)
+						$referenceSurfaceDegreeV=$h;
+				}
+				
+				if
+				(
+					size($referenceSurfaceSpansU) &&
+					size($referenceSurfaceSpansV) &&
+					size($referenceSurfaceDegreeU) &&
+					size($referenceSurfaceDegreeV)
+				)
+					break;
+			}
+		}
+		
+	//curve rebuild information will be taken from the created rebuildSurface node attributes
+		
+	string	$rebuildSurfaceNode=`createNode rebuildSurface`;
+
+			setAttr ($rebuildSurfaceNode+".endKnots") 0;
+			setAttr ($rebuildSurfaceNode+".rebuildType") 0;
+			setAttr ($rebuildSurfaceNode+".degreeU") 0;
+			setAttr ($rebuildSurfaceNode+".degreeV") 0;			
+			setAttr ($rebuildSurfaceNode+".keepRange") 0;
+			setAttr ($rebuildSurfaceNode+".caching") 1;
+			
+			if($spansU>=0) setAttr ($rebuildSurfaceNode+".spansU") $spansU;
+			else	setAttr -lock true ($rebuildSurfaceNode+".spansU") 0;
+			
+			if($spansV>=0) setAttr ($rebuildSurfaceNode+".spansV") $spansV;
+			else	setAttr -lock true ($rebuildSurfaceNode+".spansV") 0;
+			
+			if($spansV<0 && $spansU>=0) 
+				setAttr ($rebuildSurfaceNode+".direction") 0;
+			else 
+			if($spansU<0 && $spansV>=0) 
+				setAttr ($rebuildSurfaceNode+".direction") 1;
+			else 
+				setAttr ($rebuildSurfaceNode+".direction") 2;
+				
+			setAttr -lock true ($rebuildSurfaceNode+".direction");
+			
+				
+		
+	//create a temporary surface from which to derive sampling information
+			
+	string	$tempSurfaceTr=`createNode -n "tempSurface#" transform`;
+	string	$tempSurface=`createNode -n ($tempSurfaceTr+"Shape") -p $tempSurfaceTr nurbsSurface`;
+	
+		connectAttr -f $surfaceAttribute ($rebuildSurfaceNode+".inputSurface");
+		connectAttr -f ($rebuildSurfaceNode+".outputSurface") ($tempSurface+".create");
+		
+	float	$uSamples=size(ls("-fl",($tempSurface+".cv[*][0]")));
+	float	$uSpans=`getAttr ($tempSurface+".spansU")`;
+	float	$uDegree=`getAttr ($tempSurface+".degreeU")`;
+	
+	float	$vSamples=size(ls("-fl",($tempSurface+".cv[0][*]")));
+	float	$vSpans=`getAttr ($tempSurface+".spansV")`;
+	float	$vDegree=`getAttr ($tempSurface+".degreeV")`;
+	
+	//create nodes to set up u,v, & uv rebuilds
+			
+	//create curves along the u axis
+	
+	string	$curveFromSurfaceIsoNode;
+	string	$rebuildCurveNode;
+	string	$uSpanCondition;
+	
+	
+	string	$loftNode1;
+		
+		if($spansU>=0)
+		{
+			$loftNode1=`createNode loft`;
+			
+				setAttr ($loftNode1+".autoReverse") 0;
+				setAttr ($loftNode1+".degree") 3;
+
+			for($i=0;$i<$uSamples;$i++)
+			{
+				$curveFromSurfaceIsoNode=`createNode curveFromSurfaceIso`;
+				
+					setAttr ($curveFromSurfaceIsoNode +".relativeValue") 1;
+					setAttr ($curveFromSurfaceIsoNode +".isoparmDirection") 1;
+					setAttr ($curveFromSurfaceIsoNode +".isoparmValue") ((float($i))/($uSamples-1));
+
+				$rebuildCurveNode=`createNode rebuildCurve`;
+
+				$vSpanCondition=`createNode -n "uSpanCondition#" condition`;
+
+					setAttr ($vSpanCondition+".ctr") $vSpans;
+
+					connectAttr -f ($rebuildSurfaceNode+".spansV") ($vSpanCondition+".ft");
+					connectAttr -f ($rebuildSurfaceNode+".spansV") ($vSpanCondition+".cfr");
+
+					connectAttr -f ($vSpanCondition+".ocr") ($rebuildCurveNode+".spans");
+
+				if(`objExists $referenceSurfaceSpansV`)
+					connectAttr -f ($referenceSurfaceSpansV+".spansV") ($vSpanCondition+".ctr");
+
+				$vDegreeCondition=`createNode -n "vDegreeCondition#" condition`;
+
+					setAttr ($vDegreeCondition+".caching") 1;
+					setAttr ($vDegreeCondition+".ctr") $vDegree;
+
+					connectAttr -f ($rebuildSurfaceNode +".degreeV") ($vDegreeCondition+".ft");
+					connectAttr -f ($rebuildSurfaceNode +".degreeV") ($vDegreeCondition+".cfr");
+
+					connectAttr -f ($vDegreeCondition+".ocr") ($rebuildCurveNode+".degree");
+
+				if(`objExists $referenceSurfaceDegreeV`)
+					connectAttr -f ($referenceSurfaceDegreeV+".degreeV") ($vDegreeCondition+".ctr");				
+
+				connectAttr -f $surfaceAttribute ($curveFromSurfaceIsoNode+".inputSurface");
+				connectAttr -f ($curveFromSurfaceIsoNode+".outputCurve") ($rebuildCurveNode+".inputCurve");		
+				connectAttr -f ($rebuildCurveNode+".outputCurve") ($loftNode1+".ic["+(string($i))+"]");
+
+				catchQuiet
+				(
+					disconnectAttr
+					(
+						($vSpanCondition+".message"),
+						(zenReturnFirstStringItem(listConnection("-plugs",1,($vSpanCondition+".message"))))
+					)
+				);
+			}
+		}
+		else
+			$loftNode1=$surfaceAttribute;
+			
+	//create curves along the v axis;
+	
+	string	$loftNode2;
+		
+		if($spansV>=0)
+		{
+			$loftNode2=`createNode loft`;
+				setAttr ($loftNode2+".autoReverse") 0;
+
+			for($i=0;$i<$vSamples;$i++)
+			{
+				$curveFromSurfaceIsoNode=`createNode curveFromSurfaceIso`;
+				
+					setAttr ($curveFromSurfaceIsoNode +".relativeValue") 1;
+					setAttr ($curveFromSurfaceIsoNode +".isoparmDirection") 0;
+					setAttr ($curveFromSurfaceIsoNode +".isoparmValue") ((float($i))/($vSamples-1));
+
+				$rebuildCurveNode=`createNode rebuildCurve`;
+
+				$uSpansCondition=`createNode -n "uSpansCondition#" condition`;
+
+					setAttr ($uSpansCondition+".caching") 1;
+					setAttr ($uSpansCondition+".ctr") $uSpans;
+
+					connectAttr -f ($rebuildSurfaceNode +".spansU") ($uSpansCondition+".ft");
+					connectAttr -f ($rebuildSurfaceNode +".spansU") ($uSpansCondition+".cfr");
+
+					connectAttr -f ($uSpansCondition+".ocr") ($rebuildCurveNode+".spans");
+
+				if(`objExists $referenceSurfaceSpansU`)
+					connectAttr -f ($referenceSurfaceSpansU+".spansU") ($uSpansCondition+".ctr");
+
+				$uDegreeCondition=`createNode -n "uDegreeCondition#" condition`;
+
+					setAttr ($uDegreeCondition+".caching") 1;
+					setAttr ($uDegreeCondition+".ctr") $uDegree;
+
+					connectAttr -f ($rebuildSurfaceNode +".degreeU") ($uDegreeCondition+".ft");
+					connectAttr -f ($rebuildSurfaceNode +".degreeU") ($uDegreeCondition+".cfr");
+
+					connectAttr -f ($uDegreeCondition+".ocr") ($rebuildCurveNode+".degree");
+
+				if(`objExists $referenceSurfaceDegreeU`)
+					connectAttr -f ($referenceSurfaceDegreeU+".degreeU") ($uDegreeCondition+".ctr");
+
+				connectAttr -f ($loftNode1+".outputSurface") ($curveFromSurfaceIsoNode+".inputSurface");
+				connectAttr -f ($curveFromSurfaceIsoNode+".outputCurve") ($rebuildCurveNode+".inputCurve");		
+				connectAttr -f ($rebuildCurveNode+".outputCurve") ($loftNode2+".ic["+(string($i))+"]");
+
+				catchQuiet
+				(
+					disconnectAttr
+					(
+						($uSpansCondition+".message"),
+						(zenReturnFirstStringItem(listConnection("-plugs",1,($uSpansCondition+".message"))))
+					)
+				);
+			}	
+		}
+		else
+			$loftNode2=$loftNode1;
+		
+		connectAttr -f ($loftNode2+".outputSurface") ($rebuildSurfaceNode+".inputSurface");
+		
+		delete $tempSurfaceTr;
+		
+		if(`objExists $referenceSurface`)
+			setAttr ($referenceSurface+".intermediateObject") true;
+			
+		if(`objExists $sh`)
+			connectAttr -f ($rebuildSurfaceNode+".outputSurface") ($sh+".create");
+								
+	return	$rebuildSurfaceNode;
+}

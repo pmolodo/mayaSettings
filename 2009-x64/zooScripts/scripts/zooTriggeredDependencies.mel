@@ -1,0 +1,30 @@
+global proc string[] zooTriggeredDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $iconDependencies[] = {};
+	string $helpDependencies[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooDeleteStaticChannels";
+	$melDependencies[( `size $melDependencies` )] = "zooFlags";
+	$melDependencies[( `size $melDependencies` )] = "zooHelp";
+	$melDependencies[( `size $melDependencies` )] = "zooPresetManager";
+	$melDependencies[( `size $melDependencies` )] = "zooPosesToSliders";
+	$melDependencies[( `size $melDependencies` )] = "zooObjMenu";
+	$melDependencies[( `size $melDependencies` )] = "zooObjMenuUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooShelveIt";
+	$melDependencies[( `size $melDependencies` )] = "zooTriggeredWin";
+	$melDependencies[( `size $melDependencies` )] = "zooTriggeredUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooTriggeredPresets";
+	$melDependencies[( `size $melDependencies` )] = "zooStrUtils";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+	$iconDependencies[( `size $iconDependencies` )] = "zoo_sig.tga";
+	$iconDependencies[( `size $iconDependencies` )] = "zooTriggered_0.xpm";
+	$iconDependencies[( `size $iconDependencies` )] = "zooTriggered_1.xpm";
+	$helpDependencies[( `size $helpDependencies` )] = "zooTriggeredHelp";
+	$helpDependencies[( `size $helpDependencies` )] = "zooTriggeredHistory";
+	$helpDependencies[( `size $helpDependencies` )] = "zooTriggeredTech";
+
+	if( $mode == "-scripts" ) return $melDependencies;
+	if( $mode == "-icons" ) return $iconDependencies;
+	if( $mode == "-docs" ) return $helpDependencies;
+	return {};
+	}

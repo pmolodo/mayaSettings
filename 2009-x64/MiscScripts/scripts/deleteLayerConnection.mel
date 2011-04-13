@@ -1,0 +1,39 @@
+// Modified: 2008-02-15
+// added '-long' tag to ls command, -fullPath to listRelatives (for when two objects have same name)
+
+// Blatantly stolen from:
+// naughtyUIProcs.mel
+//
+// multi-use procs necessary for my A|W replacement scripts to work correctly.
+// currently used and sourced by:
+//      dagMenuProc.mel
+//      outlinerEdMenu.mel
+//      buildObjectMenuItemsNow.mel
+//
+//
+// check out http://www.naughtynathan.supanet.com/mel.htm for replacement scripts & more.
+
+
+//
+//      deleteLayerConnection: brute-force delete the connection between the selection and it's layer.
+//
+global proc deleteLayerConnection()
+{
+        string $actual[] = `ls -sl -long -type "transform" -type "shape"`;
+        // print "Actual:\n";
+        // print $actual;
+        string $shapes[] = `listRelatives -fullPath -s $actual`;
+        // print "Shapes:\n";
+        // print $shapes;
+        string $full[]  =  `stringArrayCatenate $actual $shapes`;
+        // print "Full:\n";
+        // print $full;
+
+        string $layerConx[1];
+        for ($object in $full)
+        {
+                $layerConx = `listConnections -type "displayLayer" $object`;
+                if (`size($layerConx)`)
+                        disconnectAttr ($layerConx[0]+".drawInfo") ($object+".drawOverride");
+        }
+}

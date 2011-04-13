@@ -1,0 +1,293 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc string[] rigZenReturnOpposingTransforms( string $tr[], string $spaceObj, int $axis )
+{
+	float	$tol=.001;
+	
+	string	$returnVal[];
+		
+	string	$axisString;
+
+		if($axis==1) $axisString="X";
+		if($axis==2) $axisString="Y";
+		if($axis==4) $axisString="Z";
+									
+	//this point matrix multiplier brings world space coordinates into the object space of the spaceObj
+
+	string	$pointMatrixMultNode=`createNode pointMatrixMult`;
+		
+		if(`objExists ($spaceObj+".worldInverseMatrix")`)
+			connectAttr ($spaceObj+".worldInverseMatrix[0]") ($pointMatrixMultNode+".inMatrix");
+			
+		setAttr ($pointMatrixMultNode+".vectorMultiply") 1;
+		
+	string	$candidates[]=listRelatives("-ad",`zenReturnTopLevelTransforms $tr`);
+		$candidates=`stringArrayRemoveDuplicates $candidates`;		
+			
+	string	$similarNodes[];
+	
+	float	$boundingBox_influenceObj[];
+	float	$boundingBox_opposingObj[];
+
+	vector	$bbCenter_influenceObj;
+	vector	$bbCenter_opposingObj;
+	
+	vector	$tempVector;
+	
+	string	$type;
+	string	$jointType;
+
+	int	$side;
+	int	$ancestorCount;
+	int	$sideNameID;
+	
+	float	$rp[];
+	float	$distances[];
+	float	$rootSpaceRP[];
+	float	$rootSpaceBBCenter[];
+	float	$tempFloatArray[];
+	
+	float	$rootSpaceRP_relevantAxis;
+	float	$rootSpaceBB_relevantAxis;
+		
+	string	$tempStringArray[];
+	
+	string	$tempString;
+	string	$shapeNodeType;
+	string	$shapeNode;
+	string	$sideName;
+	string	$replaceString;
+	
+		progressWindow -isInterruptable 1 -title "Working" -status "Sorting Transforms" -max (size($tr)) -progress 0;
+		
+		for($i=0;$i<size($tr);$i++)
+		{
+			$side=3;
+
+			$type=nodeType($tr[$i]);
+
+			//narrow possible matches to nodes of the same type
+
+			$similarNodes=stringArrayRemove({$tr[$i]},`ls -et $type $candidates`);
+
+			//narrow possible matches to objects with same number of ancestors (parents)
+
+			if(size($similarNodes)>1)
+			{
+				$tempStringArray=$similarNodes;
+				$similarNodes={};
+				$ancestorCount=size(stringToStringArray(zenReturnFirstStringItem(`ls -l $tr[$i]`),"|"));
+
+				for($obj in $tempStringArray)
+				{
+					if($ancestorCount==size(stringToStringArray(zenReturnFirstStringItem(`ls -l $obj`),"|"))) 
+						$similarNodes[(size($similarNodes))]=$obj;
+				}
+
+				if(! size($similarNodes))
+					$similarNodes=$tempStringArray;					
+			}
+
+			//see if a side is indicated in the object name
+
+			$sideNameID=0;
+			$sideName="";
+
+			if(`gmatch ($tr[$i]) "*[Ll][Ee][Ff][Tt]*"`)
+			{
+				$sideNameID=1;
+				$sideName=match("[Ll][Ee][Ff][Tt]",($tr[$i]));
+			}
+
+			if(`gmatch ($tr[$i]) "*[Rr][Ii][Gg][Hh][Tt]*"`)
+			{
+				$sideNameID=2;
+				$sideName=match("[Rr][Ii][Gg][Hh][Tt]",($tr[$i]));
+			}
+
+			//see if an opposingly named influence exists
+
+			if($sideNameID)
+			{
+				if($sideNameID=1)
+				{
+					if(`substring $sideName 1 1`=="L") 
+						$replaceString="R";
+					else
+						$replaceString="r";
+
+					if(`substring $sideName 2 2`=="E")
+						$replaceString=$replaceString+"IGHT";
+					else
+						$replaceString=$replaceString+"ight";
+				}
+				else
+				if($sideNameID=2)
+				{
+					if(`substring $sideName 1 1`=="R") 
+						$replaceString="L";
+					else
+						$replaceString="l";
+
+					if(`substring $sideName 2 2`=="I") 
+						$replaceString=$replaceString+"EFT";
+					else
+						$replaceString=$replaceString+"eft";
+				}
+
+				$tempString=`substitute $sideName $tr[$i] $replaceString`;
+
+				if(`stringArrayContains $tempString $tr`) 
+					$similarNodes={$tempString};
+			}
+
+			//if influence is a joint, find similarly labeled joints if present
+
+			if($type=="joint" && size($similarNodes)>1)
+			{
+				$jointType=getAttr($tr[$i]+".type");
+				$side=getAttr($tr[$i]+".side");
+
+				if($side == 0)
+				//object is a center joint
+					$similarNodes={$tr[$i]};
+				else
+				if($jointType != 0 || $side == 1 || $side == 2)
+				{
+					$tempStringArray=$similarNodes;
+					$similarNodes={};
+
+					for($j in $tempStringArray)
+						if((getAttr($j+".type"))==$jointType) $similarNodes[(size($similarNodes))]=$j;
+
+					if(! size($similarNodes)) $similarNodes=$tempStringArray;
+				}				
+			}				
+
+			//see if object is a center influence
+			if(size($similarNodes)>1)
+			{			
+				$bbCenter_influenceObj=
+				<<
+					float((`getAttr ($tr[$i]+".boundingBoxMinX")`+`getAttr ($tr[$i]+".boundingBoxMaxX")`)/2),
+					float((`getAttr ($tr[$i]+".boundingBoxMinY")`+`getAttr ($tr[$i]+".boundingBoxMaxY")`)/2),
+					float((`getAttr ($tr[$i]+".boundingBoxMinZ")`+`getAttr ($tr[$i]+".boundingBoxMaxZ")`)/2)
+				>>;
+
+				$rp=`xform -q -ws -rp ($tr[$i])`;
+				setAttr ($pointMatrixMultNode+".inPoint") $rp[0] $rp[1] $rp[2];
+				$rootSpaceRP=`getAttr ($pointMatrixMultNode+".output")`;
+				$rootSpaceRP_relevantAxis=`getAttr ($pointMatrixMultNode+".output"+$axisString)`;
+
+				setAttr ($pointMatrixMultNode+".inPoint") ($bbCenter_influenceObj.x) ($bbCenter_influenceObj.y) ($bbCenter_influenceObj.z);
+				$rootSpaceBBCenter=`getAttr ($pointMatrixMultNode+".output")`;
+				$bbCenter_influenceObj=zenArrayToVector($rootSpaceBBCenter);
+				$rootSpaceBB_relevantAxis=`getAttr ($pointMatrixMultNode+".output"+$axisString)`;
+
+				//test to see if object is centered
+
+				if(abs($rootSpaceRP_relevantAxis) <= $tol && abs($rootSpaceBB_relevantAxis) <= $tol)
+				{
+						$similarNodes={$tr[$i]};
+				}
+			}
+
+			//narrow possible matches to objects with reflecting rotate pivots
+			if(size($similarNodes)>1)
+			{
+				$tempStringArray=$similarNodes;
+				$similarNodes={};
+
+				for($obj in $tempStringArray)
+				{
+					$tempFloatArray=`xform -q -ws -rp $obj`;
+					$tempFloatArray[($axis-1)]=-$tempFloatArray[($axis-1)];
+
+					setAttr ($pointMatrixMultNode+".inPoint") $tempFloatArray[0] $tempFloatArray[1] $tempFloatArray[2];
+
+					if(mag(vector(zenArrayToVector($rootSpaceRP))-(vector(zenArrayToVector(`getAttr ($pointMatrixMultNode+".output")`)))) <= $tol)
+						$similarNodes[(size($similarNodes))]=$obj;
+				}
+
+				if(! size($similarNodes)) $similarNodes=$tempStringArray;
+			}
+
+			//narrow possible matches to objects with reflecting bounding box centers
+			if(size($similarNodes)>1)
+			{
+				$tempStringArray=$similarNodes;
+				$similarNodes={};
+
+				for($s in $tempStringArray)
+				{
+					$bbCenter_opposingObj=
+					<<
+						float((`getAttr ($s+".boundingBoxMinX")`+`getAttr ($s+".boundingBoxMaxX")`)/2),
+						float((`getAttr ($s+".boundingBoxMinY")`+`getAttr ($s+".boundingBoxMaxY")`)/2),
+						float((`getAttr ($s+".boundingBoxMinZ")`+`getAttr ($s+".boundingBoxMaxZ")`)/2)
+					>>;
+
+					$tempFloatArray=(zenVectorToArray($bbCenter_opposingObj));
+					setAttr ($pointMatrixMultNode+".inPoint") $tempFloatArray[0] $tempFloatArray[1] $tempFloatArray[2];
+
+					$bbCenter_opposingObj=zenArrayToVector(`getAttr ($pointMatrixMultNode+".output")`);
+
+					switch($axis)
+					{
+						case 1:
+
+							$bbCenter_opposingObj=<<(-$bbCenter_opposingObj.x),($bbCenter_opposingObj.y),($bbCenter_opposingObj.z)>>;
+							break;
+
+						case 2:
+
+							$bbCenter_opposingObj=<<($bbCenter_opposingObj.x),(-$bbCenter_opposingObj.y),($bbCenter_opposingObj.z)>>;
+							break;
+
+						case 3:
+
+							$bbCenter_opposingObj=<<($bbCenter_opposingObj.x),($bbCenter_opposingObj.y),(-$bbCenter_opposingObj.z)>>;
+							break;
+					}
+
+					if(mag($bbCenter_influenceObj-$bbCenter_opposingObj)<$tol) $similarNodes[(size($similarNodes))]=$s;
+				}
+
+				if(! size($similarNodes)) $similarNodes=$tempStringArray;
+			}
+
+			if(size($similarNodes)>1) warning("Multiple matches for "+($tr[$i])+". Using "+$similarNodes[0]+".");
+
+			if(size($similarNodes)==0) warning("No matches for "+($tr[$i])+".");
+			else
+				$returnVal[$i]=($similarNodes[0]);
+
+			if(`progressWindow -q -ic`)
+			{
+				undoInfo -swf 1;
+				delete $pointMatrixMultNode;
+				progressWindow -ep;
+				error "User Interupt.";
+			}
+
+			progressWindow -e -s 1;
+		}
+		
+		progressWindow -ep;
+		
+		catch(`delete $pointMatrixMultNode`);
+		
+	return	$returnVal;
+}

@@ -1,0 +1,1302 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: MEL LISTER++
+''    Author:  
+''    Last Updated: Aug 11, 2007
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/utility_external/misc/4666.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+/*
+MEL LISTER++ v1.5
+15-4-2007 :: 27-4-2007
+
+LAST MODIFIED:
+13 (Sun) May 2007  - 08:00:29  AM 
+
+
+MEL LISTER++ was developed from the key idea of MEL LISTER by Jeremiah Grant. He has developed a tool to List all files present in a specific folder and one can view/edit/save those files. He added a feature to show description about the scripts (popping up first 6 lines of all script). I took that script and did various modifications. And added following features like...
+
+*Automatic Script Sourcing...
+*Automatic Script Executing (If the script is prepared to execute automatically on sourcing)...
+*Switching to the any script folders are made easy to navigate...
+*You can copy/paste the folder path and load them easily...
+*Easily switch to the your favorite script folders quickly(And even open them in explorer)...
+*Listing the Executable Procedures present inside the script files...
+*Navigate around the procedures easily by clicking on them (This makes it easy to see PROCEDURE arguments and return types)...
+*Allowing to easily execute all the procedures, (Just double click, If there is no arguments needed)...
+*Quick/Easily edit and save...
+*Commands and Scripts can be typed directly into the Editor window and it can be sourced or executed easily...
+*You can easily put your scripts to your Shelf...
+*Randomly, ICONs are chosen when you place your scripts to Shelf(Skipping those old gray n black MEL icon)...
+*Both Script AND execution command can be placed on to the Shelf...
+*You can drag drop various scripts and commands from your Shelf, And add random icon to them and place them back to the Shelf....
+*Find/Find Next and Find Previous supports searching...
+*External Editor can be invoked optionally for more flexible editing...
+*Help line provide support for your most actions...
+
+
+I thought of developing a script that will perform most operations like done in MEL STUDIO.
+As MEL LISTER++ comes as a script and not an API, it can be used for any version of maya.
+I hope, I have achieved (VERY) few of MEL STUDIOS feature.
+Soon I will try to add more features to this.
+
+I humbly request your support!
+
+
+
+
+
+
+
+How to Install MEL LISTER++ ...
+
+
+* Copy the entire script and paste it into the maya's script editor window......!
+* Then, Drag those entire script(Currently pasted) from the script editor to the Shelf.
+* Now Click the shelf ICON and enjoy.
+
+
+How to Use MEL LISTER++ ...
+
+- Use "..." button to browse a folder and select a MEL file. You will be listed with all files in that directory.
+- Click select the file from the list this will load the file for editing.
+- Double click will SOURCE that file and load that file for editing.
+- List of Procedures it contains will be listed in a list box below.
+- Click them to move your editing cursor to procedure's declaration part. So that you can see ARGUMENTS and RETURN Type.
+- This will also copy the procedure name to separate text box so that you can add your arguments. You can even drag the command from here to your shelf.
+- Double click any of the procedure name from the list to execute them (If it doesn't need any arguments)
+
+- Right click the above address bar to have quick list of favorite folders to quick navigate.
+
+- Move your scripts or execution commands to shelf with random icon. if needed.
+
+- You can drag your commands and scripts from shelf to Mel lister++ editing area and send them back to shelf with random icon.
+
+- You can clear the editing area and start writing your own script.
+- Save them using "Save as..." and Source them using "source script" button.
+- If it has no procedure your script will be executed automatically.
+- else drag the procedure name to executer text box and click "ExecuteProc" button.
+
+
+Known Bugs...
+*Attempting to load this (MEL LISTER++) script into the MEL LISTER++ might cause some errors.
+
+I will try to remove the above said bugs in my next version.
+
+
+
+Updated features...
+
+Update v1.0.2 - 01.05.2007
+
+*UI size can be extended.
+*Dialog that pops out after Xternal editing is removed and now MEL LISTER PLUS automatically reloads the file.
+*Warning pops out for saving the file if its modified and didn't save.
+
+Update v1.5.0 - 13 (Sun) May 2007  - 06:48:28  AM 
+
+*Browse and Navigate folders easily.
+*Source all files in a folder.
+*Copy a script file to your maya default script folder.
+*Copy all script file from current folder to maya default script folder.
+
+
+
+
+Script by
+Kumaresan 
+Jeremiah Grant
+
+Special Thanks to
+Bryan Ewert
+Erick Miller
+
+Date
+15-4-2007 :: 27-4-2007
+
+Last Update: 
+13 (Sun) May 2007  - 08:14:49  AM 
+
+Contact
+kaymatrix@gmail.com
+
+Chennai - India
+*/
+
+
+
+
+
+
+proc MyFavMenu()
+{
+	
+				
+	menuItem -p MyFavMenuLst -l "Maya Default..." -c "MyFavFolders(1)";
+	menuItem -p MyFavMenuLst -d 1;
+	menuItem -p MyFavMenuLst -l "Animation..." -c "MyFavFolders(2)";
+	menuItem -p MyFavMenuLst -l "Assorted..." -c "MyFavFolders(6)";
+	menuItem -p MyFavMenuLst -l "Character TD..." -c "MyFavFolders(3)";
+	menuItem -p MyFavMenuLst -l "Lighting..." -c "MyFavFolders(5)";
+	menuItem -p MyFavMenuLst -l "Rigging..." -c "MyFavFolders(4)";
+	menuItem -p MyFavMenuLst -l "Downloaded..." -c "MyFavFolders(7)";
+	
+}
+
+
+
+proc MyFavFolders(int $z)
+{
+	global string $textList;
+	string $nxpath = "";
+	string $mscriptpath = `internalVar -usd`;
+	string $foruse = `substring $mscriptpath 1 (size($mscriptpath)-1)`;
+	
+	
+	//MAKE SURE AT THE END YOU DONT PUT THE "/" SIGN.....
+	
+	
+	if($z == 1)
+		$nxpath = $foruse;
+	if($z == 2)
+		$nxpath = "E:/GoodScripts/Animation";
+	if($z == 3)
+		$nxpath = "E:/GoodScripts/Character TD";
+	if($z == 4)
+		$nxpath = "E:/GoodScripts/Rigging";
+	if($z == 5)
+		$nxpath = "E:/GoodScripts/Lighting";
+	if($z == 6)
+		$nxpath = "E:/Maya Works/Maya Script Works/Other's Brain";
+	if($z == 7)
+		$nxpath = "C:/Documents and Settings/Antz/My Documents/Maya Scripts/GoodScripts/ForScriptys";
+	
+	
+	
+	
+	
+	textField -e -tx $nxpath mylbl;
+	MyListFiles();
+	
+}
+
+
+
+
+
+
+
+
+
+global string $speedsave = "";
+global string $melDirectory = "";
+global string $saveMelDir = "";
+global string $fillst = "";
+global int $windwidth;
+
+
+
+proc MyCopier(int $selr)
+{
+
+global string $fillst;
+global string $melDirectory;
+string $dirPlusScript;
+string $fils[];
+string $selcx[];
+
+	if ($selr == 0)
+	{
+		$selcx = `textScrollList -q -si scriptList`;
+		if($selcx[0]!="")
+		{
+			global string $melDirectory;
+			string $dirPlusScript;
+			$dirPlusScript = ("\"" + $melDirectory+$selcx[0] + "\"");
+			MyCopierSupport ($dirPlusScript);
+		}	
+	}
+	else if ($selr==1)
+	{
+
+		if($fillst!="")
+		{
+		tokenize $fillst "\n" $fils;
+
+		string $result = `confirmDialog -message "This will copy all script files present in the current folder to your default script folder. This might take considerable time. Do you want to proceed?" -title "Confirm copying all scripts..."
+		-button "Yes" -button "No" -defaultButton "Yes"
+		-cancelButton "No" -dismissString "No"`;
+				
+		if($result=="Yes")
+			{
+
+				for($i=0;$i<`size($fils)`;$i++)
+				{
+					if($fils[$i]!="")
+					{
+					iprint ($fils[$i] + " script contains some errors! Can't proceed!");
+					$dirPlusScript = ("\"" + $melDirectory+$fils[$i] + "\"");
+					MyCopierSupport ($dirPlusScript);
+					}
+				}
+				iprint("Script files copied.... Check the maya default folder!");
+			
+			}
+		}
+
+
+	}
+
+}
+
+proc MyCopierSupport(string $source)
+{
+	string $filname = basename( $source, "" );
+	string $mscriptpath = `internalVar -usd`;
+	string $desti = `substring $mscriptpath 1 (size($mscriptpath)-1)`;
+	$desti = "\"" + $desti + "/" + $filname;
+
+		eval("sysFile -copy " + $desti + " " + $source);
+		iprint("Copied... " + $desti);
+		print("\nCopied... " + $desti + "\nFrom: " + $source + "\n");
+
+}
+
+
+
+proc MyimportFolder (string $path, string $useless)
+{
+	global string $melDirectory;
+
+	iprint("Listed script files from: " + $path);
+	
+	if(`substring $path 3 3` == "\\")
+		$path=fromNativePath($path);
+
+	if(endsWith($path, "/")==0)
+		$melDirectory = $path + "/";
+	
+		textField -e -tx $melDirectory mylbl;
+}
+
+
+proc MyFolderBrowse()
+{
+  string $mPath = `internalVar -userScriptDir`;
+  $mPath = `fileDialog -dm "*.mel"`;
+  if($mPath!="")
+  {
+	  string $melDirectory = dirname ($mPath);
+  	  MyimportFolder ($melDirectory, "");
+  	  MyListFiles();
+  }
+}
+
+proc MyListFiles()
+{
+	
+	global string $textList;		
+	string $nowpath = `textField -q -tx mylbl`;
+	
+	if($nowpath=="")
+	{
+		error "Please! Enter the vaild folder path that contains MEL Scripts";
+	}
+	else
+	{
+	MyimportFolder ($nowpath, "");
+	MyrepopulateList $textList;
+	optionVar -sv "mellsplsLASTPATH" $nowpath;
+	
+	}
+	
+}
+
+proc MyrepopulateList(string $textList)
+{
+	global string $melDirectory;
+	global int $windwidth;
+	global string $fillst;
+
+	string $melList[] = `getFileList -folder $melDirectory -filespec "*.mel"`;
+	string $melDirlststg=`system("DIR \"" + $melDirectory  + "\" /AD /B")`;
+	string $melDirlst[];
+	tokenize $melDirlststg "\n" $melDirlst;
+
+	string $inMelList;
+
+	textField -e -tx $melDirectory mylbl;
+	text -e -l `size( $melList )` scriptCountUI;
+	
+	
+
+	textScrollList -e -ra $textList;
+	textScrollList -e -fn "boldLabelFont" -append ("[ .. ]") $textList;
+
+	for($inMelList in $melDirlst)
+	{
+		if($inMelList!="")
+			textScrollList -e  -append ("[" + $inMelList + "]") $textList;
+	}
+
+	textScrollList -e -append ("[-----------------------------------]") $textList;
+	$fillst = "";
+	for($inMelList in $melList)
+	{
+		textScrollList -e -append $inMelList $textList;
+		$fillst = $fillst + "\n" + $inMelList;
+	}
+	if($inMelList != "")
+		textScrollList -e -sii 1 $textList;
+	
+	
+	//I donno why this happens.... Some times, While REPOPULATING or LOADING SCRIPT FOR EDIT  this our program window width xpands... To control that I put this here!
+	
+	window -e -w $windwidth -h 558 melListWin;
+}
+
+proc MyxtrnlEdit()
+{
+global string $speedsave = "";
+
+	if ($speedsave!="")
+	{
+	system("\"" + $speedsave + "\"");
+	eval("MymelEdit editField " + "`textScrollList -q -si scriptList`");
+	iprint("Script file reloaded!");
+	}
+	else
+		iprint("Select a file to edit!");
+	
+}
+
+proc MyFolderSystem()
+{
+	string $datx = `textField -q -tx mylbl`;
+	if ($datx != "")
+	{
+	 string $path = toNativePath( $datx );
+	 system ("explorer " + $path);
+	}
+	 
+}
+
+
+proc iprint(string $mdata)
+{
+	if ($mdata!="")
+	{
+	textField -e -tx $mdata myinfodisper;
+	}
+	
+}
+
+proc MyChangeMonitor()
+{
+
+	string $mtr = `text -q -l ttlsay`;
+	int $ss = `size($mtr)`;
+	string $lstm = `substring $mtr $ss $ss`;
+	if($lstm!="*")
+		text -e -l ($mtr + " *") ttlsay;
+}
+
+proc MySafeWarn()
+{
+
+	string $mtr = `text -q -l ttlsay`;
+	int $ss = `size($mtr)`;
+	string $lstm = `substring $mtr $ss $ss`;
+	if($lstm=="*")
+	{
+	
+		 	string $result = `confirmDialog -title "File didn't saved!" -message "You have edited this file. Do you want to save?"
+ 		-button "Yes" -button "No" -defaultButton "Yes"
+ 		-cancelButton "No" -dismissString "No"`;
+			
+			if($result=="Yes")
+				Myquicksave();
+		
+	}
+
+}
+
+proc MyAutoexecu()
+{
+global string $fillst;
+global string $melDirectory;
+string $dirPlusScript;
+string $fils[];
+int $ers=0;
+int $scrpt=0;
+
+if($fillst!="")
+{
+tokenize $fillst "\n" $fils;
+
+string $result = `confirmDialog -message "This will source all script files present in the current folder. This might take considerable time. Do you want to proceed?" -title "Confirm executing all scripts..."
+-button "Yes" -button "No" -defaultButton "Yes"
+-cancelButton "No" -dismissString "No"`;
+		
+if($result=="Yes")
+{
+
+iprint("Script source started...");
+
+for($i=0;$i<`size($fils)`;$i++)
+{
+	if($fils[$i]!="")
+	{
+	iprint ($fils[$i] + " script contains some errors! Can't proceed!");
+	$dirPlusScript = ("\"" + $melDirectory+$fils[$i] + "\"");
+	string $source = ("source "+$dirPlusScript);
+	if (catch (eval ($source)))
+	{
+		print("\n\n\nError in the script... " + ($i+1) + "/" + size($fils) + " " + $fils[$i] + "\n\n");
+		$ers=$ers+1;
+	}
+	else
+	{
+		print("\nAutomated Sourcing... " + ($i+1) + "/" + size($fils) + " " + $fils[$i] + "\n\n");
+		$scrpt=$scrpt+1;
+	}
+	iprint("Scripts executing.... " + ($i+1) + "/" + size($fils) + " Errors: " + $ers);
+	}
+
+}
+print("\n\n\nTotal scripts: " + size($fils) + " - Executed scripts: " + $scrpt + " - Error scripts: " + $ers + " - Check script editor!\n\n\n");
+iprint("Total scripts: " + size($fils) + " - Executed scripts: " + $scrpt + " - Error scripts: " + $ers + " - Check script editor!");
+rehash;
+
+
+		}
+
+	}
+
+}
+
+global proc mlPlus()
+{
+	global string $melDirectory;
+	global string $textList;
+	
+	global int $windwidth;
+	$windwidth = 695;
+	if (`window -ex melListWin`)
+		deleteUI melListWin;
+
+	string $melList[] = `getFileList -folder $melDirectory -filespec "*.mel"`;
+	string $inMelList;
+ 
+	window -title "MEL LISTER++ v1.5" -s 1 -rtf 1 -mnb 1 -mxb 0 -w 695 -h 530 -menuBar 0 melListWin;
+	
+	columnLayout -adj 1;
+		rowColumnLayout -nc 3 -columnWidth 1 175 -columnWidth 2 10 -columnWidth 3 500 MBAR;
+
+			text -l "";
+			separator -style "none";
+			text -l "";
+
+			button -label "Load Scripts " -c "MyListFiles()";
+			text -l "";
+			rowColumnLayout -nc 3 -columnWidth 1 425 -columnWidth 2 35 -columnWidth 3 35 MPaddressbar; 
+				textField -tx "" mylbl;
+				button -label "..." -c "MyFolderBrowse()";
+				button -label "Sys" -c "MyFolderSystem()";
+			setParent..;
+
+			popupMenu -p mylbl -b 3 MyFavMenuLst;
+			MyFavMenu;
+							
+			text -l "";
+			separator -style "none";
+			text -l "";
+	
+			rowColumnLayout -nc 2 -columnWidth 1 75 -columnWidth 2 100; 
+				text "Mel Scripts";
+				button -label "Source All" -c "MyAutoexecu()";
+			setParent..;
+
+			separator -style "none";
+			text -l "Script" ttlsay;
+
+			string $textList = `textScrollList -w 275 -numberOfRows 25 -ams 0 -aas 1 -shi 4 -sc ("MymelEdit editField " + "`textScrollList -q -si scriptList`") -dcc ("MyScriptExecuter") scriptList`;
+			separator -style "none";
+			string $editField = `scrollField -wordWrap 1 -kpc "MyChangeMonitor" -bgc 0.0 1.0 0.5 -w 500 -h 200 editField`;
+			
+			popupMenu -p scriptList -b 3;
+				menuItem -l "Load and Source selected script..." -c ("MyScriptExecuter");
+				menuItem -l "Copy selected script to Maya scripts folder..." -c ("MyCopier(0)");
+				menuItem -l "Copy all scripts to Maya scripts folder..." -c ("MyCopier(1)");
+			
+			
+			rowColumnLayout -nc 2 -columnWidth 1 140 -columnWidth 2 35; 
+				text -al "left" -l "Number of scripts................... ";
+				text -label "0" scriptCountUI;
+			
+			setParent..;	
+			separator -style "none";
+			textField -ed 0 myinfodisper;
+		
+		setParent..;
+		setParent..;
+		
+	columnLayout -adj 1;
+	rowColumnLayout -nc 6 -columnWidth 1 175 -columnWidth 2 155 -columnWidth 3 100 -columnWidth 4 10 -columnWidth 5 90 -columnWidth 6 200 DOWNTOOLS;
+	
+	text -l "Available Procedure" Myavlproc;
+	text -l "";
+	text -l "";
+	text -l "";
+	text -l "";
+	separator -style "none";
+
+	textScrollList -w 275 -numberOfRows 5 -ams 0 -aas 1 -shi 4 -sc "MyProcExecuter (`textScrollList -q -si exelist`,0)" -dcc "MyProcExecuter (`textScrollList -q -si exelist`,1)" exelist;
+
+	
+	columnLayout -adj 1;
+		textField -tx "" -w 5 exrd;
+		button -label "ProcName to Shelve" -c ("MyToShelSetup(1)");
+		button -label "Script to Shelve" -c ("MyToShelSetup(2)");
+		button -label "Both to Shelve" -c ("MyToShelSetup(3)");
+		setParent..;
+		
+	columnLayout -adj 1;
+		button -label "Execute Proc" -c ("MyQuickEXR");
+		text -l "";
+		text -l "";
+		text -l "";
+		setParent..;
+		
+	text -l "";	
+	
+	columnLayout -adj 1;
+		
+		//text -l "";
+		button -label "Find" -c ("MyFinderx()");
+		button -label "FindNext" -c ("MyFindNext()");
+		button -label "FindPrev" -c ("MyFindPrev()");	
+		rowColumnLayout -nc 2 -columnWidth 1 45 -columnWidth 2 45 ; 
+			button -label "<<<<" -c ("MyUIExpand(0)");
+			button -label ">>>>" -c ("MyUIExpand(1)");
+			setParent..;
+		setParent..;
+	
+
+	
+	rowColumnLayout -nc 2 -columnWidth 1 75 -columnWidth 2 75 ; 
+
+	
+		button -label "Source Script" -c ("MyScriptExecuter");
+		button -label "Quick save" -c "Myquicksave";
+		button -label "Save as..." -c ("MysaveScript " + $editField);
+		button -label "Xternal Edit" -c ("MyxtrnlEdit");
+		button -label "Clear" -c ("scrollField -e -cl "+$editField);				
+		button -label "Help" -c ("Mymelhelper");
+		button -label "About" -c ("Mymellisterabout");
+		button -label "Close" -c "deleteUI melListWin";
+		
+
+//This is to store the position number of all the proc that found in selected script file... 
+textScrollList -vis 0 -w 1 -h 1 -numberOfRows 5 posilist;	
+//This is to store the position for find next setup... 
+textScrollList -vis 0 -w 1 -h 1 -numberOfRows 5 fndnxt;	
+
+//LAST FOLDER
+if (`optionVar -exists "mellsplsLASTPATH"`)
+{
+	$nowpath = `optionVar -q "mellsplsLASTPATH"`;
+	textField -e -tx $nowpath mylbl;
+	MyListFiles();
+}
+else
+{
+	textField -e -tx "" mylbl;
+}
+
+iprint("Welcome to MEL LISTER++. Browse for a folder containing MEL scripts. Use above buttons to browse.");
+
+	window -e -w $windwidth -h 558 melListWin;
+	showWindow melListWin;
+}
+
+
+proc MyFindNext()
+{
+	
+	int $postogo[];
+	string $positionx[];
+	int $ttlfnd = `textScrollList -q -ni fndnxt`;
+	
+	if ($ttlfnd != 0)
+	{
+		
+			$postogo = `textScrollList -q -sii fndnxt`;
+			
+			if ($postogo[0] == $ttlfnd)
+				textScrollList -e -sii 1 fndnxt;
+			else
+				textScrollList -e -sii ($postogo[0]+1) fndnxt;	
+
+			$positionx = `textScrollList -q -si fndnxt`;
+			eval("scrollField -e -ip " + $positionx[0] + " editField");
+			eval("scrollField -e -it \"\" editField");
+			setFocus editField;
+
+			
+			if ($postogo[0] == $ttlfnd)
+				$toshow = 1;
+			else
+				$toshow = $postogo[0]+1;
+			
+			
+		iprint("Found : " + $ttlfnd + " match. You watching the match: " + $toshow);
+
+	}
+	else
+		
+		iprint("Error: Search for text using --- Find --- function first. Then use find next!");
+	
+}
+
+
+proc MyFindPrev()
+{
+	
+	int $postogo[];
+	string $positionx[];
+	int $ttlfnd = `textScrollList -q -ni fndnxt`;
+	$postogo = `textScrollList -q -sii fndnxt`;
+	
+	if ($ttlfnd != 0)
+	{
+		if ($postogo[0] != 1)
+				textScrollList -e -sii ($postogo[0]-1) fndnxt;	
+		else
+				textScrollList -e -sii $ttlfnd fndnxt;
+		
+		$positionx = `textScrollList -q -si fndnxt`;
+		eval("scrollField -e -ip " + $positionx[0] + " editField");
+		eval("scrollField -e -it \"\" editField");
+		setFocus editField;			
+
+			if ($postogo[0] == 1)
+				$toshow = $ttlfnd;
+			else
+				$toshow = $postogo[0]-1;
+			
+		iprint("Found : " + $ttlfnd + " match. You watching the match: " + $toshow);
+
+	}
+	else
+		iprint("Error: Search for text using --- Find --- function first. Then use find next!");
+	
+}
+
+
+
+proc MyFindTest( string $editFieldUI, string $searchdata )
+{
+    string $buffer[];
+    int $stringSize = 0;
+    string $text = `scrollField -q -tx $editFieldUI`;
+	textScrollList -e -ra fndnxt;	
+	
+    // Break the text into lines
+    tokenize $text "\n" $buffer;
+
+    // For each line...
+    for( $i = 0; $i < `size($buffer)`; $i++ )
+    {
+        // The end of the line equals the sum of the size of all the strings before it
+        $stringSize += `size $buffer[$i]`;
+
+        if (`gmatch $buffer[$i] $searchdata`)
+        {
+            // Place the cursor at the end of the matching line
+            scrollField -e -ip $stringSize $editFieldUI;
+            scrollField -e -it "" $editFieldUI;
+            setFocus $editFieldUI;
+			textScrollList -e -a $stringSize fndnxt;
+			textScrollList -e -sii 1 fndnxt;
+            // Break out of the loop
+            //break;
+        }
+    }
+	
+	int $ttls = `textScrollList -q -ni fndnxt`;
+	
+	if ($ttls != 0)
+	{
+	textScrollList -e -sii $ttls fndnxt;
+	iprint("Found : " + $ttls + " match");
+	MyFindNext;
+	}
+	else
+	{
+		iprint("No matching text found in this script!");
+	}
+	
+	
+}
+
+proc MyFinderx()
+{
+
+	string $tempdata = `scrollField -q -tx editField`;
+	string $searchdata;
+	string $result = `promptDialog -title "Search the script... "	-message "Text to find: " -button "Search" -button "Cancel" 		-defaultButton "Search" -cancelButton "Cancel"	-dismissString "Cancel"`;	
+	 	if ($result == "Search")
+		{
+ 		$searchdata = "*" + `promptDialog -query -text` + "*";
+		MyFindTest "editField" $searchdata;	
+		}
+}
+
+
+proc MyProcExecuter(string $txt[],int $i)
+{
+	int $postogo[];
+	string $positionx[];
+	
+	if($i == 0)
+	{
+		textField -e -tx ($txt[0] + ";") exrd;
+		
+		//To move the Insertion Pointer to the position...
+		$postogo = `textScrollList -q -sii exelist`;
+		textScrollList -e -sii $postogo[0] posilist;
+		$positionx = `textScrollList -q -si posilist`;
+		
+		eval("scrollField -e -ip " + $positionx[0] + " editField");
+		eval("scrollField -e -it \"\" editField");
+		setFocus editField;
+
+	}
+	else
+	{
+		textField -e -tx ($txt[0] + ";") exrd;
+		eval($txt[0]);
+		iprint "Procedure executed successfully!";
+	}
+}
+
+proc MyScriptExecuter()
+{
+string $txt = `scrollField -q -tx editField`;
+
+if($txt!="")
+{
+iprint "Script present in the script editor may contains some errors or it needs some support scripts!";
+eval($txt);
+iprint "Script executed successfully!";
+}
+else
+{
+iprint "Select a script file or type some commands to execute or source!";
+}
+
+}
+
+proc MyQuickEXR()
+{
+string $txt = `textField -q -tx exrd`;
+
+if($txt!="")
+{
+iprint($txt);
+eval($txt);
+iprint "Procedure executed successfully!";
+}	
+}
+
+proc MyToShelSetup(int $how)
+{
+	global string $gShelfTopLevel;
+	
+
+       string $XPM[];
+       clear $XPM;
+	   string $iconname;
+
+       // Gets all bitmap directories. Add more directories to the end of the $folders array as shown below
+       string $folders[] = `xbmLangPathList`;
+//     $folders[`size($folders)`] = "c:/my_extra_icons/";
+	
+       for( $fld in $folders )
+       {
+	      // Lists all XPM files in above directory
+            string $buffer[] = `getFileList -fld ($fld + "/") -fs "*.xpm"`;
+	      $XPM = stringArrayCatenate( $XPM, $buffer );
+	      clear $buffer;
+       }
+
+       // Get the size of the array
+       $xpmCount = `size( $XPM )`;
+
+	   
+	   if($xpmCount==0)
+	   {
+		   iprint("No icons found in your maya icon folders!");
+		   $iconname = "menuiconview.xpm";
+	   }
+	   else
+	   {
+	
+		// Random number based off the size of the array
+       int $nowxpm = int(`rand $xpmCount`);
+	   $iconname = $XPM[$nowxpm];
+	   }
+	   
+
+	
+	string $cmd = "";
+	string $seta = "";
+	string $setb = "";
+	
+		if ($how == 3)
+		{
+
+				$seta = `textField -q -tx editField`;
+				$setb = `textField -q -tx exrd`;
+				$cmd = ($seta + "\n" + $setb);
+				
+				if (($seta!="") && ($seta!=""))
+				if (`tabLayout -exists $gShelfTopLevel`)
+				{
+					shelfButton
+					-parent ($gShelfTopLevel + "|" + `tabLayout -q -st $gShelfTopLevel`)
+					-command $cmd
+					-image1 $iconname
+					-annotation $setb;
+					iprint "Added to the current Shelf successfully!";
+				}
+				else
+				{
+					iprint "You need a shelf!";
+				}
+				else
+				{
+					iprint("Script and Proc Name section most be filled!");
+				}
+			
+		}
+		else if($how == 2)
+		{	
+			
+				$cmd = `textField -q -tx editField`;
+				
+				if ($cmd!="")
+				if (`tabLayout -exists $gShelfTopLevel`)
+				{
+					shelfButton
+					-parent ($gShelfTopLevel + "|" + `tabLayout -q -st $gShelfTopLevel`)
+					-command $cmd
+					-image1 $iconname
+					-annotation $cmd;
+					iprint "Added to the current Shelf successfully!";
+				}
+				else
+				{
+					iprint "You need a shelf!";
+				}
+				else
+				{
+					iprint("Input some script to send them shelf!");
+				}
+		}
+		else if($how == 1)
+		{	
+						
+			$cmd = `textField -q -tx exrd`;
+			if($cmd!="")
+			{
+			if (`tabLayout -exists $gShelfTopLevel`)
+				{
+					shelfButton
+					-parent ($gShelfTopLevel + "|" + `tabLayout -q -st $gShelfTopLevel`)
+					-command $cmd
+					-image1 $iconname
+					-annotation $cmd;
+					iprint "Added to the current Shelf successfully!";
+				}
+				else
+				{
+					iprint "You need a shelf!";
+				}
+			}
+			else
+			{
+				iprint("Procedure name most not be empty!");
+			}
+		}
+		
+		
+}
+
+/*
+proc MymelLoad(string $script[])
+{	
+	if($script[0]!="")
+	{
+	global string $melDirectory;
+	string $dirPlusScript;
+	iprint "Above script contains errors! Check your Script Editor.";
+	$dirPlusScript = ("\"" + $melDirectory+$script[0] + "\"");
+	string $source = ("source "+$dirPlusScript);
+	eval ($source);
+	rehash;
+	iprint("Script file sourced successfully!");
+	}
+}
+
+*/
+
+proc MymelEdit(string $editField, string $script[])
+{
+	global int $windwidth;
+
+	
+		
+	if (startsWith($script[0], "["))
+	{
+
+		string $strDir  = `substring $script[0] 2 (size($script[0])-1)`;
+		
+		if ($strDir=="-----------------------------------")
+		{
+		iprint("oh... its just a seperator.. seperates folder and files!");
+		}
+		else if ($strDir==" .. ")
+		{
+		string $nowpath = `textField -q -tx mylbl`;
+		string $ee = basename($nowpath,"");
+	        string $result = substituteAllString($nowpath , ("/" + $ee + "/"), "");
+		textField -e -tx $result mylbl;
+		MyListFiles();
+
+		}
+		else if ($strDir=="")
+		{
+		iprint("hmmm...Empty!");
+		}
+		else
+		{
+
+		string $nowpath = `textField -q -tx mylbl`;
+		$nowpath = $nowpath + $strDir;
+		textField -e -tx $nowpath mylbl;
+		MyListFiles();
+
+
+		}
+		
+	}
+	else
+	{
+
+
+	if ($script[0]!="melPlus.mel")
+	{
+
+	MySafeWarn();
+
+	
+	if($script[0]!="")
+	{
+	global string $melDirectory;
+	global string $speedsave;
+	string $dirPlusScript, $nextLine, $fullEdit, $inFile;
+	string $file[];
+	int $count = 0;
+	int $posit = 0;
+	
+	textScrollList -e -ra exelist;
+	textScrollList -e -ra posilist;
+	textField -e -tx "" exrd;
+	
+	$dirPlusScript = $melDirectory+$script[0];
+	
+	text -e -ann ("Script: " + $dirPlusScript) -l ("Script: " + $dirPlusScript) ttlsay;
+	$speedsave = $dirPlusScript;
+
+	
+	$fileId=`fopen $dirPlusScript "r"`;
+	$nextLine = `fgetline $fileId`;
+	
+
+	while(!`feof $fileId`)
+	{
+		$file[$count] = $nextLine;
+		$nextLine = `fgetline $fileId`;
+		$count++;
+	}
+	
+	$file[$count] = $nextLine;
+	$nextLine = `fgetline $fileId`;
+
+	$count++;
+	
+	fclose $fileId;
+
+	for($inFile in $file)
+	{
+		$fullEdit += $inFile;
+		$nextLine = $inFile;
+		$posit = size($fullEdit);
+		MyProcLister ($nextLine, $posit);
+	}
+	
+	scrollField -e -cl $editField;
+	scrollField -e -it $fullEdit $editField;
+	}
+
+	iprint("Script file loaded for editing!");
+
+		//I donno why this happens.... Some times, While REPOPULATING or LOADING SCRIPT FOR EDIT  this our program window width xpands... To control that I put this here!
+	window -e -w $windwidth -h 558 melListWin;
+	
+	}
+	else
+	{
+		iprint("Please! Don't try to load -melPlus.mel- script file. Try with other files.");
+	}
+
+       }
+}
+
+proc MyUIExpand(int $step)
+{
+	global int $windwidth;
+	int $raisefactor = 100;
+	
+	if($step==1)
+	{
+			
+			int $tmp = `rowColumnLayout -q -w MBAR`;
+			rowColumnLayout -e -w ($tmp+$raisefactor) MBAR;
+			$tmp = ($tmp-202)+$raisefactor;
+			rowColumnLayout -e -columnWidth 3 $tmp MBAR;
+			
+			$tmp = `rowColumnLayout -q -w MPaddressbar`;
+			rowColumnLayout -e -w ($tmp+$raisefactor) MPaddressbar;
+			$tmp = ($tmp-75)+$raisefactor;
+			rowColumnLayout -e -columnWidth 1 $tmp MPaddressbar;
+			
+			$tmp = `rowColumnLayout -q -w DOWNTOOLS`;
+			rowColumnLayout -e -w ($tmp+$raisefactor) DOWNTOOLS;
+			$tmp = ($tmp-697)+$raisefactor;
+			rowColumnLayout -e -columnWidth 4 $tmp DOWNTOOLS;
+		
+			$windwidth=$windwidth+$raisefactor;
+			window -e -w $windwidth -h 558 melListWin;
+			
+	}
+	else if($step==0)
+	{
+
+			int $tmp = `rowColumnLayout -q -w MBAR`;
+			rowColumnLayout -e -w ($tmp-$raisefactor) MBAR;
+			$tmp = ($tmp-202)-$raisefactor;
+			rowColumnLayout -e -columnWidth 3 $tmp MBAR;
+			
+			$tmp = `rowColumnLayout -q -w MPaddressbar`;
+			rowColumnLayout -e -w ($tmp-$raisefactor) MPaddressbar;
+			$tmp = ($tmp-75)-$raisefactor;
+			rowColumnLayout -e -columnWidth 1 $tmp MPaddressbar;
+			
+			$tmp = `rowColumnLayout -q -w DOWNTOOLS`;
+			rowColumnLayout -e -w ($tmp-$raisefactor) DOWNTOOLS;
+			$tmp = ($tmp-697)-$raisefactor;
+			rowColumnLayout -e -columnWidth 4 $tmp DOWNTOOLS;
+		
+			$windwidth=$windwidth-$raisefactor;
+			window -e -w $windwidth -h 558 melListWin;
+
+		
+	}
+	
+}
+
+proc MyProcLister(string $nextLine, int $posit)
+{
+	string $tl[];
+	
+	
+		if (gmatch ($nextLine, "* proc *") == 1)
+		{
+						
+			tokenizeList($nextLine, $tl);	
+			string $exr;
+			if(($tl[2]=="int") || ($tl[2]=="string") || ($tl[2]=="float") || ($tl[2]=="vector") || ($tl[2]=="int[]") || ($tl[2]=="string[]") || ($tl[2]=="vector[]") || ($tl[2]=="float[]"))
+				$exr=$tl[3];
+			else
+				$exr=$tl[2];
+
+			string $tt = $exr;
+			
+			while (	endsWith($tt, "(") || endsWith($tt, ")") || endsWith($tt, "{") || endsWith($tt, "}"))
+				$tt = eval("substring \"" + $tt + "\" 1 " + (size($tt)-1));	
+			
+			while (gmatch ($tt, "*(*"))
+				$tt = eval("substring \"" + $tt + "\" 1 " + (size($tt)-1));	
+			
+			textScrollList -e -a $tt exelist;
+			textScrollList -e -a $posit posilist;
+			
+		}
+		else if (startsWith($nextLine, "proc") == 1)
+		{
+				
+			tokenizeList($nextLine, $tl);	
+			string $exr;
+			if(($tl[1]=="int") || ($tl[1]=="string") || ($tl[1]=="float") || ($tl[1]=="vector") || ($tl[1]=="int[]") || ($tl[1]=="string[]") || ($tl[1]=="vector[]") || ($tl[1]=="float[]"))
+				$exr=$tl[2];
+			else
+				$exr=$tl[1];
+
+			string $tt = $exr;
+			
+			while (	endsWith($tt, "(") || endsWith($tt, ")") || endsWith($tt, "{") || endsWith($tt, "}"))
+				$tt = eval("substring \"" + $tt + "\" 1 " + (size($tt)-1));	
+			
+			while (gmatch ($tt, "*(*"))
+				$tt = eval("substring \"" + $tt + "\" 1 " + (size($tt)-1));	
+			
+			textScrollList -e -a $tt exelist;
+			textScrollList -e -a $posit posilist;
+			
+		}
+		
+		
+			int $ttlx = `textScrollList -q -ni exelist`;
+			text -e -l ("Available Procedure..............." + $ttlx) Myavlproc;
+		
+		
+	
+}
+
+proc MysaveScript(string $script)
+{
+
+	string $newScript = `scrollField -q -tx $script`;
+
+	if( $newScript == "" )
+	{
+		error "There is nothing to save.";
+	}
+	else
+	{
+		fileBrowserDialog -m 1 -fc "MysaveDir" -ft "mel" -an "Save As" -om "Reference";
+		global string $saveMelDir;
+		string $object;
+		int $fileOut;
+
+ 		$fileOut=`fopen $saveMelDir "w"`;
+
+		if ($fileOut == 0)
+		{
+			error "Location Invalid: Unable to write file";
+		}
+
+  		fprint $fileOut $newScript;
+	 	fclose $fileOut;
+
+		iprint ("Save to ... " + $saveMelDir);
+		
+	string $mtr = `text -q -l ttlsay`;
+	int $ss = `size($mtr)`;
+	string $lstm = `substring $mtr $ss $ss`;
+	if($lstm=="*")
+	{
+		$lstm = `substring $mtr 1 ($ss-1)`;
+		text -e -l $lstm ttlsay;
+	}
+		
+	}
+}
+
+
+proc Myquicksave()
+{
+	global string $speedsave;
+	string $newScript = `scrollField -q -tx editField`;
+
+	if( $newScript == "" )
+	{
+		iprint "There is nothing to save.";
+	}
+	else
+	{
+
+		if ($speedsave!="")
+		{
+		string $object;
+		int $fileOut;
+
+ 		$fileOut=`fopen $speedsave "w"`;
+
+		if ($fileOut == 0)
+		{
+			error "Location Invalid: Unable to write file";
+		}
+
+  		fprint $fileOut $newScript;
+	 	fclose $fileOut;
+
+		iprint ("Save to .... " + $speedsave);
+		
+	string $mtr = `text -q -l ttlsay`;
+	int $ss = `size($mtr)`;
+	string $lstm = `substring $mtr $ss $ss`;
+	if($lstm=="*")
+	{
+		$lstm = `substring $mtr 1 ($ss-1)`;
+		text -e -l $lstm ttlsay;
+	}
+		
+		
+		
+	}
+}
+
+}
+
+proc MysaveDir( string $filename, string $fileType )
+{
+	global string $saveMelDir;
+	$saveMelDir = $filename;
+}
+
+proc Mymellisterabout()
+{
+	if (`window -ex mlstrabt`)
+		deleteUI mlstrabt;
+
+
+	window -title "About MEL LISTER++ v1.5" -s 0 -rtf 1 -mnb 1 -mxb 0 -w 695 -h 530 -menuBar 0 mlstrabt;
+	
+	columnLayout -adj 1;
+	text -l "";
+	text -align "center" -l "MEL LISTER++ v1.5";
+	text -l "";
+	scrollField -h 300 -ed 0 -ww 1 -tx "\nScript by\nKumaresan \nJeremiah Grant\n\nSpecial Thanks to\nBryan Ewert\nErick Miller\n\nDate\n15-4-2007 :: 27-4-2007\n\nLast Update: \n13 (Sun) May 2007  - 08:14:49  AM \n\nContact\nkaymatrix@gmail.com\n\nChennai - India\n" sayers;
+	text -l "";
+	button -label "Close" -c "deleteUI mlstrabt";
+	scrollField -q -h sayers;	
+	window -e -w 300 -h 420 mlstrabt;
+	showWindow mlstrabt;
+}
+
+proc Mymelhelper()
+{
+	confirmDialog -title "Help" -message "Please! Refer the HEADER part of this script for complete help!" -button "OK";
+}
+
+mlPlus;

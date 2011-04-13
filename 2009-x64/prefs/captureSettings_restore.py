@@ -1,0 +1,2 @@
+import captureSettings
+captureSettings.restoreNormalSettings()

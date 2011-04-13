@@ -1,0 +1,66 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//expand edge loops by $distance
+global proc string[] zenExpandAlongLoop(int $distance, string $edges[])
+{
+		$edges=stringArrayRemove({""," "},`ls -fl $edges`);
+	
+	string	$obj=zenReturnFirstStringItem( stringToStringArray( $edges[0],"." ) );
+	
+	string	$edgesExpanded[];
+	string	$edgesLoops[];
+	
+	int	$err=false;
+	
+		$edgesExpanded=$edges;
+		
+		for($i=0; $i<$distance; $i++ )
+		{
+			$edgesExpanded=ls
+			(
+				"-fl",
+				polyListComponentConversion
+				(
+					"-te",
+					polyListComponentConversion
+					(
+						"-tv",
+						$edgesExpanded
+					)
+				)
+			);
+		}
+		for( $e in $edges )
+		{
+			$err=catch
+			(
+				$edgesLoops=stringArrayCatenate
+				(
+					$edgesLoops,
+					zenCompFromID
+					(
+						$obj,
+						"e",
+						zenIntArrayRemove({0},polySelect( "-ns", "-el", zenCompID($e), $obj ))
+					) 
+				)
+			);  
+			if($err) warning("\nProblem with zenExpandAlongLoop:"+$e+"\n");
+		}
+		
+		//$edgesLoops=stringArrayRemoveDuplicates($edgesLoops);
+		
+	return	( zenStringArrayIntersect( $edgesExpanded, $edgesLoops ) );
+}

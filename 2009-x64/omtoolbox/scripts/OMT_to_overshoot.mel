@@ -1,0 +1,145 @@
+/// Dependencies:
+///	OMT_to_overshoot.py
+
+
+global int $pythonError = 0;
+
+
+// Execution procedure
+global proc OMT_to_overshoot()
+{
+	global int $pythonError;
+	
+	if ($pythonError == 0)
+	{
+		if ( `optionVar -q "OMT_ov_overshootSourceType"` == "[From Frame]")
+		{
+			print ("OMT_to_overshoot.overshoot(" + `optionVar -q "OMT_ov_overshootSourceFrame"` + ")\n");
+			python("OMT_to_overshoot.overshoot(" + `optionVar -q "OMT_ov_overshootSourceFrame"` + ")");
+		}
+		else 
+		{
+			$sourceType = `optionVar -q "OMT_ov_overshootSourceType"`;
+			
+			if ($sourceType == "Previous Key")
+			{
+				print ("OMT_to_overshoot.overshoot(\"previous\")\n");
+				python("OMT_to_overshoot.overshoot(\"previous\")");
+			}
+			else if ($sourceType == "Next Key")
+			{
+				print ("OMT_to_overshoot.overshoot(\"next\")\n");
+				python("OMT_to_overshoot.overshoot(\"next\")");
+	
+			}			
+			
+		}
+	}
+	else print "Overshoot >> Python module was not imported";
+}
+
+
+
+
+
+
+// OptionBox command proc
+global proc OMT_overshootOptGrpCC()
+{
+	string $optGrpVal = `optionMenuGrp -q -v "optionMenu_overshoot"`;
+	
+	if ($optGrpVal == "[From Frame]")
+	{
+		rowLayout -e -vis 1 "OMT_overshootFrameInput";
+	}
+	else 
+	{
+		rowLayout -e -vis 0 "OMT_overshootFrameInput";
+	}
+	
+	optionVar -sv "OMT_ov_overshootSourceType" $optGrpVal;	
+}
+
+
+
+
+
+
+global proc int initIntField()
+{
+	$sourceVal = `optionVar -q "OMT_ov_overshootSourceType"`;
+	if ($sourceVal == "[From Frame]") return 1;
+	else return 0;	
+}
+
+
+
+
+
+
+global proc OMT_to_overshootOptWin()
+{
+   if (`window -exists OMT_overshootOptWin`)
+      deleteUI OMT_overshootOptWin;
+
+   window -title "Overshoot Settings" -sizeable false OMT_overshootOptWin;
+      columnLayout -rowSpacing 5;
+         rowLayout -numberOfColumns 2 
+	 	-cw2 130 130
+		-columnAttach 1 "both" 5
+		-columnAttach 2 "both" 5;
+
+		optionMenuGrp -changeCommand "OMT_overshootOptGrpCC" 
+		    -annotation "Select method for getting the start pose"
+		    "optionMenu_overshoot";
+		    
+		  	menuItem -label "Previous Key"
+				-annotation "Uses previous key for start pose";
+			menuItem -label "Next Key"
+				-annotation "Uses next key for start pose";
+			menuItem -label "[From Frame]"
+				-annotation "Uses specified frame for start pose";
+	
+			optionMenuGrp -e -v (`optionVar -q "OMT_ov_overshootSourceType"`) ("optionMenu_overshoot"); // Set the default here.
+		  
+		rowLayout -numberOfColumns 2
+			-vis `initIntField`
+			-cw2 80 50
+			-columnAttach 1 "both" 0
+			-columnAttach 2 "both" 0
+			OMT_overshootFrameInput;
+			
+			text -label "Frame nr.:";
+		  
+			intField -annotation "Type in frame number to use as start pose. (Set to [From Frame] to activate)"
+				-value `optionVar -q "OMT_ov_overshootSourceFrame"`
+				-changeCommand ("optionVar -iv OMT_ov_overshootSourceFrame `intField -q -v OMT_overshootIntField`")
+				OMT_overshootIntField;
+				
+		setParent..;
+	setParent..;
+
+	rowLayout -numberOfColumns 2 
+	 	-cw2 130 130
+		-columnAttach 1 "both" 5
+		-columnAttach 2 "both" 5;
+		
+		button -command "OMT_to_overshoot"
+			-label "Go Go Go!";
+		button -command ("deleteUI -window OMT_overshootOptWin")
+			-label "Close";
+	setParent..;
+
+   showWindow OMT_overshootOptWin;
+   
+   window -e -widthHeight 270 100 OMT_overshootOptWin;
+}
+
+
+
+if (`optionVar -q "OMT_ov_overshootSourceType"` == 0) optionVar -sv "OMT_ov_overshootSourceType" "Previous Key";
+
+if (catch(python("import OMT_to_overshoot")))
+{
+	$pythonError = 1;
+}

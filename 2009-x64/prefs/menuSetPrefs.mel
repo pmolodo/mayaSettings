@@ -1,0 +1,21 @@
+//Menu Set Preferences ( 1.07)
+//
+//
+menuSet -permanent 1 -hotBoxVisible 1 -label "Common" -menuArray { "mainFileMenu", "mainEditMenu", "mainModifyMenu", "mainCreateMenu", "mainDisplayMenu", "mainWindowMenu", "mainAssetsMenu" } commonMenuSet;
+menuSet -moveMenuSet commonMenuSet 0;
+menuSet -permanent 0 -hotBoxVisible 1 -label "Animation" -menuArray { "mainKeysMenu", "mainGeoCacheMenu", "mainDeformationsMenu", "mainEditDeformationsMenu", "mainSkeletonsMenu", "mainSkinningMenu", "mainConstraintsMenu", "mainCharactersMenu" } animationMenuSet;
+menuSet -moveMenuSet animationMenuSet 1;
+menuSet -permanent 0 -hotBoxVisible 1 -label "Polygons" -menuArray { "mainPolygonsSelectMenu", "mainPolygonsMeshMenu", "mainPolygonsEditMeshMenu", "mainPolygonsProxyMenu", "mainPolygonsNormalsMenu", "mainPolygonsColorMenu", "mainPolygonsCreateUVsMenu", "mainPolygonsEditUVsMenu" } polygonsMenuSet;
+menuSet -moveMenuSet polygonsMenuSet 2;
+menuSet -permanent 0 -hotBoxVisible 1 -label "Surfaces" -menuArray { "mainEditCurvesMenu", "mainSurfacesMenu", "mainEditSurfacesMenu", "mainSubdivSurfacesMenu" } surfacesMenuSet;
+menuSet -moveMenuSet surfacesMenuSet 3;
+menuSet -permanent 0 -hotBoxVisible 1 -label "Dynamics" -menuArray { "mainParticlesMenu", "mainFluidsMenu", "mainFluidsCacheMenu", "mainFieldsMenu", "mainDynBodiesMenu", "mainDynEffectsMenu", "mainDynSettingsMenu", "mainHairMenu" } dynamicsMenuSet;
+menuSet -moveMenuSet dynamicsMenuSet 4;
+menuSet -permanent 0 -hotBoxVisible 1 -label "Rendering" -menuArray { "mainShadingMenu", "mainRenTexturingMenu", "mainRenderMenu", "mainCartoonMenu", "mainCreatorMenu", "SBSHairMenu" } renderingMenuSet;
+menuSet -moveMenuSet renderingMenuSet 5;
+menuSet -permanent 0 -hotBoxVisible 1 -label "nDynamics" -menuArray { "mainNParticleMenu", "mainNMeshMenu", "mainNConstraintMenu", "mainNCacheMenu", "mainNSolverMenu", "mainFieldsMenu" } nDynamicsMenuSet;
+menuSet -moveMenuSet nDynamicsMenuSet 6;
+menuSet -permanent 0 -hotBoxVisible 1 -label "Live" -menuArray { "liveSceneMenu", "liveTrackMenu", "liveSolveMenu", "liveConstraintsMenu", "livePanelsMenu" } liveMenuSet;
+menuSet -moveMenuSet liveMenuSet 7;
+menuSet -permanent 0 -hotBoxVisible 1 -label "DMM" -menuArray { "MayaWindow|mainDmmAssetsMenu", "MayaWindow|mainDmmEditMenu", "MayaWindow|mainDmmMaterialsMenu", "MayaWindow|mainDmmSceneMenu", "MayaWindow|mainDmmHelpMenu" } dmmMenuSet;
+menuSet -moveMenuSet dmmMenuSet 8;

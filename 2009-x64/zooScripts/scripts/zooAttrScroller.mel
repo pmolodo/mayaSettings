@@ -1,0 +1,65 @@
+global proc zooAttrScroller() {
+	global int $zooIsClicked;
+
+	$zooIsClicked = 0;
+	if( `popupMenu -ex tempMM` ) deleteUI tempMM;
+
+	popupMenu -ctl 0 -alt 0 -sh 0 -mm 1 -b 1 -aob 1 -p viewPanes -pmc ( "zooAttrScrollerBuildMM tempMM" ) tempMM;
+	}
+
+
+global proc zooAttrScrollerBuildMM ( string $parent ) {
+	global int $zooIsClicked;
+	string $sel[] = `ls -sl`;
+
+	if( !`size $sel` ) { menuItem -l "no objects selected"; return; }
+	string $attrs[] = `listAttr -k`;
+
+	setParent -m $parent;
+	popupMenu -e -dai $parent;
+
+	$attrs = `stringArrayRemoveDuplicates $attrs`;
+	$zooIsClicked = 1;
+
+	for ( $a in $attrs ) menuItem -l $a -command ( "zooScrollAttr " + $a );
+	}
+
+
+global proc zooScrollAttr( string $attr ) {
+	if( !`draggerContext -q -ex zooAttrScrollerCtx` ) draggerContext -pressCommand( "zooAttrScrollerPressCmd "+ $attr ) -dragCommand( "zooAttrScrollerDragCmd "+ $attr ) -cursor "crossHair" zooAttrScrollerCtx;
+	setToolTo zooAttrScrollerCtx;
+	}
+
+
+global proc zooAttrScrollerPressCmd( string $attr ) {
+	float $pressPosition[] = `draggerContext -q -anchorPoint zooAttrScrollerCtx`;
+	print ("Press: " + $pressPosition[0] +" "+ $pressPosition[1] +" "+ $pressPosition[2] +"\n");
+	}
+
+
+global proc zooAttrScrollerDragCmd( string $attr ) {
+	string $sel[] = `ls -sl`;
+	string $mod = `draggerContext -q -modifier zooAttrScrollerCtx`;
+	float $pressPosition[] = `draggerContext -q -anchorPoint zooAttrScrollerCtx`;
+	float $dragPosition[] = `draggerContext -q -dragPoint zooAttrScrollerCtx`;
+	int $button = `draggerContext -q -button zooAttrScrollerCtx`;
+	int $div = 10;
+
+	if( $mod == "ctrl" ) $div = 100;
+
+	for( $obj in $sel ) if( `objExists ( $obj +"."+ $attr )` ) setAttr ( $obj +"."+ $attr ) ( ($dragPosition[0]-$pressPosition[0])/$div );
+
+	string $message = ($dragPosition[0] +", "+ $dragPosition[1]);
+	draggerContext -edit -drawString $message zooAttrScrollerCtx;
+	}
+
+
+global proc zooAttrScrollerKillUI() {
+	global int $zooIsClicked;
+	deleteUI tempMM;
+	setToolTo zooAttrScrollerCtx;
+	$zooIsClicked = 0;
+	}
+
+
+//zoo.end

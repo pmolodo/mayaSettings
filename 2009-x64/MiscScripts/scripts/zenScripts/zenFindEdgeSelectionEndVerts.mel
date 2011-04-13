@@ -1,0 +1,58 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//find the end verts of an edge loop
+global proc string[] zenFindEdgeSelectionEndVerts(string $edgeLoop[])
+{
+		$edgeLoop=`ls -fl $edgeLoop`;
+		
+	string	$ends[];
+	string	$testEdges[];
+	string	$testVerts[];
+	string	$intersector=`stringArrayIntersector`;
+	
+		for($i=0;$i<size($edgeLoop);$i++)
+		{
+			$testVerts=`polyListComponentConversion -tv $edgeLoop[$i]`;
+			$testVerts=`ls -fl $testVerts`;
+			$testEdges=`polyListComponentConversion -te $testVerts[0]`;
+			$testEdges=`ls -fl $testEdges`;
+			
+			stringArrayIntersector -e -r $intersector;
+			stringArrayIntersector -e -i $testEdges $intersector;
+			stringArrayIntersector -e -i $edgeLoop $intersector;
+			$testEdges=`stringArrayIntersector -q $intersector`;
+						
+			if(size($testEdges)==1)
+			{
+				$ends[size($ends)]=$testVerts[0];
+			}
+			else
+			{
+				$testEdges=`polyListComponentConversion -te $testVerts[1]`;
+				$testEdges=`ls -fl $testEdges`;
+				
+				stringArrayIntersector -e -r $intersector;
+				stringArrayIntersector -e -i $testEdges $intersector;
+				stringArrayIntersector -e -i $edgeLoop $intersector;
+				$testEdges=`stringArrayIntersector -q $intersector`;
+								
+				if(size($testEdges)==1)		
+					$ends[size($ends)]=$testVerts[1];
+			}
+		}
+		
+		deleteUI $intersector;
+	return $ends;
+}

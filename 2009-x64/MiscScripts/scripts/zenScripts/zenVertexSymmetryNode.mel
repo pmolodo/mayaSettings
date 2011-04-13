@@ -1,0 +1,382 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+if(`zenMayaVersion` < 8.5) requires "closestPointOnMesh";
+
+//creates a vertex symmetry table
+//each array item consists of an integer indicating the reflecting vertex id ( may be + or - , use abs to get a usable vert id )
+//negative vertex id's indicate vertices with point positions which lie in the negative along the reflection axis
+
+global proc int[] zenVertexSymmetryTable(string $obj, int $axis, string $coordinateSpaceObject)
+{		
+		$obj=zenReturnFirstStringItem(ls("-type","mesh",(stringArrayCatenate(`listRelatives -s -ni $obj`,{$obj}))));
+		
+	string	$tr=zenReturnFirstStringItem(`listRelatives -p $obj`);
+	
+	float	$tol=.0001;
+
+	string	$vertices[]=ls("-fl",`polyListComponentConversion -tv $obj`);
+		
+	float	$xyz[];
+	
+	int	$useOldCPNode;
+	
+	int	$id;
+	
+	int	$neg;
+	
+		if(`zenMayaVersion` < 8.5) $useOldCPNode=1;
+		
+	//create a pointMatrixMultiplier node for converting coordinates if a coordinate space object is specified
+	
+	string	$pointMatrixMultNode1;
+	string	$pointMatrixMultNode2;
+	
+	int	$coordinateSpace;//0==local, 1==world, 2==custom
+	
+	float	$axisOffset;
+			
+		if(`objExists ($coordinateSpaceObject+".worldInverseMatrix[0]")`)
+		{
+			switch($axis)
+			{
+				case 1:
+					$axisOffset=`getAttr ($coordinateSpaceObject+".tx")`-`getAttr ($tr+".tx")`;
+					break;
+
+				case 2:
+					$axisOffset=`getAttr ($coordinateSpaceObject+".ty")`-`getAttr ($tr+".ty")`;
+					break;
+
+				case 3:
+					$axisOffset=`getAttr ($coordinateSpaceObject+".tz")`-`getAttr ($tr+".tz")`;
+					break;
+			}
+			
+			if
+			(
+				$axisOffset>$tol ||
+				`getAttr ($coordinateSpaceObject+".rx")`!=`getAttr ($tr+".rx")` ||
+				`getAttr ($coordinateSpaceObject+".ry")`!=`getAttr ($tr+".ry")` ||
+				`getAttr ($coordinateSpaceObject+".rz")`!=`getAttr ($tr+".rz")`
+				
+			)
+			{
+			
+				$pointMatrixMultNode1=`createNode pointMatrixMult`;			
+				setAttr ($pointMatrixMultNode1+".vectorMultiply")  true;				
+				connectAttr ($coordinateSpaceObject+".worldInverseMatrix[0]") ($pointMatrixMultNode1+".inMatrix");
+
+				$pointMatrixMultNode2=`createNode pointMatrixMult`;			
+				setAttr ($pointMatrixMultNode2+".vectorMultiply")  true;				
+				connectAttr ($coordinateSpaceObject+".worldMatrix[0]") ($pointMatrixMultNode2+".inMatrix");
+			}
+			else	$coordinateSpace=0;
+		}
+		else
+		if($coordinateSpaceObject=="world")
+			$coordinateSpace=1;
+		else	$coordinateSpace=0;
+		
+	string	$closestPointOnMeshNode=`createNode closestPointOnMesh`;
+
+		if($coordinateSpace)
+			connectAttr ($obj+".worldMesh[0]") ($closestPointOnMeshNode+".inMesh");
+		else
+			connectAttr ($obj+".outMesh") ($closestPointOnMeshNode+".inMesh");
+			
+	//progress window
+	
+		progressWindow -isInterruptable 1 -title "Working" -status "Sorting Vertices" -max (size($vertices)/2) -progress 0;
+		
+		//undoInfo -swf 0;
+			
+	//find reflected vertices
+	
+	string	$closeVerts[];
+	
+	vector	$testCoordinates;
+	vector	$pointCoordinates;
+	
+	float	$vertDistance;
+	float	$closestDistance;
+	
+	string	$closestVert;
+	
+	int	$returnVal[]=`zenFillIntegerArray (size($vertices)) (-(size($vertices)+1))`;
+		
+		for($i=0;$i<size($vertices);$i++)
+		{
+			if($returnVal[$i]<(-(size($vertices))))
+			//skip the rest if the opposite has already been found
+			{
+				$neg=0;
+			
+				switch($coordinateSpace)
+				{
+					case 0:
+						$xyz=`pointPosition -l ($vertices[$i])`;
+
+						switch($axis)
+						{
+							case 1:
+								$xyz[0]=-$xyz[0];
+								if($xyz[0]<=0) $neg=1;
+								break;
+
+							case 2:
+								$xyz[1]=-$xyz[1];
+								if($xyz[1]<=0) $neg=1;
+								break;
+
+							case 3:
+								$xyz[2]=-$xyz[2];
+								if($xyz[2]<=0) $neg=1;
+								break;				
+						}
+
+						break;
+
+					case 1:
+
+						$xyz=`pointPosition -w ($vertices[$i])`;
+
+						switch($axis)
+						{
+							case 1:
+								$xyz[0]=-$xyz[0];
+								if($xyz[0]<=0) $neg=1;
+								break;
+
+							case 2:
+								$xyz[1]=-$xyz[1];
+								if($xyz[1]<=0) $neg=1;
+								break;
+
+							case 3:
+								$xyz[2]=-$xyz[2];
+								if($xyz[2]<=0) $neg=1;
+								break;				
+						}
+
+						break;
+
+					case 2:
+					
+						//find custom object space coordinates
+
+						$xyz=`pointPosition -w ($vertices[$i])`;
+
+						setAttr ($pointMatrixMultNode1+".inPoint") ($xyz[0]) ($xyz[1]) ($xyz[2]);
+
+							$xyz=`getAttr ($pointMatrixMultNode1+".output")`;
+
+						switch($axis)
+						{
+							case 1:
+								$xyz[0]=-$xyz[0];
+								if($xyz[0]<=0) $neg=1;
+								break;
+
+							case 2:
+								$xyz[1]=-$xyz[1];
+								if($xyz[1]<=0) $neg=1;
+								break;
+
+							case 3:
+								$xyz[2]=-$xyz[2];
+								if($xyz[2]<=0) $neg=1;
+								break;				
+						}						
+
+						setAttr ($pointMatrixMultNode2+".inPoint") ($xyz[0]) ($xyz[1]) ($xyz[2]);
+						
+						$xyz=`getAttr ($pointMatrixMultNode1+".output")`;
+
+						break;
+				}
+				
+				setAttr ($closestPointOnMeshNode+".inPosition") ($xyz[0]) ($xyz[1]) ($xyz[2]);
+				
+				if($useOldCPNode)
+				{
+					$closeVerts=ls
+					(
+						"-fl",
+						(
+							polyListComponentConversion
+							(
+								"-tv",
+								(
+									$obj
+									+".f["
+									+(string(`getAttr ($closestPointOnMeshNode+".closestFaceIndex")`))
+									+"]"
+								)
+							)
+						)
+					);
+										
+					$closestDistance=99999999999;
+					
+					$closestVert=$closeVerts[0];
+					
+					for($v in $closeVerts)
+					{
+						$pointCoordinates=<<($xyz[0]),($xyz[1]),($xyz[2])>>;
+						$testCoordinates=zenArrayToVector(`pointPosition -w $v`);
+						
+						$vertDistance=mag($testCoordinates-$pointCoordinates);
+						
+						
+						
+						if($vertDistance<$closestDistance)
+						{
+							$closestDistance=$vertDistance;
+							$closestVert=$v;
+						}						
+					}
+					
+					$id=`zenCompID $closestVert`;
+				}
+				else
+				{
+					$id=`getAttr ($closestPointOnMeshNode+".closestVertexIndex")`;
+
+				}
+				
+				if($neg)
+				{
+					$returnVal[$i]=-$id;
+					$returnVal[$id]=$i;
+				}
+				else
+				{
+					$returnVal[$i]=$id;
+					$returnVal[$id]=-$i;
+				}
+
+				//check for user interupt
+
+				if(`progressWindow -q -ic`)
+				{
+					undoInfo -swf 1;
+					delete $closestPointOnMeshNode;
+					if($coordinateSpace==2) delete $pointMatrixMultNode1 $pointMatrixMultNode2;
+					progressWindow -ep;
+					error "User Interupt.";
+				}
+				
+				progressWindow -e -s 1;	
+			}
+		}
+		
+		progressWindow -ep;
+		
+		delete $closestPointOnMeshNode;
+		
+		if($coordinateSpace==2) delete $pointMatrixMultNode1 $pointMatrixMultNode2;
+		
+		//undoInfo -swf 1;
+		
+	return	$returnVal;
+}
+
+//creates a polyBlindData Node storing symmetry information
+//if the symmetry table already exists, the existing table is used unless $forceNew==true
+
+global proc int[] zenVertexSymmetryNode(int $forceNew, int $axis, string $obj, string $coordinateSpaceObject)
+{
+	int	$symmetryTable[];
+	int	$vertCount;
+	
+		$obj=zenReturnFirstStringItem(ls("-type","mesh",(stringArrayCatenate(`listRelatives -s -ni $obj`,{$obj}))));
+		
+	string	$tr=zenReturnFirstStringItem(`listRelatives -p $obj`);
+	
+	float	$tol=.0001;
+
+	string	$vertices[]=ls("-fl",`polyListComponentConversion -tv $obj`);
+		
+	int	$blindDataTypeID=`zenBlindDataTemplate_opposingVert`;
+	
+	//check to see if the object already had opposing vertex data
+		
+	string	$polyBlindDataNodes[]=ls("-type","polyBlindData",listConnections($obj));
+	string	$oppositeVertexNode;
+	
+	int	$hadOppositeVertexData=false;
+		
+		for($pbd in $polyBlindDataNodes)
+		{
+			if(getAttr($pbd+".typeId")==$blindDataTypeID)
+			{
+				$hadOppositeVertexData=true;
+				$oppositeVertexNode=$pbd;
+				break;
+			}
+		}
+		
+		if($hadOppositeVertexData)
+		{
+			if($forceNew)
+			{
+				delete $oppositeVertexNode;
+				$hadOppositeVertexData=false;
+			}
+			else
+			{
+				$vertCount=zenReturnFirstIntegerItem(`polyEvaluate -v $obj`);
+				
+				progressWindow -isInterruptable 1 -title "Working" -status "Sorting Vertices" -max $vertCount -progress 0;
+				
+				for($i=0;$i<$vertCount;$i++)
+				{
+					$symmetryTable[$i]=getAttr($oppositeVertexNode+".vertexBlindData["+(string($i))+"].opposite");
+						
+					//check for user interupt
+	
+					if(`progressWindow -q -ic`)
+					{
+						undoInfo -swf 1;
+						progressWindow -ep;
+						error "User Interupt.";
+					}
+					
+					progressWindow -e -s 1;	
+				}
+				
+				progressWindow -ep;
+				
+				return $symmetryTable;
+			}
+		}
+		
+	string	$verts[]=ls("-fl",polyListComponentConversion("-tv",$obj));
+		
+		$oppositeVertexNode=zenReturnFirstStringItem(`polyBlindData -at "vertex" -ldn "opposite" -ind 0 -id $blindDataTypeID $verts`);
+		
+		$oppositeVertexNode=`rename $oppositeVertexNode "oppositeVertexNode#"`;
+		
+		zenHistoryCleanup "" {$oppositeVertexNode} ($obj+".inMesh");//this will delete the blind data node if the history on the object is changed
+		
+		$symmetryTable=`zenVertexSymmetryTable $obj $axis $coordinateSpaceObject`;
+	
+		for($i=0;$i<size($symmetryTable);$i++)
+		{
+			polyBlindData -id $blindDataTypeID -at "vertex" -ldn "opposite" -ind $symmetryTable[$i] $verts[$i];
+		}
+		
+	return	$symmetryTable;
+}

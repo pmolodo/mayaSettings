@@ -1,0 +1,35 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//find a vertex loop path between 2 or more vertices
+
+global proc string[] zenVertLoop(string $verts[])
+{
+	string	$endVert=`zenFindEndVert $verts`;
+	
+		$verts=`zenSortVertsByDistance $endVert $verts`;
+		
+	string	$partialLoop[];
+	string	$returnVal[];
+
+		for($i=1;$i<size($verts);$i++)
+		{
+			$partialLoop=`zenOrderedVertexLoop {$verts[$i-1],$verts[$i]} 0`;
+			$returnVal=`stringArrayCatenate $returnVal $partialLoop`;
+		}
+
+		$returnVal=`stringArrayRemoveDuplicates $returnVal`;
+		
+	return	$returnVal;
+}

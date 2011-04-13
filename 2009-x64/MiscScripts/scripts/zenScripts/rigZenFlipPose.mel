@@ -1,0 +1,72 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc int rigZenFlipPose(int $axis, string $symmetryPose)
+{
+	float	$tol=.001;
+	
+	string	$root=zenReturnFirstStringItem(`dagPose -q -m $symmetryPose`);
+	
+	string	$moved[]=`dagPose -q -ap $symmetryPose`;
+	
+	float	$jointTrX[];
+	float	$jointTrY[];
+	float	$jointTrZ[];
+	
+	float	$jointRotX[];
+	float	$jointRotY[];
+	float	$jointRotZ[];
+
+	float	$jointScaleX[];
+	float	$jointScaleY[];
+	float	$jointScaleZ[];
+	
+		for($i=0;$i<size($moved);$i++)
+		{
+			$jointTrX[$i]=`getAttr ($moved[$i]+".tx")`;
+			$jointTrY[$i]=`getAttr ($moved[$i]+".ty")`;
+			$jointTrZ[$i]=`getAttr ($moved[$i]+".tz")`;
+			
+			$jointRotX[$i]=`getAttr ($moved[$i]+".rx")`;
+			$jointRotY[$i]=`getAttr ($moved[$i]+".ry")`;
+			$jointRotZ[$i]=`getAttr ($moved[$i]+".rz")`;
+			
+			$jointScaleX[$i]=`getAttr ($moved[$i]+".sx")`;
+			$jointScaleY[$i]=`getAttr ($moved[$i]+".sy")`;
+			$jointScaleZ[$i]=`getAttr ($moved[$i]+".sz")`;
+		}
+		
+		catchQuiet("dagPose -r -g "+$symmetryPose);
+		
+	string	$oppositeJoint[];
+		
+		$oppositeJoint=`rigZenReturnOpposingTransforms $moved $root $axis`;
+		
+		for($i=0;$i<size($moved);$i++)
+		{
+			catchQuiet(`setAttr ($oppositeJoint[$i]+".tx") (-$jointTrX[$i])`);
+			catchQuiet(`setAttr ($oppositeJoint[$i]+".ty") (-$jointTrY[$i])`);
+			catchQuiet(`setAttr ($oppositeJoint[$i]+".tz") (-$jointTrZ[$i])`);
+
+			catchQuiet(`setAttr ($oppositeJoint[$i]+".rx") ($jointRotX[$i])`);
+			catchQuiet(`setAttr ($oppositeJoint[$i]+".ry") ($jointRotY[$i])`);
+			catchQuiet(`setAttr ($oppositeJoint[$i]+".rz") ($jointRotZ[$i])`);
+			
+			catchQuiet(`setAttr ($oppositeJoint[$i]+".sx") ($jointScaleX[$i])`);
+			catchQuiet(`setAttr ($oppositeJoint[$i]+".sy") ($jointScaleY[$i])`);
+			catchQuiet(`setAttr ($oppositeJoint[$i]+".sz") ($jointScaleZ[$i])`);
+		}
+		
+	return	1;
+}

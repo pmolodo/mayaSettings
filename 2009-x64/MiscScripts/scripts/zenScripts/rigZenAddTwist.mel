@@ -1,0 +1,75 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+proc vector zenPointOnBone(string $childJoint, float $bias)
+{
+	string	$parentJoint=zenReturnFirstStringItem(`listRelatives -p $childJoint`);
+	vector	$childLocVector=zenArrayToVector(`xform -q -ws -rp $childJoint`);
+	vector	$parentLocVector=zenArrayToVector(`xform -q -ws -rp $parentJoint`);
+	return	(($bias*($parentLocVector))+((1-$bias)*($childLocVector)));
+}
+
+//insert an auto-reversing twist joint, under the parent of the given joint,
+//aligned between the given child joint and its parent with a translation bias ($bias)
+//and a twist multiplier (related to the parent joint) of $reverseRot
+global proc string rigZenAddTwist(float $bias, float $reverseRot, string $childJoint)
+{
+	string	$multNode;
+
+	string	$axis;
+	
+	string	$parentJoint=zenReturnFirstStringItem(`listRelatives -p $childJoint`);
+	
+	vector	$twist=`zenPointOnBone $childJoint $bias`;
+	
+	string	$twistJoint=`joint -p ($twist.x) ($twist.y) ($twist.z) -n ($childJoint+"_twist") $parentJoint`;
+	
+		setAttr ($twistJoint+".side") (getAttr($childJoint+".side"));
+	
+		setAttr ($twistJoint+".segmentScaleCompensate") 1;
+	
+	float	$twistJointLoc[]=`xform -q -t $twistJoint`;
+	
+	float	$parentJointLoc[]=`xform -q -ws -a -t $parentJoint`;
+	
+	float	$diffX=abs($twistJointLoc[0]);
+	float	$diffY=abs($twistJointLoc[1]);
+	float	$diffZ=abs($twistJointLoc[2]);
+	
+	int	$count;
+	
+		if($diffX>0) $count++;
+		if($diffY>0) $count++;
+		if($diffZ>0) $count++;
+		
+		if($reverseRot>0)//create reverse twist
+		{
+			if($count!=1) warning("Reverse rotation may not occur as expected."); 
+
+			$axis="X";
+
+			if($diffY>$diffX) $axis="Y";
+
+			if($diffZ>$diffX && $diffZ>$diffY) $axis="Z";
+
+			$multNode=`shadingNode -n "reverseTwist#" -asUtility multiplyDivide`;
+
+			setAttr ($multNode+".input1") (-$reverseRot) (-$reverseRot) (-$reverseRot);
+
+			connectAttr ($parentJoint+".rotate") ($multNode+".input2");
+			connectAttr ($multNode+".output"+$axis) ($twistJoint+".rotate"+$axis);
+		}
+		
+	return	$twistJoint;
+}

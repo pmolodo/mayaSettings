@@ -1,0 +1,73 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//returns an array of uv lists, each list containing an inventory 
+//of uvs at the indexed distance from the given uv
+global proc string[] zenUVDistanceList(string $uvPoint, string $stopUV)
+{
+	string	$obj=zenReturnFirstStringItem(`ls -o $uvPoint`);
+	int	$uvCount=zenReturnFirstIntegerItem(`polyEvaluate -uv $obj`);
+	
+	string	$tempArray[];
+	string	$faceUVs[];
+	string	$edgeUVs[];
+	string	$uvs[]={$uvPoint};
+	string	$returnStrings[];
+	
+	string	$intersector=`stringArrayIntersector`;
+	
+		progressWindow -ii 1 -title "Working" -status "Sorting UVs..." -max 25 -progress 0;
+		
+		for($i=0;$i<$uvCount;$i++)
+		{
+			$tempArray=$uvs;
+			
+			$edgeUVs=`polyListComponentConversion -te $uvs`;
+			$edgeUVs=`polyListComponentConversion -tuv $edgeUVs`;
+			$edgeUVs=`ls -fl $edgeUVs`;
+			$faceUVs=`polyListComponentConversion -tf $uvs`;
+			$faceUVs=`polyListComponentConversion -tuv $faceUVs`;
+			$faceUVs=`ls -fl $faceUVs`;
+			
+			stringArrayIntersector -e -r $intersector;
+			stringArrayIntersector -e -i $edgeUVs $intersector;
+			stringArrayIntersector -e -i $faceUVs $intersector;
+			
+			$uvs=`stringArrayIntersector -q $intersector`;
+						
+			$tempArray=`stringArrayRemove $tempArray $uvs`;
+			
+			$returnStrings[$i]=stringArrayToString(`polyListComponentConversion -tuv $tempArray`,",");
+			print $returnStrings[$i];print "\n";
+			
+			if(`stringArrayContains $stopUV $uvs`) break;
+			
+			progressWindow -e -s 1;
+			
+			if(`progressWindow -q -ic`==1)
+			{
+				deleteUI $intersector;
+				progressWindow -endProgress;
+				error "User Interupt.";
+			}
+			
+			if(`progressWindow -q -progress`==`progressWindow -q -max`)
+				progressWindow -e -progress 0;
+		}
+		
+		deleteUI $intersector;
+		progressWindow -endProgress;
+		
+	return	$returnStrings;
+}

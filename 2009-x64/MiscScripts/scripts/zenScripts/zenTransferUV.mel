@@ -1,0 +1,240 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//transfers uvs from one mesh to another
+global proc int zenTransferUV(int $objSpace, int $accurateEval)
+{
+	string	$sel[]=`ls -sl`;
+	
+		if(size($sel)!=2) error("Procedure requires a selection of two polygon meshes.");
+		
+	string	$sourceObj=$sel[0];
+	string	$targetObj=$sel[1];
+	
+		if(`nodeType $sourceObj`!="mesh")
+		{
+			$sourceObj=zenReturnFirstStringItem(`listRelatives -s -ni $sourceObj`);
+			if(`nodeType $sourceObj`!="mesh")
+				error("Procedure requires a selection of two polygon meshes.");
+		}
+		
+		if(`nodeType $targetObj`!="mesh")
+		{
+			$targetObj=zenReturnFirstStringItem(`listRelatives -s -ni $targetObj`);
+			if(`nodeType $targetObj`!="mesh")
+				error("Procedure requires a selection of two polygon meshes.");
+		}
+		
+		delete -ch $sel;
+		
+	float	$coordinates[];
+	string	$correspondingFace;
+	string	$allCorrespondingFaces[];
+	string	$closestPointNode=`createNode closestPointOnMesh`;
+	string	$pointOnMeshNode=`createNode pointOnMeshInfo`;
+	string	$sourceFaceUVs[];
+	string	$targetFaceUVs[];
+	vector	$sourceFaceUV_xyz[];
+	vector	$targetFaceUV_xyz[];
+	float	$tempArray[];
+	string	$closestUV[];
+	float	$distance;
+	float	$shortestDistance;
+	string	$command;
+	vector	$tempVector;
+	string	$face;
+	string	$command;
+	int	$closestVertexID;
+	string	$closestVertex;
+	string	$closestUVPoints[];
+	vector	$coordinateVector;
+	int	$option=1;
+	int	$targetFaceCount=zenReturnFirstIntegerItem(`polyEvaluate -f $targetObj`);
+
+	string	$sourceFaces[]=`polyListComponentConversion -tf $sourceObj`;
+		$sourceFaces=`ls -fl $sourceFaces`;
+		
+	string	$origSourceFaces[]=$sourceFaces;
+		
+	int	$sourceFaceCount=size($sourceFaces);	
+			
+	float	$startTime=`timerX`;
+
+	string	$uvOrig=zenReturnFirstStringItem(`polyUVSet -q -cuv $sourceObj`);
+	
+	int	$usedInternal;
+	
+		if($sourceFaceCount==$targetFaceCount && `getApplicationVersionAsFloat`>=8 && !$accurateEval)
+		{
+			transferAttributes
+				-pos 0 
+				-nml 0 
+				-uvs 1 
+				-suv $uvOrig 
+				-tuv (zenReturnFirstStringItem(`polyUVSet -q -cuv $targetObj`))
+				-transferColors 0
+				-sampleSpace $objSpace 
+				$sourceObj $targetObj;
+				
+				select `polyListComponentConversion -tuv $sourceObj`;
+				polySelectBorderShell 1;
+				
+				$sourceFaces=`polyListComponentConversion -tv`;
+					
+				select -clear;
+				$sourceFaces=`polyListComponentConversion -tf $sourceFaces`;
+				$sourceFaces=`ls -fl $sourceFaces`;
+				delete -ch $targetObj $sourceObj;
+				$sourceFaceCount=size($sourceFaces);
+				
+				$usedInternal=1;
+		}
+		progressWindow -isInterruptable 1 -title "Working" -status "Transfering UV Coordinates" -max $sourceFaceCount -progress 0;
+
+	int	$finishedFaces;
+	
+		undoInfo -swf 0;
+				
+	string	$uvNew=zenReturnFirstStringItem(`polyUVSet -cp -uvs $uvOrig $sourceObj`);
+	
+	//The closest point on mesh node will not evaluate properly 
+	//if there are uv's outside the 0 to 1 range, and evaluates 
+	//more accurately with more texture space for each face. To get
+	//the best results I create a new uv set in which the uv's are unitized,
+	//and use this set while querying the closest point node.
+	
+		polyUVSet -cuv -uvs $uvNew $sourceObj;
+		
+		polyForceUV -cp `polyListComponentConversion -tf $sourceObj`;
+		polyForceUV -unitize `polyListComponentConversion -tf $sourceObj`;
+		
+		delete -ch $sel;
+
+		if($objSpace)
+		{
+			connectAttr ($targetObj+".outMesh") ($closestPointNode+".inMesh");
+			connectAttr ($sourceObj+".outMesh") ($pointOnMeshNode+".inMesh");
+		}
+		else
+		{
+			connectAttr ($targetObj+".worldMesh[0]") ($closestPointNode+".inMesh");
+			connectAttr ($sourceObj+".worldMesh[0]") ($pointOnMeshNode+".inMesh");
+		}
+		
+	string	$allTranferredFaces[];
+		
+		for($i=0;$i<size($sourceFaces);$i++)
+		{
+			polyUVSet -cuv -uvs $uvNew $sourceObj;
+			delete -ch $sel;
+			$face=$sourceFaces[$i];
+		
+			//find coordinates
+			setAttr ($pointOnMeshNode+".faceIndex") `zenCompID $sourceFaces[$i]`;
+			$coordinates=`getAttr ($pointOnMeshNode+".position")`;
+			
+			//find corresponding face
+			setAttr ($closestPointNode+".inPosition") $coordinates[0] $coordinates[1] $coordinates[2];
+			$correspondingFace=$targetObj+".f["+(string(`getAttr ($closestPointNode+".closestFaceIndex ")`))+"]";
+			$allCorrespondingFaces[size($allCorrespondingFaces)]=$correspondingFace;
+			
+			polyUVSet -cuv -uvs $uvOrig $sourceObj;
+			
+			$sourceFaceUVs=`polyListComponentConversion -ff -tuv $face`;
+			$sourceFaceUVs=`ls -fl $sourceFaceUVs`;
+			
+			if(size($sourceFaceUVs))
+			{
+				polyForceUV -cp $correspondingFace;
+				$targetFaceUVs=`polyListComponentConversion -ff -tuv $correspondingFace`;
+				$targetFaceUVs=`ls -fl $targetFaceUVs`;
+
+				//find the object space coordinates for each uv
+				if($objSpace)
+				{
+					for($n=0;$n<size($sourceFaceUVs);$n++)
+						$sourceFaceUV_xyz[$n]=zenArrayToVector(`xform -q -t $sourceFaceUVs[$n]`);
+					for($n=0;$n<size($targetFaceUVs);$n++)
+						$targetFaceUV_xyz[$n]=zenArrayToVector(`xform -q -t $targetFaceUVs[$n]`);
+				}
+				else
+				{
+					for($n=0;$n<size($sourceFaceUVs);$n++)
+						$sourceFaceUV_xyz[$n]=zenArrayToVector(`xform -q -ws -t $sourceFaceUVs[$n]`);
+					for($n=0;$n<size($targetFaceUVs);$n++)
+						$targetFaceUV_xyz[$n]=zenArrayToVector(`xform -q -ws -t $targetFaceUVs[$n]`);				
+				}
+
+				//find the corresponding source uv for each target uv
+				for($ii=0;$ii<size($targetFaceUVs);$ii++)
+				{
+					$shortestDistance=100;
+					for($n=0;$n<size($sourceFaceUVs);$n++)
+					{	
+						$distance=mag(($sourceFaceUV_xyz[$n])-($targetFaceUV_xyz[$ii]));
+						if($distance<$shortestDistance)
+						{	
+							$shortestDistance=$distance;
+							$closestUV[$ii]=$sourceFaceUVs[$n];
+							if($shortestDistance==0) break;
+						}
+					}
+				}
+
+				//move uv's
+				for($n=0;$n<size($targetFaceUVs);$n++)
+				{
+					$tempArray=`polyEditUV -q $closestUV[$n]`;
+					polyEditUV -r 0 -u $tempArray[0] -v $tempArray[1] $targetFaceUVs[$n];
+				}
+			}
+			
+			$allTranferredFaces=`stringArrayCatenate $allTranferredFaces {$correspondingFace}`;
+			
+			progressWindow -e -s 1;
+			if(`progressWindow -q -ic`)
+			{
+				progressWindow -ep;
+				error "User Interupt.";
+			}
+			
+		}
+		
+		delete -ch $sel;
+		
+		polyUVSet -cuv -uvs $uvOrig $sourceObj;
+		polyUVSet -d -uvs $uvNew $sourceObj;
+		
+		undoInfo -swf 1;
+		
+		progressWindow -endProgress;
+		
+	float	$time=`timerX -startTime $startTime`;
+		print("Operation took "+(string($time/$sourceFaceCount))+" seconds per face, "+(string($time))+" seconds total\n");
+		
+		catch(`polyMergeUV -d .01 $targetObj`);
+		
+		delete -ch $sel;
+		delete $closestPointNode;
+		delete $pointOnMeshNode;		
+		delete -ch $sel;
+		
+		if($usedInternal)
+			select `polyListComponentConversion -tf $targetObj`;
+		else
+			select $allTranferredFaces;
+		
+				
+	return	1;
+}

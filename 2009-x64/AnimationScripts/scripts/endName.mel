@@ -1,0 +1,14 @@
+global proc string endName (string $fullPath)
+{
+	// This script takes a full path name and strips out all the "|"'s and just
+	// returns the end name
+	//
+	// example:
+	//	endName "|root|waist|torso_1|torso_2|torso_3|torso4";
+	//	// Result: torso4 //
+
+	string $break[0];
+
+	tokenize ($fullPath, "|", $break);
+	return ($break[(size($break)-1)]);
+}

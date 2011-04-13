@@ -1,0 +1,14 @@
+// requires maya "2009";
+startAttrPreset( "sculpt" );
+blendAttr "input[0].groupId" 715; 
+blendAttr "envelope" 1; 
+blendAttr "mode" 2; 
+blendAttr "insideMode" 1; 
+blendAttr "maximumDisplacement" 0.0828; 
+blendAttr "dropoffDistance" 0.1652; 
+blendAttr "dropoffType" 1; 
+blendAttr "startPosX" 5.66539669; 
+blendAttr "startPosY" 116.4452057; 
+blendAttr "startPosZ" 19.46671295; 
+blendAttr "extendedEnd" 1; 
+endAttrPreset();

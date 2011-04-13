@@ -1,0 +1,97 @@
+global proc zooStrMatrix() {
+	return;
+	}
+
+
+global proc string[] zooNewMatrix( int $rows, int $cols ) {
+	string $mat[] = {};
+	string $sep = ":|:";
+	string $line = "";
+
+	for( $n=0; $n<$cols; $n++ ) $line += $sep;
+	for( $n=0; $n<$rows; $n++ ) $mat[$n] = $line;
+
+	return $mat;
+	}
+
+
+global proc string[] zooGetMatrixRow( string $mat[], int $row ) {
+	int $num = `size $mat`;
+	if( $row < 0 ) $row = $num + $row;
+
+	string $rowStr = $mat[$row];
+	string $rowData[] = `zooTokenize $rowStr ":|:"`;
+
+	return $rowData;
+	}
+
+
+global proc string[] zooGetMatrixCol( string $mat[], int $col ) {
+	string $colData[] = {};
+	int $sizeData[] = `zooGetMatrixSize $mat`;
+	int $num = $sizeData[0];
+	int $wid = $sizeData[1];
+
+	for( $n=0; $n<$num; $n++ ) {
+		string $rowData[] = `zooTokenize $mat[$n] ":|:"`;
+		int $len = `size $rowData`;
+
+		if( $col < 0 ) $col = $len + $col;
+		$colData[( `size $colData` )] = $rowData[$col];
+		}
+
+	return $colData;
+	}
+
+
+global proc string zooGetMatrixEntry( string $mat[], int $row, int $col ) {
+	int $num = `size $mat`;
+	if( $row < 0 ) $row = $num + $row;
+
+	string $rowData[] = `zooGetMatrixRow $mat $row`;
+	$num = `size $rowData`;
+	if( $col < 0 ) $col = $num + $col;
+
+	return $rowData[$col];
+	}
+
+
+global proc zooSetMatrixRow( string $mat[], string $rowStr, string $rowData[] ) {
+	int $num = `size $mat`;
+	int $row = $num;
+
+	if( `match "^[-0-9]+" $rowStr` == $rowStr ) $row = $rowStr;
+	if( $row < 0 ) $row = $num + $row;
+	$mat[$row] = `zooArrayToStr_str $rowData ":|:"`;
+	}
+
+
+global proc zooSetMatrixCol( string $mat[], string $colStr, string $colData[] ) {
+	int $sizeData[] = `zooGetMatrixSize $mat`;
+	int $num = $sizeData[1];
+	int $col = $num;
+
+	if( `match "^[-0-9]+" $colStr` == $colStr ) $col = $colStr;
+	if( $col < 0 ) $col = $num + $col;
+	for( $n=0; $n<$sizeData[0]; $n++ ) {
+		string $rowData[] = `zooGetMatrixRow $mat $n`;
+		$rowData[$col] = $colData[$n];
+		$mat[$n] = `zooArrayToStr_str $rowData ":|:"`;
+		}
+	}
+
+
+global proc zooSetMatrixEntry( string $mat[], int $row, int $col, string $value ) {
+	}
+
+
+global proc int[] zooGetMatrixSize( string $mat[] ) {
+	int $rows = `size $mat`;
+	int $cols = size( `zooTokenize $mat[0] ":|:"` );
+
+	return { $rows, $cols, ($rows*$cols) };
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

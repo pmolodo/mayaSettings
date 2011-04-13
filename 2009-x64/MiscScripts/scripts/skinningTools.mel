@@ -1,0 +1,4947 @@
+/*
+Title:			skinningTools.mel
+Author:			David Walden
+				www.davidwalden.com
+				dwalden74@hotmail.com
+Created:			May - June 2004
+Last Update:		May 8, 2005
+//
+//***********************************************************************************
+//***********************************************************************************
+//CONTRIBUTIONS:
+//Influence Sets and Paint Weights concepts contributed by Asi Sudai - asod@012.net.il
+//
+//Contains the roundoff procedure by Duncan Brimsmead.
+//
+//***********************************************************************************
+//***********************************************************************************
+//DESCRIPTION: Performs various skinning-related tasks, including transferring weight between
+//		2 selected influences. Read the Help menu for a full list of features.
+//
+//Updated May 08, 2005:		Added cluster weighting capabilities. User can now choose between editing Skin Weights or Cluster
+//					Weights, depending on the edit type in the Edit menu. The tool will default to skinCluster editing
+//					when initially run. Note that the "+" and "-" buttons functionality changes depending on the mode.
+//					When editing clusters, these buttons can be used to either add or remove points from the current
+//					cluster (identical to Set Membership behavior).
+//
+//
+//Updated April 25-26 2005:	Added Copy Weights and Paste Weights as buttons in the main UI. Now user can copy the average values of selecte
+//					points, and paste that average weight value onto a selection of different points. Weight information
+//					is stored via a global string[] and global float[]. Fixed a bug in Transfer Weights where old weight value wasn't
+//					maintained properly. "Show Point Influences" now displays *average* weight values up to 4 decimal places.
+//
+//Updated: April 24, 2005: Reworked UI so the Paint Weights/Component Editor is below influence list. Makes UI more manageable.
+//					Put "Utilities" layout into Tool menu and removed from Paint Weights UI.
+//
+//Updated: Sept. 25 2004. See Help Menu for detailed feature list.
+//
+//Updated June 30 2004: The size of the paneLayout windows is now remembered between sessions. When selecting the Paint Weights
+//			tab, we first enter object selection mode, select the object, then enter the Artisan context. Added "Zero All"
+//			button for Rotate Joints section.
+//
+//Updated June 20-28 2004: Incorporated AS_Skinny, by Asi Sudai. Now the tool has a fully funcional Paint Weights tab, with additional
+//				controls for rotating highlighted influences, and utilities for mirroring weights and pruning weights.
+//				Additionally, user can now create Influence Sets, which are helpful duing weight painting. Using
+//				Influence Sets, user can isolate groups of influences that he/she wishes to paint. All other influences
+//				are locked (have "Hold" activated) when viewing/using Influence Sets.
+//
+//Updated June 18 2004: Now with "+" button (or RMB menu) user can distribute selected point weight among multiple highlighted influences.
+//
+//Updated June 17 2004: Updated component editor (-operationType) to work with all known Maya version. Added
+//			"Auto Update" checkbox to component editor UI. "Absolute" is now default "Set Weights" type.
+//			Added "Paint Weights" button at top of UI.
+//
+//Updated June 16 2004: Added component editor on right side of UI. User can set weight percent values either here, or 
+//			in the "Set Weights" section. Added "+" and "-" buttons at top of Influence List for adding
+//			selected points 100% to highlighted influence, or removing points completely from highlighted influence.
+//			Added highlighting to influences when they are selected in list. Fixed some small bugs. User can
+//			now make set weight slider interactive via checkbox.
+//
+//Updated June 12 2004: Added "Set Weights" section, for setting skin weight values on selected points.
+//			Added button for listing only the influences affecting currently selected points.
+//			Added some other stuff and like, made some code improvements, and stuff like that...
+//			Oh yeah, added lots of cool asterisks as dividers to help read the procs better.
+//
+//Updated June 10 2004:	Changed name to dwSkinngingTools; added weight normalization checkBox;
+//			added "Weight selected points 100% to Influence" in RMB popup. User can now
+//			remove selected points from multiple highlighted influences at once, without
+//			worrying about the compensation that occurs due to normalization.
+//
+*/
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Returns the name of the active set.
+global proc string ST_GetActiveSet()
+{
+//Get ST_ActiveSet optionVar.
+string $activeSet = `optionVar -q ST_ActiveSet`;
+
+string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`;
+
+if (! `size $activeSet`)
+	return "";
+else if ((`objExists $activeSet`) && (`nodeType $activeSet` == "objectSet"))
+	return $activeSet;
+else
+	return ("skinningToolsSet_" + $skinCluster + "_fullSet");
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//We have to determine whether or not the active set corresponds to the selected geometry. If not, resort to full set.
+//The proc is called by ST_ListSmoothSkinInfluences
+//Returns 1 if the set matches the current selection, 0 if not.
+//If the selection does not match, update the ST_ActiveSet option var to "fullSet".
+global proc int ST_IsSetForNewSelection(string $skinCluster, string $set)
+{
+string $selection[] = `ls -sl -o`;
+//Query the geometry affected by the $skinCluster.
+string $geometry[] = `skinCluster -q -geometry $skinCluster`;
+string $selectionShape[];
+//Set the $newSelectionInt to 1, in case nothing is selected we won't make it reevaluate the selection.
+int $newSelectionInt = 1;
+if (`size $selection`)
+	{
+	//IMPORTANT: If the current selection doesn't have a skinCluster attached, return 1.
+	//This is necessary because we only want to load in a new object if the object is being deformed by a skinCluster.
+	$selectionShape = `listRelatives -s -ni $selection[0]`;
+	if (! `size $selectionShape`)
+		return 1;
+	if (`size $selectionShape` > 1)
+		warning "Selected object has multiple shapes. This can produce undesirable results.";
+	
+	//string $skinClusterNewSelection = `findRelatedSkinCluster $selection[0]`;
+	
+	//Substitute the first part of the string to get the skinCluster name in the $set
+	string $setStripped = `substitute "skinningToolsSet_" $set ""`; //Isolate the skinCluster of the active set.
+	string $buffer[];
+	tokenize $setStripped "_" $buffer;	//The first part of the name will be the skinCluster name in the $set.
+	if ($buffer[0] == $skinCluster)
+		$newSelectionInt = 1;
+	else
+		$newSelectionInt = 0;
+		
+	//If the skinCluster does NOT match, change the text to "Complete Set", and update the optionVar.
+	if (! $newSelectionInt)
+		{
+		//Update the Set text at the top of the Influence List.
+		text -e -l ("Complete Set:") ST_SetNameTXT;
+		//Update the activeSet optionVar.
+		optionVar -stringValue "ST_ActiveSet" ("skinningToolsSet_" + $skinCluster + "_fullSet");
+		}
+	}
+
+return $newSelectionInt;
+}
+
+
+	
+//***************************************************************************************************
+//***************************************************************************************************
+//Lists all influences in the UI (TSL) list for the given skinCluster node. 
+//Order of list is determined by "Order" menu.
+//In most cases (maybe all) $set will be the current set.
+//Updates the ST_SetNameTXT text at the top of the influence list, as well as the activeSet in case the current activeSet doesn't belong to a new selection.
+global proc ST_ListSmoothSkinInfluences(string $skinCluster, string $set)
+{
+//Report error if no skinCluster.
+if (! `size $skinCluster`)
+	return;
+else if (! `objExists $skinCluster`)
+	error "Skin cluster specified incorrectly. Try again.";
+	
+//Query the currently highlighted influences in the TSL (we need this later for refreshing the list selection).
+string $selectedItem[] = `textScrollList -q -si skinningTools_InfluenceTSL`;
+
+//Remove all items from TSL.
+textScrollList -e -ra skinningTools_InfluenceTSL;
+
+//Determine if the selection matches the (current) set.
+int $ST_IsSetForNewSelection = `ST_IsSetForNewSelection $skinCluster $set`;
+
+//print $set;
+//print "\n";
+
+//Query influences, according to active set.
+string $influences[];
+if (($set == ("skinningToolsSet_" + $skinCluster + "_fullSet")) || ($set == "") || (! $ST_IsSetForNewSelection))
+	$influences = `skinCluster -q -inf $skinCluster`;
+else
+	{
+	//Query the set members.
+	$influences = `sets -q $set`;
+	
+	//Query whether or not set´s members belong to the current skinCluster.
+	string $allSkinClusterInfluences[] = `skinCluster -q -inf $skinCluster`;
+	int $sizeAllInfluences = `size $allSkinClusterInfluences`;
+	//Add 2 arrays together, remove duplicates. If remaining array is bigger than original array, set doesn´t belong on this influence.
+	string $combinedArrays[] = `stringArrayCatenate $influences $allSkinClusterInfluences`;
+	$combinedArrays = `stringArrayRemoveDuplicates $combinedArrays`;
+	int $combinedSize = `size $combinedArrays`;
+	if  ($combinedSize != $sizeAllInfluences)
+		{warning "Set does not belong to current skinCluster. Try again or use \"Complete Set\"."; return;}
+	
+	//Now set "Hold" attr for all influences according to the "Auto Hold Sets" menuItem.
+	//Influences outside this set have Hold turned on, influences in this set have Hold turned off.
+	if (`menuItem -q -cb ST_AutoHoldSets_MI`)
+		{
+		//Hold on.
+		string $nonMemberInfluences[] = `stringArrayRemove $influences $allSkinClusterInfluences`;
+		for ($i in $nonMemberInfluences)
+			setAttr ($i + ".liw") 1;
+		}
+	}
+	
+//Reorder influences array according to the "Order" menu.
+if (`menuItem -q -radioButton ST_OrderAlphabetMI`)	//Alphabetical order
+	$influences = `sort $influences`;
+if (`menuItem -q -radioButton ST_OrderReverseAlphabetMI`)	//Reverse  Alphabetical order
+		{
+		$influences = `sort $influences`;	//First sort them.
+		string $infTempArray[] = {};
+		int $ii = 0;
+		int $n = 0;
+		for ($n = (`size $influences`) - 1; $n > -1; $n--)
+					{
+					$infTempArray[$ii] = $influences[$n];
+					$ii++;
+					}
+		clear $influences;
+		for ($n = 0; $n < `size $infTempArray`; $n++)
+					$influences[$n] = $infTempArray[$n];
+		}
+if (`menuItem -q -radioButton ST_OrderReverseGraphMI`)	//Reverse Graph order
+	{
+		string $infTempArray[] = {};
+		int $ii = 0;
+		int $n = 0;
+		for ($n = (`size $influences`) - 1; $n > -1; $n--)
+					{
+					$infTempArray[$ii] = $influences[$n];
+					$ii++;
+					}
+		clear $influences;
+		for ($n = 0; $n < `size $infTempArray`; $n++)
+					$influences[$n] = $infTempArray[$n];
+		}
+if (`menuItem -q -radioButton ST_OrderHoldMI`)		//By "Hold" status
+	{
+	string $heldInfluences[];
+	string $nonHeldInfluences[];
+	for ($i in $influences)
+		{
+		if (`getAttr ($i + ".liw")`)
+			$heldInfluences[`size $heldInfluences`] = $i;
+		else
+			$nonHeldInfluences[`size $nonHeldInfluences`] = $i;
+		}
+	$influences = `stringArrayCatenate $nonHeldInfluences $heldInfluences`;
+	}	
+if (`menuItem -q -radioButton ST_OrderReverseHoldMI`)		//By "Reverse Hold" status
+	{
+	string $heldInfluences[];
+	string $nonHeldInfluences[];
+	for ($i in $influences)
+		{
+		if (`getAttr ($i + ".liw")`)
+			$heldInfluences[`size $heldInfluences`] = $i;
+		else
+			$nonHeldInfluences[`size $nonHeldInfluences`] = $i;
+		}
+	$influences = `stringArrayCatenate $heldInfluences $nonHeldInfluences`;
+	}		
+
+//Add influences to list. Add "(Hold)" where applicable.
+for ($i in $influences)
+	{
+	if (`getAttr ($i + ".liw")`)
+		textScrollList -e -a ($i + " (Hold)") skinningTools_InfluenceTSL;
+	else 
+		textScrollList -e -a $i skinningTools_InfluenceTSL;
+	}
+
+//Now query the new items in the TSL.
+string $allNewItems[] = `textScrollList -q -ai skinningTools_InfluenceTSL`;
+
+//Reselect and rescroll to the selected index item.
+int $numberOfItems = `textScrollList -q -ni skinningTools_InfluenceTSL`;
+
+//If there was a previous selection, reselect correspinding members in new list.
+if (`size $selectedItem`)
+	{
+	for ($i in $selectedItem)
+		{
+		//tokenize old selection
+		string $oldBuffer[];
+		tokenize $i $oldBuffer;
+		for ($n = 0; $n < $numberOfItems; $n++)
+			{
+			//tokenize new items.
+			string $newBuffer[];
+			tokenize $allNewItems[$n] $newBuffer;
+			//If match is found, select the influence.
+			if ($oldBuffer[0] == $newBuffer[0])
+				textScrollList -e -si $allNewItems[$n] skinningTools_InfluenceTSL;
+				
+			}
+		}
+	}
+
+
+//Change the UI text (at the top of the Influence Sets list.
+string $setShortName = `substitute ("skinningToolsSet_" + $skinCluster + "_") $set ""`;
+//If the active set is the full set, or if the set does NOT belong to the current skin cluster, set to "Complete Set"
+if (($setShortName == "fullSet") || (! $ST_IsSetForNewSelection))
+	$setShortName = "Complete Set";
+text -e -l ($setShortName + ":") ST_SetNameTXT;
+
+//Now scroll to the first selected item
+/*
+int $index[] = `textScrollList -q -sii skinningTools_InfluenceTSL`;
+if (`size $index`)
+	{
+	//If the list is long, keep the selection in middle (more or less).
+	if ($index[0] > 10)
+		textScrollList -e -shi ($index[0] - 10) skinningTools_InfluenceTSL;
+	else
+		textScrollList -e -shi $index[0] skinningTools_InfluenceTSL;
+	}
+*/
+//Finally, update component editor.
+componentEditor -e -updateMainConnection ST_CE;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Removes "Hold" from influence name and returns correct influence name.
+global proc string ST_RemoveHoldFromInfluenceName(string $influence)
+{
+//OLD used subsitute cmd: `substitute " \\(Hold\\)" $influence ""`
+//NEW: tokenize and return 1st token.
+string $influenceBuffer[];
+tokenize $influence $influenceBuffer;
+
+return $influenceBuffer[0];
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Returns 1 if the given name is valid, 0 if not.
+global proc int ST_ValidateName (string $name) 
+{
+    string $matchingPart = `match "^[a-zA-Z][0-9a-zA-Z_]*$" $name`;
+    int $goodMatch = ! `strcmp $matchingPart $name`;
+    //  If the two strings are the same, strcmp will return 0
+
+    return $goodMatch;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+global proc ST_SelectFullSet()
+{
+string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`;
+
+//Edit UI text
+//text -e -l "Complete Set:" ST_SetNameTXT;
+
+//Add full set as the "active set" in optionVar.
+optionVar -stringValue "ST_ActiveSet" ("skinningToolsSet_" + $skinCluster + "_fullSet");
+
+//Update TSL according to current set.
+ST_ListSmoothSkinInfluences $skinCluster `ST_GetActiveSet`;
+
+//Update TSL
+//ST_LoadSelection;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Makes given set active. 
+//This proc is called whenever the >>SET<< menuItem is selected in the Influence Sets menu.
+global proc ST_SelectSet (string $setName)
+{
+//Get the skinCluster name.
+string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`;
+if (! `size $skinCluster`)
+	return;
+
+//Make sure radioButton is turned ON for selected set (in case this proc is called by a means other than selecting the menuItem).
+menuItem -e -radioButton 1 ($setName + "_MI");
+
+//Edit UI text label.
+//string $labelName = `substitute ("skinningToolsSet_" + $skinCluster + "_") $setName ""`;
+//text -e -l ($labelName  + ":") ST_SetNameTXT;
+
+//Add this "active set" as an optionVar.
+optionVar -stringValue "ST_ActiveSet" $setName;
+
+//Update TSL according to current set.
+ST_ListSmoothSkinInfluences $skinCluster $setName;
+	
+//ST_LoadSelection;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+// Delete Set Proc 
+global proc ST_setDelete(string $skinCluster)
+{
+//Get highlighted sets.
+string $DeleteSet[] = `textScrollList -q -selectItem ST_EditSets_SetsTSL`;
+
+if (! `size $DeleteSet`)
+	return;
+
+//Delete set
+delete ("skinningToolsSet_" + $skinCluster + "_" + $DeleteSet[0]);
+	
+//Update menu 
+ST_SelectFullSet;
+
+//Update the Edit Sets UI
+ST_UpdateEditSetsTSL $skinCluster;
+
+//Update the Influence List menu.
+ST_BuildInfluenceSetsMenu $skinCluster `ST_GetActiveSet`;
+}//END proc ST_setDelete
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Adds selected influence(s) to current set.
+global proc ST_AddToSet(string $influences[], string $skinCluster)
+{
+if (!`size $influences`)
+	{
+	warning "No influences given. Highlight some influences in the main Influence List and try again.";
+	return;
+	}
+	
+string $set[] = `textScrollList -q -si ST_EditSets_SetsTSL`;
+if (!`size $set`)
+	{
+	warning "No influence set specified. Try again.";	
+	return;
+	}
+
+//Get the active set.
+string $activeSet = `ST_GetActiveSet`;
+
+for ($i in $influences)
+	{
+	$i = `ST_RemoveHoldFromInfluenceName $i`;
+	//Check if the influence already exists in set.
+	string $allMembers[] = `sets -q ("skinningToolsSet_" + $skinCluster + "_" + $set[0])`;
+	int $occurs = stringArrayCount($i, $allMembers);
+	//If not, add it.
+	if (! $occurs)
+		sets -add ("skinningToolsSet_" + $skinCluster + "_" + $set[0]) $i;
+	else if ($occurs)
+		warning ("Influence >>" + $i + "<< already exists in set " + $set[0] + ". Skipping.\n");
+	}
+
+//Rebuild influence list in main TSL if selected set is the active set.
+if ($activeSet == $set[0])
+	ST_ListSmoothSkinInfluences `textField -q -tx skinningTools_SkinClusterTF` $set[0];
+
+//Rebuild members TSL
+ST_UpdateEditSetsTSL $skinCluster;
+}//End proc.
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Proc removes the highlighted influence from the current set.
+global proc ST_RemoveInfluenceFromSet(string $influences[], string $set, string $skinCluster)
+{
+if (! `size $skinCluster`)
+	return;
+	
+if (! `size $influences`)
+	{
+	warning "Highlight some influences in the Members list and try again.";
+	return;
+	}
+	
+if ($set == ("skinningToolsSet_" + $skinCluster + "_fullSet"))
+	{
+	print ("Cannot remove from Complete Set. To remove influene from " + $skinCluster + ", use Tools -> Remove Influences.");
+	return;
+	}
+
+for ($i in $influences)
+	{
+	$i = `ST_RemoveHoldFromInfluenceName $i`;
+	sets -remove $set $i;
+	}
+
+//Update TSL according to current set.
+ST_ListSmoothSkinInfluences $skinCluster `ST_GetActiveSet`;
+
+//And update the Edit Sets UI:
+ST_UpdateEditSetsTSL $skinCluster;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Renames a set in the UI.
+global proc ST_RenameSet()
+{
+//Get the active set. If it is this that we are renaming, we'll need to reset the active set in the end.
+string $activeSet = `ST_GetActiveSet`;
+
+//Get the name of the current skinCluster.
+string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`;
+
+//Get the short name of the set we want to rename.
+string $set[] = `textScrollList -q -si ST_EditSets_SetsTSL`;
+if (! `size $set`)
+	return;
+
+//If the new name already exists as a set, report an error.
+string $newNameShort = `textField -q -tx ST_EditSetsTF`;
+if (`objExists ("skinningToolsSet_" + $skinCluster + "_" + $newNameShort)`)
+	error "A set already exists with this name. Try again.";
+
+//Rename the set.
+if (! `ST_ValidateName $newNameShort`)
+	error "Given name not valid. Try again.";
+
+//Rename set
+rename ("skinningToolsSet_" + $skinCluster + "_" + $set[0]) ("skinningToolsSet_" + $skinCluster + "_" + $newNameShort);
+
+//Redeclare active set, ONLY IF the original set was the active set - we do this in order to update the UI correctly.
+if (("skinningToolsSet_" + $skinCluster + "_" + $set[0]) == $activeSet)
+	optionVar -stringValue "ST_ActiveSet" ("skinningToolsSet_" + $skinCluster + "_" + $newNameShort);
+
+//Rebuild the Influence Sets menu - get the active set, in case optionVar was redefined above.
+ST_BuildInfluenceSetsMenu $skinCluster `ST_GetActiveSet`;
+
+//Update the Edit Sets UI.
+ST_UpdateEditSetsTSL $skinCluster;
+
+//Reselect the set in the Edit Sets TSL
+textScrollList -e -si $newNameShort ST_EditSets_SetsTSL;
+
+//Execute the select command to refresh the membersTSL.
+ST_EditSetsSelectSetCommand;
+
+//Update the influence list in main UI.
+ST_ListSmoothSkinInfluences $skinCluster `ST_GetActiveSet`;
+
+}//End of proc.
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Procedure exports all sets for current skinCluster.
+global proc ST_ExportSets(string $fileName, string $dummyVariable)
+{
+//print $fileName;
+
+string $sets[] = `textScrollList -q -ai ST_EditSets_SetsTSL`;
+if (! `size $sets`)
+	return;
+
+string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`;
+if (! `size $skinCluster`)
+	return;
+
+//Open the file for writing.
+$fileId =`fopen $fileName "w"`;
+
+//Print header on first line.
+fprint $fileId ("//\tFile generated by skinningTools.mel. Do not alter contents.\n");
+
+//Print skinCluster name on second line.
+fprint $fileId ($skinCluster + "\n");
+
+for ($s in $sets)
+	{
+	fprint $fileId ("skinningToolsSet_" + $skinCluster + "_" + $s);
+	fprint $fileId "\t";
+	
+	string $members[] = `sets -q ("skinningToolsSet_" + $skinCluster + "_" + $s)`;
+	for ($m in $members)
+		fprint $fileId ($m + " ");
+		
+	fprint $fileId "\n";
+	}
+
+//Close the weights file.
+fclose $fileId;
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Import sets file.
+global proc ST_ImportSets(string $fileName, string $dummyVariable)
+{
+//print $fileName;
+//Open file for reading.
+$fileId = `fopen $fileName "r"`;
+string $nextLine = `fgetline $fileId`;
+string $lineBuffer[];
+string $set;
+string $members[];
+int $i = 0;
+string $currentSkinCluster = `textField -q -tx skinningTools_SkinClusterTF`;
+string $currentInfluences[] = `skinCluster -q -inf $currentSkinCluster`;
+while (size($nextLine) > 0) 
+	{
+	//Tokenize the line.
+	tokenize $nextLine "\t" $lineBuffer;
+	
+	//If we´re at the first line of the file (the header), continue to the next line.
+	if ($i == 0)
+		{
+		$nextLine = `fgetline $fileId`;
+		//Increment the counter $i.
+		$i++;
+		continue;
+		}
+	
+	//Now on the second line, compare the skinCluster name with that in the textField in the main UI.
+	if ($i == 1)
+		{
+		tokenize $nextLine "\n" $lineBuffer;
+		if ($currentSkinCluster != $lineBuffer[0])
+			{
+			warning ("Skin cluster in file (" + $lineBuffer[0] + ") does not match skin cluster on object (" + $currentSkinCluster + "). Try again or rename current skin cluster.");
+			return;
+			}
+		$nextLine = `fgetline $fileId`;
+		//Increment the counter $i.
+		$i++;
+		continue;
+		}
+	
+	//Build the imported set.
+	$set = $lineBuffer[0];
+	if (! `objExists $set`)	//Only build the set if it doesn't already exist in scene.
+		sets -em -n $set;
+	//If set already exists in scene, skip and go on to the next line.
+	else
+		{
+		warning ("Set >>" + $set + "<< already exists in scene. Skipping.");
+		$nextLine = `fgetline $fileId`;
+		//Increment the counter $i.
+		$i++;
+		continue;
+		}
+	
+	//Add each member to the set (if the member name exists in the scene).
+	tokenize $lineBuffer[1] $members;
+	for ($m in $members)
+		{
+		if ((`objExists $m`) && (`stringArrayCount $m $currentInfluences`))
+			sets -add $set $m;
+		else if (! `objExists $m`)
+			warning ("Influence >>" + $m + "<< does not exist in scene. Skipping.");
+		else if (! `stringArrayCount $m $currentInfluences`)
+			warning ("Influence >>" + $m + "<< is not an influence of current skin cluster >>" + $currentSkinCluster + "<<. Skipping.");
+		}
+	
+	
+	//Get the next line.
+	$nextLine = `fgetline $fileId`;
+	//Increment the counter $i.
+	$i++;
+	}
+
+
+//Close the weights file.
+fclose $fileId;
+
+//Update the Influence Sets menu.
+ST_BuildInfluenceSetsMenu $currentSkinCluster `ST_GetActiveSet`;
+
+//Update the Edit Sets TSL.
+ST_UpdateEditSetsTSL $currentSkinCluster;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Deletes all sets for a given skinCluster.
+global proc ST_DeleteAllSets(string $skinCluster)
+{
+string $result = `confirmDialog -title "Delete Influence Sets" -message ("Delete all influence sets for " + $skinCluster + "?")
+ 										-button "Yes" -button "No" -defaultButton "Yes"
+ 										-cancelButton "No" -dismissString "No"`;
+if ($result == "No")
+	return;
+	
+string $sets[] = `ls -type objectSet ("skinningToolsSet_" + $skinCluster + "_*")`;
+if (! `size $sets`)
+	return;
+
+//Delete all the sets.
+delete $sets;
+
+//Update the Edit Sets TSL.
+ST_UpdateEditSetsTSL $skinCluster;
+
+//Now update the main UI.
+ST_ListSmoothSkinInfluences $skinCluster `ST_GetActiveSet`;
+
+//And rebuild the Influence Sets menu.
+ST_BuildInfluenceSetsMenu $skinCluster `ST_GetActiveSet`;
+}
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Proc updates the Edit Sets UI.
+global proc ST_UpdateEditSetsTSL (string $skinCluster)
+{
+if (! `control -ex ST_EditSets_SetsTSL`)
+	return;
+
+//Query selected set in TSL.
+string $selectedSet[] = `textScrollList -q -si ST_EditSets_SetsTSL`;
+
+//Remove all items from the sets TSL.
+textScrollList -e -ra ST_EditSets_SetsTSL;
+
+//Remove anything from textField.
+textField -e -tx "" ST_EditSetsTF;
+
+//Remove all items from the members TSL.
+textScrollList -e -ra ST_EditSets_MembersTSL;
+
+//Query the sets related to the skin cluster.
+string $allSets[] = `ls -type objectSet ("skinningToolsSet_" + $skinCluster + "_*")`;
+
+//Add existing Sets to ScrollList		
+for ($s in $allSets) 
+	{
+	$s = `substitute ("skinningToolsSet_" + $skinCluster + "_") $s ""`;
+	textScrollList -e -a $s ST_EditSets_SetsTSL;
+	}
+
+//Reselect Set in TSL
+string $allSets[] = `textScrollList -q -ai ST_EditSets_SetsTSL`;
+if ((`size $selectedSet`) && (`stringArrayCount $selectedSet[0] $allSets`))
+	{
+	textScrollList -e -si $selectedSet[0] ST_EditSets_SetsTSL;
+	ST_EditSetsSelectSetCommand;
+	}
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Proc executed whenever a new set is selected in the Edit Sets TSL.
+//Refreshes the membersTSL.
+global proc ST_EditSetsSelectSetCommand()
+{
+string $selectedSet[] = `textScrollList -q -si ST_EditSets_SetsTSL`; 
+textField -e -tx $selectedSet[0] ST_EditSetsTF;	
+
+string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`; 
+
+//Not sure if we want to select the set in the main UI.
+//Select the set in the main UI.
+//ST_SelectSet ("skinningToolsSet_" + $skinCluster + "_" + $selectedSet[0]);
+
+//Update the membersTSL.
+textScrollList -e -ra ST_EditSets_MembersTSL;
+string $members[] = `sets -q ("skinningToolsSet_" + $skinCluster + "_" + $selectedSet[0])`;
+for ($m in $members)
+	textScrollList -e -a $m ST_EditSets_MembersTSL;
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Edit influence sets.
+//It needs to take a $skinCluster argument to know how to update the TSL.
+global proc ST_editSets(string $skinCluster)
+{
+if (`window -ex ST_EditSetsUI`)
+	deleteUI ST_EditSetsUI;
+
+window -t "Edit Influence Sets" -mb true -wh 200 300 ST_EditSetsUI;
+menu -l "File";
+	//menuItem -l "Import Sets" -c "fileBrowserDialog -m 0 -fc ST_ImportSets -ft text -an Import -includeName Sets";
+	menuItem -l "Import Sets" -c "fileBrowser ST_ImportSets Import text 0";
+	
+	//menuItem -l "Export Sets" -c "fileBrowserDialog -m 1 -fc ST_ExportSets -ft text -an Export -om Import;";
+	menuItem -l "Export Sets" -c "fileBrowser ST_ExportSets Export text 1";
+	
+	menuItem -d 1;
+	menuItem -l "Delete All Sets" -c ("ST_DeleteAllSets `textField -q -tx skinningTools_SkinClusterTF`");
+	
+string $form = `formLayout`;
+
+//Create Sets TSL.
+string $setsTXT = `text -l "Influence Sets:"`;
+string $setsTSL = `textScrollList
+		-ams 0
+		-sc "ST_EditSetsSelectSetCommand"
+		ST_EditSets_SetsTSL`;
+	popupMenu -b 3;
+		menuItem 
+			-l "Add to Set" 
+			-ann "Add highlighted influences from main Influence List to current influence set."
+			-c "ST_AddToSet `textScrollList -q -si skinningTools_InfluenceTSL` `textField -q -tx skinningTools_SkinClusterTF`";
+		menuItem -l "Delete Set" -c "ST_setDelete `textField -q -tx skinningTools_SkinClusterTF`";	
+
+//Create Members TSL.
+string $membersTXT = `text -l "Members:"`;
+string $membersTSL = `textScrollList 
+						-ams 1 
+						-sc "hilite -r `textScrollList -q -si ST_EditSets_MembersTSL`" 
+						-dcc "select -r `textScrollList -q -si ST_EditSets_MembersTSL`"
+						ST_EditSets_MembersTSL`;
+	popupMenu -b 3;
+		menuItem -l "Select influences" -c "select -r `textScrollList -q -si ST_EditSets_MembersTSL`";
+		menuItem -l "Remove from Set" -c "{string $selectedSetName[] = `textScrollList -q -si ST_EditSets_SetsTSL`; \
+											string $set = (\"skinningToolsSet_\" + `textField -q -tx skinningTools_SkinClusterTF` + \"_\" + $selectedSetName[0]); \
+											ST_RemoveInfluenceFromSet `textScrollList -q -si ST_EditSets_MembersTSL` $set `textField -q -tx skinningTools_SkinClusterTF`;}";
+		
+string $renameTF = `textField 
+			-cc "ST_RenameSet" 
+			ST_EditSetsTF`;
+	
+string $addBTN = `button 
+			-l "Add to Set" 
+			-ann "Add highlighted influences from main Influence List to current influence set."
+			-c ("ST_AddToSet `textScrollList -q -si skinningTools_InfluenceTSL` " + $skinCluster)`;
+string $removeBTN = `button
+						-l "Remove from Set"
+						-ann "Remove highlighted influences from set."
+						-c "{string $selectedSetName[] = `textScrollList -q -si ST_EditSets_SetsTSL`; \
+							string $set = (\"skinningToolsSet_\" + `textField -q -tx skinningTools_SkinClusterTF` + \"_\" + $selectedSetName[0]); \
+							ST_RemoveInfluenceFromSet `textScrollList -q -si ST_EditSets_MembersTSL` $set `textField -q -tx skinningTools_SkinClusterTF`;}"`;
+string $deleteSetBTN = `button 
+			-l "Delete Set" 
+			-c "ST_setDelete `textField -q -tx skinningTools_SkinClusterTF`"`;
+string $closeUIBTN = `button 
+			-l "Close Window" 
+			-c "deleteUI ST_EditSetsUI"`;
+
+
+formLayout -e 
+	-af $setsTXT left 5
+	-af $setsTXT top 5
+	-ap $setsTXT right 5 50
+	-an $setsTXT bottom
+	
+	-ac $membersTXT left 5 $setsTXT
+	-af $membersTXT top 5
+	-af $membersTXT right 5
+	-an $membersTXT bottom
+
+	-af $setsTSL left 5
+	-ac $setsTSL top 0 $setsTXT
+	-ap $setsTSL right 5 50
+	-ac $setsTSL bottom 0 $renameTF
+	
+	-ac $membersTSL left 5 $setsTSL
+	-ac $membersTSL top 0 $setsTXT
+	-af $membersTSL right 5
+	-ac $membersTSL bottom 0 $renameTF
+	
+	-af $renameTF left 5
+	-an $renameTF top
+	-af $renameTF right 5
+	-ac $renameTF bottom 2 $addBTN
+	
+	-af $addBTN left 5
+	-an $addBTN top
+	-ap $addBTN right 0 33
+	-ac $addBTN bottom 0 $closeUIBTN
+	
+	-ac $removeBTN left 0 $addBTN
+	-an $removeBTN top
+	-ap $removeBTN right 0 66
+	-ac $removeBTN bottom 0 $closeUIBTN
+	
+	-ac $deleteSetBTN left 0 $removeBTN
+	-an $deleteSetBTN top
+	-af $deleteSetBTN right 5
+	-ac $deleteSetBTN bottom 0 $closeUIBTN
+	
+	-af $closeUIBTN left 5
+	-an $closeUIBTN top
+	-af $closeUIBTN right 5
+	-af $closeUIBTN bottom 5
+	$form;
+
+
+//Update the Edit Sets TSL.
+ST_UpdateEditSetsTSL $skinCluster;
+	
+showWindow ST_EditSetsUI;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Creates a new influence set. Creates an objectSet, and a new menuItem.
+global proc ST_setsMaker(string $influences[], string $setName, string $skinCluster)
+{
+//Get Selected Items from ScrollList.
+if (! `size $influences`)
+	{warning "No influences given. Try again."; return;}
+
+//Remove "Hold" from name.
+for ( $i=0 ; $i < size($influences) ; $i++ ) 
+	$influences[$i]=`ST_RemoveHoldFromInfluenceName $influences[$i]`;
+		
+// Create New Set
+string $fullSetName = `sets -n ("skinningToolsSet_" + $skinCluster + "_" + $setName) $influences`;
+
+//Add set to Preset menu
+menuItem 
+	-collection ST_InfluenceSetsRMIC 
+	-l $setName 
+	-p ST_InfluenceSetsMenu 
+	-c ("ST_SelectSet " + $fullSetName) 
+	-radioButton 1 
+	($fullSetName + "_MI");
+
+//Select the new set.
+ST_SelectSet $fullSetName;
+
+//Update the Edit Sets UI if it exists.
+ST_UpdateEditSetsTSL $skinCluster;
+} 
+// ST_setsMaker END
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Creates the UI for making a new influence set.
+global proc ST_setsMakerUI(string $influences[], string $skinCluster) 
+	{
+string $result = `promptDialog 
+ 		-title "Create New Influence Set"
+ 		-message "Set Name:"
+ 		-text "newSet"
+ 		-button "OK" -button "Cancel"
+ 		-defaultButton "OK" -cancelButton "Cancel"
+ 		-dismissString "Cancel"`;
+
+ 	if ($result == "OK") 
+ 		{
+ 		string $setName = `promptDialog -query -text`;
+ 		//Check if an existing set with same name doesn´t exist already (as well as a menuItem)
+ 		if ((`objExists ("skinningToolsSet_" + $setName)`) && (`menuItem -q -ex ($setName + "_MI")`))
+ 			{
+ 			warning "Set name is not unique. Try again."; 
+ 			ST_setsMakerUI $influences $skinCluster;
+ 			}
+ 		//Check if the setName is valid.
+ 		else if (! `ST_ValidateName $setName`)
+ 			{
+ 			warning "Set name invalid. Try again.";
+ 			ST_setsMakerUI $influences $skinCluster;
+ 			}
+ 		else
+ 			ST_setsMaker $influences $setName $skinCluster;
+ 		}
+	} // ST_setsMakerUI END
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+
+/////////////////////////////////
+//// SkinTool Functions Proc////
+///////////////////////////////
+global proc ST_PaintWeightsFunction (string $function) 
+{
+	
+//The currentCtx needs to be either artAttrSkinContext (for skinClusters) or artAttrContext (for clusters).
+if ((`currentCtx` != "artAttrSkinContext") && (`currentCtx` != "artAttrContext"))
+	return;
+
+string $mode = `optionVar -q ST_Mode`;
+
+switch ( $function ) 
+{
+	case "paint":
+		//Update value and opacity sliders for currentCtx.
+		artAttrCtx -e -opacity `floatSliderGrp -q -v ST_PW_PT_OpacSlider` `currentCtx`;
+		artAttrCtx -e -value `floatSliderGrp -q -v ST_PW_PT_ValSlider` `currentCtx`;
+	
+		//Every time a joint is selected in jointScrollList, paint weights for selected joint
+		string $SelJoint[]= `textScrollList -q -selectItem skinningTools_InfluenceTSL`;
+		if ($mode == "SkinCluster")
+			setSmoothSkinInfluence `ST_RemoveHoldFromInfluenceName $SelJoint[0]`;
+		
+		else if ($mode == "Cluster")
+			{
+			if (`currentCtx` == "artAttrContext")
+				artSetToolAndSelectAttr( "artAttrCtx", ("cluster." + $SelJoint[0] + ".weights") );
+			}
+			
+		//Update the -selectedattroper flag.
+		string $operation = `radioCollection -q -sl ST_PR_operationRadioCollection`;
+		if ($operation == "ST_PW_OperationReplaceRB")
+			artAttrCtx -e -sao "absolute" artAttrSkinContext;
+		else if ($operation == "ST_PW_OperationAddRB")
+			artAttrCtx -e -sao "additive" artAttrSkinContext;
+		else if ($operation == "ST_PW_OperationScaleRB")
+			artAttrCtx -e -sao "scale" artAttrSkinContext;
+		else if ($operation == "ST_PW_OperationSmoothRB")
+			artAttrCtx -e -sao "smooth" artAttrSkinContext;
+		break; // case "paint" END
+	
+	/////////
+	/// artAttrCtx-Brush
+	//////////////
+	case "gaussian":
+		symbolCheckBox -e -v 0 ST_PW_ButtonBrush2;
+		symbolCheckBox -e -v 0 ST_PW_ButtonBrush3;
+		artAttrCtx -e -stP "gaussian" artAttrSkinContext;
+		break;
+	case "poly":
+		symbolCheckBox -e -v 0 ST_PW_ButtonBrush1;
+		symbolCheckBox -e -v 0 ST_PW_ButtonBrush3;
+		artAttrCtx -e -stP "poly" artAttrSkinContext;
+		break;
+	case "solid":
+		symbolCheckBox -e -v 0 ST_PW_ButtonBrush1;
+		symbolCheckBox -e -v 0 ST_PW_ButtonBrush2;
+		artAttrCtx -e -stP "solid" artAttrSkinContext;
+		break; // case artAttrCtx-Brush END
+	
+	/////////
+	/// artAttrCtx-Replace,Smooth,Add,Flood...
+	//////////////
+	string $currentContext = `currentCtx`;
+	
+	case "replace":
+		artAttrCtx -e -sao "absolute" `currentCtx`;
+		optionVar -sv ST_PaintMode Replace;
+		break;
+	case "add":
+		artAttrCtx -e -sao "additive" `currentCtx`;
+		optionVar -sv ST_PaintMode Add;
+		break;
+	case "smooth":
+		artAttrCtx -e -sao "smooth" `currentCtx`;
+		optionVar -sv ST_PaintMode Smooth;
+		break;
+	case "scale":
+		artAttrCtx -e -sao "scale" `currentCtx`;
+		optionVar -sv ST_PaintMode Scale;
+		break;
+		
+		
+	case "flood":
+		artAttrCtx -e -clear `currentCtx`;
+		break; // case Value Change END	
+	
+	/////////
+	/// artAttrCtx-Value Change
+	//////////////
+	
+	//Current context is "artAttrSkinContext" for skinClusters, and "artAttrContext" for clusters.
+	case "OpacityChange":
+		artAttrCtx -e -opacity `floatSliderGrp -q -v ST_PW_PT_OpacSlider` `currentCtx`;
+		optionVar -fv ST_PSW_Opacity `floatSliderGrp -q -v ST_PW_PT_OpacSlider`;
+		break; // case Value Change END
+	case "ValueChange":
+		artAttrCtx -e -value `floatSliderGrp -q -v ST_PW_PT_ValSlider` `currentCtx`;
+		optionVar -fv ST_PSW_Value `floatSliderGrp -q -v ST_PW_PT_ValSlider`;
+		break; // case Value Change END
+	
+	case "MaxColor":
+		artAttrCtx -e -colorrangeupper `floatSliderGrp -q -v ST_PW_PT_MaxColorSlider` `currentCtx`;
+		break;
+	
+	case "MinColor":
+		artAttrCtx -e -colorrangelower `floatSliderGrp -q -v ST_PW_PT_MinColorSlider` `currentCtx`;
+		break;
+		
+	/////////
+	/// artAttrCtx-Stylus CheckBox
+	//////////////
+	case "StylusOn":
+		artAttrCtx -e -usepressure 1 artAttrSkinContext;
+		break;
+	case "StylusOff":
+		artAttrCtx -e -usepressure 0 artAttrSkinContext;
+		break; // case Stylus CheckBox END
+	
+	//OLD context was: artAttrSkinContext
+	//Replaced with `currentCtx`
+	
+	case "DubbleClickHold": //NOTE:  an all Update isn't needed can be more simple
+	string $SelJoint[]= `textScrollList -q -selectItem skinningTools_InfluenceTSL`;
+		
+		
+		string $buffer[];
+		int $tokens=`tokenize $SelJoint[0] " " $buffer`;
+		if ($tokens==1){
+		setAttr ( $buffer[0] + ".liw" ) 1;
+		 } else {
+		setAttr ( $buffer[1] + ".liw" ) 0;
+		}
+		
+	// update the ScrollList
+	//	AS_SkinnyUpdate ByNumber;
+		break; // case DubbleClickHold END
+
+	}
+}// ST_PaintWeightsFunction END
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//////////////////////////
+/// Weighting Proc	//
+///	Mirror, Prune	//
+/////////////////////////	
+global proc ST_WeightFunction ( string $case, string $function ) 
+	{
+	//Find SkinCluster number
+	//string $SelObj[] = `ls -sl`;
+	//string $SClusterName= `findRelatedSkinCluster $SelObj[0]`;
+	string $SClusterName = `textField -q -tx skinningTools_SkinClusterTF`;
+	if (! `objExists $SClusterName`)
+		return;
+	
+	switch ($case) 
+		{ 
+		case "MirrorWeight":
+			if ( $function == "X" ) 
+				copySkinWeights -ss $SClusterName -ds $SClusterName -mirrorMode YZ;
+				 
+			else
+				copySkinWeights -ss $SClusterName -ds $SClusterName -mirrorInverse -mirrorMode YZ;
+			break;
+			
+			
+		case "PruneWeight":
+			//float $PruneValue = `floatField -q -v PruneWeightText`;
+			//Assign a default threshold if no optionVar exists.
+			float $PruneValue = 0.01;
+			if (`optionVar -ex ST_PruneWeightsThreshold`)
+				$PruneValue = `optionVar -q ST_PruneWeightsThreshold`;
+			
+			//Prune Weight
+			skinPercent -prw $PruneValue $SClusterName;
+		
+			break;
+		}
+}
+////////////////////////////////////
+////   Weighting Proc END    //////
+//////////////////////////////////
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Sets the prune weights threshold value via an optionVar.
+global proc ST_PruneWeightsSettings()
+{
+
+if (`window -ex ST_PruneWeightsSettingsUI`)
+	deleteUI ST_PruneWeightsSettingsUI;
+
+window -t "Prune Weights Settings" ST_PruneWeightsSettingsUI;
+
+string $form = `formLayout`;
+
+//Establish the slider value. If user runs the script for the first time, this will default to 0.01
+float $defaultThreshold = 0.01;
+if (`optionVar -ex ST_PruneWeightsThreshold`)
+	$defaultThreshold = `optionVar -q ST_PruneWeightsThreshold`;
+
+
+string $floatSliderGrp = `floatSliderGrp
+					-field 1
+					-min 0
+					-max 1
+					-pre 2
+					-v $defaultThreshold
+					-cc "optionVar -fv ST_PruneWeightsThreshold `floatSliderGrp -q -v ST_PruneWeightsFSG`"
+					-l "Prune Below"
+					ST_PruneWeightsFSG`;
+
+string $pruneBTN = `button
+				-l "Prune"
+				-c "ST_WeightFunction PruneWeight Prune; deleteUI ST_PruneWeightsSettingsUI"`;
+string $applyBTN = `button
+				-l "Apply"
+				-c "ST_WeightFunction PruneWeight Prune"`;
+string $closeBTN = `button
+				-l "Close"
+				-c "deleteUI ST_PruneWeightsSettingsUI"`;
+
+formLayout -e
+	-af $floatSliderGrp left 0
+	-af $floatSliderGrp top 15
+	-af $floatSliderGrp right 0
+	-an $floatSliderGrp bottom
+	
+	-af $pruneBTN left 0
+	-an $pruneBTN top	
+	-ap $pruneBTN right 0 33
+	-af $pruneBTN bottom 0
+	
+	-ac $applyBTN left 0 $pruneBTN
+	-an $applyBTN top
+	-ap $applyBTN right 0 66
+	-af $applyBTN bottom 0
+	
+	-ac $closeBTN left 0 $applyBTN
+	-an $closeBTN top
+	-af $closeBTN right 0
+	-af $closeBTN bottom 0
+	
+	$form;
+
+window -e -w 400 -h 100 ST_PruneWeightsSettingsUI;
+showWindow ST_PruneWeightsSettingsUI;
+}
+
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Copies point weighting from one array of points to another. Point weighting from first array is averaged among all points in array.
+global proc ST_CopyWeights(string $skinCluster)
+{
+//Declare the 2 global variables necessary for storing the points and weight information.
+global string $gSkinningToolsCopyWeights_Influences[];
+global float $gSkinningToolsCopyWeights_AverageValues[];
+
+clear $gSkinningToolsCopyWeights_Influences;
+clear $gSkinningToolsCopyWeights_AverageValues;
+
+if (! `size $skinCluster`)
+	{
+	warning "No skinCluster specified. Try again.";
+	return;
+	}
+
+//Get the selected points.
+string $sourcePoints[] = `ls -sl -fl`;
+string $selectedObj[] = `ls -sl -o`;
+
+if (($sourcePoints[0] == $selectedObj[0]) || (! `size $sourcePoints`) || (! `size $selectedObj`))
+	{
+	warning "No points selected. Select some weighted points and try again.";
+	return;
+	}
+
+//Get the influences affecting the sourcePoints.
+string $influences[] = `skinPercent -ignoreBelow 0.00000001 -q -transform $skinCluster $sourcePoints`;
+
+int $sizeSelection = `size $sourcePoints`;
+
+
+//Loop through the influences.
+for ($i = 0; $i < `size $influences`; $i++)
+	{
+	//Assign the global string influence name.
+	$gSkinningToolsCopyWeights_Influences[$i] = $influences[$i];
+	
+	//This will hold the sum weight for each influence. We will then divide by number of influences to get average. 
+	float $totalWeight = 0;
+	
+	//Now loop throught the selected points, and store the sum of the weights per-joint.
+	for ($p in $sourcePoints)	
+		{
+		float $value = `skinPercent -t $influences[$i] -q $skinCluster $p`;
+		$totalWeight += $value;
+		}
+	//Now store the average value into the global float array.
+	$gSkinningToolsCopyWeights_AverageValues[$i] = $totalWeight/$sizeSelection;
+	//print  ($gSkinningToolsCopyWeights_Influences[$i] + " " + $gSkinningToolsCopyWeights_AverageValues[$i] + "\n");
+	}
+
+}//End of proc.
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Used to paste the stored weight values onto selected vertices.
+global proc ST_PasteWeights()
+{
+//Declare the global variables.
+global string $gSkinningToolsCopyWeights_Influences[];
+global float $gSkinningToolsCopyWeights_AverageValues[]; 	
+
+//Exit script if no weights were previously saved.
+if ((! `size $gSkinningToolsCopyWeights_Influences`) || (! `size $gSkinningToolsCopyWeights_AverageValues`))
+	{
+	warning "No point weight stored. Copy the weights first and try again.";
+	return;	
+	}
+
+string $selection[] = `ls -sl -fl`;
+string $objSelection[] = `ls -sl -o`;
+
+//Exit script if no points are selected.
+if ($selection[0] == $objSelection[0])
+	{
+	warning "Select some points and try again.";
+	return;
+	}
+
+//Exit script if points from more than one object are selected.
+if (`size $objSelection` > 1)
+	{
+	warning "Select points on one object and try again.";
+	return;
+	}
+
+
+//Now find first what skin cluster the points belong to.
+string $skinCluster = `findRelatedSkinCluster $objSelection[0]`;
+if (! `size $skinCluster`)
+	{
+	warning "Selected points do not have an attached skinCluster. Try again.";
+	return;
+	}
+
+//Now make sure all the stored influences exist in the current skinCluster.
+string $influencesInCurrentSkinCluster[] = `skinCluster -q -inf $skinCluster`;
+for ($storedInfluence in $gSkinningToolsCopyWeights_Influences)
+	{
+	if (! `stringArrayCount $storedInfluence $influencesInCurrentSkinCluster`)
+		warning ($storedInfluence + " does not exist in current skinCluster. This may cause undesireable results.");
+	}
+
+
+//Now loop through the selected points and apply the stored value.
+for ($s in $selection)
+	{
+	for ($i = 0; $i < `size $gSkinningToolsCopyWeights_Influences`; $i++)
+		{
+		skinPercent -tv $gSkinningToolsCopyWeights_Influences[$i] $gSkinningToolsCopyWeights_AverageValues[$i] -relative 1 $skinCluster $s;
+		//print ($s + " " + $gSkinningToolsCopyWeights_Influences[$i] + " " + $gSkinningToolsCopyWeights_AverageValues[$i] + "\n");
+		}
+	}
+
+} //End of proc.
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+
+
+//Main transfer weights UI.
+global proc ST_TransferWeightsUI()
+{
+if (`window -ex ST_TransferWeightsWin`)
+	deleteUI ST_TransferWeightsWin;
+
+window -t "Transfer Skin Cluster Weights" -wh 285 225 -s 1 ST_TransferWeightsWin;
+
+columnLayout;
+text -l "" -h 10;
+
+radioButtonGrp
+	-nrb 2
+	-l "  Mode:"
+	-cal 1 left
+	-sl 1
+	-la2 "Move Weights" "Swap Weights"
+	-cw 1 75 -cw 2 100 -cw 3 100
+	-ann "Either move weight values from the source to the destination, or swap the weight value between the two."
+	-on1 "text -e -l \"    -->\" ST_TransferWeightsUI_ArrowTXT;"
+	-on2 "text -e -l \"   <-->\" ST_TransferWeightsUI_ArrowTXT;"
+	ST_TransferWeightsUI_ModeRBG;
+
+
+text -l "" -h 10;
+
+radioButtonGrp
+	-nrb 2
+	-sl 1
+	-l "Components:"
+	-la2 "All Points" "Selected Points"
+	-cw 1 75 -cw 2 100 -cw 3 100
+	-ann "Choose whether to transfer all weight value for given influences, or weight value for selected points only."
+	-on1 ""
+	-on2 ""
+	ST_TransferWeightsUI_ComponentsRBG;
+
+text -l "" -h 10;
+
+rowColumnLayout -nc 5 -cw 1 25 -cw 3 35 -cw 5 25;	
+	text -l "";
+	text 
+		-l "Source:" 
+		-ann "Source Influence: RMB to add either influence from list or selected influence."
+		-font boldLabelFont;
+	text -l "";
+	text 
+		-l "Destination:" 
+		-ann "Destination Influence: RMB to add either influence from list or selected influence." 
+		-font boldLabelFont;
+	text -l "";
+	
+	
+	button -l ">>>" -c "textField -e -tx `ls -sl -o -type transform` ST_TransferWeightsUI_SourceTF";
+	textField
+		-ann "Source Influence: RMB to add influence from list or selected influence." 
+		ST_TransferWeightsUI_SourceTF;
+		popupMenu -b 3;
+			menuItem -l "Get from influence list" -c "{string $selection[] = `textScrollList -q -si skinningTools_InfluenceTSL`; string $influence = `ST_RemoveHoldFromInfluenceName $selection[0]`; textField -e -tx $influence ST_TransferWeightsUI_SourceTF;}";
+
+	text -l "    -->" ST_TransferWeightsUI_ArrowTXT;
+	
+	textField 
+		-ann "Destination Influence: RMB to add influence from list or selected influence." 
+		ST_TransferWeightsUI_DestinationTF;
+			popupMenu -b 3;
+			menuItem -l "Get from influence list" -c "{string $selection[] = `textScrollList -q -si skinningTools_InfluenceTSL`; string $influence = `ST_RemoveHoldFromInfluenceName $selection[0]`; textField -e -tx $influence ST_TransferWeightsUI_DestinationTF;}";
+	button -l "<<<" -c "textField -e -tx `ls -sl -o -type transform` ST_TransferWeightsUI_DestinationTF";
+		
+setParent..;
+
+text -l "" -h 10;
+
+floatSliderGrp
+	-cal 1 left
+	-cw 1 95
+	-cw 2 35
+	-cw 3 90
+	-pre 0
+	-field 1
+	-min 0
+	-max 100
+	-v 100
+	-l "Percent Transfer:"
+	ST_TransferWeightPercentSlider;
+
+text -l "" -h 20;
+
+
+
+rowColumnLayout -nc 2 -cw 1 140 -cw 2 140;
+	
+	button
+		-l "Transfer Weights"
+		-ann "Transfer Weights"
+		-c "ST_TransferInfluence \
+			`textField -q -tx ST_TransferWeightsUI_DestinationTF` \
+			`textField -q -tx ST_TransferWeightsUI_SourceTF` \
+			`textField -q -tx skinningTools_SkinClusterTF` \
+			`radioButtonGrp -q -sl ST_TransferWeightsUI_ModeRBG` \
+			`radioButtonGrp -q -sl ST_TransferWeightsUI_ComponentsRBG`\
+			`floatSliderGrp -q -v ST_TransferWeightPercentSlider`";
+			
+	button
+		-l "Close"
+		-c "deleteUI ST_TransferWeightsWin";
+	
+setParent..;
+
+window -e -w 300 -h 210 ST_TransferWeightsWin;
+showWindow 	ST_TransferWeightsWin;
+}
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+
+
+
+//This procedure transfers skinCluster weight between two influence objects.
+//We either loop through all the points in the skinCluster set, or use the current selection of points.
+//We speed this process up by not acting on points that have a zero value per-infuence.
+//This should work on all surface types, curves, and lattices.
+//NOTE: $infB is the destination influence, $infA is the source influence.
+global proc ST_TransferInfluence(string $infB, string $infA, string $skinCluster, int $mode, int $componentsCheck, float $percent)
+{
+//Report errors.
+if ((! `objExists $skinCluster`) || (`nodeType $skinCluster` != "skinCluster"))
+	error "Skin cluster specified incorrectly. Try again.";
+//If either $obj1 or $obj2 are not in the influence list for the skinCluster, report an error.
+string $influences[] = `skinCluster -q -inf $skinCluster`;
+//DOESN´T WORK: if ((! `stringArrayCount($infB, $influences)`) || (! `stringArrayCount($infB, $influences)`))
+int $obj1Count = stringArrayCount($infB, $influences);
+int $obj2Count = stringArrayCount($infA, $influences);
+if (! $obj1Count)
+	error ($infB + " is not in the list of influences for " + $skinCluster + ". Try again.");
+if (! $obj2Count)
+	error ($infA + " is not in the list of influences for " + $skinCluster + ". Try again.");
+
+
+//Let´s time the operation, using the `timerX` cmd.
+$startTime = `timerX`;
+
+//Get the value of the skinCluster.normalizeWeights attr. Turn it off. Later turn it back on.
+//This isn´t really necessary, but is a precaution.
+int $normalize = `getAttr ($skinCluster + ".normalizeWeights")`;
+if ($normalize)
+	setAttr ($skinCluster + ".normalizeWeights") 0;
+	
+//Get the cluster set.
+string $skinClusterSet[] = `listConnections -type objectSet $skinCluster`;
+
+//Assign the components - either all points in set, or selected points.
+string $components[];
+if ($componentsCheck == 1)
+	{
+	$components = `sets -q $skinClusterSet[0]`;
+	if (! `size $components`)
+		error ($skinCluster + " has no members. Try again.");
+	//filter set membership: 36 - subD mesh points; 28 - CV´s; 31 - polygon mesh vertices; 46 - lattice points.
+	$components = `filterExpand -sm 36 -sm 28 -sm 31 -sm 46 $components`;
+	}
+else if ($componentsCheck == 2)
+	{
+	$components = `ls -sl -fl`;
+	if (! `size $components`)
+		error ("Select some points and try again.");
+	
+	//Check if the user has selected components, or (by mistake) the object.
+	string $objectSelection[] = `ls -sl -o`;
+	if ($objectSelection[0] == $components[0])
+		error ("Select some points and try again.");
+	}
+
+//Set "Hold" off for both joints.
+int $hold1 = `getAttr ($infB + ".lockInfluenceWeights")`;
+int $hold2 = `getAttr ($infA + ".lockInfluenceWeights")`;
+if ($hold1)
+	setAttr ($infB + ".lockInfluenceWeights") 0;
+if ($hold2)
+	setAttr ($infB + ".lockInfluenceWeights") 0;
+	
+	
+//WE NEED TO QUERY THE VALUE OF EACH POINT IN BOTH OBJS, AND TRANSFER THIS.
+//Start the progress bar.
+global string $gMainProgressBar;
+int $numberOfPoints = `size $components`;	//-maxValue for progressBar
+progressBar 	
+	-edit 
+	-beginProgress 
+	-isInterruptable 1 
+	-status ("Transferring skin weights between " + $infA + " and " + $infB + "...") 
+	-maxValue $numberOfPoints
+	$gMainProgressBar;
+
+float $infAValue;		//Source weight.	
+float $infBValue;		//Destination weight.
+//print ($mode + "\n");
+for ($c in $components)
+	{
+	//Query values of both influences for current component.
+	$infAValue = `skinPercent -t $infA -q -v $skinCluster $c`;
+	if ($mode == 2)
+		$infBValue = `skinPercent -t $infB -q -v $skinCluster $c`;
+
+	//Reset component values to zero first. This allows us to transfer values only if the original value was greater than zero.
+	//If the original value was zero, it will remain zero, and we can go to the next iteration *much* faster by not touching it.
+	if ($infAValue > 0.0)
+		skinPercent -tv $infA 0 $skinCluster $c;
+	if (($infBValue > 0.0) && ($mode == 2))
+		skinPercent -tv $infB 0 $skinCluster $c;
+	
+	//print ("The mode is: " + $mode + "\n");
+	//print ("Influence " + $infB + "'s original value is " + `skinPercent -t $infB -q -v $skinCluster $c` + "\n");
+
+	//Transfer component values between influences, only if the original value was greater than zero.
+	if ($infAValue > 0.0)
+		{
+		//print ("The weight of " + $infA + " is " + $infAValue + "\n");
+		//print ("The percentage is: " +  $percent + "\n");
+		//print ("The percent value is: " + ($infAValue * ($percent/100)) + "\n");
+		
+		//Transfer the $infAValue onto $infB - use relative mode in order to add to any existing weight.
+		skinPercent -tv $infB ($infAValue * ($percent/100)) -relative 1 $skinCluster $c;
+		//Now, because of the percent factor, we need to put back any weight that remains on infA.
+		if ($percent < 100)
+			skinPercent -tv $infA ($infAValue * ((100 - $percent)/100)) -relative 1 $skinCluster $c;
+		}
+	if (($infBValue > 0.0) && ($mode == 2))
+		{
+		//Transfer the $infBValue onto $infA
+		skinPercent -tv $infA ($infBValue * ($percent/100)) -relative 1 $skinCluster $c;
+		//And put back any remaining weight onto $infB
+		if ($percent < 100)
+			skinPercent -tv $infB ($infBValue * ((100 - $percent)/100)) -relative 1 $skinCluster $c;
+		}
+	
+	//print ("Influence " + $infB + "'s new value is " + `skinPercent -t $infB -q -v $skinCluster $c` + "\n");
+
+
+
+		
+	if (`progressBar -q -isCancelled $gMainProgressBar`)
+		{
+		progressBar -edit -endProgress $gMainProgressBar;
+		break;
+		}
+
+	//Increase the progress bar.
+	progressBar -edit -step 1 $gMainProgressBar;
+	}
+	
+//End progress bar.
+progressBar -edit -endProgress $gMainProgressBar;
+
+
+
+//Turn on "Hold".
+if ($hold1)
+	setAttr ($infB + ".liw") 1;
+if ($hold2)
+	setAttr ($infB + ".liw") 1;
+	
+//Turn normalizeWeights back on.
+if ($normalize)
+	setAttr ($skinCluster + ".normalizeWeights") 1;
+	
+	
+//How long did it take?
+$totalTime = `timerX -startTime $startTime`;
+print ("Total Time: " + $totalTime + " seconds. \n");
+}
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Toggle "Hold" on-off for selected skin cluster influences.
+global proc ST_ToggleHoldInfluenceWeight(string $influences[])
+{
+if (! `size $influences`)
+	return;
+	
+
+for ($influence in $influences)
+	{
+	//Remove " (Hold)" in name.
+	$influence = `ST_RemoveHoldFromInfluenceName $influence`;
+	
+	//Set hold on or off.
+	if (`getAttr ($influence + ".liw")`)
+		setAttr ($influence + ".liw") 0;
+	else
+		setAttr ($influence + ".liw") 1;
+	}
+	
+//Refresh TSL.
+ST_ListSmoothSkinInfluences `textField -q -tx skinningTools_SkinClusterTF` `ST_GetActiveSet`;
+
+//Finally, update component editor.
+componentEditor -e -updateMainConnection ST_CE;
+}
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+global proc ST_HoldAllInfluences(int $holdOnOff)
+{
+string $allInfluences[] = `textScrollList -q -ai skinningTools_InfluenceTSL`;
+if (! `size $allInfluences`)
+	return;
+
+if ($holdOnOff)
+	{
+	for ($i in $allInfluences)
+		{
+		//Remove " (Hold)" in name.
+		$i = `ST_RemoveHoldFromInfluenceName $i`;
+		
+		//Set hold on.
+		setAttr ($i + ".liw") 1;
+		}
+	}
+else 
+	{
+	for ($i in $allInfluences)
+		{
+		//Remove " (Hold)" in name.
+		$i = `ST_RemoveHoldFromInfluenceName $i`;
+		
+		//Set hold off.
+		setAttr ($i + ".liw") 0;
+		}
+	}
+
+//Refresh TSL.
+ST_ListSmoothSkinInfluences `textField -q -tx skinningTools_SkinClusterTF` `ST_GetActiveSet`;
+
+//Finally, update component editor.
+componentEditor -e -updateMainConnection ST_CE;
+}
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Saves out selection script to current shelf.
+global proc ST_SaveInfSelection(string $influenceList[])
+{
+if (! `size $influenceList`)
+	{
+	warning "No influences in current list. No button saved.";
+	return;
+	}
+global string $gShelfTopLevel;
+string $currentTab = `tabLayout -q -selectTab $gShelfTopLevel`;
+
+//Remove " (Hold)" from name, and add to normal string.
+string $influenceListString;
+for ($i in $influenceList)
+	{
+	$i = `ST_RemoveHoldFromInfluenceName $i`;
+	$influenceListString += ($i + " ");
+	}
+shelfButton 
+	-l "Select skin weight influences." 
+	-iol "select"
+	-image1 "commandButton.xpm"
+	-c ("select -r " + $influenceListString + ";")
+	-p $currentTab;
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Creates Help window.
+global proc skinningToolsHelp()
+{
+if (`window -ex skinningToolsHelpUI`)
+	deleteUI skinningToolsHelpUI;
+
+window -t "skinningTools 2.0 Help" -wh 450 350 skinningToolsHelpUI;
+	string $form = `formLayout`;
+		string $scroll = `scrollLayout`;
+			columnLayout;
+
+				rowColumnLayout -nc 2 -cw 1 100 -cw 2 350 -cal 2 left;
+					text -label "Title: " -font boldLabelFont;
+					text -label "skinningTools.mel";
+					text -label "Author: " -font boldLabelFont;
+					text -label "David Walden";
+					text -label "";
+					text -label "www.davidwalden.com";
+					text -label "";
+					text -label "dwalden74@hotmail.com";
+					text -label "Began:" -font boldLabelFont;
+					text -label "May - June 2004";
+					text -label "Last updated:" -font boldLabelFont;
+					text -label "April 24, 2005";
+					setParent..;
+
+				text -label "" -h 30;
+
+				text -l "   Influence Sets and Paint Weights concepts contributed by Asi Sudai - asod@012.net.il." -align left;
+				text -l "" -h 10;
+				text -l "   Roundoff procedure by Duncan Brimsmead - dbrins@alias.com.";
+				text -l "" -h 20;
+				
+				text -label "  New features in version 2.0: " -font boldLabelFont -w 300 -align left;
+				string $newFeaturesText = "  Now includes cluster editing capabilities. User can choose between editing skinClusters or \n";
+				$newFeaturesText += "  clusters via the Edit menu. Note that the \"+\" and \"-\" buttons functionalities change according \n";
+				$newFeaturesText += "  to this mode: when editing clusters, these buttons behave identically to the Set Membership, \n";
+				$newFeaturesText += "  in that they allow the user to either add or remove selected points from the current cluster set.\n";
+				$newFeaturesText += "  The UI layout can now be changed such that it is either split horizontally or vertically.\n";
+				$newFeaturesText += "  This is done via Edit->Layout.  The Transfer Weights tool now has a percentage slider to allow \n";
+				$newFeaturesText += "  the user to transfer only a percentage of the total joint weight. The Show Point Influence menu item will \n";
+				$newFeaturesText += "  now display the joint name as well as the average weight per-joint. The Utilities frameLayout has now been moved\n";
+				$newFeaturesText += "  to the Tools menu, and includes Copy Skin Weights and Remove Unused Influences functionality. Copy Weights and \n";
+				$newFeaturesText += "  Paste Weights buttons have been added to the bottom of the UI.  This feature allows the user to make an initial \n";
+				$newFeaturesText += "  point selection, copy the average weights of all selected points, and paste these weights onto a new point selection.\n";
+				text -label $newFeaturesText -align left; 
+
+				text -l "" -h 20;
+				
+				
+				text -label "   About: " -font boldLabelFont;
+				string $noteText = "  This tool streamlines many of the tasks related to smooth bind skinning in Maya. To use the\n";
+				$noteText += "   tool, simply select a smooth-binded geometry in the viewport, and the influence list on the \n";
+				$noteText += "   left will update showing all the influences affecting the selected geometry.  \n";
+				$noteText += "   \n";
+				$noteText += "   The Influence List in the UI shows all the influences of the given skinCluster node attached to the  \n" ;
+				$noteText += "   current geometry. The RMB popupMenu gives you quick access to many of the influence-based tools,   \n";
+				$noteText += "   including toggling Hold, selecting a given influence, selecting all points that are affected by a   \n";
+				$noteText += "   given influence, and removing a given influence from the current influence set. As the user selects  \n";
+				$noteText += "   influences in the Influence List, the corresponding influences are highlighted in the Maya viewport,  \n";
+				$noteText += "   and are assigned as the current influence for the Paint Weights tool.\n";
+				$noteText += "   \n";
+				$noteText += "   The \"Order\" menu in the main menu bar allows the user to change the order in which influences appear \n";
+				$noteText += "   in the list: either alphabetically, revese alphabetically, by graph order (default), or by their \n";
+				$noteText += "   \"Hold\" status.\n";
+				$noteText += "   \n";
+				$noteText += "   The Influence List area also contains two very powerful buttons: \"+\" and \"-\". These buttons are \n" ;
+				$noteText += "   used to either weight selected points entirely to highlighted influences, or to remove selected points \n" ;
+				$noteText += "   entirely from highlighted influences. This is a very fast and effective way to begin the skin weighting \n" ;
+				$noteText += "   process, and is also great for cleaning up any stray points that may have been inadvertently weighted \n";
+				$noteText += "   while skinning.  One useful aspect of these buttons is that points can be weighted or removed regardless \n";
+				$noteText += "   of whether or not \"Hold\" is active on the influences.\n";
+				$noteText += "   \n";
+				$noteText += "   The Component Editor tab on the right-side of the UI behaves exactly like Maya´s standard component editor,\n";
+				$noteText += "   only here it hows Smooth Skin information only. User can see which influences are affecting selected \n";
+				$noteText += "   points, and can edit weight percent values, either via the spreadsheet cells or the slider. The user can change \n";
+				$noteText += "   the component editor precision by choosing Tools -> Component Editor Precision. Note that in using the Componenet \n";
+				$noteText += "   Editor there can be an occasional update bug in Maya when using numeric insertion in the spreadsheet for  \n";
+				$noteText += "   multiple influences. This can be resolved by selecting the desired influences in the Influence List and specifying  \n";
+				$noteText += "   an absolute value in the Set Weights section.\n";
+				$noteText += "   \n";
+				$noteText += "   The Component Editor and the Influence List may be resized by moving the position of the middle divider.\n";
+				$noteText += "   \n";
+				$noteText += "   The Paint Weights tab incorporates many of the standard tools in Maya´s own Paint Skin Weights tool. \n";
+				$noteText += "   It additionally has a Rotate Joints area where the user can interactively rotate the influences, as well as \n";
+				$noteText += "   set and delete rotational keyframes. Note that right-clicking in this layout will allow you to tear off a \n";
+				$noteText += "   floating Rotate Joints UI. The Utilities section below allows the user to mirror weights either in \n";
+				$noteText += "   positive or negative X, or prune the skinCluster weights according to the given threshhold value. By  \n";
+				$noteText += "   right-clicking on the \"Mirror (+X to -X)\" button, user can call up the mirror weights options. \n";
+				$noteText += "   \n";
+				$noteText += "   The Paint Weights tools also takes advantage of the Influence Sets menu at the top of the UI. Here the user \n";
+				$noteText += "   can isolate specific influences, allowing to paint the weights of only those influences in the set. The Influence\n";
+				$noteText += "   Sets menu is a highly effective way for creating and managing sets of different influences attached to the skinCluster. \n";
+				$noteText += "   For example, if you create a set containing only the joints associated with your character's right arm, only those \n";
+				$noteText += "   influences for the right arm will appear in the Influence List. For this, the \"Auto Hold Sets\" menu item, \n";
+				$noteText += "   when activated, will toggle Hold on for those influences that are NOT in the current set. New influence sets can \n";
+				$noteText += "   be created by either highlighting given influences in the Influence List and choosing \"Create New Set\",\n";
+				$noteText += "   or by selecting points in the viewport and choosing \"Create Set from Selected Points\". The latter option will then \n";
+				$noteText += "   create a set containing only influences that affect the selected points with a value greater than zero. \n";
+				$noteText += "   The \"Remove from Current Set\" menu item will allow you to remove a highlighted influence from the current set. \n";
+				$noteText += "   Note that this only works when Complete Set is not the active set - to instead remove an influence completely \n";
+				$noteText += "   from the skinCluster, highlight the influence(s) in the Influence List and choose Tools -> Remove influences. \n";
+				$noteText += "   \n";
+				$noteText += "   The \"Edit Sets\" menu item in the Influence Sets menu will allow you edit the influence sets once they've been \n";
+				$noteText += "   created. Here you can add a new influence to a given set by highlighting the set in the list, highlighting a new influence\n";
+				$noteText += "   from in the main UI, and clicking on the \"Add to Set\" button. Sets can also be deleted entirely via the \"Delete Set\" \n";
+				$noteText += "   button. All sets can be deleted using the File->Delete All Sets menu item. Here the user can also choose to export or \n";
+				$noteText += "   import the influence sets to and from a text file.\n";
+				$noteText += "   \n";
+				$noteText += "   \n";
+				$noteText += "   The \"Tools\" menu in the main menu bar gives you access to a variety of various utilities that can help during the\n";
+				$noteText += "   weighting process. For example, \"Select affected points\" will select all the points that are affected by the highlighted\n";
+				$noteText += "   influences in the Influence List. \"Show Point Influences\", on the other hand, will create a sub menu containing all  \n";
+				$noteText += "   the influences that are affecting selected points. \"Normalize\" will either normalize selected points, or print out a list \n";
+				$noteText += "   of the selected points whose total influence value does not equal 1.0. \"Save set selection to shelf\" will create a new shelf\n";
+				$noteText += "   button which is used to select all the influences from the current set. \n";
+				$noteText += "   \n";
+				$noteText += "   The \"Transfer Weights\" menu item allows the user to transfer skinCluster weight between 2 influences. Here the user \n";
+				$noteText += "   can choose between either copying weight values from a source influence onto a destination influence, or swapping \n";
+				$noteText += "   the weight values completely between two influences. The user can additionally choose between transferring all point \n";
+				$noteText += "   weight information, or only weight information for selected points.  Note that user need not worry about weight   \n";
+				$noteText += "   normalization or locked influences when copying or swapping weights, as these are handled entirely within \n";
+				$noteText += "   this procedure. \n";
+				$noteText += "   \n";
+				$noteText += "   \"Add Influences\" and \"Remove Influences\" are two very quick ways for either adding new influences to \n";
+				$noteText += "   the current skinCluster, or removing the influences entirely from the skinCluster. To add new influences, simply\n";
+				$noteText += "   select the influences in the viewport or the Outliner, and choose the \"Add Influences\" menu item. They should now\n";
+				$noteText += "   show up immediately in the Complete Set influence set. Note that when new influences are added, their Hold status\n";
+				$noteText += "   is activated by default.  To remove influences from the current skinCluster, simply highlight them in the Influence\n";
+				$noteText += "   List and select \"Remove Influences\". \n";
+				$noteText += "   \n";
+				$noteText += "   \n";
+				$noteText += "   Finally, in the Set Weights section of the UI, the user can set the skinCluster percentage value for all selected \n";
+				$noteText += "   points.  User can either adjust point values absolutely by entering a number in the float field, or relative  \n";
+				$noteText += "   to the current value via the float slider. Note that a warning message occurs when adjusting percent \n";
+				$noteText += "   values when the adjusted value exceeds 1.0. The slider can be made to update interactively by checking \n";
+				$noteText += "   the \"Slider Interactive\" checkbox. The \"Normalize Weights\" checkbox towards the bottom simply toggles   \n";
+				$noteText += "   weight normalization on/off for the current skinCluster node. \n";
+				$noteText += "   \n";
+				$noteText += "   \n";
+				$noteText += "   \n";
+				$noteText += "   Send comments or update suggestions to dwalden74@hotmail.com. \n";
+				$noteText += "   \n";
+				text -label $noteText -align left;
+
+				text -label "" -h 10;
+
+
+				setParent..;
+			setParent..;
+		string $closeButton = `button -label "Close Window" -c "deleteUI skinningToolsHelpUI"`;
+		setParent..;
+
+	formLayout -e
+		-attachForm $scroll left 0
+		-attachForm $scroll top 0
+		-attachForm $scroll right 0
+		-attachControl $scroll bottom 0 $closeButton
+
+		-attachForm $closeButton left 0
+		-attachNone $closeButton top
+		-attachForm $closeButton right 0
+		-attachForm $closeButton bottom 0
+		$form;
+
+showWindow skinningToolsHelpUI;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Selects highlighted influences from UI list.
+global proc ST_SelectInfluences(string $influenceList[])
+{
+if (! `size $influenceList`)
+	{
+	error "No influences selected.";
+	return;
+	}
+
+string $newInfluenceArray[];
+for ($i in $influenceList)
+	{
+	$i = `ST_RemoveHoldFromInfluenceName $i`;
+	$newInfluenceArray[`size $newInfluenceArray`] = $i;
+	}
+
+select -r $newInfluenceArray;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Adds selected influences to the skinCluster.
+global proc ST_AddInfluences()
+{
+string $sel[] = `ls -sl -o -type transform`;
+if (! `size $sel`)
+	return;
+
+string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`;
+string $allInfluences[] = `skinCluster -q -inf $skinCluster`;
+for ($s in $sel)
+	{
+	if (`stringArrayCount $s $allInfluences`)
+		{
+		warning ($s + " is already part of " + $skinCluster + ". Ignoring.");
+		continue;
+		}
+	skinCluster -e -dr 4 -lw true -wt 0 -ai $s $skinCluster;
+	}
+
+ST_ListSmoothSkinInfluences $skinCluster `ST_GetActiveSet`;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Removes selected infuences from current skinCluster influence list.
+global proc ST_RemoveInfluence()
+{
+string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`;
+string $sel[] = `textScrollList -q -si skinningTools_InfluenceTSL`;
+if ((! `objExists $skinCluster`) || (! `size $sel`))
+	return;
+
+//Tokenize $sel[0], only so that "(Hold)" doesn't show up in confirmDialog message.
+string $buffer[];
+tokenize $sel[0] $buffer;
+
+string $influenceMessage;
+if (`size $sel` > 1)
+	$influenceMessage = "s";
+else
+	$influenceMessage = (" " + $buffer[0]);
+	
+string $confirm = `confirmDialog 
+	-title "Remove Influence" 
+	-message ("Remove influence" + $influenceMessage + " from " + $skinCluster + "?")
+	-button "Yes" 
+	-button "No"
+	-defaultButton "Yes"
+	-cancelButton "No" 
+	-dismissString "No"`;
+
+
+if ($confirm == "Yes")
+	{
+	for ($s in $sel) 
+		{
+		$s = `ST_RemoveHoldFromInfluenceName $s`;
+		//Remove the influence from the skinCluster node.
+		skinCluster -e -ri $s $skinCluster;
+		
+		//Now remove the influence from any influence sets.
+		string $sets[] = `ls -type objectSet ("skinningToolsSet_" + $skinCluster + "_*")`;
+		for ($set in $sets)
+			{
+			string $members[] = `sets -q $set`;
+			if (`stringArrayCount $s $members`)
+				sets -rm $set $s;
+			}
+		}
+		
+	//Now update main UI.
+	ST_ListSmoothSkinInfluences $skinCluster `ST_GetActiveSet`;
+	
+	//And update the Edit Sets UI.
+	ST_UpdateEditSetsTSL $skinCluster;
+	}
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Removes selected points from highlighted influences in UI list.
+global proc ST_RemoveSelectedPointsFromInfluence(string $influences[], string $skinCluster)
+{
+string $selectedPoints[] = `ls -sl`;
+string $selectedObj[] = `ls -sl -o`;
+if ($selectedPoints[0] == $selectedObj[0])
+	{print "Select some points and try again.\n"; return;}
+
+//Let´s make it so the user can remove points from multiple joints at a time. This is a cool feature.
+//To do this, we need the lock each joint after we´ve removed the point influence, then return the lock attr to it´s previous value.
+int $isLockedArray[];								
+int $n = 0;
+for ($n = 0; $n < `size $influences`; $n++)
+	{
+	//Remove the "(Hold)" first.
+	$influences[$n] = `ST_RemoveHoldFromInfluenceName $influences[$n]`;
+	$isLockedArray[$n] = `getAttr ($influences[$n] + ".liw")`;		//Store the "lock" status of the influence.
+	}
+
+$n = 0;
+for ($i in $influences)
+	{
+	//Remove the "(Hold)" first.
+	$i = `ST_RemoveHoldFromInfluenceName $i`;					//Remove the "(Hold)" from name (if any).
+	skinPercent -transformValue $i  0.0 $skinCluster $selectedPoints;	//Set the influence to zero for selected points.
+	setAttr ($influences[$n] + ".liw") 1;					//Now lock the influence.
+	$n++;
+	}
+
+for ($n = 0; $n < `size $influences`; $n++)					//Now reset ".liw" attr.
+	{
+	 setAttr ($influences[$n] + ".liw") $isLockedArray[$n];
+	}
+
+//Finally, update component editor.
+componentEditor -e -updateMainConnection ST_CE;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Adds selected points entirely to highlighted influences in UI list. 
+//If multiple influences are selected, weight is distributed evenly among only those influences.
+//Note that all previous weighting information is destroyed.
+global proc ST_AddSelectedPointsToInfluence(string $influences[], string $skinCluster)
+{
+int $sizeInfluences = `size $influences`;
+if (! $sizeInfluences)
+	{print "Highlight some influences in the list and try again.\n"; return;}
+
+string $selectedPoints[] = `ls -sl`;
+string $selectedObj[] = `ls -sl -o`;
+if ($selectedPoints[0] == $selectedObj[0])
+	{print "Select some points and try again.\n"; return;}
+string $affectedGeo[] = `skinCluster -q -g $skinCluster`;
+if ($selectedObj[0] != $affectedGeo[0])
+	{
+	print ("Selected points do not belong to " + $skinCluster + ". Select some points on " + $affectedGeo[0] + " and try again.\n"); 
+	return;
+	}
+
+//Get normalizeWeights attr, and turn off normalize weights.
+int $normalize = `getAttr ($skinCluster + ".normalizeWeights")`;
+if ($normalize)
+	setAttr ($skinCluster + ".normalizeWeights") 0;
+
+//****We need to first toggle off "Hold" for those influences that are currently affecting the selected points.
+//This will allow us to zero-out all points in the next step (note that if "Hold" is on, percent value will NOT zero-out).
+string $oldInfluences[] = `skinPercent -ib 0.000000001 -q -t $skinCluster $selectedPoints`;
+int $isLocked[];	//We need to query the locked status, in order to restore it later.
+for ($i in $oldInfluences)
+	{
+	$isLocked[`size $isLocked`] = `getAttr ($i + ".liw")`;
+	setAttr ($i + ".liw") 0;
+	}
+	
+//Set all weights to zero for selected points.
+skinPercent -prw 100 -normalize off $skinCluster $selectedPoints;
+
+for ($i in $influences)
+	{
+	//Remove the "(Hold)" first.
+	$i = `ST_RemoveHoldFromInfluenceName $i`;
+	skinPercent -transformValue $i (1.0/$sizeInfluences) $skinCluster $selectedPoints;
+	}
+
+//Restore "locked" status to old influences.
+for ($n = 0; $n< `size $oldInfluences`; $n++)
+	setAttr ($oldInfluences[$n] + ".liw") $isLocked[$n];
+
+//Turn back on normalize weights.
+setAttr ($skinCluster + ".normalizeWeights") $normalize;
+
+//Finally, update component editor.
+componentEditor -e -updateMainConnection ST_CE;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Toggles weight normalization on-off for current skinCluster node.
+global proc ST_ToggleNormalize (int $onOff)
+{
+string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`;
+if ((`objExists $skinCluster`) && (`nodeType $skinCluster` == "skinCluster"))
+	{
+	setAttr ($skinCluster + ".normalizeWeights") $onOff;
+	if ($onOff)
+		print "Normalize weights ON.\n";
+	else if (! $onOff)
+		print "Normalize weights OFF.\n";
+	}
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Selects the parent of the highlighted influence.
+global proc ST_SelectParentInfluence()
+{
+string $labelBuffer[];
+string $label = `menuItem -q -l ST_POPUP_ParentMI`;
+tokenize $label $labelBuffer;
+if (`objExists $labelBuffer[2]`)
+	select -r $labelBuffer[2];
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Selects the child of the highlighted influence.
+global proc ST_SelectChildInfluence()
+{
+string $labelBuffer[];
+string $label = `menuItem -q -l ST_POPUP_ChildMI`;
+tokenize $label $labelBuffer;
+if (`objExists $labelBuffer[2]`)
+	select -r $labelBuffer[2];
+}
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Builds the Influence Sets menu according to current skinCluster.
+//Called every time the selection changes - see ST_LoadSelection
+global proc ST_BuildInfluenceSetsMenu(string $skinCluster, string $activeSet)
+{
+//Declare name of menu
+string $influenceMenu = "ST_InfluenceSetsMenu";
+
+//Delete all menuItems from the menu.
+string $originalMenuItems[] = `menu -q -ia $influenceMenu`;
+for ($i in $originalMenuItems)
+	deleteUI $i;
+//Delete RMIC if exists.
+if (`radioMenuItemCollection -ex ST_InfluenceSetsRMIC`)
+	deleteUI ST_InfluenceSetsRMIC;
+	
+//Rebuild items.
+menuItem -p $influenceMenu -label "Create New Set" -c ("ST_setsMakerUI `textScrollList -q -si skinningTools_InfluenceTSL` " + $skinCluster);
+menuItem -p $influenceMenu -l "Create Set from Selected Points" -c ("{string $inf[] = `ST_GetNonZeroInfluencesMultiplePoints`; ST_setsMakerUI $inf " + $skinCluster + ";}");
+menuItem 
+	-p $influenceMenu
+	-l "Remove from Current Set" 
+	-c "ST_RemoveInfluenceFromSet `textScrollList -q -si skinningTools_InfluenceTSL` `ST_GetActiveSet` `textField -q -tx skinningTools_SkinClusterTF`";
+menuItem -p $influenceMenu -l "Edit Sets..." -c "ST_editSets `textField -q -tx skinningTools_SkinClusterTF`";
+menuItem -p $influenceMenu -d 1;
+menuItem 
+	-p $influenceMenu 
+	-label "Auto Hold Sets"
+	-c "optionVar -iv ST_AutoHoldINT `menuItem -q -cb ST_AutoHoldSets_MI`" //Set the optionVar each time the menuItem is selected.
+	-cb `optionVar -q ST_AutoHoldINT` 
+	ST_AutoHoldSets_MI;
+menuItem -p $influenceMenu -d 1;
+
+//Now set the checkbox of the Hold Sets menuItem according to the optionVar.
+//int $autoHold = `optionVar -q ST_AutoHoldINT`;
+
+//(Re)Build the radioMenuItemCollection to manage influence sets. Start with Complete Set.
+radioMenuItemCollection -p ST_InfluenceSetsMenu ST_InfluenceSetsRMIC;
+menuItem 
+	-p ST_InfluenceSetsMenu
+	-collection ST_InfluenceSetsRMIC
+	-l "Complete Set" 
+	-c "ST_SelectFullSet" 
+	-radioButton 0 
+	("skinningToolsSet_" + $skinCluster + "_FullSet_MI");
+
+//Now build the appropriate menuItems for the current skinCluster.
+string $STSets[] = `ls -type objectSet ("skinningToolsSet_" + $skinCluster + "_*")`;
+if (`size $STSets`)
+	{
+	//Build the influence menuItems.
+	for ($s in $STSets)
+		{
+		string $label = `substitute ("skinningToolsSet_" + $skinCluster + "_") $s ""`; 
+		menuItem 
+			-collection ST_InfluenceSetsRMIC
+			-p ST_InfluenceSetsMenu
+			-l $label 
+			-c ("ST_SelectSet " + $s) 
+			-radioButton 0 
+			($s + "_MI");
+		//print ($s + "\n");
+		}
+	}
+	
+
+
+//Now we need to turn ON the correct radioButton.	
+if (`menuItem -ex ($activeSet + "_MI")`)
+	menuItem -e -radioButton 1 ($activeSet + "_MI");
+else
+	menuItem -e -radioButton 1 ("skinningToolsSet_" + $skinCluster + "_FullSet_MI");
+
+}//End of proc.
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Loads the selection in the UI.
+//Also builds the necessary menuItems for the current skinCluster.
+global proc ST_LoadSelection()
+{
+//Get currently selected object.
+string $selection[] = `ls -sl -o`;
+if (! `size $selection`)
+	return;
+
+//Query the MODE
+string $mode = `optionVar -q ST_Mode`;
+
+if ($mode == "SkinCluster")
+	{
+	print $mode;
+	print "\n";
+	
+	//Get the skinCluster.
+	string $skinCluster = `findRelatedSkinCluster $selection[0]`;
+	//If no skinCluster exists on the selection, exit proc.
+	if (! `size $skinCluster`)
+		return;
+		
+	//Otherwise update the UI with the selection.
+	else
+		{
+		//Update textField with skinCluster.
+		text -e -en 1 ST_SkinClusterTXT;
+		textField -e -en 1 skinningTools_SkinClusterTF;
+		
+		if (`size $selection`)
+			textField -e -tx $skinCluster skinningTools_SkinClusterTF;
+		
+		//Update normalize checkbox.
+		checkBox -e -v `getAttr ($skinCluster + ".normalizeWeights")` ST_NormalizeCHECK;
+		
+		//Update TSL according to current set.
+		ST_ListSmoothSkinInfluences $skinCluster `ST_GetActiveSet`;
+		
+		//Now build the influence sets menu
+		ST_BuildInfluenceSetsMenu $skinCluster `ST_GetActiveSet`;
+		
+		//And update the Edit Sets UI:
+		ST_UpdateEditSetsTSL $skinCluster;
+		}
+	}
+
+else if ($mode == "Cluster")
+	{
+	//Disable the Skin Cluster text info at the top of the UI.
+	text -e -en 0 ST_SkinClusterTXT;
+	textField -e -tx "" -en 0 skinningTools_SkinClusterTF;
+	
+	//Remove all items from TSL
+	textScrollList -e -ra skinningTools_InfluenceTSL;
+	
+	//Repopulate with all clusters attached to current selection.
+	string $history[] = `listHistory $selection[0]`;
+	for ($h in $history)
+		{
+		if (`nodeType $h` == "cluster")
+			textScrollList -e -a $h skinningTools_InfluenceTSL;
+		}
+	}
+} //End of proc.
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//This is called by the scriptJob to automatically load the selection. User can uncheck this option in the List menu, 
+//and then choose to manually load objects into the UI.
+global proc ST_ScriptJobLoad()
+{
+if (`menuItem -q -cb ST_AutoUpdateUI_MI`)
+	ST_LoadSelection;
+	
+//Update component editor.
+//componentEditor -e -updateMainConnection ST_CE;
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Hilites and shows given influence in TSL.
+global proc ST_HiliteInfluence(string $inf)
+{
+textScrollList -e -da skinningTools_InfluenceTSL; 
+
+if (`getAttr ($inf + ".liw")`) 
+	textScrollList -e -si ($inf + " (Hold)") skinningTools_InfluenceTSL; 
+else 
+	textScrollList -e -si $inf skinningTools_InfluenceTSL; 
+
+//Now hilite influence in TSL.
+hilite -r $inf;		
+
+//And show influence in TSL.
+int $index[] = `textScrollList -q -sii skinningTools_InfluenceTSL`;
+textScrollList -e -shi $index[0] skinningTools_InfluenceTSL;
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Shows submenu with menuItem list of influences affecting currently selected points.
+global proc ST_ShowPointInfluences()
+{
+//First, delete any previous existing menuItems under ST_ShowPointInfluenceMI (from previous call to proc)
+string $previousMenus[] = `menu -q -ia ST_ShowPointInfluenceMI`;
+for ($p in $previousMenus)
+	deleteUI $p;
+
+//Get the selection and the selected components.
+//Make sure we have one geometry object selected.
+string $object[] = `ls -sl -o`;
+if (`size $object` != 1)
+	{
+	//menuItem -l "Select some smooth-binded points on one object." -p ST_ShowPointInfluenceMI; 
+	return;
+	}
+
+//Return the flattened list of components. Return nothing (exit proc) if selection is invalid.
+string $selectedComponents[] = `ls -fl -sl`;
+if (! `size $selectedComponents`)
+	return;
+
+//If only the object is selected, exit proc.
+if ($object[0] == $selectedComponents[0])
+	return;
+
+//Get the skinCluster node name.
+string $skinCluster = `findRelatedSkinCluster $object[0]`;
+if (($skinCluster != `textField -q -tx skinningTools_SkinClusterTF`) || (! `size $skinCluster`))
+	{
+	//print "Select some smooth-binded points and try again.\n"; 
+	return;
+	}
+
+
+//First get the influences that affect the points.
+string $influences[] = `skinPercent -ignoreBelow 0.00000001 -q -transform $skinCluster $selectedComponents`;
+
+//Now loop throught the selected points, and store the sum of the weights per-joint (similar to the ST_CopyWeights proc.
+float $averageWeight[];
+for ($i = 0; $i < `size $influences`; $i++)
+	{
+	float $totalWeight = 0;
+	for ($p in $selectedComponents)
+		{
+		float $value = `skinPercent -t $influences[$i] -q $skinCluster $p`;
+		$totalWeight += $value;
+		}
+	//Now store the average value into the global float array.
+	$averageWeight[$i] = $totalWeight/(`size $selectedComponents`);
+	//Round-off the value to 3 decimal places.
+	$averageWeight[$i] = `dbRoundoff $averageWeight[$i] 4`;
+	}
+
+
+
+//Now add the items to the popupMenu.
+if (`size $influences`)
+	{
+	for ($i = 0; $i < `size $influences`; $i++)
+		{
+		//string $cmd = (" textScrollList -e -da skinningTools_InfluenceTSL; if (`getAttr " + $i + ".liw`) textScrollList -e -si \"" + $i + " Hold\" skinningTools_InfluenceTSL; else textScrollList -e -si " + $i + " skinningTools_InfluenceTSL; hilite -r " + $i + ";");
+		menuItem 
+			-l ($influences[$i] + "  -  " + $averageWeight[$i]) 
+			-p ST_ShowPointInfluenceMI 
+			-c ("ST_HiliteInfluence " + $influences[$i])
+			($influences[$i] + "PointInf_MI");
+		}
+	}	
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Updates the Tools Menu "Select Influence" submenu.
+global proc ST_UpdateToolsMenu()
+{
+string $current = "ST_ToolsMenu_SelectCurrentMI";
+string $parent = "ST_ToolsMenu_SelectParentMI";
+string $child = "ST_ToolsMenu_SelectChildMI";
+
+//Get currently highlighted influences.
+string $selectedItem[] = `textScrollList -q -si skinningTools_InfluenceTSL`;
+if (!`size $selectedItem`)
+	{
+	menuItem -e -en 0 $current;
+	menuItem -e -en 0 $parent;
+	menuItem -e -en 0 $child;
+	return;
+	}
+	
+//Reset menuItems to default label.
+menuItem -e -l "Select Current: " $current;
+menuItem -e -l "Select Parent: " $parent;
+menuItem -e -l "Select Child: " $child;
+
+//Store the default label.
+string $currentInfluenceLabel = `menuItem -q -l $current`;
+string $currentParentLabel = `menuItem -q -l $parent`;
+string $currentChildLabel = `menuItem -q -l $child`;
+
+//If multiple influences are highlighted in the list, update the menuItems with "...".
+if (`size $selectedItem` > 1)
+	{
+	menuItem -e -l ($currentInfluenceLabel + "...") -c "ST_SelectInfluences `textScrollList -q -si skinningTools_InfluenceTSL`" $current;
+	menuItem -e -l ($currentParentLabel + "...") -c "" $parent;
+	menuItem -e -l ($currentChildLabel + "...") -c "" $child;
+	}
+
+//If just one influence is highlighted in the list, update the menuItem label with correct name.
+else if (`size $selectedItem` == 1)
+	{
+	string $influence = $selectedItem[0];
+	$influence = `ST_RemoveHoldFromInfluenceName $influence`;
+	
+	string $parents[] = `listRelatives -p $influence`;
+	string $children[] = `listRelatives -c $influence`;
+	
+	//Update the influence menuItem.
+	menuItem -e -l ($currentInfluenceLabel + $influence) -c ("select -r " + $influence) -en 1 $current;
+	
+	//Update parent menuItem.
+	if (`size $parents`)
+		menuItem -e -l ($currentParentLabel + $parents[0]) -c ("select -r " + $parents[0]) -en 1 $parent;
+	else
+		menuItem -e -en 0 $parent;
+	//Update child menuItem.
+	if (`size $children` == 1)
+		menuItem -e -l ($currentChildLabel + $children[0]) -c ("select -r " + $children[0]) -en 1 $child;
+	else if (`size $children` > 1)
+		{
+		string $childrenString;
+		for ($c in $children)
+			$childrenString += $c + " ";
+		menuItem -e -l "Select children" -c ("select -r " + $childrenString) -en 1 $child;
+		}
+	else
+		menuItem -e -en 0 $child;
+	}
+}
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Used for the Influence Popup, when in Cluster mode. Selects either the Handle, the Cluster, or the Cluster Set.
+global proc ST_SelectClusterNodeType (string $nodeType)
+{
+string $selected[] = `textScrollList -q -si skinningTools_InfluenceTSL`;
+if (! `size $selected`)
+	return;
+
+if ($nodeType == "Cluster")
+	select -r $selected;
+
+else if ($nodeType == "ClusterHandle")
+	{
+	string $handles[] = {};
+	for ($s in $selected)
+		{
+		$handles = stringArrayCatenate ($handles, `listConnections -type "clusterHandle" -s 1 -d 0 $s`);
+		$handles = stringArrayRemoveDuplicates ($handles);
+		}
+	select -r $handles;
+	}
+
+else if ($nodeType == "ClusterSet")
+	{
+	string $clusterSets[] = {};
+	for ($s in $selected)
+		{
+		$clusterSets = stringArrayCatenate ($clusterSets, `listConnections -type "objectSet" -s 0 -d 1 $s`);
+		$clusterSets = stringArrayRemoveDuplicates ($clusterSets);
+		}
+	select -r -noExpand $clusterSets;
+	}
+
+//Same as above, but without the -noExpand flag on the select cmd.
+else if ($nodeType == "Points")
+	{
+	string $clusterSets[] = {};
+	for ($s in $selected)
+		{
+		$clusterSets = stringArrayCatenate ($clusterSets, `listConnections -type "objectSet" -s 0 -d 1 $s`);
+		$clusterSets = stringArrayRemoveDuplicates ($clusterSets);
+		}
+	select -r $clusterSets;
+	}
+	
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Updates RMB popup menu for main Influence list. Updates according to $mode type (either SkinCluster or Cluster).
+global proc ST_UpdatePopup(string $mode)
+{
+//First, delete all menuItems in the popup.
+popupMenu -e -dai ST_InfluenceListPOPUP;
+
+if ($mode == "SkinCluster")
+	{
+	//Now rebuild the popup menuItems.
+	menuItem -p ST_InfluenceListPOPUP -l "Hold/Unhold" -c "ST_ToggleHoldInfluenceWeight `textScrollList -q -si skinningTools_InfluenceTSL`;";
+	menuItem -p ST_InfluenceListPOPUP -l "Hold All" -c "ST_HoldAllInfluences 1";
+	menuItem -p ST_InfluenceListPOPUP -l "Unhold All" -c "ST_HoldAllInfluences 0";
+	menuItem -p ST_InfluenceListPOPUP -d 1;
+	menuItem -p ST_InfluenceListPOPUP -l "Select influence" -c "ST_SelectInfluences `textScrollList -q -si skinningTools_InfluenceTSL`" ST_POPUP_InfluenceMI;
+	menuItem -p ST_InfluenceListPOPUP -l "Select affected points" -c "ST_SelectAffectedPoints `textField -q -tx skinningTools_SkinClusterTF`" ST_POPUP_SelectPointsMI;
+	menuItem -p ST_InfluenceListPOPUP -d 1;
+	menuItem -p ST_InfluenceListPOPUP -l "Create New Set" -c "ST_setsMakerUI `textScrollList -q -si skinningTools_InfluenceTSL` `textField -q -tx skinningTools_SkinClusterTF`";
+	menuItem -p ST_InfluenceListPOPUP -d 1;
+	menuItem -p ST_InfluenceListPOPUP -l "Reveal selected influence" -c "ST_RevealSelected `ls -sl -o -type transform` `textField -q -tx skinningTools_SkinClusterTF`" ST_POPUP_RevealSelectedMI;
+	menuItem -p ST_InfluenceListPOPUP -d 1;
+	menuItem -p ST_InfluenceListPOPUP -l "Remove from Current Set" -c "ST_RemoveInfluenceFromSet `textScrollList -q -si skinningTools_InfluenceTSL` `ST_GetActiveSet` `textField -q -tx skinningTools_SkinClusterTF`";
+		
+	
+	
+	//Get currently highlighted influences.
+	string $selectedItem[] = `textScrollList -q -si skinningTools_InfluenceTSL`;
+	if (!`size $selectedItem`)
+		{
+		menuItem -e -en 0 -l "Select Influence" ST_POPUP_InfluenceMI;
+		return;
+		}
+	else
+		{
+		//Enable menuItem, then update menu accordingly.
+		menuItem -e -en 1 ST_POPUP_InfluenceMI;
+		if (`size $selectedItem` == 1)
+			menuItem -e -l "Select Influence" ST_POPUP_InfluenceMI;
+		else if (`size $selectedItem` > 1)
+			menuItem -e -l "Select Influences" ST_POPUP_InfluenceMI;
+		}
+	}
+	
+else if ($mode == "Cluster")
+	{
+	menuItem -p ST_InfluenceListPOPUP -l "Select Cluster Node" -c "ST_SelectClusterNodeType Cluster";
+	menuItem -p ST_InfluenceListPOPUP -l "Select Cluster Handle" -c "ST_SelectClusterNodeType ClusterHandle";
+	menuItem -p ST_InfluenceListPOPUP -l "Select Cluster Set" -c "ST_SelectClusterNodeType ClusterSet";
+	menuItem -p ST_InfluenceListPOPUP -l "Select Cluster Points" -c "ST_SelectClusterNodeType Points";
+	}
+
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Sets skinCluster weight values for selected components.
+global proc ST_SetWeights(int $setMode, float $value)
+{
+//Get selection, component selection, skinCluster, and check for errors.
+string $selectedComponents[] = `ls -sl`;
+if (! `size $selectedComponents`)
+	{print "Select some points and try again.\n"; return;}
+string $selectedComponentsFlattened[] = `ls -sl -fl`;
+string $selectedObject[] = `ls -sl -o`;
+if ($selectedComponents[0] == $selectedObject[0])
+	{print "Select some points and try again.\n"; return;}
+
+string $influences[] = `textScrollList -q -si skinningTools_InfluenceTSL`;
+if (! `size $influences`)
+	{print "Select one or more influences from the UI list and try again.\n"; return;}
+
+string $skinCluster = `findRelatedSkinCluster $selectedObject[0]`;
+if (! `size $skinCluster`)
+	{print "Select one or more influences from the UI list and try again.\n"; return;}
+
+//If the selected object´s skinCluster is different from the on in the UI, report error.
+if ($skinCluster != `textField -q -tx skinningTools_SkinClusterTF`)
+	error "Selected object is not loaded into UI. Try again.\n";
+
+//Set weight in absolute mode.
+int $isLocked;
+if ($setMode == 1)
+	{
+	for ($i in $influences)
+		{
+		$i = `ST_RemoveHoldFromInfluenceName $i`;
+		$isLocked = `getAttr ($i + ".lockInfluenceWeights")`;
+		if ($isLocked)
+			{print ("Influence " + $i + " is locked. Toggle \"Hold\" off and try again.\n"); return;}
+		skinPercent -tv $i $value $skinCluster $selectedComponents;
+		}
+	}
+//Set weight in percent mode.	
+else if ($setMode == 2)
+	{
+	for ($i in $influences)
+		{
+		$i = `ST_RemoveHoldFromInfluenceName $i`;
+		$isLocked = `getAttr ($i + ".lockInfluenceWeights")`;
+		if ($isLocked)
+			{print ("Influence " + $i + " is locked. Toggle \"Hold\" off and try again.\n"); return;}
+		skinPercent -relative 1 -tv $i $value $skinCluster $selectedComponents;
+		
+		for ($s in $selectedComponentsFlattened)
+			{
+			if (`skinPercent -t $i -q $skinCluster $s` > 1.0)
+				skinPercent -tv $i 1.0 $skinCluster $s;
+			else if (`skinPercent -t $i -q $skinCluster $s` < 0.0)
+				skinPercent -tv $i 0.0 $skinCluster $s;
+			}
+		}
+	}
+
+//Finally, update component editor.
+componentEditor -e -updateMainConnection ST_CE;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Hilites selected influences from influence list.
+//Sets "rotate" sliders to joints´ rotate values.
+global proc ST_HiliteObjects(string $mode)
+{
+if ($mode == "SkinCluster")
+	{
+	string $selectedInfluences[] = `textScrollList -q -si skinningTools_InfluenceTSL`;
+	string $influences[];
+	for ($i in $selectedInfluences)
+		{
+		$i = `ST_RemoveHoldFromInfluenceName $i`;
+		$influences[`size $influences`] = $i;
+		}
+	hilite -r $influences;
+	
+	//Now update rotate sliders to match the joint´s rotate values.
+	$selectedInfluences[0] = `ST_RemoveHoldFromInfluenceName $selectedInfluences[0]`;
+	int $tearOffRotateJointsWindowExists = `window -ex ST_TearOffJointRotateWin`;
+	floatSliderGrp -e -v `getAttr ($selectedInfluences[0] + ".rx")` ST_PW_RJ_SliderX;
+	floatSliderGrp -e -v `getAttr ($selectedInfluences[0] + ".ry")` ST_PW_RJ_SliderY;
+	floatSliderGrp -e -v `getAttr ($selectedInfluences[0] + ".rz")` ST_PW_RJ_SliderZ;
+	if ($tearOffRotateJointsWindowExists)
+		{
+		floatSliderGrp -e -v `getAttr ($selectedInfluences[0] + ".rx")` ST_PW_RJ_SliderX_TearOff;
+		floatSliderGrp -e -v `getAttr ($selectedInfluences[0] + ".ry")` ST_PW_RJ_SliderY_TearOff;
+		floatSliderGrp -e -v `getAttr ($selectedInfluences[0] + ".rz")` ST_PW_RJ_SliderZ_TearOff;
+		}
+	}
+
+
+else if ($mode == "Cluster")
+	{
+	string $selectedClusters[] = `textScrollList -q -si skinningTools_InfluenceTSL`;
+	string $handles[] = {};
+	string $allHandles[] = {};
+	for ($cls in $selectedClusters)
+		{
+		$handles = `listConnections -s 1 -d 0 -type "clusterHandle" $cls`;
+		for ($h in $handles)
+			$allHandles[`size $allHandles`] = $h;
+		}
+	
+	hilite -r $allHandles;
+	}
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Makes Set Weights slider interactive or not.
+global proc ST_SetWeights_SliderInteractive (int $onOff)
+{
+if ($onOff)
+	{
+	floatSlider -e
+		-cc ""
+		-dc "ST_SetWeights `radioButtonGrp -q -sl ST_SetWeightsModeRBG` `floatSlider -q -v ST_SetWeightsPercentFS`; \
+		floatField -e -v `floatSlider -q -v ST_SetWeightsPercentFS` ST_SetWeightsPercentFF;"
+		ST_SetWeightsPercentFS;
+	}	
+else if (! $onOff)
+	{
+	floatSlider -e
+		-cc "ST_SetWeights `radioButtonGrp -q -sl ST_SetWeightsModeRBG` `floatSlider -q -v ST_SetWeightsPercentFS`; \
+			floatField -e -v `floatSlider -q -v ST_SetWeightsPercentFS` ST_SetWeightsPercentFF;"
+		-dc ""
+		ST_SetWeightsPercentFS;
+	}
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Isolates Hold on selected influences.
+global proc ST_IsolateHold()
+{
+//Get selected influences.
+string $selectedInfluence[] = `textScrollList -q -si skinningTools_InfluenceTSL`;
+if (! `size $selectedInfluence`)
+	return;
+
+//Get all influences.
+string $allInfluence[] = `textScrollList -q -ai skinningTools_InfluenceTSL`;
+//Get influences that aren´t selected.
+string $nonSelectedInfluences[] = `stringArrayRemove $selectedInfluence $allInfluence`;
+
+$selectedInfluence[0] = `ST_RemoveHoldFromInfluenceName $selectedInfluence[0]`;
+
+if (! `getAttr ($selectedInfluence[0] + ".liw")`)
+	{
+	//Toggle .liw on for selected...
+	for ($i in $selectedInfluence)
+		{
+		$i = `ST_RemoveHoldFromInfluenceName $i`;
+		setAttr ($i + ".liw") 1;
+		}
+	//...and off for non-selected 
+	for ($i in $nonSelectedInfluences)
+		{
+		$i = `ST_RemoveHoldFromInfluenceName $i`;
+		setAttr ($i + ".liw") 0;
+		}
+	}
+else
+	{
+	for ($i in $selectedInfluence)
+		{
+		$i = `ST_RemoveHoldFromInfluenceName $i`;
+		setAttr ($i + ".liw") 0;
+		}
+	for ($i in $nonSelectedInfluences)
+		{
+		$i = `ST_RemoveHoldFromInfluenceName $i`;
+		setAttr ($i + ".liw") 1;
+		}
+	}
+
+//Update TSL.
+ST_ListSmoothSkinInfluences `textField -q -tx skinningTools_SkinClusterTF` `ST_GetActiveSet`;
+
+
+//Finally, update component editor.
+componentEditor -e -updateMainConnection ST_CE;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Rename the current skinCluster node (via popup menu in UI).
+global proc ST_RenameSkinCluster()
+{
+string $oldName = `textField -q -tx skinningTools_SkinClusterTF`;
+if (! `objExists $oldName`)
+	return;
+
+string $newName;
+string $result = `promptDialog 
+ 		-title "Rename Skin Cluster Node:"
+ 		-message "New Name:"
+ 		-text $oldName
+ 		-button "OK" -button "Cancel"
+ 		-defaultButton "OK" -cancelButton "Cancel"
+ 		-dismissString "Cancel"`;
+
+ 	if ($result == "OK")
+ 		{
+ 		$newName = `promptDialog -query -text`;
+		rename $oldName $newName;
+		textField -e -tx $newName skinningTools_SkinClusterTF;
+		}
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Rotates selected influences (works only on joints).
+global proc ST_RotateJoints (string $axis, int $tearOff)
+{
+string $joints[] = `textScrollList -q -si skinningTools_InfluenceTSL`;
+for ($j in $joints)
+	{
+	$j = `ST_RemoveHoldFromInfluenceName $j`;
+	//Check first to see if object is a joint.
+	if (`nodeType $j` != "joint")
+		continue;
+	
+	if (`getAttr -l ($j + ".rotate")`)
+		continue;
+	
+	string $connections[] = `listConnections -s 1 -d 0 ($j + ".rotate")`;
+	int $sizeConnections = `size $connections`;
+	if ($sizeConnections)
+		continue;
+		
+	if ($axis == "X")
+		{
+		//If the ".rx" attribute has input connections which are NOT animation curves, then report a warning.
+		$connections = `listConnections -s 1 -d 0 ($j + ".rx")`;
+		$sizeConnections = `size $connections`;
+		//If connections do exist....
+		if ($sizeConnections)
+			{
+			if (`nodeType $connections[0]` != "animCurve")
+				{warning ("Cannot rotate " + $j + " on the X-axis: it already has input connections."); continue;}
+			else
+				{
+				//If calling the proc from the TearOff Win...
+				if ($tearOff)
+					{
+					setAttr ($j + ".rx") `floatSliderGrp -q -v ST_PW_RJ_SliderX_TearOff`;
+					floatSliderGrp -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderX_TearOff` ST_PW_RJ_SliderX;
+					}
+				//Else if calling proc from the main UI...
+				else
+					{
+					setAttr ($j + ".rx") `floatSliderGrp -q -v ST_PW_RJ_SliderX`;
+					if (`window -ex ST_TearOffJointRotateWin`)
+						floatSliderGrp -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderX` ST_PW_RJ_SliderX_TearOff;
+					}
+				}
+			}
+		//Else if no connections exist....
+		else
+			{
+			if ($tearOff)
+				{
+				setAttr ($j + ".rx") `floatSliderGrp -q -v ST_PW_RJ_SliderX_TearOff`;
+				floatSliderGrp -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderX_TearOff` ST_PW_RJ_SliderX;
+				}
+			else
+				{
+				setAttr ($j + ".rx") `floatSliderGrp -q -v ST_PW_RJ_SliderX`;
+				if (`window -ex ST_TearOffJointRotateWin`)
+					floatSliderGrp -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderX` ST_PW_RJ_SliderX_TearOff;
+				}
+			}
+		}
+	if ($axis == "Y")
+		{
+		$connections = `listConnections -s 1 -d 0 ($j + ".ry")`;
+		$sizeConnections = `size $connections`;
+		if ($sizeConnections)
+			{
+			if (`nodeType $connections[0]` != "animCurve")
+				{warning ("Cannot rotate " + $j + " on the Y-axis: it already has input connections."); continue;}
+			else
+				{
+				if ($tearOff)
+					{
+					setAttr ($j + ".ry") `floatSliderGrp -q -v ST_PW_RJ_SliderY_TearOff`;
+					floatSlider -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderY_TearOff` ST_PW_RJ_SliderY;
+					}
+				else
+					{
+					setAttr ($j + ".ry") `floatSliderGrp -q -v ST_PW_RJ_SliderY`;
+					if (`window -ex ST_TearOffJointRotateWin`)
+						floatSlider -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderY` ST_PW_RJ_SliderY_TearOff;
+					}
+				}
+			}
+		else
+			{
+			if ($tearOff)
+				{
+				setAttr ($j + ".ry") `floatSliderGrp -q -v ST_PW_RJ_SliderY_TearOff`;
+				floatSliderGrp -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderY_TearOff` ST_PW_RJ_SliderY;
+				}
+			else
+				{
+				setAttr ($j + ".ry") `floatSliderGrp -q -v ST_PW_RJ_SliderY`;
+				if (`window -ex ST_TearOffJointRotateWin`)
+					floatSliderGrp -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderY` ST_PW_RJ_SliderY_TearOff;
+				}
+			}
+		}
+	if ($axis == "Z")
+		{
+		$connections = `listConnections -s 1 -d 0 ($j + ".rz")`;
+		$sizeConnections = `size $connections`;
+		if ($sizeConnections)
+			{
+			if (`nodeType $connections[0]` != "animCurve")
+				{warning ("Cannot rotate " + $j + " on the Z-axis: it already has input connections."); continue;}
+			else
+				{
+				if ($tearOff)
+					{
+					setAttr ($j + ".rz") `floatSliderGrp -q -v ST_PW_RJ_SliderZ_TearOff`;
+					floatSliderGrp -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderZ_TearOff` ST_PW_RJ_SliderZ;
+					}
+				else
+					{
+					setAttr ($j + ".rz") `floatSliderGrp -q -v ST_PW_RJ_SliderZ`;
+					if (`window -ex ST_TearOffJointRotateWin`)
+						floatSliderGrp -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderZ` ST_PW_RJ_SliderZ_TearOff;
+					}
+				}
+			}
+		else
+			{
+			if ($tearOff)
+				{
+				setAttr ($j + ".rz") `floatSliderGrp -q -v ST_PW_RJ_SliderZ_TearOff`;
+				floatSliderGrp -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderZ_TearOff` ST_PW_RJ_SliderZ;
+				}
+			else
+				{
+				setAttr ($j + ".rz") `floatSliderGrp -q -v ST_PW_RJ_SliderZ`;
+				if (`window -ex ST_TearOffJointRotateWin`)
+					floatSliderGrp -e -v `floatSliderGrp -q -v ST_PW_RJ_SliderZ` ST_PW_RJ_SliderZ_TearOff;
+				}
+			}
+		}
+	}
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Zero´s rotations on selected influences (joints).
+global proc ST_RotateJoints_Zero(string $whichJoints, int $x, int $y, int $z)
+{
+//Query if tear off rotate joint window exists.
+int $tearOffWinExists = `window -ex ST_TearOffJointRotateWin`;
+
+//First reset floatSliderGrps.
+if ($x)
+	{
+	floatSliderGrp -e -v 0 ST_PW_RJ_SliderX;
+	if ($tearOffWinExists)
+		floatSliderGrp -e -v 0 ST_PW_RJ_SliderX_TearOff;
+	}
+if ($y)
+	{
+	floatSliderGrp -e -v 0 ST_PW_RJ_SliderY;
+	if ($tearOffWinExists)
+		floatSliderGrp -e -v 0 ST_PW_RJ_SliderY_TearOff;
+	}
+if ($z)
+	{
+	floatSliderGrp -e -v 0 ST_PW_RJ_SliderZ;
+	if ($tearOffWinExists)
+		floatSliderGrp -e -v 0 ST_PW_RJ_SliderZ_TearOff;
+	}
+	
+//Now zero-out joint rotations.
+string $joints[];
+if ($whichJoints == "current")
+	$joints = `textScrollList -q -si skinningTools_InfluenceTSL`;
+else if ($whichJoints == "all")
+	$joints = `textScrollList -q -ai skinningTools_InfluenceTSL`;
+	
+for ($j in $joints)
+	{
+	$j = `ST_RemoveHoldFromInfluenceName $j`;
+	//Check first to see if object is a joint.
+	if (`nodeType $j` != "joint")
+		continue;
+	
+	//Reset joint rotations only if they aren´t locked and don´t have input connections.
+	string $connections[] = `listConnections -s 1 -d 0 ($j + ".rotate")`;
+	int $sizeConnections = `size $connections`;
+	if ((`getAttr -l ($j + ".rotate")`) || ($sizeConnections))
+		continue;
+	$connections = `listConnections -s 1 -d 0 ($j + ".rx")`;
+	$sizeConnections = `size $connections`;
+	
+	if (! `getAttr -l ($j + ".rx")`)
+		{
+		if (! $sizeConnections)
+			{
+			if ($x)
+				setAttr ($j + ".rx") 0;
+			}
+		}
+	$connections = `listConnections -s 1 -d 0 ($j + ".ry")`;
+	$sizeConnections = `size $connections`;
+	if (! `getAttr -l ($j + ".ry")`)
+		{
+		if (! $sizeConnections)
+			{
+			if ($y)
+				setAttr ($j + ".ry") 0;
+			}
+		}
+	$connections = `listConnections -s 1 -d 0 ($j + ".rz")`;
+	$sizeConnections = `size $connections`;
+	if (! `getAttr -l ($j + ".rz")`)
+		{
+		if (! $sizeConnections)
+			{
+			if ($z)
+				setAttr ($j + ".rz") 0;
+			}
+		}
+	}
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Sets keyframe on highlighted joints´ rotations.
+global proc ST_JointRotKey ( string $function ){
+// Query Selected Joints
+string $JNTtoKey[]=`textScrollList -q -si skinningTools_InfluenceTSL`;
+
+//Quit the proc if nothing is highlighted.
+if (! size($JNTtoKey))
+	{
+	print "No joints highlighted in list.\n";
+	return;
+	}
+
+if ($function == "SetKey")
+	{
+	// Set Key
+	for ($joint in $JNTtoKey)
+		setKeyframe ($joint + ".rotate");
+	    	
+	// Print confirmation message
+	print "Set rotational keyframes for highlighted influences.\n";
+	} 
+else 
+	{
+	for ( $joint in $JNTtoKey)
+		{
+	    // Cut all Keys
+	    cutKey -attribute rotate $joint;
+	    // Reset Slider
+	    //SkinnyRotJNT 1;
+	   	}
+	   	
+	 // Print confirmation message
+	 print "All keyframes were deleted from highlighed joints.\n";
+	}
+}//End of ST_JointRotKey proc.
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Set opacity/display slider values, as well as the artAttrCtx values, based on optionVar.
+global proc ST_SetOpacityValueSliders()
+{
+float $ST_PSW_Opacity = `optionVar -q ST_PSW_Opacity`;
+float $ST_PSW_Value = `optionVar -q ST_PSW_Value`;
+if ($ST_PSW_Opacity > 0)
+	{
+	//print ($ST_PSW_Opacity + "\n");
+	floatSliderGrp -e -v $ST_PSW_Opacity ST_PW_PT_OpacSlider;
+	artAttrCtx -e -opacity $ST_PSW_Opacity `currentCtx`;
+	}
+else
+	{
+	floatSliderGrp -e -v 1.0 ST_PW_PT_OpacSlider;
+	artAttrCtx -e -opacity 1.0 `currentCtx`;
+	}
+	
+if ($ST_PSW_Value > 0)
+	{
+	//print ($ST_PSW_Value + "\n");
+	floatSliderGrp -e -v $ST_PSW_Value ST_PW_PT_ValSlider;
+	artAttrCtx -e -value $ST_PSW_Value `currentCtx`;
+	}
+else
+	{
+	floatSliderGrp -e -v 1.0 ST_PW_PT_ValSlider;
+	artAttrCtx -e -value 1.0 `currentCtx`;
+	}
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Executed every time user selects Component Editor/Paint Weights tab.
+global proc ST_ChangeTabProc(int $tab)
+{
+global string $gSelect;
+
+
+if ($tab == 1)
+	{
+	//We need to query the Skinning Tools MODE optionVar, then set the paint weights cmd accordingly. 
+	string $mode = `optionVar -q ST_Mode`;
+	
+	if ($mode == "SkinCluster")
+		{
+		//If no skinCluster exists, exit proc.
+		string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`;
+		string $geometry[];
+		if (`objExists $skinCluster`)
+			$geometry = `skinCluster -q -g $skinCluster`;
+		//If no skinCluster exists, exit proc.
+		else
+			return;
+		
+		
+		//Make sure we´re in object mode and have the object selected, before entering Artisan context.
+		changeSelectMode -object;
+		if (`objExists $geometry[0]`)
+			select -r $geometry[0];
+		
+		//Turn on smooth shaded for active geometry.
+		string $panel = `getPanel -wf`;
+		if ("modelPanel" == `getPanel -to $panel`)
+			modelEditor -edit -displayAppearance smoothShaded -activeOnly true $panel;
+		
+		ArtPaintSkinWeightsTool; 
+		ST_PaintWeightsFunction paint; 
+		//ST_SetOpacityValueSliders;
+		}
+	
+	if ($mode == "Cluster")
+		{
+		artAttrToolScript 4 "cluster";		
+		}
+	
+	if ($mode == "SculptPolygon")
+		{
+		SculptPolygonsTool;
+		}
+	}
+	
+else if ($tab == 2)
+	{
+	setToolTo $gSelect;
+	changeSelectMode -component;
+	}
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Creates a floating UI for rotating joints.
+global proc ST_TearOffJointRotate()
+{
+if (`window -ex ST_TearOffJointRotateWin`)
+	deleteUI ST_TearOffJointRotateWin;
+
+window -t "Rotate Joints" ST_TearOffJointRotateWin;
+
+string $ST_PW_JointRotateForm = `formLayout`;	
+							
+// Rotate Sliders
+string $ST_PW_XRotateFSG = `floatSliderGrp -label "X" 
+				-cw 1 18 -cw 2 35 -adj 3 -field true -pre 1
+				-minValue -90 -maxValue 90 -fieldMinValue -360 -fieldMaxValue 360
+				-dc "ST_RotateJoints X 1"
+				-cc "ST_RotateJoints X 1"
+				-value 0 
+				ST_PW_RJ_SliderX_TearOff`;
+			
+string $ST_PW_YRotateFSG = `floatSliderGrp -label "Y" 
+				-cw 1 18 -cw 2 35 -adj 3 -field true -pre 1
+				-minValue -90 -maxValue 90 -fieldMinValue -360 -fieldMaxValue 360
+				-dc "ST_RotateJoints Y 1"
+				-cc "ST_RotateJoints Y 1"
+				-value 0 
+				ST_PW_RJ_SliderY_TearOff`;
+			
+string $ST_PW_ZRotateFSG = `floatSliderGrp -label "Z"
+				-cw 1 18 -cw 2 35 -adj 3 -field true -pre 1
+				-minValue -90 -maxValue 90 -fieldMinValue -360 -fieldMaxValue 360
+				-dc "ST_RotateJoints Z 1"
+				-cc "ST_RotateJoints Z 1"
+				-value 0 
+				ST_PW_RJ_SliderZ_TearOff`;
+				
+string $ST_PW_ZeroSelectedRotateBTN = `button -h 20 -l "Zero Current" -c "ST_RotateJoints_Zero current 1 1 1" ST_PW_RJ_ZeroSelectedButton_TearOff`;
+string $ST_PW_ZeroAllRotateBTN = `button -h 20 -l "Zero All" -c "ST_RotateJoints_Zero all 1 1 1" ST_PW_RJ_ZeroAllButton_TearOff`;
+								
+string $ST_PW_SetKeyBTN = `button -h 20 -bgc 0.6 0.6 1  -l "Set Key" -c ("ST_JointRotKey SetKey") ST_JointRotKey_TearOff`;
+string $ST_PW_DelKeyBTN = `button -h 20 -bgc 1 0.6 0.6 -l "Del Key" -c ("ST_JointRotKey DelKey") JointRotDelKey_TearOff`;							
+
+formLayout -e
+	-af $ST_PW_XRotateFSG left 0
+	-af $ST_PW_XRotateFSG top 0
+	-af $ST_PW_XRotateFSG right 0
+	-an $ST_PW_XRotateFSG bottom
+	
+	-af $ST_PW_YRotateFSG left 0
+	-ac $ST_PW_YRotateFSG top 0 $ST_PW_XRotateFSG
+	-af $ST_PW_YRotateFSG right 0
+	-an $ST_PW_YRotateFSG bottom
+	
+	-af $ST_PW_ZRotateFSG left 0
+	-ac $ST_PW_ZRotateFSG top 0 $ST_PW_YRotateFSG
+	-af $ST_PW_ZRotateFSG right 0
+	-an $ST_PW_ZRotateFSG bottom
+	
+	-af $ST_PW_ZeroSelectedRotateBTN left 0
+	-an $ST_PW_ZeroSelectedRotateBTN top
+	-ap $ST_PW_ZeroSelectedRotateBTN right 0 50
+	-ac $ST_PW_ZeroSelectedRotateBTN bottom 0 $ST_PW_SetKeyBTN
+	
+	-ac $ST_PW_ZeroAllRotateBTN left 0 $ST_PW_ZeroSelectedRotateBTN
+	-an $ST_PW_ZeroAllRotateBTN top
+	-af $ST_PW_ZeroAllRotateBTN right 3
+	-ac $ST_PW_ZeroAllRotateBTN bottom 0 $ST_PW_DelKeyBTN
+	
+	-af $ST_PW_SetKeyBTN left 0
+	-an $ST_PW_SetKeyBTN top 
+	-ap $ST_PW_SetKeyBTN right 0 50
+	-af $ST_PW_SetKeyBTN bottom 3
+	
+	-ac $ST_PW_DelKeyBTN left 0 $ST_PW_SetKeyBTN
+	-an $ST_PW_DelKeyBTN top
+	-af $ST_PW_DelKeyBTN right 3
+	-af $ST_PW_DelKeyBTN bottom 3
+	$ST_PW_JointRotateForm;
+
+showWindow ST_TearOffJointRotateWin;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Selects affected points of highlights influences in TSL.
+global proc ST_SelectAffectedPoints(string $skinCluster)
+{
+if (! `objExists $skinCluster`)
+	{
+	warning "Given skinCluster node is incorrect. Try again."; 
+	return;
+	}
+	
+
+//Get highlighted influences from list.
+string $influences[] = `textScrollList -q -si skinningTools_InfluenceTSL`;
+if (! `size $influences`)
+	return;
+
+//Get all points affected by skinCluster, expand and filter.
+string $skinClusterSet[] = `listConnections -type objectSet $skinCluster`;
+string $components[] = `sets -q $skinClusterSet[0]`;
+$components = `filterExpand -sm 36 -sm 28 -sm 31 -sm 46 $components`;
+
+//Declare and start mainProgressBar
+global string $gMainProgressBar;
+progressBar -edit
+ 	-beginProgress
+ 	-isInterruptable true 
+ 	-status "Finding skinCluster points..." 
+ 	-maxValue (`size $components` * `size $influences`)
+ 	$gMainProgressBar;
+
+//Now select the points, if they are affected by the influence.
+string $affectedPoints[];
+for ($i in $influences)
+	{
+	$i = `ST_RemoveHoldFromInfluenceName $i`;
+	for ($c in $components)
+		{
+		$infValue = `skinPercent -t $i -q -v $skinCluster $c`;
+		if ($infValue > 0.0)
+			$affectedPoints[`size $affectedPoints`] = $c;
+		
+		//Now update the progressBar.
+		if(`progressBar -query -isCancelled $gMainProgressBar`)
+			break;
+		
+		if (`progressBar -q -isCancelled $gMainProgressBar`)
+			progressBar -edit -endProgress $gMainProgressBar;
+			
+		progressBar -edit -step 1 $gMainProgressBar;
+		}
+	}
+	
+progressBar -edit -endProgress $gMainProgressBar;
+
+//print $affectedPoints;
+select -r $affectedPoints;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Reveal selected influence in the influence list.
+global proc ST_RevealSelected(string $influences[], string $skinCluster)
+{
+if (! `size $influences`)
+	{
+	warning "No influences selected. Try again.";
+	return;
+	}
+//First report warning if selected influence is not attached to skinCluster.
+string $allInfluences[] = `skinCluster -q -inf $skinCluster`;
+string $badInfluences[] = {};
+for ($selected in $influences)
+		{
+		int $n = 0;
+		for ($inf in $allInfluences)
+				{
+				if ($inf == $selected)
+					$n = 1;
+				}
+		if (! $n)
+			{
+			warning ($selected + " is not an influence of " + $skinCluster + ".");
+			$badInfluences[`size $badInfluences`] = $selected;
+			}
+		}
+if (`size $badInfluences` == `size $influences`)
+	return;
+
+
+//Now, deselect everything in list.	
+textScrollList -e -da skinningTools_InfluenceTSL;
+
+string $allItems[] = `textScrollList -q -ai skinningTools_InfluenceTSL`;
+for ($item in $allItems)
+		{
+		//tokenize the list item, in order to remove the "(Hold)" string.
+		string $buffer[];
+		tokenize $item $buffer;
+		for ($inf in $influences)
+				{
+				if ($buffer[0] == $inf)
+					{
+					textScrollList -e -si $item skinningTools_InfluenceTSL;
+					//hilite $buffer[0];
+					}
+				}
+		}
+
+//Now scroll to first selected item.
+int $index[] = `textScrollList -q -sii skinningTools_InfluenceTSL`;
+if (`size $index`)
+	textScrollList -e -shi $index[0] skinningTools_InfluenceTSL;
+else
+	print "";
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+
+// Procedure Name: roundoff
+// Author: Duncan Brinsmead
+// Description:
+// simple function to round float values to a particular decimal
+// examples
+//
+// roundoff -1.119 2
+// Result: -1.12
+//
+// roundoff 256.812 0
+// Result: 257
+//
+// roundoff 128.1 -1
+// Result: 130
+
+global proc float dbRoundoff( float $f, int $n )
+{
+// we divide if n < 0 to avoid numeric
+// precision problems
+if( $n > 0 )
+	{
+	float $roundScale = pow(10,$n);
+	if( $f > 0 )
+	return( ((float)(int)($f * $roundScale + 0.5)) /$roundScale );
+	else
+	return( ((float)(int)($f * $roundScale - 0.5)) /$roundScale );
+	}
+else
+	{
+	float $roundScale = pow(10,-$n);
+	if( $f > 0 )
+	return( ((float)(int)($f/$roundScale + 0.5)) *$roundScale );
+	else
+	return( ((float)(int)($f/$roundScale - 0.5)) *$roundScale );
+	
+	}
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+global proc ST_NormalizePointWeight(string $point, string $skinCluster, int $precision)
+{
+//Get the normalization status
+int $isNormalized = `getAttr ($skinCluster + ".normalizeWeights")`;
+
+//We need to turn normalization on if it isn't already.
+if (! $isNormalized)
+	setAttr ($skinCluster + ".normalizeWeights") 1;
+
+//This is not 100% accurate, but will at least put the total weight value to *nearly* 1.0.
+skinPercent -normalize on $skinCluster $point; 
+
+//Turn normalization off if it twas so initially.
+if (! $isNormalized)
+ 	setAttr ($skinCluster + ".normalizeWeights") 0;
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Returns the total weight value of all influences affecting a given point.
+global proc float ST_GetTotalPointWeight (string $point, string $skinCluster)
+{
+float $totalSkinPercentValue;
+
+string $inf[] = `skinCluster -q -inf $skinCluster`;
+
+for ($i in $inf)
+	{
+	//Get the value of the influence.
+  float $value = `skinPercent -t $i -q $skinCluster $point`;
+	
+	if ($value > 0)
+		{
+		//Add that to the total value.
+		$totalSkinPercentValue += $value;
+		}
+	}
+
+return $totalSkinPercentValue;
+}
+//***************************************************************************************************
+//***************************************************************************************************
+//Returns an array of all influences affecting the point (weight values greater than zero).
+global proc string[] ST_GetNonZeroInfluences(string $point, string $skinCluster)
+{
+string $inf[] = `skinCluster -q -inf $skinCluster`;
+string $nonZeroInfluences[];
+for ($i in $inf)
+	{
+	//Get the value of the influence.
+	float $value = `skinPercent -t $i -q $skinCluster $point`;
+	          		
+	if ($value > 0.0)
+	   {
+	   //Add influence to the array of affecting influences.
+	   $nonZeroInfluences[`size $nonZeroInfluences`] = $i;
+		 }
+	}
+	
+return $nonZeroInfluences;
+}
+//***************************************************************************************************
+//***************************************************************************************************
+//Returns an array of all influences affecting the selected points (weight values greater than zero).
+//Note: This proc is used only for the menuItem "Create Set from Selected Points"
+global proc string[] ST_GetNonZeroInfluencesMultiplePoints()
+{
+string $points[] = `ls -sl -fl`;
+if (! `size $points`)
+	error "Nothing selected. Try again.";
+
+string $obj[] = `ls -sl -o`;
+if ($obj[0] == $points[0])
+	error "No points selected. Try again.";
+
+string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`;
+string $affectedGeo[] = `skinCluster -q -g $skinCluster`;
+if ($obj[0] != $affectedGeo[0])
+	error ("Object " + $obj[0] + " is not deformed by " + $skinCluster + ". Try again.");
+string $inf[] = `skinCluster -q -inf $skinCluster`;
+string $nonZeroInfluences[];
+for ($p in $points)
+	{
+	for ($i in $inf)
+		{
+		//Get the value of the influence.
+		float $value = `skinPercent -t $i -q $skinCluster $p`;
+		          		
+		if ($value > 0.0)
+		   {
+		   //Add influence to the array of affecting influences.
+		   $nonZeroInfluences[`size $nonZeroInfluences`] = $i;
+			 }
+		}
+	}	
+return $nonZeroInfluences;
+}
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Returns an array of all influence values affecting the point (weight values greater than zero).
+global proc float[] ST_GetNonZeroValues(string $point, string $skinCluster)
+{
+string $inf[] = `skinCluster -q -inf $skinCluster`;
+float $nonZeroValues[];
+for ($i in $inf)
+	{
+	//Get the value of the influence.
+	float $value = `skinPercent -t $i -q $skinCluster $point`;
+	          		
+	if ($value > 0.0)
+	   {
+	   //Add influence to the array of affecting influences.
+	   $nonZeroValues[`size $nonZeroValues`] = $value;
+		 }
+	}
+	
+return $nonZeroValues;
+}
+//***************************************************************************************************
+//***************************************************************************************************
+//Deals with non-normalized points; Either prints them or normalizes.
+global proc ST_TreatNonNormalizedPoints(string $action)
+{
+string $object[] = `ls -sl -o`;
+if (! `size $object`)
+	error "Select and object and/or some points and try again.";
+	
+string $skinCluster = `findRelatedSkinCluster $object[0]`;
+if (! `size $skinCluster`)
+	error "Object has no skinCluster attached. Try again.";
+
+string $inf[] = `skinCluster -q -inf $skinCluster`;
+string $points[];
+$points = `ls -sl -fl`;
+
+//If the object is selected, but no points are selected, assign $points to all obj's points.
+if ($points[0] == $object[0])
+		{
+		string $shape[] = `listRelatives -s -ni $object[0]`;
+		if (! `size $shape`)
+			error "Selected object has no shape. Try again.";
+		if (`size $shape` > 1)
+			error "Selected object has multiple shapes. This is not currently supported.";
+		
+		string $nodeType = `nodeType $shape[0]`;
+		if ($nodeType == "nurbsSurface")
+			$points = `ls -fl ($object[0] + ".cv[*][*]")`;
+		if ($nodeType == "mesh")
+			$points = `ls -fl ($object[0] + ".vtx[*][*]")`;
+		if ($nodeType == "nurbsCurve")
+			$points = `ls -fl ($object[0] + ".cv[*]")`;
+		if ($nodeType == "subdiv")
+			$points = `ls -fl ($object[0] + ".smp[*][*]")`;
+		if ($nodeType == "lattice")
+				{
+				//work around that nasty lattice bug.
+				int $sDivisions = `getAttr ($object[0] + ".sDivisions")`;
+				int $tDivisions = `getAttr ($object[0] + ".tDivisions")`;
+				int $uDivisions = `getAttr ($object[0] + ".uDivisions")`;
+				$points = `ls -fl ($object[0] + ".pt[0:($sDivisions - 1)][0:($tDivisions - 1)][0:($uDivisions - 1)]")`;
+				}
+		}
+
+//Let's first establish a precision for which we will round off later
+int $precision;
+if ($action == "normalize")
+	{
+		string $result = `promptDialog 
+ 		-title "Roundoff precision:"
+ 		-message "Roundoff Precision:"
+ 		-text "2"
+ 		-button "OK" -button "Cancel"
+ 		-defaultButton "OK" -cancelButton "Cancel"
+ 		-dismissString "Cancel"`;
+
+ 	if ($result == "OK") 
+ 			{
+ 			string $text = `promptDialog -query -text`;
+ 			$precision = $text;
+ 			}
+ 		else
+ 		 {
+ 		 	print "Action cancelled.\n";
+ 		 	return;
+			}
+		}
+
+//Use Maya's progressBar.
+global string $gMainProgressBar;  
+progressBar -edit
+		-beginProgress
+		-isInterruptable true
+		-status "Finding select point weight values ..."
+		-maxValue `size $points`
+		$gMainProgressBar;
+
+float $totalSkinPercentValue;
+string $badPointArray[] = {};
+float $badPointValue[] = {};
+//Loop through all the points.
+for ($p in $points)
+      {
+      $totalSkinPercentValue = 0;	//Reset $totalSkinPercentValue for each iteration.
+     	string $nonZeroInfluences[];
+      float $nonZeroValues[];
+      for ($i in $inf)
+    	        {
+              //Get the value of the influence.
+              float $value = `skinPercent -t $i -q $skinCluster $p`;
+          		
+          		if ($value > 0.0)
+          			{
+          			//Add influence to the array of affecting influences.
+          			//$nonZeroInfluences[`size $nonZeroInfluences`] = $i;
+              	//Add value to nonZeroValue array, so that we can normalize in next step.
+              	//$nonZeroValues[`size $nonZeroValue`] = $value;
+              	
+              	//Find the combined total value.
+              	$totalSkinPercentValue += $value;
+                }
+              }
+      
+      //Perform normalization if desired.
+      if ($totalSkinPercentValue != 1.0)
+              {
+              //Add the point to the array if the total weight value exceeds 1.0.
+      				//Add the value to the value array.
+              $badPointArray[`size $badPointArray`] = $p;
+              $badPointValue[`size $badPointValue`] = $totalSkinPercentValue;
+              
+              if ($action == "normalize")
+              	{
+              	//First, normalize the point weight (this should bring the values down a *near* 1 total).
+              	ST_NormalizePointWeight $p $skinCluster $precision;
+              	
+              	//Now return all affecting influences.
+              	$nonZeroInfluences = `ST_GetNonZeroInfluences $p $skinCluster`;
+              	$nonZeroValues = `ST_GetNonZeroValues $p $skinCluster`;
+              	
+              	for ($n = 0; $n < `size $nonZeroInfluences`; $n++)
+              		{
+              		//if (`ST_GetTotalPointWeight $p $skinCluster` == 1)
+              		//	continue;
+              		
+              		//Zero the weight first.
+              		skinPercent -tv $nonZeroInfluences[$n] 0.0 -normalize off $skinCluster $p;
+              		
+              		//Roundoff the value.
+              		$nonZeroValues[$n] = `dbRoundoff $nonZeroValues[$n] $precision`;
+              		//Now, here's where everything gets fucked up again. Maya converts my rounded number
+              		//to a floating point number - not in every case, but in many cases.
+              		skinPercent -normalize 0 -tv $nonZeroInfluences[$n] $nonZeroValues[$n] $skinCluster $p;
+              		}
+              	}
+              }
+
+       //Update progressBar
+       if(`progressBar -query -isCancelled $gMainProgressBar`)
+           break;
+       progressBar -edit -step 1 $gMainProgressBar;
+       }
+
+progressBar -edit
+               -endProgress
+               $gMainProgressBar;
+
+//Print it!
+if ($action == "print bad")
+	{
+	if (`size $badPointArray`)
+	      {
+	      print "\n";
+	      print ("The following selected points have total influence weight values that does not equal 1:\n");
+	      for ($i = 0; $i < `size $badPointArray`; $i++)
+	              {
+	              print ($badPointArray[$i] + "\t -> \t");
+	              print ($badPointValue[$i] + "\n");
+	              }
+	      }
+	else
+	      print ("No selected points have total influence weight values that do not equal 1. \n");
+	}
+	
+//Finally, update the component editor.
+componentEditor -e -updateMainConnection ST_CE;
+}//End proc.
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Sets the component editor's precision.
+global proc ST_CEChangePrecision()
+{
+int $precision;
+int $originalPrecision = `optionVar -q ST_CEPrecision`;
+string $result = `promptDialog 
+ 		-title "Change Precision"
+ 		-message "Enter Number of Decimal Places:"
+ 		-button "OK" -button "Cancel"
+ 		-defaultButton "OK" -cancelButton "Cancel"
+ 		-dismissString "Cancel"
+ 		-text $originalPrecision`;
+
+
+ if ($result == "OK") 
+ 	{
+ 	$precision = `promptDialog -query -text`;
+	componentEditor -e -precision $precision ST_CE;
+	optionVar -iv ST_CEPrecision $precision;
+	}
+}
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Changes the main UI panelayout to either be horizontol or vertical.
+global proc ST_ChangePaneLayout(string $mode)
+{
+//Adjust the paneLayout.
+paneLayout 
+	-e
+	-configuration $mode 
+	ST_MainPaneLayout;
+
+//Now update the config optionVar.
+optionVar -sv ST_MainPaneLayoutConfig $mode;
+
+
+//And the width/height optionVars.
+int $size[] = `paneLayout -q -paneSize ST_MainPaneLayout`;
+
+optionVar -intValue ST_PaneLayoutWidth $size[0];
+optionVar -intValue ST_PaneLayoutHeight $size[1];
+}
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//This is just a wrapper for dwSaveClusters. Reports a warning if the dwSaveClusters tool (proc) is not found.
+global proc ST_SaveClustersTool()
+{
+//First, find out what platform we're working on.
+string $platform = `about -os`;
+
+string $saveClustersScript;
+int $catch;
+
+
+if ($platform == "linux")
+	{
+	$saveClustersScript = "dwSaveClusters_Linux";
+	$catch = catchQuiet (eval ($saveClustersScript));
+	}
+else
+	{
+	$saveClustersScript = "dwSaveClusters";
+	$catch = catchQuiet (eval ($saveClustersScript));
+	}
+
+if ($catch)
+	{
+	warning ("Could not find " + $saveClustersScript + ".mel. Download the script from www.davidwalden.com and try again.");
+	return;
+	}
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Adds or removes given points from a highlighted cluster in the Influence List.
+global proc ST_AddOrRemoveSelectedPointsFromCluster (string $operation, string $selectedCluster[], string $selectedPoints[])
+{
+for ($cluster in $selectedCluster)
+	{
+	string $clusterSet[] = `listConnections -type objectSet -s 0 -d 1 $cluster`;
+	if ($operation == "Add")
+		sets -add $clusterSet[0] $selectedPoints;
+	else if ($operation == "Remove")
+		sets -remove $clusterSet[0] $selectedPoints;
+	}
+//Add `textScrollList -q -si skinningTools_InfluenceTSL` `ls -sl -fl`
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Change the skinningTools mode to operate either on skinClusters, clusters, or sculpt polygons tool.
+global proc ST_ChangeMode(string $mode)
+{
+
+optionVar -sv ST_Mode $mode;
+
+if ($mode == "SkinCluster")
+	{
+	frameLayout -e -l "Paint Skin Weights" ST_PaintWeightsFrameLayout;
+	menu -e -en 1 ST_InfluenceSetsMenu;
+	menu -e -en 1 ST_ReorderInfluenceListMenu;
+	
+	
+	//If the currentCtx is set for clusters, change it for skinClusters.
+	if (`currentCtx` == "artAttrContext")
+		ArtPaintSkinWeightsTool; 
+	
+	
+	//Update the componentEditor operationType
+	componentEditor -e -operationType `ST_ComponenetEditorGetOperationType "SkinCluster"` ST_CE;
+	
+	//Change the symbolButtons' commands
+	symbolButton -e 
+		-c "ST_AddSelectedPointsToInfluence `textScrollList -q -si skinningTools_InfluenceTSL` `textField -q -tx skinningTools_SkinClusterTF`"
+		ST_AddSelectedComponentToCurrentInfluenceSYMBTN;
+	symbolButton -e
+		-c "ST_RemoveSelectedPointsFromInfluence `textScrollList -q -si skinningTools_InfluenceTSL` `textField -q -tx skinningTools_SkinClusterTF`"
+		ST_RemoveSelectedComponentToCurrentInfluenceSYMBTN;
+		
+	ST_ScriptJobLoad;
+	}
+
+
+else if ($mode == "Cluster")
+	{
+	frameLayout -e -l "Paint Cluster Weights" ST_PaintWeightsFrameLayout;
+	menu -e -en 0 ST_InfluenceSetsMenu;
+	menu -e -en 0 ST_ReorderInfluenceListMenu;
+	
+	
+	//If the currentCtx is set for skinCluster, change it for clusters.
+	if (`currentCtx` == "artAttrSkinContext")
+		artAttrToolScript 4 "cluster";
+	
+	
+	//Update the componentEditor operationType
+	componentEditor -e -operationType `ST_ComponenetEditorGetOperationType "Cluster"` ST_CE;
+	
+	//Change the symbolButtons' commands
+	symbolButton -e 
+		-c "ST_AddOrRemoveSelectedPointsFromCluster Add `textScrollList -q -si skinningTools_InfluenceTSL` `ls -sl -fl`"
+		ST_AddSelectedComponentToCurrentInfluenceSYMBTN;
+	symbolButton -e
+		-c "ST_AddOrRemoveSelectedPointsFromCluster Remove `textScrollList -q -si skinningTools_InfluenceTSL` `ls -sl -fl`"
+		ST_RemoveSelectedComponentToCurrentInfluenceSYMBTN;
+	
+	ST_ScriptJobLoad;
+	}
+
+
+//Currently not implemented.	
+//else if ($mode == "SculptPolygon")
+//	return;
+}
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Returns the operationType for the component editor, based on the current Maya version and the desired editorType (SkinCluster or Cluster);
+//This is called initially to set the default operationType for skinClusters. It is also called every time the user changes the UI mode.
+global proc int ST_ComponenetEditorGetOperationType(string $editorType)
+{
+int $operationType;
+
+if ($editorType == "SkinCluster")
+	{
+	//We need to query the Maya version, then specify the component editor "-operationType" based on this.
+	//For Maya 5, -operationType is 6. For other versions, -operationType is 4.	
+	string $version = `about -v`;
+	string $versionBuffer[];
+	tokenize $version "." $versionBuffer;
+	$version = $versionBuffer[0] + "." + $versionBuffer[1];
+	float $versionFloat = $version;
+	if ($versionFloat == 5.0)
+		$operationType = 6;
+	else 
+		$operationType = 4;
+	
+	return $operationType;
+	}
+
+
+else if ($editorType == "Cluster")
+	{
+	//2 should work...
+	return 2;
+	}
+
+}
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+//Proc sets the value slider to the picked value. Updates the UI.
+
+global proc ST_EndPickWeightValueScriptJob()
+{
+//Query the picked value
+string $ctx = `currentCtx`;
+float $newValue = `artAttrCtx -q -value $ctx`;
+
+//Edit value slider
+floatSliderGrp -e -v $newValue ST_PW_PT_ValSlider;
+
+//Execute cmd that stores value as optionVar.
+ST_PaintWeightsFunction ValueChange;
+
+//Reset symbolCheckBox to off.
+symbolCheckBox -e -v 0 ST_PW_EyedropSYMBTN;
+
+//scriptJob -kill $scriptJob;
+}
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+//Allows user to sample the current weight value, and adjust the value slider accordingly.
+
+global proc ST_SampleWeightValue()
+{
+
+//Enter value pick mode.
+artAttrCtx -e -pickValue `currentCtx`;
+
+
+//Create a scriptJob that executes when something is selected.
+//This will exit pick mode and set the value slider correctly.
+//int $scriptJob = `scriptJob 
+//				-e "ToolChanged" 
+//				("ST_EndPickWeightValueScriptJob " + $scriptJob)`;
+
+
+}
+
+
+
+//***************************************************************************************************
+//***************************************************************************************************
+
+
+//Creats main UI.
+global proc skinningTools()
+{
+if (`window -ex skinningToolsUI`)
+	deleteUI skinningToolsUI;
+
+window -t "skinningTools v2.0 beta - www.davidwalden.com" -wh 300 500 -menuBar 1 skinningToolsUI;
+
+//Query the UI optionVar - horizontal by default.
+int $vertLayout = 0;
+int $horizLayout = 1;
+if ((`optionVar -ex ST_MainPaneLayoutConfig`) && (`optionVar -q ST_MainPaneLayoutConfig` == "vertical2"))
+	{
+	$vertLayout = 1;
+	$horizLayout = 0;
+	}
+
+//Assign the optionVar on startup.
+optionVar -sv ST_Mode "SkinCluster";
+ 	
+menu -label "Edit" -to 0 ST_ListMenu;
+	radioMenuItemCollection;
+		menuItem -l "Skin Clusters"
+				-radioButton 1
+				-c "ST_ChangeMode SkinCluster";
+		menuItem -l "Clusters" 
+				-radioButton 0
+				-c "ST_ChangeMode Cluster";
+		//Currently Sculpt Polygons Tool is not implemented.
+		//menuItem -l "Sculpt Polygons Tool" 
+		//		-radioButton 0
+		//		-c "ST_ChangeMode SculptPolygon";
+	
+	menuItem -d 1 -p ST_ListMenu;
+				
+	menuItem -label "Auto Load Object" -c "ST_ScriptJobLoad" -cb 1 -p ST_ListMenu ST_AutoUpdateUI_MI;
+	menuItem -label "Load Selected Object" -c "ST_LoadSelection" -p ST_ListMenu ST_LoadSelectedObject_MI;
+	
+	menuItem -d 1 -p ST_ListMenu;
+	
+	menuItem -l "Layout" -sm 1 ST_LayoutMI;
+		radioMenuItemCollection;
+		menuItem -l "Split Horizontal"
+				-radioButton $horizLayout
+				-p ST_LayoutMI
+				-c "ST_ChangePaneLayout horizontal2";
+		menuItem -l "Split Vertical" 
+				-radioButton $vertLayout
+				-p ST_LayoutMI
+				-c "ST_ChangePaneLayout vertical2";
+		
+	menuItem -d 1 -p ST_ListMenu;
+			
+	menuItem
+		-p ST_ListMenu
+		-l "Component Editor Precision..."
+		-c "ST_CEChangePrecision";
+	
+
+
+menu -label "List" -to 0 ST_ReorderInfluenceListMenu;
+	radioMenuItemCollection ST_InfOrder_RMIC;
+		menuItem -label "Alphabetical" -c "ST_ListSmoothSkinInfluences `textField -q -tx skinningTools_SkinClusterTF` `ST_GetActiveSet`" -radioButton 0 ST_OrderAlphabetMI;
+		menuItem -label "Reverse Alphabetical" -c "ST_ListSmoothSkinInfluences `textField -q -tx skinningTools_SkinClusterTF` `ST_GetActiveSet`" -radioButton 0 ST_OrderReverseAlphabetMI;
+		menuItem -d 1;
+		menuItem -label "Graph Order"  -c "ST_ListSmoothSkinInfluences `textField -q -tx skinningTools_SkinClusterTF` `ST_GetActiveSet`" -radioButton 1 ST_OrderGraphMI;
+		menuItem -label "Reverse Graph Order"  -c "ST_ListSmoothSkinInfluences `textField -q -tx skinningTools_SkinClusterTF` `ST_GetActiveSet`" -radioButton 0 ST_OrderReverseGraphMI;
+		menuItem -d 1;
+		menuItem -label "Hold"  -c "ST_ListSmoothSkinInfluences `textField -q -tx skinningTools_SkinClusterTF` `ST_GetActiveSet`" -radioButton 0 ST_OrderHoldMI;
+		menuItem -label "Reverse Hold"  -c "ST_ListSmoothSkinInfluences `textField -q -tx skinningTools_SkinClusterTF` `ST_GetActiveSet`" -radioButton 0 ST_OrderReverseHoldMI;
+
+
+//Fill this with the "standard" menuItems; later we'll fill this with the current skinCluster sets.
+menu -label "Influence Sets" -to 0 ST_InfluenceSetsMenu;
+
+
+menu -label "Tools" -tearOff 1 ST_ToolsMenu;
+	menuItem 
+		-l "Select Influence"
+		-sm 1
+		-to 0
+		-pmc "ST_UpdateToolsMenu";
+			menuItem -l "Select Current: " ST_ToolsMenu_SelectCurrentMI;
+			menuItem -d 1;
+			menuItem -l "Select Parent: " ST_ToolsMenu_SelectParentMI;
+			menuItem -l "Select Child: " ST_ToolsMenu_SelectChildMI;
+	menuItem 
+		-l "Hold Influence"
+		-p ST_ToolsMenu
+		-sm 1
+		-to 1;
+			menuItem -l "Hold/Unhold Current"  -c "ST_ToggleHoldInfluenceWeight `textScrollList -q -si skinningTools_InfluenceTSL`;";
+			menuItem -l "Isolate Current" -c "ST_IsolateHold";
+			menuItem -l "Hold All" -c "ST_HoldAllInfluences 1";
+			menuItem -l "Unhold All" -c "ST_HoldAllInfluences 0";
+	menuItem 
+		-l "Select Affected Points"
+		-p ST_ToolsMenu
+		-c "ST_SelectAffectedPoints `textField -q -tx skinningTools_SkinClusterTF`";
+	menuItem -d 1 -p ST_ToolsMenu;
+	menuItem 
+		-l "Show Point Influences"
+		-postMenuCommand "ST_ShowPointInfluences"
+		-p ST_ToolsMenu
+		-sm 1
+		ST_ShowPointInfluenceMI;
+	menuItem -p ST_ToolsMenu -l "Normalize" -sm 1 ST_NormalizeMI;
+		menuItem -l "Normalize points..." -c "ST_TreatNonNormalizedPoints \"normalize\"";
+		menuItem -l "Print non-normalized points" -c "ST_TreatNonNormalizedPoints \"print bad\"";
+	menuItem -d 1 -p ST_ToolsMenu;
+	
+	menuItem 
+		-l "Utilities"
+		-sm 1
+		-to 1
+		-allowOptionBoxes 1
+		-p ST_ToolsMenu
+		ST_UtilitiesMI;
+				
+		
+		menuItem
+			-p ST_UtilitiesMI
+			-l "Mirror Weights (+X to -X)"
+			-c "ST_WeightFunction MirrorWeight X";
+		menuItem
+			-p ST_UtilitiesMI
+			-l ""
+			-ob 1
+			-c "MirrorSkinWeightsOptions";
+		menuItem
+			-p ST_UtilitiesMI
+			-l "Copy Skin Weights"
+			-c "CopySkinWeights";
+		menuItem
+			-p ST_UtilitiesMI
+			-l "Prune Weights"
+			-c "ST_WeightFunction PruneWeight Prune";
+		menuItem
+			-p ST_UtilitiesMI
+			-l ""
+			-ob 1
+			-c "ST_PruneWeightsSettings";
+		menuItem
+			-p ST_UtilitiesMI
+			-l "Remove Unused Influences"
+			-c "removeUnusedInfluences";
+		
+		menuItem -d 1 -p ST_UtilitiesMI;
+		menuItem
+			-l "Save set selection to shelf"
+			-ann "Saves an influence selection command as a shelf buton."
+			-p ST_UtilitiesMI
+			-c "ST_SaveInfSelection `textScrollList -q -ai skinningTools_InfluenceTSL`;";
+
+	
+	menuItem -d 1 -p ST_ToolsMenu;
+	
+	menuItem -l "Cluster Tools" -sm 1 -p ST_ToolsMenu ST_ClusterToolsMI;
+		menuItem -en 0 -l "Mirror Clusters Tool..." -p ST_ClusterToolsMI -c "";
+		menuItem -l "Save Clusters Tool..." -p ST_ClusterToolsMI -c "ST_SaveClustersTool";
+	
+	menuItem -d 1 -p ST_ToolsMenu;
+	
+	menuItem 
+		-l "Transfer Weights..."
+		-p ST_ToolsMenu
+		-ann "Transfer weight between two influences."
+		-sm 0
+		-c "ST_TransferWeightsUI"
+		ST_TransferWeightsMI;		
+					
+	menuItem -d 1 -p ST_ToolsMenu;
+	menuItem 
+		-l "Add Influences"
+		-p ST_ToolsMenu
+		-c "ST_AddInfluences";
+	menuItem 
+		-l "Remove Influences" 
+		-p ST_ToolsMenu
+		-c "ST_RemoveInfluence";
+
+menu -label "Help" -tearOff 0 -helpMenu 1 ST_HelpMenu;
+	menuItem -l "skinningTools Help" -c "skinningToolsHelp";
+	menuItem -d 1;
+	menuItem -l "Visit Website" -c "showHelp -absolute \"http://www.davidwalden.com\"";
+			
+			
+			
+			
+string $ST_masterForm = `formLayout ST_MasterForm`;
+	
+	string $skinClusterText = `text -l "Skin Cluster: " -align left ST_SkinClusterTXT`;
+	string $skinClusterTF = `textField
+						-w 150
+						-en 1 
+						-ann "Skin cluster node name: RMB to select skinCluster node or to select geometry."
+						-cc "ST_ListSmoothSkinInfluences `textField -q -tx skinningTools_SkinClusterTF` `ST_GetActiveSet`;" 
+						skinningTools_SkinClusterTF`;
+						
+				popupMenu -p skinningTools_SkinClusterTF -b 3;
+					menuItem -l "Select Skin Cluster Node" -c "select -r `textField -q -tx skinningTools_SkinClusterTF`";
+					menuItem -l "Select Geometry" -c "{string $skinCluster = `textField -q -tx skinningTools_SkinClusterTF`; select -r `skinCluster -q -g $skinCluster`;}";
+					//menuItem -d 1;
+					//menuItem -l "Rename Skin Cluster Node" -c "ST_RenameSkinCluster";
+		
+		//Create the scriptJob to load the selected object into the UI.
+		scriptJob 
+			-parent "skinningToolsUI"
+			-replacePrevious 
+			-event "SelectionChanged" 
+			"ST_ScriptJobLoad";
+
+	
+	
+	//PANELAYOUT
+	//Query the paneLayout configuration optionVar - "horizontal2" by default.
+	string $paneLayoutConfig = "horizontal2";
+	if (`optionVar -ex ST_MainPaneLayoutConfig`)
+		$paneLayoutConfig = `optionVar -q ST_MainPaneLayoutConfig`;
+	
+	
+	//PaneLayout which holds Influence List and Component Editor/Paint Weights tabs.
+	string $pane = `paneLayout 
+			-configuration $paneLayoutConfig 
+			//-paneSize 1 100 50
+			//-paneSize 2 100 50
+			-separatorMovedCommand "{int $size[] = `paneLayout -q -paneSize ST_MainPaneLayout`; \
+							optionVar -intValue ST_PaneLayoutWidth $size[0]; \
+							optionVar -intValue ST_PaneLayoutHeight $size[1];}"
+			ST_MainPaneLayout`;
+	
+	//Remove the old optionVar if it exists.
+	if (`optionVar -ex ST_PaneLayoutSize`)
+		optionVar -rm ST_PaneLayoutSize;
+		
+	//Now update paneSize according to optionVar.
+	if ((`optionVar -ex ST_PaneLayoutWidth`) && (`optionVar -ex ST_PaneLayoutWidth`))
+		{
+		int $ST_PaneWidth = `optionVar -q ST_PaneLayoutWidth`;
+		int $ST_PaneHeight = `optionVar -q ST_PaneLayoutHeight`;
+		paneLayout -e -ps 1 $ST_PaneWidth $ST_PaneHeight ST_MainPaneLayout;
+		}
+	
+	
+		//Influence List formLayout.
+		string $infListForm = `formLayout "Influence List"`;
+				string $influenceTXT = `text 
+							-l "Complete Set:"
+							-align left 
+							-font boldLabelFont 
+							-h 25 -w 90
+							ST_SetNameTXT`;
+							
+				string $plusBTN = `symbolButton 
+							-w 20 -h 20 
+							-image "setEdAddCmd.xpm"
+							-ann "Weight selected points entirely to highlighted influences."
+							-c "ST_AddSelectedPointsToInfluence `textScrollList -q -si skinningTools_InfluenceTSL` `textField -q -tx skinningTools_SkinClusterTF`"
+							ST_AddSelectedComponentToCurrentInfluenceSYMBTN`;
+				
+				string $minusBTN = `symbolButton 
+							-w 20 -h 20 
+							-image "setEdRemoveCmd.xpm"
+							-ann "Remove selected points from highlighted influences."
+							-c "ST_RemoveSelectedPointsFromInfluence `textScrollList -q -si skinningTools_InfluenceTSL` `textField -q -tx skinningTools_SkinClusterTF`"
+							ST_RemoveSelectedComponentToCurrentInfluenceSYMBTN`;
+				
+				string $influenceTSL = `textScrollList 
+								-allowMultiSelection 1 
+								-dcc "ST_SelectInfluences `textScrollList -q -si skinningTools_InfluenceTSL`;"
+								-sc "ST_HiliteObjects `optionVar -q ST_Mode`; \
+									ST_PaintWeightsFunction paint;"		
+								skinningTools_InfluenceTSL`;
+								
+							//if (`artAttrCtx -ex artAttrSkinContext`) 
+							//if (`currentCtx` == \"artAttrContext\") ST_PaintWeightsFunction paint;"
+							
+				popupMenu -b 3 -pmc "ST_UpdatePopup `optionVar -q ST_Mode`" ST_InfluenceListPOPUP;
+					
+		setParent..;
+		
+		
+		
+		
+		//TabLayout for Component Editor and Paint Weights editor.
+		//Selecting the "Paint Weights" tab will activate the paint weights tool, set the tool to paint the highlighted influence, and set both opacity and value sliders.
+		string $ST_CETab = `tabLayout 
+					-scrollable 0
+					-selectCommand "ST_ChangeTabProc `tabLayout -q -sti ST_CE_PW_Tab`;"
+					ST_CE_PW_Tab`;
+
+			
+			//Paint Weights UI.
+				string $ST_PW_Scroll = `scrollLayout -cr 1 "Paint Weights"`;
+						
+						string $ST_PW_ScrollForm = `formLayout ST_PW_ScrollForm`;
+						
+						string $ST_PW_PT_Frame = `frameLayout 
+										-label "Paint Skin Weights" 
+										-labelAlign "bottom"
+										-labelWidth 200
+										-cll 1
+										-cl 0 
+										-borderStyle "etchedIn" 
+										ST_PaintWeightsFrameLayout`;
+							//columnLayout -adj 1 ;
+							string $ST_PW_PSWForm = `formLayout`;	
+								
+								//Buttons-Brushs size
+								string $ST_PSW_BrushesRCL = `rowColumnLayout -nc 3 -cw 1 34 -cw 2 34 -cw 3 34`;
+										symbolCheckBox -w 30 -h 30 -onc "ST_PaintWeightsFunction gaussian" -v 1 -image "circleGaus.xpm" ST_PW_ButtonBrush1;
+										symbolCheckBox -w 30 -h 30 -onc "ST_PaintWeightsFunction poly" -image "circlePoly.xpm" ST_PW_ButtonBrush2;
+										symbolCheckBox -w 30 -h 30 -onc "ST_PaintWeightsFunction solid" -image "circleSolid.xpm" ST_PW_ButtonBrush3;
+								setParent..;
+								
+								// Button-Paint operations ( Replace, Add ,Scale, Smooth )
+								string $ST_PSW_OperationRCL = `rowColumnLayout -nc 2 -cw 1 65 -cw 2 60`;
+									radioCollection ST_PR_operationRadioCollection;
+										radioButton -onc "ST_PaintWeightsFunction replace" -label "Replace" ST_PW_OperationReplaceRB;
+										radioButton -onc "ST_PaintWeightsFunction add" -label "Add" ST_PW_OperationAddRB;
+										radioButton -onc "ST_PaintWeightsFunction scale" -label "Scale" ST_PW_OperationScaleRB;
+										radioButton -onc "ST_PaintWeightsFunction smooth" -label "Smooth" ST_PW_OperationSmoothRB;
+										//Now select the radioButton based on the optionVar.
+										if (`optionVar -ex ST_PaintMode`)
+											radioCollection -e -sl ("ST_PW_Operation" + `optionVar -q ST_PaintMode` + "RB") ST_PR_operationRadioCollection;
+										else
+											radioCollection -e -sl ST_PW_OperationAddRB ST_PR_operationRadioCollection;
+											
+								setParent..;	//Exit rowColumnLayout.
+								
+							
+						
+								
+							
+								//Opacity and Value sliders.
+								//Query the optionVar values.
+								float $ST_OpacityValue = 0;
+								float $ST_ValueValue = 0;
+								if (`optionVar -ex ST_PSW_Opacity`)
+									$ST_OpacityValue = `optionVar -q ST_PSW_Opacity`;
+								if (`optionVar -ex ST_PSW_Value`)
+									$ST_ValueValue = `optionVar -q ST_PSW_Value`;
+								
+								string $ST_PSW_OpacityFSG = `floatSliderGrp 
+												-label "Opac" 
+												-field true 
+												-cw 1 42 -cw 2 38 
+												-adj 3
+												-cal 1 left 
+												-minValue 0 
+												-maxValue 1
+												-fieldMinValue 0 
+												-fieldMaxValue 1
+												-v $ST_OpacityValue
+												-cc "ST_PaintWeightsFunction OpacityChange"
+												-pre 2 
+												-s 0.05 
+												ST_PW_PT_OpacSlider`;
+								
+										
+								string $ST_PSW_ValueFSG = `floatSliderGrp 
+												-label "Val" 
+												-field true 
+												-cw 1 42 -cw 2 38 
+												-adj 3
+												-cal 1 left 
+												-minValue 0 
+												-maxValue 1
+												-fieldMinValue -1.00 
+												-fieldMaxValue 2.00
+												-v $ST_ValueValue
+												-cc "ST_PaintWeightsFunction ValueChange"
+												-pre 2 
+												-s 0.05 
+												ST_PW_PT_ValSlider`;
+								
+								
+								string $ST_PW_EyedropBTN = `symbolCheckBox
+													-image "eyedropper.xpm"
+													-onc "ST_SampleWeightValue"
+													-ofc "ST_EndPickWeightValueScriptJob"
+													-ann "Sample weight value from a point."
+													-w 15 
+													-h 15
+													ST_PW_EyedropSYMBTN`;
+							
+							
+							
+							//Button-Flood
+							string $ST_PSW_FloodBTN = `button 
+												-c "ST_PaintWeightsFunction flood" 
+												-h 20 
+												-l "Flood" 
+												Operationflood`;
+							
+							string $ST_PSW_MirrorWeightsBTN = `button 
+												-c "ST_WeightFunction MirrorWeight X; ST_ChangeTabProc `tabLayout -q -sti ST_CE_PW_Tab`;" 
+												-h 20 
+												-l "Mirror (+X to -X)" 
+												STMirrorWeightBTN`;
+									
+									popupMenu -b 3;
+										menuItem 
+											-l "Mirror Skin Weights Options"
+											-c "MirrorSkinWeightsOptions";			
+							
+							//Geometry display options.
+							string $ST_PSW_DisplayFrame = `frameLayout -l "Options" -bs etchedIn -cll 1 -cl 1`;
+							columnLayout -adj 1;
+							
+							string $ST_PSW_MinMaxValueRCL = `rowColumnLayout -nc 3 -cw 1 90 -cw 2 40 -cw 3 40`;
+									
+											text -l "Min/Max Value:" -align left -w 110;
+											floatField 
+												-pre 2 -v 0.00 -w 50 -min -1.00 -max 1.00
+												-cc "artAttrCtx -e -minvalue `floatField -q -v ST_PW_PT_MinValFF` `currentCtx`; \
+													floatSliderGrp -e -min `floatField -q -v ST_PW_PT_MinValFF` ST_PW_PT_ValSlider;" 
+												ST_PW_PT_MinValFF;
+											floatField 
+												-pre 2 -v 1.00 -w 50 -min -1.00 -max 2.00
+												-cc "artAttrCtx -e -maxvalue `floatField -q -v ST_PW_PT_MaxValFF` `currentCtx`;\
+													floatSliderGrp -e -max `floatField -q -v ST_PW_PT_MaxValFF` ST_PW_PT_ValSlider;" 
+												ST_PW_PT_MaxValFF;
+										setParent..;	//Exit rowColumnLayout.
+							
+							// ChackBox-Stylus pressure
+							string $ST_PSW_StylusCHECK = `checkBoxGrp 
+												-onc ( "ST_PaintWeightsFunction StylusOn" ) 
+												-ofc ( "ST_PaintWeightsFunction StylusOff" )
+												-v1 1
+												-cw 1 100 -cw 2 15 -columnAlign 1 left
+												-l "Stylus pressure" 
+												statlusBox`; 
+												
+									
+								frameLayout -l "Stroke" -bs etchedIn -cll 0 -la center;
+									columnLayout -adj 1;
+									
+										
+								
+								
+										checkBoxGrp 
+											-l "Reflection" 
+											-ncb 1 
+											-cw 1 100 -cw 2 50
+											-on1 "artAttrCtx -e -reflection 1 artAttrSkinContext; radioButtonGrp -e -en 1 ST_PSW_ReflectionAxisRBG;"
+											-of1 "artAttrCtx -e -reflection 0 artAttrSkinContext; radioButtonGrp -e -en 0 ST_PSW_ReflectionAxisRBG;"
+											ST_PSW_ReflectionCBG;
+											
+										radioButtonGrp 
+											-nrb 3 
+											-la3 "X" "Y" "Z" 
+											-l "Reflection Axis" 
+											-en 0
+											-sl 1
+											-cw 1 100 -cw 2 50 -cw 3 50 -cw 4 50
+											-on1 "artAttrCtx -e -ra x `currentCtx`;"
+											-on2 "artAttrCtx -e -ra y `currentCtx`;"
+											-on3 "artAttrCtx -e -ra z `currentCtx`;"
+											ST_PSW_ReflectionAxisRBG;
+								
+										setParent..;
+									setParent..;
+									
+								frameLayout -l "Display" -bs etchedIn -cll 0 -la center;
+								string $ST_PSW_DisplayForm = `formLayout`;
+									//text -l "Display:" -font boldLabelFont -align left;
+									string $ST_PSW_Display_WireframeCHECK = `checkBox 
+															-v 1 
+															-l "Show Wireframe" -align left
+															-onc "artAttrCtx -e -showactive true `currentCtx`;" 
+															-ofc "artAttrCtx -e -showactive false `currentCtx`;" 
+															ST_PW_PSW_ShowWireFrameCHECK`;
+									
+									string $ST_PSW_Display_ColorCHECK = `checkBox 
+														-v 1 
+														-l "Color Feedback" -align left
+														-onc "artAttrCtx -e -colorfeedback true `currentCtx`;" 
+														-ofc "artAttrCtx -e -colorfeedback false `currentCtx`;" 
+														ST_PW_PSW_ColorFeedbackCHECK`;
+									
+									// Display Slider.
+									string $ST_PSW_Display_MaxColorFSG = `floatSliderGrp -label "Max Color" -field true 
+														-cw 1 65 -cw 2 40 -adj 3 
+														-cal 1 left
+														-minValue 0.01 -maxValue 1
+														-fieldMinValue 0.01 -fieldMaxValue 1
+														-dc ( "ST_PaintWeightsFunction MaxColor" )
+														-cc ( "ST_PaintWeightsFunction MaxColor" )
+														-pre 2 
+														-s 0.05
+														-value 1 
+														ST_PW_PT_MaxColorSlider`;
+									
+									string $ST_PSW_Display_MinColorFSG = `floatSliderGrp -label "Min Color" -field true 
+														-cw 1 65 -cw 2 40 -adj 3 
+														-cal 1 left
+														-minValue 0.0 -maxValue 1.0
+														-fieldMinValue 0.00 -fieldMaxValue 1
+														-dc ( "ST_PaintWeightsFunction MinColor" )
+														-cc ( "ST_PaintWeightsFunction MinColor" )
+														-pre 2 
+														-s 0.05
+														-value 0 
+														ST_PW_PT_MinColorSlider`;
+									
+											setParent..;	//Exit "Display" formLayout.
+										setParent..;	
+									setParent..;	
+								setParent..;	//Exit "Options" frameLayout.
+								
+							setParent..; //Exit "Paint Skin Weights" columnLayout;
+						
+						setParent..;	//Exit "Paint Skin Weights" frameLayout;
+						
+						//Joint Rotate frameLayout.
+						string $ST_PW_JointRotate_Frame = `frameLayout -label "Rotate Joints" 
+											-labelAlign "bottom" 
+											-cll 1 
+											-cl 1
+											-borderStyle "etchedIn" 
+											ST_JointRotateFrame`;
+							
+							string $ST_PW_JointRotateTearOffPopup = `popupMenu -p $ST_PW_JointRotate_Frame -b 3`;
+								menuItem -l "Tear Off" -c "ST_TearOffJointRotate";
+							
+							string $ST_PW_JointRotateForm = `formLayout`;	
+							
+								// Rotate Sliders
+								string $ST_PW_XRotateFSG = `floatSliderGrp -label "X" 
+												-cw 1 22 -cw 2 40 -adj 3 -field true -pre 1
+												-minValue -90 -maxValue 90 -fieldMinValue -360 -fieldMaxValue 360
+												-dc "ST_RotateJoints X 0"
+												-cc "ST_RotateJoints X 0"
+												-value 0 
+												ST_PW_RJ_SliderX`;
+						
+								string $ST_PW_YRotateFSG = `floatSliderGrp -label "Y" 
+												-cw 1 22 -cw 2 40 -adj 3 -field true -pre 1
+												-minValue -90 -maxValue 90 -fieldMinValue -360 -fieldMaxValue 360
+												-dc "ST_RotateJoints Y 0"
+												-cc "ST_RotateJoints Y 0"
+												-value 0 
+												ST_PW_RJ_SliderY`;
+						
+								string $ST_PW_ZRotateFSG = `floatSliderGrp -label "Z"
+												-cw 1 22 -cw 2 40 -adj 3 -field true -pre 1
+												-minValue -90 -maxValue 90 -fieldMinValue -360 -fieldMaxValue 360
+												-dc "ST_RotateJoints Z 0"
+												-cc "ST_RotateJoints Z 0"
+												-value 0 
+												ST_PW_RJ_SliderZ`;
+								
+								// Reset Rotation Button
+								string $ST_PW_ZeroSelectedRotateBTN = `button -h 17 -l "Zero Current" -c "ST_RotateJoints_Zero current 1 1 1" ST_PW_RJ_ZeroSelectedButton`;
+								string $ST_PW_ZeroAllRotateBTN = `button -h 17 -l "Zero All" -c "ST_RotateJoints_Zero all 1 1 1" ST_PW_RJ_ZeroAllButton`;
+								
+								string $ST_PW_SetKeyBTN = `button -h 17 -bgc 0.6 0.6 1  -l "Set Key" -c ("ST_JointRotKey SetKey") ST_JointRotKey`;
+								string $ST_PW_DelKeyBTN = `button -h 17 -bgc 1 0.6 0.6 -l "Del Key" -c ("ST_JointRotKey DelKey") JointRotDelKey`;
+								
+							setParent..; //Exit formLayout;
+							
+						setParent..;	//Exit frameLayout;
+						
+					
+					
+					setParent..; //Exit inner formLayout
+					
+				//setParent..;	//Exit columnLayout.
+				
+			setParent..;	//Exit scrollLayout.
+			
+		
+		
+		
+		
+		
+		
+		//Formlayout for component editor.
+			string $ST_CEForm = `formLayout "Component Editor"`;
+			
+				popupMenu -b 3;
+					menuItem 
+						-l "Component Editor Precision"
+						-c "ST_CEChangePrecision";
+			
+				string $ST_CE_UpdateCHECK = `checkBox 
+								-l "Auto Update" 
+								-v 0
+								-onc "componentEditor -e -lockInput 0 ST_CE; button -e -en 0 ST_CE_UpdateButton;"
+								-ofc "componentEditor -e -lockInput 1 ST_CE; button -e -en 1 ST_CE_UpdateButton;"`;
+				
+				if (`selectionConnection -q -ex ST_SelectionConnection`)
+					deleteUI ST_SelectionConnection;
+				string $selConnect = `selectionConnection -activeList ST_SelectionConnection`;
+				
+				string $ST_CE_UpdateButton = `button -l "Update" -en 1 -h 18 -w 75 
+								-c "componentEditor -e -lockInput 0 ST_CE; \
+									componentEditor -e -updateMainConnection ST_CE; \
+									componentEditor -e -lockInput 1 ST_CE;"
+								ST_CE_UpdateButton`;
+				
+				
+				//We need to query the Maya version, then specify the component editor "-operationType" based on this.
+				//For Maya 5, -operationType is 6. For other versions, -operationType is 4.
+				int $operationType = `ST_ComponenetEditorGetOperationType "SkinCluster"`;
+				
+				//Now build component editor.
+				string $editor = `componentEditor
+							-mainListConnection $selConnect
+							-operationType $operationType
+							-lockInput 1
+							-hidePathName 1
+							-hideZeroColumns 1
+							ST_CE`;
+							
+				//Update the precision of the component editor.		
+				int $CEPrecision;
+				if (`optionVar -ex ST_CEPrecision`)
+						{
+						$CEPrecision = `optionVar -q ST_CEPrecision`;
+						componentEditor -e -precision $CEPrecision ST_CE;
+						}
+				string $floatField = `floatField -w 40 -precision 3 ST_CE_FF`;
+				string $floatSliderMinField = `floatField -precision 2 -en 1 -v 0.0 -w 35
+								-cc "floatSlider -e -min `floatField -q -v ST_CE_minFF` ST_CE_FS"
+								ST_CE_minFF`;
+				string $floatSliderMaxField = `floatField 
+								-precision 2 -en 1 -v 1.0 -w 35
+								-cc "floatSlider -e -max `floatField -q -v ST_CE_maxFF` ST_CE_FS"
+								ST_CE_maxFF`;
+				string $floatSlider = `floatSlider -min 0.0 -max 1.0 ST_CE_FS`;
+				componentEditor -e -floatSlider $floatSlider -floatField $floatField ST_CE;
+			
+			setParent..;	//Exit Component Editor formLayout.
+		
+			
+		setParent..;	//Exit Paint Weights tabLayout.
+		
+	setParent..;	//Exit main paneLayout.
+	
+	
+	
+	
+	
+	
+	//frameLayout (in main UI) for SetWeights.
+	string $ST_setWeightsFrame = `frameLayout
+					//These flags seem to be necessary on Linux OS.
+					//-cc "frameLayout -e -h 20 ST_SetWeightsFrame;" 
+					//-ec "frameLayout -e -h 90 ST_SetWeightsFrame;"
+					-cll 1 -cl 1 
+					-l "Set Weights:" 
+					-la "bottom" -bs "etchedIn"
+					ST_SetWeightsFrame`;
+		//FormLayout for Set Weights.
+		string $setWeightsForm = `formLayout "Set Weights Form"`;
+			string $ST_SWForm_RBG = `radioButtonGrp
+							-cw2 80 80 -nrb 2 -la2 "Absolute" "Relative" -sl 1
+							-on1 "floatField -e -en 1 ST_SetWeightsAbsoluteFF; floatSlider -e -en 0 ST_SetWeightsPercentFS; \
+								checkBox -e -en 0 ST_Form_InteractiveCHECK;"
+							-on2 "floatField -e -en 0 ST_SetWeightsAbsoluteFF; floatSlider -e -en 1 ST_SetWeightsPercentFS; \
+								checkBox -e -en 1 ST_Form_InteractiveCHECK;"
+							-ann "Edit skin weights either by absolute value or relative mode."
+							ST_SetWeightsModeRBG`;
+			
+			string $ST_SWForm_InteractiveCHECK = `checkBox 
+									-w 140
+									-l "Slider Interactive"
+									-en 0
+									-onc "ST_SetWeights_SliderInteractive 1" 
+									-ofc "ST_SetWeights_SliderInteractive 0"
+									-ann "Makes relative slider interactive."
+									ST_Form_InteractiveCHECK`;
+			
+			string $ST_SWForm_AbsFF = `floatField
+							-en 1 -min 0.0 -max 1.0 -v 0.0 -pre 3
+							-cc "ST_SetWeights `radioButtonGrp -q -sl ST_SetWeightsModeRBG` `floatField -q -v ST_SetWeightsAbsoluteFF`"
+							-dc "ST_SetWeights `radioButtonGrp -q -sl ST_SetWeightsModeRBG` `floatField -q -v ST_SetWeightsAbsoluteFF`"
+							-ann "Insert an absolute value for selected points´ skin weights."
+							ST_SetWeightsAbsoluteFF`;
+				
+			string $ST_SWForm_PercentFS = `floatSlider 
+							-h 5 -min -1.0 -max 1.0 -v 0.0 -en 0
+							-cc "ST_SetWeights `radioButtonGrp -q -sl ST_SetWeightsModeRBG` `floatSlider -q -v ST_SetWeightsPercentFS`; \
+								floatField -e -v `floatSlider -q -v ST_SetWeightsPercentFS` ST_SetWeightsPercentFF;"
+							-ann "Adjust point weights in relative mode."
+							ST_SetWeightsPercentFS`;
+			string $ST_SWForm_PercentFF = `floatField 
+							-w 45 -en 0 -pre 2 -min -1.0 -max 1.0 -v 0.0
+							-ann "Shows current relative value."
+							ST_SetWeightsPercentFF`;
+			
+			string $normalizeRCL = `rowColumnLayout -nc 1 -cw 1 130`;
+				checkBox 
+					-l "Normalize Weights"
+					-v 1
+					-onc "ST_ToggleNormalize 1"
+					-ofc "ST_ToggleNormalize 0"
+					-ann "Toggle normalize weights on-off for current skinCluster node."
+					ST_NormalizeCHECK;
+				
+				setParent..; //Exit rowColumnLayout.
+				
+			setParent..;	//Exit Set Weights formLayout.
+	
+		setParent..;	//Exit Set Weights frameLayout.
+	
+	setParent..;
+	
+	//Create the popupMenu.
+	//popupMenu -p ST_ShowPointIntBTN -b 1 -pmc "ST_ShowPointInfluences" ST_ShowPointInfPOPUP;
+	
+	string $copyWeightsBTN = `button
+						-l "Copy Weights"
+						-ann "Copy weight information from selected points."
+						-c "ST_CopyWeights `textField -q -tx skinningTools_SkinClusterTF`"`;
+	
+	string $pasteWeightsBTN = `button
+						-l "Paste Weights"
+						-ann "Paste weight information onto selected points."
+						-c "ST_PasteWeights"`;
+	
+	string $closeST_BTN = `button -l "Close"
+						-h 20
+						-ann "Close SkinningTools Window"
+						-c "deleteUI skinningToolsUI"`;
+
+	
+
+
+
+
+// Edit "Paint Weights" inner form (consists of the 3 inner frameLayouts).
+formLayout -edit 
+	-af $ST_PW_PT_Frame left 3
+	-af $ST_PW_PT_Frame top 3
+	-af $ST_PW_PT_Frame right 3
+	-an $ST_PW_PT_Frame bottom
+	
+	-af $ST_PW_JointRotate_Frame left 3
+	-ac $ST_PW_JointRotate_Frame top 1 $ST_PW_PT_Frame
+	-af $ST_PW_JointRotate_Frame right 3
+	-an $ST_PW_JointRotate_Frame bottom
+	
+	$ST_PW_ScrollForm;//END edit of Paint Weights inner formLayout
+	
+
+//Edit "Display" formLayout in "Paint Skin Weights" section.
+formLayout -e
+	
+
+	-af $ST_PSW_Display_WireframeCHECK left 0
+	-af $ST_PSW_Display_WireframeCHECK top 5
+	-an $ST_PSW_Display_WireframeCHECK right
+	-an $ST_PSW_Display_WireframeCHECK bottom
+							
+	-af $ST_PSW_Display_ColorCHECK left 0
+	-ac $ST_PSW_Display_ColorCHECK top 0 $ST_PSW_Display_WireframeCHECK
+	-an $ST_PSW_Display_ColorCHECK right
+	-an $ST_PSW_Display_ColorCHECK bottom
+							
+	-af $ST_PSW_Display_MaxColorFSG left 0
+	-ac $ST_PSW_Display_MaxColorFSG top 0 $ST_PSW_Display_ColorCHECK
+	-af $ST_PSW_Display_MaxColorFSG right 0
+	-an $ST_PSW_Display_MaxColorFSG bottom
+							
+	-af $ST_PSW_Display_MinColorFSG left 0
+	-ac $ST_PSW_Display_MinColorFSG top 0 $ST_PSW_Display_MaxColorFSG
+	-af $ST_PSW_Display_MinColorFSG right 0
+	-an $ST_PSW_Display_MinColorFSG bottom
+	$ST_PSW_DisplayForm;
+
+
+//Edit "Paint Skin Weights" Form.
+formLayout -e
+	-af $ST_PSW_BrushesRCL left 0
+	-af $ST_PSW_BrushesRCL top 5
+	-an $ST_PSW_BrushesRCL right
+	-an $ST_PSW_BrushesRCL bottom
+	
+	-ac $ST_PSW_OperationRCL left 0 $ST_PSW_BrushesRCL
+	-af $ST_PSW_OperationRCL top 5
+	-af $ST_PSW_OperationRCL right 0
+	-an $ST_PSW_OperationRCL bottom
+	
+	-af $ST_PSW_OpacityFSG left 0
+	-ac $ST_PSW_OpacityFSG top 5 $ST_PSW_BrushesRCL
+	-af $ST_PSW_OpacityFSG right 0
+	-an $ST_PSW_OpacityFSG bottom
+	
+	-af $ST_PSW_ValueFSG left 0
+	-ac $ST_PSW_ValueFSG top 0 $ST_PSW_OpacityFSG
+	-ac $ST_PSW_ValueFSG right 0 $ST_PW_EyedropBTN
+	-an $ST_PSW_ValueFSG bottom
+	
+	-an $ST_PW_EyedropBTN left
+	-ac $ST_PW_EyedropBTN top 0 $ST_PSW_OpacityFSG
+	-af $ST_PW_EyedropBTN right 0
+	-an $ST_PW_EyedropBTN bottom
+	
+	-af $ST_PSW_FloodBTN left 0
+	-ac $ST_PSW_FloodBTN top 3 $ST_PSW_ValueFSG
+	-ap $ST_PSW_FloodBTN right 0 50
+	-an $ST_PSW_FloodBTN bottom
+	
+	-ac $ST_PSW_MirrorWeightsBTN left 0 $ST_PSW_FloodBTN
+	-ac $ST_PSW_MirrorWeightsBTN top 3 $ST_PSW_ValueFSG
+	-af $ST_PSW_MirrorWeightsBTN right 0
+	-an $ST_PSW_MirrorWeightsBTN bottom
+	
+	-af $ST_PSW_DisplayFrame left 0
+	-ac $ST_PSW_DisplayFrame top 5 $ST_PSW_FloodBTN
+	-af $ST_PSW_DisplayFrame right 0
+	-af $ST_PSW_DisplayFrame bottom 0
+	$ST_PW_PSWForm;
+
+//Edit "Rotate Joint" formLayout.
+formLayout -e
+	-af $ST_PW_XRotateFSG left 0
+	-af $ST_PW_XRotateFSG top 0
+	-af $ST_PW_XRotateFSG right 0
+	-an $ST_PW_XRotateFSG bottom
+	
+	-af $ST_PW_YRotateFSG left 0
+	-ac $ST_PW_YRotateFSG top 0 $ST_PW_XRotateFSG
+	-af $ST_PW_YRotateFSG right 0
+	-an $ST_PW_YRotateFSG bottom
+	
+	-af $ST_PW_ZRotateFSG left 0
+	-ac $ST_PW_ZRotateFSG top 0 $ST_PW_YRotateFSG
+	-af $ST_PW_ZRotateFSG right 0
+	-an $ST_PW_ZRotateFSG bottom
+	
+	-af $ST_PW_ZeroSelectedRotateBTN left 0
+	-ac $ST_PW_ZeroSelectedRotateBTN top 0 $ST_PW_ZRotateFSG
+	-ap $ST_PW_ZeroSelectedRotateBTN right 0 50
+	-an $ST_PW_ZeroSelectedRotateBTN bottom
+	
+	-ac $ST_PW_ZeroAllRotateBTN left 0 $ST_PW_ZeroSelectedRotateBTN
+	-ac $ST_PW_ZeroAllRotateBTN top 0 $ST_PW_ZRotateFSG
+	-af $ST_PW_ZeroAllRotateBTN right 0
+	-an $ST_PW_ZeroAllRotateBTN bottom
+	
+	-af $ST_PW_SetKeyBTN left 0
+	-ac $ST_PW_SetKeyBTN top 0 $ST_PW_ZeroSelectedRotateBTN
+	-ap $ST_PW_SetKeyBTN right 0 50
+	-af $ST_PW_SetKeyBTN bottom 0
+	
+	-ac $ST_PW_DelKeyBTN left 0 $ST_PW_SetKeyBTN
+	-ac $ST_PW_DelKeyBTN top 0 $ST_PW_ZeroAllRotateBTN
+	-af $ST_PW_DelKeyBTN right 0
+	-af $ST_PW_DelKeyBTN bottom 0
+	$ST_PW_JointRotateForm;
+
+
+											
+//Edit "Influence List" form.
+formLayout -e
+	-af $influenceTXT left 1
+	-af $influenceTXT top 0
+	-ac $influenceTXT right 0 $plusBTN 
+	-an $influenceTXT bottom
+	
+	-an $minusBTN left
+	-af $minusBTN top 2
+	-af $minusBTN right 1
+	-an $minusBTN bottom
+	
+	-an $plusBTN left
+	-af $plusBTN top 2
+	-ac $plusBTN right 0 $minusBTN
+	-an $plusBTN bottom
+
+	-af $influenceTSL left 1
+	-ac $influenceTSL top 1 $plusBTN
+	-af $influenceTSL right 1
+	-af $influenceTSL bottom 3
+	$infListForm;
+
+
+//Edit Component Editor form.
+formLayout -e
+	-af $ST_CE_UpdateCHECK left 3
+	-af $ST_CE_UpdateCHECK top 5
+	-an $ST_CE_UpdateCHECK right
+	-an $ST_CE_UpdateCHECK bottom 
+	
+	-ac $ST_CE_UpdateButton left 3 $ST_CE_UpdateCHECK
+	-af $ST_CE_UpdateButton top 4
+	-an $ST_CE_UpdateButton right
+	-an $ST_CE_UpdateButton bottom
+	
+	-af $editor left 3
+	-ac $editor top 5 $ST_CE_UpdateCHECK
+	-af $editor right 0
+	-ac $editor bottom 2 $floatField
+	
+	-af $floatField left 2
+	-an $floatField top
+	-an $floatField right
+	-af $floatField bottom 3
+	
+	-ac $floatSliderMinField left 0 $floatField
+	-an $floatSliderMinField top
+	-an $floatSliderMinField right
+	-af $floatSliderMinField bottom 3
+	
+	-ac $floatSlider left 0 $floatSliderMinField
+	-an $floatSlider top
+	-ac $floatSlider right 0 $floatSliderMaxField
+	-af $floatSlider bottom 3
+	
+	-an $floatSliderMaxField left
+	-an $floatSliderMaxField top
+	-af $floatSliderMaxField right 2
+	-af $floatSliderMaxField bottom 3
+	$ST_CEForm;
+
+
+
+	
+
+//Edit Set Weights form.
+formLayout -e
+	-af $ST_SWForm_RBG left 0
+	-af $ST_SWForm_RBG top 0
+	-ac $ST_SWForm_RBG right 0 $ST_SWForm_InteractiveCHECK
+	-an $ST_SWForm_RBG bottom
+	
+	-an $ST_SWForm_InteractiveCHECK left
+	-af $ST_SWForm_InteractiveCHECK top 0
+	-af $ST_SWForm_InteractiveCHECK right 0
+	-an $ST_SWForm_InteractiveCHECK bottom
+	
+	-af $ST_SWForm_AbsFF left 0
+	-ac $ST_SWForm_AbsFF top 0 $ST_SWForm_RBG
+	-an $ST_SWForm_AbsFF right
+	-an $ST_SWForm_AbsFF bottom 
+	
+	-ac $ST_SWForm_PercentFS left 20 $ST_SWForm_AbsFF
+	-ac $ST_SWForm_PercentFS top 0 $ST_SWForm_RBG
+	-ac $ST_SWForm_PercentFS right 0 $ST_SWForm_PercentFF
+	-ac $ST_SWForm_PercentFS bottom 0 $normalizeRCL
+	
+	-an $ST_SWForm_PercentFF left
+	-ac $ST_SWForm_PercentFF top 0 $ST_SWForm_RBG
+	-af $ST_SWForm_PercentFF right 0
+	-an $ST_SWForm_PercentFF bottom
+	
+	-af $normalizeRCL left 0
+	-ac $normalizeRCL top 0 $ST_SWForm_AbsFF
+	-an $normalizeRCL right
+	-an $normalizeRCL bottom
+	$setWeightsForm;
+			
+
+
+//Edit Master Form.
+formLayout -e
+	-af $skinClusterText left 1
+	-af $skinClusterText top 3
+	-an $skinClusterText right
+	-an $skinClusterText bottom
+
+	-ac $skinClusterTF left 0 $skinClusterText
+	-af $skinClusterTF top 3
+	-af $skinClusterTF right 0
+	-an $skinClusterTF bottom
+
+	-af $pane left 1
+	-ac $pane top 7 $skinClusterText
+	-af $pane right 2
+	-ac $pane bottom 0 $ST_setWeightsFrame
+	
+	-af $ST_setWeightsFrame left 1
+	-an $ST_setWeightsFrame top
+	-af $ST_setWeightsFrame right 2
+	-ac $ST_setWeightsFrame bottom 4 $copyWeightsBTN
+
+	-af $copyWeightsBTN left 1
+	-an $copyWeightsBTN top 
+	-ap $copyWeightsBTN right 1 50
+	-ac $copyWeightsBTN bottom 2 $closeST_BTN
+	
+	-ac $pasteWeightsBTN left 1 $copyWeightsBTN
+	-an $pasteWeightsBTN top
+	-af $pasteWeightsBTN right 1
+	-ac $pasteWeightsBTN bottom 2 $closeST_BTN
+	
+	-af $closeST_BTN left 1
+	-an $closeST_BTN top
+	-af $closeST_BTN right 2
+	-af $closeST_BTN bottom 3
+	$ST_masterForm;
+	
+	
+//Show the UI.
+showWindow skinningToolsUI;
+
+//Create the optionVar for the AutoHold
+optionVar -iv ST_AutoHoldINT 1;
+
+//Load Full Set on startup.
+ST_SelectFullSet;
+//Run script job proc.
+ST_ScriptJobLoad;
+//Build Influence Sets menu
+ST_BuildInfluenceSetsMenu `textField -q -tx skinningTools_SkinClusterTF` `ST_GetActiveSet`;
+}	
+//End of skinningTools.mel

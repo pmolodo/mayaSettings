@@ -1,0 +1,168 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//create a curve from given mesh edges, mesh edges must be in order
+
+global proc string zenEdgeCurveNode( string $edgeLoop[], int $degree )
+{
+	global	int	$zenOptions_debugging;
+
+		if( $zenOptions_debugging ) //debugging info
+		{
+			print("\n");
+			print("//zenEdgeCurveNode\n");
+			print("//	string	$edgeLoop[]=	"+zenReturnStringArrayFormat($edgeLoop)+"\n");
+			print("//	int	$degree=	"+(string($degree))+"\n");
+			print("\n");
+		}
+	
+	float	$totalEdgeLength=arclen($edgeLoop[0]);
+		
+	string	$vertsInLoop[]=`zenVertLoopFromEdgeLoop $edgeLoop`;
+	
+	string	$obj[]=`ls -o $edgeLoop`;
+	string	$objTr[]=`listRelatives -p $obj[0]`;
+	string	$curveFromMeshEdge1=`createNode curveFromMeshEdge`;
+	string	$curveFromMeshEdge2;
+	string 	$attached;
+	string	$trTempCurve=`createNode transform`;
+	string	$tempCurve=`createNode -p $trTempCurve nurbsCurve`;
+	
+	string	$curveInfoNode=`createNode curveInfo`;
+	
+	string	$pointOnCurveInfoNode=`createNode pointOnCurveInfo`;
+			setAttr	($pointOnCurveInfoNode+".parameter") 1;
+			setAttr ($pointOnCurveInfoNode+".turnOnPercentage") true;
+	
+		connectAttr ($obj[0]+".worldMesh[0]") ($curveFromMeshEdge1+".inputMesh");
+		setAttr ($curveFromMeshEdge1+".edgeIndex[0]") `zenCompID ($edgeLoop[0])`;
+	
+	string	$reverseCurveNode;
+
+	vector	$endPoint;
+		
+		for( $i=1; $i < size($edgeLoop); $i++ )
+		{			
+			$totalEdgeLength=$totalEdgeLength+( arclen($edgeLoop[$i]) );
+			
+			//create curve from mesh edge
+		
+			$curveFromMeshEdge2=`createNode curveFromMeshEdge`;
+			
+			connectAttr -f ($obj[0]+".worldMesh[0]") ($curveFromMeshEdge2+".inputMesh");
+			setAttr ($curveFromMeshEdge2+".edgeIndex[0]") `zenCompID ($edgeLoop[$i])`;
+			
+			//determine if reversal needs to occur
+		
+			$attached=`createNode attachCurve`;
+			
+				setAttr ($attached+".nodeState") 8; //waiting
+			
+				connectAttr ( $curveFromMeshEdge1+".outputCurve" ) ( $attached+".inputCurve1" );
+				connectAttr ( $curveFromMeshEdge2+".outputCurve" ) ( $attached+".inputCurve2" );
+			
+				setAttr ( $attached+".nodeState" ) 0; //active
+				
+			connectAttr -f ( $attached+".outputCurve" ) ( $curveInfoNode+".inputCurve" );
+			connectAttr -f ( $attached+".outputCurve" ) ( $pointOnCurveInfoNode+".inputCurve" );
+			
+			if($i==1)
+			{
+				$endPoint=zenArrayToVector(`pointPosition -w $vertsInLoop[$i+1]`);
+							
+				if
+				( 
+					$totalEdgeLength != getAttr( $curveInfoNode+".arcLength" ) || 
+					zenArrayToVector(getAttr($pointOnCurveInfoNode+".position")) !=  $endPoint
+				)
+					setAttr ($attached+".reverse2") 1;
+				
+				if
+				( 
+					$totalEdgeLength != getAttr( $curveInfoNode+".arcLength" ) || 
+					zenArrayToVector(getAttr($pointOnCurveInfoNode+".position")) !=  $endPoint
+				)
+					setAttr ($attached+".reverse1") 1;
+				
+				if
+				( 
+					$totalEdgeLength != getAttr( $curveInfoNode+".arcLength" ) || 
+					zenArrayToVector(getAttr($pointOnCurveInfoNode+".position")) !=  $endPoint
+				)
+						setAttr ( $attached+".reverse2" ) 0;
+				
+				if
+				( 
+					$totalEdgeLength != getAttr( $curveInfoNode+".arcLength" ) || 
+					zenArrayToVector(getAttr($pointOnCurveInfoNode+".position")) !=  $endPoint
+				)
+				{
+					print("\n"+(string(getAttr($curveInfoNode+".arcLength")-$totalEdgeLength)));
+					select 	$curveFromMeshEdge2;
+					select -add $edgeLoop[$i];
+					error -sl true ("ZenTools is confused");			
+				}
+			}
+			else
+			{
+				if( $totalEdgeLength != getAttr( $curveInfoNode+".arcLength" ) )
+					setAttr ($attached+".reverse2") 1;
+				
+				if( $totalEdgeLength != getAttr( $curveInfoNode+".arcLength" ) )
+					setAttr ($attached+".reverse1") 1;
+				
+				if( $totalEdgeLength != getAttr( $curveInfoNode+".arcLength" ) )
+						setAttr ( $attached+".reverse2" ) 0;
+				
+				if( $totalEdgeLength != getAttr( $curveInfoNode+".arcLength" ) )
+				{
+					print("\n"+(string(getAttr($curveInfoNode+".arcLength")-$totalEdgeLength)));
+					select 	$curveFromMeshEdge2;
+					select -add $edgeLoop[$i];
+					error -sl true ("ZenTools is confused");			
+				}
+			}
+				
+			$curveFromMeshEdge1=$attached;
+		}
+		
+	string	$rebuilt=`createNode rebuildCurve`;
+	
+		connectAttr ($attached+".outputCurve") ($tempCurve+".create");
+		connectAttr ($attached+".outputCurve") ($rebuilt+".inputCurve");
+		
+		setAttr ($rebuilt+".keepControlPoints") 1;
+		
+		if(`getAttr ($tempCurve+".spans")`<$degree+1)
+		{
+			$degree=`getAttr ($tempCurve+".spans")`;
+			if($degree<1) $degree=1;
+		}
+		
+	int	$spanCount=`getAttr ($tempCurve+".spans")`;
+	
+		if($spanCount<1) $spanCount=1;
+			
+		setAttr ($rebuilt+".degree") $degree;
+		setAttr ($rebuilt+".rebuildType") 0;
+		setAttr ($rebuilt+".spans") $spanCount;
+		setAttr ($rebuilt+".endKnots") 1;
+		setAttr ($rebuilt+".keepRange") 0;
+		
+		disconnectAttr ($attached+".outputCurve") ($tempCurve+".create");
+		
+		delete $trTempCurve $pointOnCurveInfoNode $curveInfoNode;
+		
+	return	$rebuilt;
+}

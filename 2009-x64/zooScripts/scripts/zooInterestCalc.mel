@@ -1,0 +1,399 @@
+/*  This file downloaded from Highend3d.com
+''
+''  Highend3d.com File Information:
+''
+''    Script Name: zooInterestCalc v1.0
+''    Author: Hamish McKenzie
+''    Last Updated: September 4, 2003
+''    Update/Change this file at:
+''    http://www.highend3d.com/maya/mel/?section=project#2526
+''
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+
+//
+// interest calculator
+//
+// Created by Hamish McKenzie zootoolbox@googlegroups.com
+// Created : 11 January 2003
+//
+// Hamish McKenzie ©2007...
+// macaroniKazoo Productions ©2007...
+
+
+global proc zooInterestCalc () {
+	string $windowName = "zooInterestCalcWindow";
+	string $windowTitle = "zooInterestCalc v" + `zooInterestCalcInfo version` + "   ::macaroniKazoo::";
+	int $principle = ( `optionVar -exists zooInterestCalcPrinciple` )?`optionVar -q zooInterestCalcPrinciple`:243850;
+
+	if ( `window -exists $windowName` ) deleteUI $windowName;
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 0 -widthHeight 269 150 $windowName;
+		menuBarLayout;
+			menu -label "Utils";
+				menuItem -l "Expense Graph From File" -c ( "calcWindowFunctions -drawExpenses" ) zooInterestCalcDrawFile;
+				menuItem -l "plot loan payments" -c( "select `zooPlotLoanGraph`" );
+			menu -label "Outputs";
+				menuItem -l "Debt Account Balance" -checkBox 0 -c ( "optionVar -iv zooInterestCalcOutA `menuItem -q -checkBox zooInterestCalcOutA`" ) zooInterestCalcOutA;
+				menuItem -l "Offset Account Balance" -checkBox 0 -c ( "optionVar -iv zooInterestCalcOutB `menuItem -q -checkBox zooInterestCalcOutB`" ) zooInterestCalcOutB;
+				menuItem -l "Interest Accrued Balance" -checkBox 0 -c ( "optionVar -iv zooInterestCalcOutC `menuItem -q -checkBox zooInterestCalcOutC`" ) zooInterestCalcOutC;
+				menuItem -l "Monthly Interest Payments" -checkBox 0 -c ( "optionVar -iv zooInterestCalcOutD `menuItem -q -checkBox zooInterestCalcOutD`" ) zooInterestCalcOutD;
+			menu -label "Help";
+				menuItem -l "Help..." -c ( "zooInterestCalcHelp help" );
+				menuItem -divider 1;
+				menuItem -l "About" -c ( "zooInterestCalcHelp about" );
+
+			columnLayout -rowSpacing 2;
+				columnLayout;
+					rowColumnLayout -numberOfColumns 2
+						-columnWidth 1 100
+						-columnWidth 2 170
+						zzScriptLoaderButtonRow_00;
+						text -l "loan name:";
+						textField -text "loan" -cc( "optionVar -sv zooInterestCalcName `textField -q -text calcTextName`" ) calcTextName;
+						setParent..;
+
+					rowColumnLayout -numberOfColumns 2
+						-columnWidth 1 100
+						-columnWidth 2 170
+						zzScriptLoaderButtonRow_01;
+						text -l "loan amount:";
+						intField -v $principle -cc( "optionVar -iv zooInterestCalcPrinciple `intField -q -v calcIntPrinciple`" ) calcIntPrinciple;
+						setParent..;
+
+					rowColumnLayout -numberOfColumns 3
+						-columnWidth 1 100
+						-columnWidth 2 135
+						-columnWidth 3 35
+						zzScriptLoaderButtonRow_02;
+						text -l "wages <c>:";
+						textField -text 1500 calcTextPayment;
+						button -l "new" -c ( "{string $animCurve = `createNode animCurveTL -n paymentCurve`; setKeyframe -insert -breakdown 0 -time 1 $animCurve; setKeyframe -insert -breakdown 0 -time 52 $animCurve; textField -e -text $animCurve calcTextPayment;}" );
+						setParent..;
+
+					rowColumnLayout -numberOfColumns 3
+						-columnWidth 1 100
+						-columnWidth 2 135
+						-columnWidth 3 35
+						zzScriptLoaderButtonRow_03;
+						text -l "expenses <c>:";
+						textField -text 0 calcTextExpenses;
+						button -l "new" -c ( "{string $animCurve = `createNode animCurveTL -n expenseCurve`; setKeyframe -insert -breakdown 0 -time 1 $animCurve; setKeyframe -insert -breakdown 0 -time 52 $animCurve; textField -e -text $animCurve calcTextExpenses;}" );
+						setParent..;
+
+					rowColumnLayout -numberOfColumns 3
+						-columnWidth 1 100
+						-columnWidth 2 135
+						-columnWidth 3 35
+						zzScriptLoaderButtonRow_04;
+						text -l "interest rate <c>:";
+						textField -text 7.5 calcTextInterest;
+						button -l "new" -c ( "{string $animCurve = `createNode animCurveTL -n interestRate`; setKeyframe -insert -breakdown 0 -time 1 $animCurve; setKeyframe -insert -breakdown 0 -time 52 $animCurve; textField -e -text $animCurve calcTextInterest;}" );
+						setParent..;
+
+					rowColumnLayout -numberOfColumns 2
+						-columnWidth 1 100
+						-columnWidth 2 170
+						zzScriptLoaderButtonRow_05;
+						text -l "loan fees (monthly):";
+						floatField -v 8 calcIntFees;
+						setParent..;
+
+					rowColumnLayout -numberOfColumns 3
+						-columnWidth 1 1
+						-columnWidth 2 268
+						-columnWidth 3 1
+						zzScriptLoaderButtonRow_07;
+						text -l "";
+						button -label "calculate" -c ( "calcWindowFunctions -calculate" );
+						text -l "";
+						setParent..;
+					setParent..;
+
+				image -width 269 -height 8 -backgroundColor ((float)96/255) ((float)100/255) ((float)146/255) -image(zooGetFileLocation(zooListEnv("XBMLANGPATH"),"zoo_sig","tga") +"zoo_sig.tga" );
+				setParent..;
+			setParent..;
+
+	popupMenu -p calcTextInterest;
+		menuItem -l "use selected curve" -c ( "{string $selCurves[] = `ls -sl -type animCurveTL`; textField -e -text $selCurves[0] calcTextInterest;}" );
+		menuItem -divider 1;
+		menuItem -l "select curve" -c ( "select `textField -q -text calcTextInterest`" );
+		setParent..;
+
+	popupMenu -p calcTextExpenses;
+		menuItem -l "use selected curve" -c ( "{string $selCurves[] = `ls -sl -type animCurveTL`; textField -e -text $selCurves[0] calcTextExpenses;}" );
+		menuItem -divider 1;
+		menuItem -l "select curve" -c ( "select `textField -q -text calcTextExpenses`" );
+		setParent..;
+
+	popupMenu -p calcTextPayment;
+		menuItem -l "use selected curve" -c ( "{string $selCurves[] = `ls -sl -type animCurveTL`; textField -e -text $selCurves[0] calcTextPayment;}" );
+		menuItem -divider 1;
+		menuItem -l "select curve" -c ( "select `textField -q -text calcTextPayment`" );
+		setParent..;
+
+	showWindow $windowName;
+	calcWindowFunctions -update;
+	}
+
+
+global proc calcWindowFunctions ( string $function ) {
+	switch ( $function ) {
+		case "-u":
+		case "-update":
+		if( !`optionVar -exists zooInterestCalcOutA` ) optionVar -iv zooInterestCalcOutA 1;
+		if( !`optionVar -exists zooInterestCalcOutB` ) optionVar -iv zooInterestCalcOutB 1;
+		if( !`optionVar -exists zooInterestCalcOutC` ) optionVar -iv zooInterestCalcOutC 1;
+		if( !`optionVar -exists zooInterestCalcOutD` ) optionVar -iv zooInterestCalcOutD 1;
+		menuItem -e -checkBox `optionVar -q zooInterestCalcOutA` zooInterestCalcOutA;
+		menuItem -e -checkBox `optionVar -q zooInterestCalcOutB` zooInterestCalcOutB;
+		menuItem -e -checkBox `optionVar -q zooInterestCalcOutC` zooInterestCalcOutC;
+		menuItem -e -checkBox `optionVar -q zooInterestCalcOutD` zooInterestCalcOutD;
+		if( `optionVar -exists zooInterestCalcName` ) textField -e -text `optionVar -q zooInterestCalcName` calcTextName;
+
+		//if the zooReadTransactions script doesn't exist, disable the menu item
+		if( !(`exists zooReadTransactions`)) menuItem -e -enable 0 zooInterestCalcDrawFile;
+		break;
+
+
+		case "-de":
+		case "-drawExpenses":
+		string $previousDir = `optionVar -q zooReadTransactionsFile`;
+		string $file;
+
+		zooReadTransactions "c:/projects/theHouse/transactions/categories.txt" "c:/projects/theHouse/transactions/transactions_savings.txt" "c:/projects/theHouse/transactions/transactions_credit.txt" "-verbose 1";
+		/*$savingsFile = `fileDialog -directoryMask ( $previousDir + "/*.txt" )`;
+		$creditsFile = `fileDialog -directoryMask ( $previousDir + "/*.txt" )`;
+		if( $file != "" ) {
+			string $editorInfo[] = `zooInterestCalcAssemblePathInfo $file`;
+			optionVar -sv zooReadTransactionsFile $editorInfo[0];
+			zooReadTransactions "c:/projects/theHouse/transactions/categories.txt" $savingsFile $creditsFile 0 1 {};
+			}*/
+		break;
+
+
+		case "-c":
+		case "-calculate":
+		string $loanName = `textField -q -text calcTextName`;
+		int $priciple = `intField -q -v calcIntPrinciple`;
+		string $payment = `textField -q -text calcTextPayment`;
+		string $expense = `textField -q -text calcTextExpenses`;
+		string $interest = `textField -q -text calcTextInterest`;
+		float $fees = `floatField -q -v calcIntFees`;
+		//string $paymentPeriod = `radioCollection -q -sl calcRadioPaymentPeriod`;
+		int $timeFactor = 1;  //assume fortnightly
+
+		//if ( $paymentPeriod == "calcRadioWeekly" ) { $timeFactor = 1; }
+		//if ( $paymentPeriod == "calcRadioMonthly" ) { $timeFactor = 4; }
+		string $graphs[] = `calculateInterest $loanName $priciple $payment $expense $interest $fees $timeFactor`;
+		select -r $graphs;
+		if( !`optionVar -q zooInterestCalcOutA` ) delete $graphs[0];
+		if( !`optionVar -q zooInterestCalcOutB` ) delete $graphs[1];
+		if( !`optionVar -q zooInterestCalcOutC` ) delete $graphs[2];
+		if( !`optionVar -q zooInterestCalcOutD` ) delete $graphs[3];
+		break;
+		}
+	}
+
+
+global proc string[] calculateInterest ( string $loanName, float $principle, string $paymentInput, string $expenseInput, string $interestInput, float $fees, int $timeFactor ) {
+	string $return[] = {};
+	string $debtVis = `createNode animCurveTL`;
+	string $offsetVis = `createNode animCurveTL`;
+	string $interestAccruedVis = `createNode animCurveTL`;
+	string $interestPaidVis = `createNode animCurveTL`;
+	float $debt = $principle;
+	float $offsetAcct = 0;
+	float $periodInterest = 0;
+	float $totalInterest = 0;
+	float $interestRate = 5;
+	int $numTerms = 0;
+
+	while ( $debt > $offsetAcct ) {
+		if( $numTerms > 2600 ) break;  //break if it goes over 50 years.  if its not payed off by now, theres no hope...
+		float $interestRate = `calcGetValue $interestInput $numTerms`;
+		float $payment = `calcGetValue $paymentInput $numTerms`;
+		float $expenses = `calcGetValue $expenseInput $numTerms`;
+		float $periodInterest = 0;
+
+		$fees = $fees / 4;  //fees are always monthly, so get the weekly value
+		$offsetAcct = $offsetAcct + $payment - $expenses;
+
+		//this loop give us interest, per day, over the week
+		for ( $n = 0; $n < 7; $n++ ) $periodInterest += (( $debt-$offsetAcct ) * ( $interestRate/36526 ));  //365.26 days (average num days/yr including leap years) multiplied by 100%
+
+		$debt += $periodInterest + $fees;  //add the fees and interest over the previous week to the debt
+		$totalInterest += $periodInterest + $fees;
+
+		//draw the graphs
+		setKeyframe -t ( $numTerms * $timeFactor ) -v ( $debt - $offsetAcct ) -itt linear -ott linear $debtVis;
+		setKeyframe -t ( $numTerms * $timeFactor ) -v $offsetAcct -itt linear -ott linear $offsetVis;
+		setKeyframe -t ( $numTerms * $timeFactor ) -v $totalInterest -itt linear -ott linear $interestAccruedVis;
+		setKeyframe -t ( $numTerms * $timeFactor ) -v $periodInterest -itt linear -ott linear $interestPaidVis;
+
+		//increment the week counter
+		$numTerms++;
+		}
+
+	int $roundedInterest = $totalInterest;
+	select $debtVis;
+
+	$debtVis = `rename $debtVis ( $loanName + "_principle" )`;
+	$offsetVis = `rename $offsetVis ( $loanName + "_offsetBalance" )`;
+	$interestAccruedVis = `rename $interestAccruedVis ( $loanName + "_interestAccrued" )`;
+
+	string $interestPaidMonthlyVis = `montherizeGraph $interestPaidVis`;
+	$interestPaidMonthlyVis = `rename $interestPaidMonthlyVis ( $loanName + "_interestPayments" )`;
+	delete $interestPaidVis;
+
+	//generate the information string to store in the notes attribute
+	string $payOffInfo;
+	$payOffInfo = "With a starting priciple of: $" + $principle;
+	$payOffInfo = $payOffInfo + "\nIt will take " + ((float)($numTerms*$timeFactor)/(float)52) + " years";
+	$payOffInfo = $payOffInfo + "\n$" + $roundedInterest + " will be payed in interest";
+	$payOffInfo = $payOffInfo + "\n\nINPUTS:\nPayments Input: " + $paymentInput;
+	$payOffInfo = $payOffInfo + "\nExpense Input: " + $expenseInput;
+	$payOffInfo = $payOffInfo + "\nInterest Input: " + $interestInput;
+	$payOffInfo = $payOffInfo + "\n\ngenerated on: " + (system("date/t"));
+
+	addAttr -ln notes -dt "string" $debtVis;
+	addAttr -ln notes -dt "string" $offsetVis;
+	addAttr -ln notes -dt "string" $interestAccruedVis;
+	addAttr -ln notes -dt "string" $interestPaidMonthlyVis;
+	setAttr -type "string" ( $debtVis + ".notes" ) $payOffInfo;
+	setAttr -type "string" ( $offsetVis + ".notes" ) $payOffInfo;
+	setAttr -type "string" ( $interestAccruedVis + ".notes" ) $payOffInfo;
+	setAttr -type "string" ( $interestPaidMonthlyVis + ".notes" ) $payOffInfo;
+
+	$return[0] = $debtVis;
+	$return[1] = $offsetVis;
+	$return[2] = $interestAccruedVis;
+	$return[3] = $interestPaidMonthlyVis;
+
+	return $return;
+	}
+
+
+global proc float calcGetValue ( string $input, int $time ) {
+	float $value;
+	if ( `objExists $input` ) {
+		float $temp[] = `keyframe -t $time -q -ev $input`;
+		$value = $temp[0];
+		}
+	else $value = $input;
+
+	return $value;
+	}
+
+
+global proc string montherizeGraph( string $graphNode ) {
+	string $outputGraph = `createNode animCurveTL`;
+	float $temp[] = {};
+	int $numKeys = `keyframe -q -kc $graphNode`;
+	int $numFrames;// = `keyframe -in ( $numKeys-1 ) -q $graphNode`;
+	int $n = 0;
+
+	$temp = `keyframe -in ( $numKeys-1 ) -q $graphNode`;
+	$numFrames = $temp[0];
+
+	for( $n = 0; $n < $numFrames; $n++ ) {
+		float $monthTotal = 0;
+		for( $i = 0; $i < 4; $i++ ) {
+			float $frameValue[] = `keyframe -t $n -q -eval $graphNode`;
+			$monthTotal += $frameValue[0];
+			$n++;
+			}
+		setKeyframe -t $n -v $monthTotal -itt linear -ott linear $outputGraph;
+		}
+
+	return $outputGraph;
+	}
+
+
+global proc string[] zooInterestCalcAssemblePathInfo ( string $path ) {
+	string $previousDir = "";
+	string $buffer[] = {};
+	string $return[] = {};
+	int $numToks;
+	int $n = 0;
+
+	$numToks = `tokenize $path "/" $buffer`;
+	for ( $n = 0; $n < ($numToks - 1); $n++ ) {
+		$previousDir = $previousDir + $buffer[$n] + "/";
+		}
+
+	$return[0] = $previousDir;
+	$return[1] = $buffer[($numToks - 1)];
+
+	return $return;
+	}
+
+
+global proc zooInterestCalcHelp ( string $function ) {
+	string $windowName = "zooInterestCalcAbout";
+	string $windowTitle = "About zooInterestCalc v" + `zooInterestCalcInfo version` + "   ::macaroniKazoo::";
+	string $aboutScript = "Overview:\nzooInterestCalc is a script to help visualise loan/interest calculations.  Basically it takes a payment input, an expenses input, and an interest input, and outputs a number of curves visualising the effects of such forces.  Originally it was written so I could figure out for myself how long it would take me to pay off my house.  :)\n\nThe method it uses to calculate the loan assumes the existance of an offset account.  Payment amounts are put into the offset account, which reduces the interest calculations.  For simple interest calculations, just use a negative expense value.\n\nLoan Name:\nThe loan name is simple a way to organise visualisations.  The output graphs are prefixed with the name of the loan.  So if you were doing multiple comparisons of loans, you could give each a different name, and the output graphs, would then be easy to find.\n\nInputs:\nThe payment, expenses and interest fields can accept either a static number, or a graph as an input.  The graphs are normal TL animCurve nodes, but the easiest way to create new ones, is to hit the new button beside the relevant field.  Now all input graphs are week based, which means that each time unit, is one week.  This is because all calculations in this script are week based (except for interest which is calculated daily, but added weekly).  The default curve is 52 units long, which is about 1 year.  If you create your own input curves, or want to change the around, either type the name of the curve into the field, or right clicking on a field lets you automatically add a selected curve.";
+	string $aboutAuthor = "Version: " + `zooInterestCalcInfo version` + "\nCreation Date: " + `zooInterestCalcInfo created` + "\nLast Modified: " + `zooInterestCalcInfo modified` + "\n\nzooInterestCalc was written by Macaroni Kazoo Productions  www.macaronikazoo.com\n\n" + `zooInterestCalcInfo history`;
+	int $selTab = ( $function == "about" )?2:1;
+
+	if ( `window -exists $windowName` ) { deleteUI $windowName; }
+
+	window -title $windowTitle -resizeToFitChildren 1 -maximizeButton 0 -sizeable 0 -widthHeight 330 350 $windowName;
+
+		 string $form = `formLayout`;
+		 string $tabs = `tabLayout -innerMarginWidth 5 -innerMarginHeight 5`;
+		 string $image = `image -p $form -width 300 -height 8 -backgroundColor ((float)96/255) ((float)100/255) ((float)146/255) -image(zooGetFileLocation(zooListEnv("XBMLANGPATH"),"zoo_sig","tga") +"zoo_sig.tga" )`;
+		 formLayout -edit
+			-attachForm $tabs "top" 0
+			-attachForm $tabs "left" 0
+			-attachForm $tabs "right" 0
+			-attachControl $tabs "bottom" 2 $image
+
+			-attachNone $image "top"
+			-attachForm $image "left" 0
+			-attachForm $image "right" 0
+			-attachForm $image "bottom" 0
+			$form;
+
+			string $child1 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $aboutScript;
+				setParent ..;
+
+			string $child2 = `paneLayout -configuration "single"`;
+				scrollField -ed 0 -wordWrap 1 -font plainLabelFont -w 300 -h 200 -numberOfLines 15 -text $aboutAuthor;
+				setParent ..;
+
+			tabLayout -e -selectTabIndex $selTab -tabLabel $child1 "zooInterestCalc Help" -tabLabel $child2 "About zooInterestCalc" $tabs;
+
+	showWindow $windowName;
+	}
+
+
+//simply returns versioning, and date information about this script
+global proc string zooInterestCalcInfo ( string $function ) {
+	string $creationDate = "11 January 2003";
+	string $lastRevision = "18 October 2003";
+	string $revisionHistory = "v1.26  18-10-03\nFIX: slight change to the information provided in the notes attrib.\n\nv1.25  08-09-03\nFIX: Minor changes to calculation procedure.  Fees are no added to the total interest value.\n\nv1.2 03-09-03\nNWE: Added help menu, output options, as well as a link to the expense graph plotter script.\n\nv1.1 02-09-03\nNEW: Added more output graphs, such as interest accrued, interest payments and offset account size.\n\nv1.0 11-01-03\nInitial version";
+	string $info = "";
+	float $currentVersion = 1.26;
+
+	if ( $function == "created" ) $info = $creationDate;
+	if ( $function == "modified" ) $info = $lastRevision;
+	if ( $function == "history" ) $info = $revisionHistory;
+	if ( $function == "version" ) $info = $currentVersion;
+	return $info;
+	}
+
+
+global proc string[] zooInterestCalcDependencies( string $mode ) {
+	string $melDependencies[] = {};
+	string $iconDependencies[] = {};
+
+	$melDependencies[( `size $melDependencies` )] = "zooReadTransactions";
+	$melDependencies[( `size $melDependencies` )] = "zooUtils";
+
+	if( $mode == "-scripts" ) return $melDependencies;
+	if( $mode == "-icons" ) return $iconDependencies;
+	}

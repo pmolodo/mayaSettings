@@ -1,0 +1,130 @@
+global proc ss2_limitShape  (){
+	print"";
+}
+print "ss2_limitShape : sourced\n";
+
+global proc ss2_limitShape_run (string $blendShape, string $limiter, string $limited, string $type){
+
+	string $sel[] = `ls -sl`;
+
+	source generateChannelMenu;
+
+	string $buffer = `ss2_search_byAttr "ss2_blend_direct" {$blendShape}`;
+
+	int $found = 0;
+	int $doConnect = 1;
+	int $multiThis = 0;
+	int $multiThat = 0;
+
+	string $thisType = "final";
+	string $thatType = "limited";
+
+	if ($type == "limited"){
+		$thisType = "limited";
+		$thatType = "final";
+	}
+
+	//Check for existing connections
+		string $existingThisType = `ss2_search_clamp $thisType $blendShape $limited`;
+		string $existingThatType = `ss2_search_clamp $thatType $blendShape $limited`;
+
+		int $existingThisIndex = `ss2_search_firstMulti $existingThisType input`;
+		int $existingThatIndex = `ss2_search_firstMulti $existingThatType input`;
+
+	//Check if you want to ADD TO or REPLACE all connections with this one
+	if ($existingThisIndex || $existingThatIndex){
+
+		string $AddOrReplace = `confirmDialog -title "Stop Staring 2" -message ("Add to or Replace limiting effects of all other shapes?") -button "Add" -button "Replace" -button "Cancel" -dismissString "Cancel"`;
+
+		switch ($AddOrReplace){
+
+			case "Add":
+				
+				connectAttr -f ($buffer+"."+$limiter) ($existingThisType+".input["+($existingThisIndex+1)+"]");
+
+			break;
+
+			case "Replace":
+
+				ss2_killAllIncoming $existingThisType;
+
+				for ($i = 0; $i < ($existingThisIndex+1); $i++)
+					setAttr ($existingThisType+".input["+$i+"]") 0;
+
+				connectAttr -f ($buffer+"."+$limiter) ($existingThisType+".input[0]");
+	
+			break;
+
+		}
+
+	}else{
+		connectAttr -f ($buffer+"."+$limiter) ($existingThisType+".input[0]");
+	}
+
+	select $sel;
+
+}
+
+
+global proc ss2_limitShape_shelf (){
+
+	string $sel[] = `ls -sl`;
+	string $buffer = `ss2_search_byAttr "ss2_blend_direct" $sel`;
+
+	if (!size($buffer)) error "ss2_limitShape_shelf : no prepped blend found";
+
+	string $grossSearch[] = `listConnections -type blendShape -source 0 $buffer`;
+
+	if (!size($grossSearch)) error "ss2_limitShape_shelf : no prepped blend found";
+
+	string $blendShape = $grossSearch[0];
+
+	if (`window -exists ss2_limitShapeWin`) deleteUI ss2_limitShapeWin;
+	window -title ss2_limitShapeWin -widthHeight 210 105 ss2_limitShapeWin;
+
+	string $form = `formLayout -numberOfDivisions 6`;
+	string $radios = `
+		radioButtonGrp -numberOfRadioButtons 2
+		-select 1
+		-label1 "final"
+		-label2 "limited input only"
+		-cw 1 50
+		-cw 2 150`;
+	string $limiter = `textScrollList`;
+	string $limited = `textScrollList`;
+	string $limit = `button -label "limit"`;
+	
+	ss2_formLayer $form $radios {0,1,0,6};
+	ss2_formLayer $form $limiter {1,5,0,3};
+	ss2_formLayer $form $limited {1,5,3,6};
+	ss2_formLayer $form $limit {5,6,0,6};
+
+	string $blendShapeWeight[] = `ss2_search_blendWeights $blendShape 0`;
+	for ($b in $blendShapeWeight){
+		textScrollList -e -append $b $limiter;
+		textScrollList -e -append $b $limited;
+	}
+	textScrollList -e -sii 1 $limiter;
+	textScrollList -e -rii 1 $limited;
+	textScrollList -e -sii 1 $limited;
+
+	string $command = "";
+	$command += ("string $blendShapeWeight[] = `ss2_search_blendWeights "+$blendShape+" 0`;");
+	$command += ("textScrollList -e -ra "+$limited+";");
+	$command += ("for ($b in $blendShapeWeight) textScrollList -e -append $b "+$limited+";");
+	$command += ("string $this[] = `textScrollList -q -si "+$limiter+"`;");
+	$command += ("textScrollList -e -ri $this[0] "+$limited+";");
+	$command += ("textScrollList -e -sii 1 "+$limited+";");
+	textScrollList -e -selectCommand $command $limiter;
+
+	string $command = "";
+	$command += ("int $select = `radioButtonGrp -q -select "+$radios+"`;");
+	$command += ("string $type = \"final\"; if ($select == 2 )$type = \"limited\";");
+	$command += ("string $in[] = `textScrollList -q -si "+$limiter+"`;");
+	$command += ("string $out[] = `textScrollList -q -si "+$limited+"`;");
+	$command += ("ss2_limitShape_run "+$blendShape+" $in[0] $out[0] $type");
+
+	button -e -command $command $limit;
+
+	showWindow ss2_limitShapeWin;
+}

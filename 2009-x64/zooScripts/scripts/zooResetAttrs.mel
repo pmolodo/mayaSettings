@@ -1,0 +1,29 @@
+//simply resets all keyable attributes on a given object to its default value
+//great for running on a large selection such as all character controls...
+global proc zooResetAttrs( string $obj ) {
+	string $attrs[] = `listAttr -k -s -m $obj`;
+
+	//if the transform is a joint, see if its part of a bindpose, and if so, restore to
+	//the bindpose, not zero, as this is generally the preferred behaviour
+	string $poses[] = `listConnections -s 0 -type dagPose $obj`;
+	string $bindPoses[] = {};
+
+	$poses = `stringArrayRemoveDuplicates $poses`;
+	for( $pose in $poses ) if( `getAttr ( $pose +".bindPose" )`) $bindPoses[`size $bindPoses`] = $pose;
+
+	if( `size $bindPoses` ) dagPose -r -bp $obj;
+	else for( $attr in $attrs ) {
+		float $default[] = {0.0};
+
+		if( !catch(`attributeQuery -n $obj -listDefault $attr`)) $default = `attributeQuery -n $obj -listDefault $attr`;
+		if( !`getAttr -se ( $obj +"."+ $attr )` ) continue;
+
+		//need to catch because maya will let the default value lie outside an attribute's
+		//valid range (ie maya will let you creat an attrib with a default of 0, min 5, max 10)
+		catchQuiet( `setAttr ( $obj +"."+ $attr ) $default[0]` );
+		}
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

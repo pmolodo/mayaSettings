@@ -1,0 +1,50 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: djRivet.mel
+''    Author:  
+''    Last Updated: Aug 28, 2007
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/polygon/4338.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+////////////////////////////////////////////////////////////////////////////////////////////
+// djRivet_makeShelfButton.mel		
+//
+// author: David Johnson
+// contact: david@djx.com.au
+// website: www.djx.com.au
+// last rev: 30 Oct 2006
+//
+// ©2006 David Johnson
+//
+// Places a djRivet button on the current shelf and add the djRivet.bmp icon
+// Normally you would only need to do this once.
+//
+// Instructions:
+// 	Copy djRivet.bmp to your icons folder (probably ...\maya\8.0\prefs\icons)
+//	Copy this file to your scripts folder (probably ...\maya\8.0\scripts)
+//	Load maya
+//	Select the shelf you want the button placed on
+//	Type "djRivet_makeShelfButton" (without the quotes) in the script editor.
+//
+////////////////////////////////////////////////////////////////////////////////////////////
+
+
+global proc djRivet_makeShelfButton()
+{  
+	global string $gShelfTopLevel;
+	if (`tabLayout -exists $gShelfTopLevel`)
+		shelfButton
+			-parent ($gShelfTopLevel + "|" + `tabLayout -q -st $gShelfTopLevel`)
+			-command "source djRivet.mel; djRivet;"
+			-image1 "djRivet.bmp"
+			-annotation "djRivet"
+			-label "djRivet";
+	else
+		error "You dont appear to have any shelves.";
+}

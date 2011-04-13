@@ -1,0 +1,203 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc layoutZenSetAttr()
+{
+	global 	int 	$zenOptions_setAttrNonRecursive,
+			$zenMinimumWindowWidth;
+			
+	global	string 	$zenSetAttr_nameTF[],
+			$zenSetAttr_valueTF[];
+						
+	global	string	$gShelfTopLevel;
+		
+		clear $zenSetAttr_nameTF;
+		clear $zenSetAttr_valueTF;
+	
+	string	$mainLayout=`zenClearToolColumn`;
+	
+	global 	string $zenToolsWindow;
+	
+		window -e -title "ZenTools : Set Attributes on Multiple Objects" $zenToolsWindow;
+		
+		layout -e -h 1 -w 400 $mainLayout;
+			
+	string	$form=`formLayout -nd 100 -p $mainLayout`;
+			
+	string	$attrText=`text -al center -w 190 -p $form "Attribute"`;
+	string	$valText=`text -al center -w 190 -p $form "Value"`;
+		
+	string	$attrColumn=`columnLayout -adj 1 -p $form`;
+	string	$valColumn=`columnLayout -adj 1 -p $form`;
+	
+		formLayout
+			-e
+			
+			-af $attrText "top" 2
+			-af $attrText "left" 2
+			-ap $attrText "right" 2 49
+
+			-af $valText "top" 2
+			-ac $valText "left" 2 $attrText
+			-af $valText "right" 2
+			
+			-ac $attrColumn "top" 2 $attrText
+			-af $attrColumn "left" 2
+			-ap $attrColumn "right" 2 49
+
+			-ac $valColumn "top" 2 $valText
+			-ac $valColumn "left" 2 $attrColumn
+			-af $valColumn "right" 2
+			
+			$form;
+		
+		zenSetAttrAddField  $attrColumn $valColumn;
+		
+	string	$recursiveCB=`checkBox -al left -p $mainLayout -label "Recursive"`;
+		checkBox
+			-e
+			-v (abs($zenOptions_setAttrNonRecursive-1))
+			-onc ("$zenOptions_setAttrNonRecursive=0")
+			-ofc ("$zenOptions_setAttrNonRecursive=1")
+			$recursiveCB;
+			
+	string	$form2=`formLayout -nd 100 -p $mainLayout`;
+			
+	string	$addAttrBttn=`button -h 20 -label "Add Attribute" -p $form2`;
+		button 
+			-e
+			-c ("zenSetAttrAddField  "+$attrColumn+" "+$valColumn)
+			$addAttrBttn;
+			
+	string	$sendToShelfBttn=`button -h 20 -l "Create Shelf Button" -p $form2`;
+		button
+			-e
+			-c "zenSetAttrSendToShelfUI"
+			$sendToShelfBttn;
+	
+	string	$applyBttn=`button -h 20 -l "Set Attributes" -p $form2`;
+		button
+			-e
+			-w $zenMinimumWindowWidth
+			-c "eval(`zenSetAttrCommand`)"
+			$applyBttn;
+				
+		formLayout
+			-e
+			-af $addAttrBttn "bottom" 2
+			-af $addAttrBttn "left" 2
+			-ap $addAttrBttn "right" 2 33
+
+			-af $sendToShelfBttn "bottom" 2
+			-ac $sendToShelfBttn "left" 2 $addAttrBttn
+			-ac $sendToShelfBttn "right" 2 $applyBttn 
+
+			-af $applyBttn "bottom" 2
+			-af $applyBttn "right" 2
+			-ap $applyBttn "left" 2 66
+			
+			$form2;		
+}
+
+global proc zenSetAttrAddField(string $attrColumn,string $valColumn)
+{
+	global	string 	$zenSetAttr_nameTF[],
+			$zenSetAttr_valueTF[];
+		
+		$zenSetAttr_nameTF[size($zenSetAttr_nameTF)]=`textField -w 195 -p $attrColumn`;
+		$zenSetAttr_valueTF[size($zenSetAttr_valueTF)]=`textField -w 195 -p $valColumn`;
+}
+
+global proc string zenSetAttrCommand()
+{
+	global 	int $zenOptions_setAttrNonRecursive;
+
+	global	string 	$zenSetAttr_nameTF[],
+			$zenSetAttr_valueTF[];
+			
+	string	$command;
+	
+		for($i=0;$i<size($zenSetAttr_nameTF);$i++)
+		{
+			$command=$command+
+			"zenSetAttr \""+
+			(strip(`textField -q -tx $zenSetAttr_nameTF[$i]`))+"\" \""+
+			(encodeString(" "+strip(textField("-q","-tx",($zenSetAttr_valueTF[$i])))))+"\" "+
+			(string(abs($zenOptions_setAttrNonRecursive-1)))+
+			";\n";
+			print $command;
+		}
+		
+	return	$command;
+}
+
+global proc zenSetAttrSendToShelfUI()
+{
+		if(`window -ex zenSetAttrSendToShelfUI`) deleteUI zenSetAttrSendToShelfUI;
+	
+	string	$win=`window -rtf 1 -title "" zenSetAttrSendToShelfUI`;
+	
+		columnLayout -adj 1;
+	
+		text -al left -w 30 "Label:";
+		
+		textField -w 30 zenSetAttrSendToShelfLabelTextField;
+	
+	global	string $zenSetAttrSendToShelfIcon="";
+	
+		//get the correct separator for the OS
+	string 	$sep;
+		if(`about -os`=="nt" || `about -os`=="win64")
+			$sep=";";
+		else
+			$sep=":";
+		
+	string	$iconsDir=zenReturnLastStringItem(stringToStringArray(`getenv XBMLANGPATH`,$sep));
+		
+		button 
+			-l "Choose Icon"
+			-c ("$zenSetAttrSendToShelfIcon=`fileDialog -m 0 -dm \""+$iconsDir+"/*\"`");		
+		button 
+			-l "Create Shelf Button"
+			-c "zenSetAttrSendToShelf";
+			
+		showWindow $win;
+}
+
+global proc zenSetAttrSendToShelf()
+{
+
+	string 	$name=`textField -q -text zenSetAttrSendToShelfLabelTextField`;
+	global	string $zenSetAttrSendToShelfIcon;
+
+		if(strip($zenSetAttrSendToShelfIcon)=="") $zenSetAttrSendToShelfIcon="commandButton.xpm";
+		
+		$zenSetAttrSendToShelfIcon=zenReturnLastStringItem(`stringToStringArray $zenSetAttrSendToShelfIcon "/"`);
+		
+	global 	string $gShelfTopLevel;
+	
+	string	$command=`zenSetAttrCommand`;
+		
+	string	$parentShelf=($gShelfTopLevel + "|" + `tabLayout -q -st $gShelfTopLevel`);
+
+	string	$sb=`shelfButton -p $parentShelf`;
+	
+		shelfButton
+			-e
+			-image1 $zenSetAttrSendToShelfIcon
+			-imageOverlayLabel $name
+			-command $command
+			-label $command
+			$sb;
+}

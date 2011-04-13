@@ -1,0 +1,228 @@
+/*
+===========================================================================
+NAME: oaIcon2Shelf.mel
+AUTHOR: Oleg Alexander, olegalexander@gmail.com
+DATE: September 28, 2005
+
+DESCRIPTION: 
+Works just like the classic pose2shelf.mel by Erick Miller, but also adds 
+an icon of the pose to the shelf!
+
+TO USE: 
+Make sure the Shelf is visible. Execute 'oaIcon2Shelf' to bring up the UI.
+
+Save Pose Icon:
+	o Pose your control objects and select them.
+	o Give the pose a label.
+	o Frame your view for the snapshot.
+	o Press 'Save Pose Icon'.
+	
+Save Selection Icon:
+	o Select your objects.
+	o Give the selection a label.
+	o Frame your view for the snapshot.
+	o Press 'Save Selection Icon'.
+
+===========================================================================
+*/
+
+//Make Icon Procedure
+global proc oaIcon2ShelfMakeIcon(string $label) {
+
+	//Store the original Render Globals image format
+	int $origImageFormat = `getAttr defaultRenderGlobals.imageFormat`;
+	
+	//Temporarily set the image format to Bitmap	
+	setAttr defaultRenderGlobals.imageFormat 20;
+	
+	//Get the icons folder
+	string $iconsFolder = `internalVar -userBitmapsDir`;
+	
+	//Get the current frame
+	int $currentFrame = `currentTime -q`;
+	
+	//Get the name of the active view
+	string $editorName = `getPanel -withFocus`;
+		
+	//Get the current display state of the active view	
+	string $origDisplayState = `modelEditor -q -stateString $editorName`;
+	
+	//This part is just stupid! But it works.
+	$origDisplayState = `substitute "$editorName*" $origDisplayState $editorName`;
+	$origDisplayState = `substitute "$editorName*" $origDisplayState $editorName`;
+	
+	//Make only geometry visible
+	//FEEL FREE TO UNCOMMENT ANY OF THESE
+	modelEditor -e -allObjects off $editorName;
+	modelEditor -edit 
+		-nurbsSurfaces on 
+		-polymeshes on 
+		-subdivSurfaces on 
+		//-nurbsCurves on
+		//-planes on
+		//-lights on
+		//-cameras on
+		//-controlVertices on
+		//-hulls on
+		//-grid on
+		//-joints on
+		//-ikHandles on
+		//-deformers on
+		//-dynamics on
+		//-fluids on
+		//-hairSystems on
+		//-follicles on
+		//-locators on
+		//-dimensions on
+		//-handles on
+		//-pivots on
+        //-textures on
+        //-strokes on
+		$editorName;
+	
+	//Take the snapshot
+	playblast 
+		-showOrnaments off 
+		-frame $currentFrame 
+		-percent 100
+		-wh 30 30
+		-viewer off
+		-format "image"
+		-filename ($iconsFolder + $label);
+
+	//Reset the display state of the active view to what it was
+	eval $origDisplayState;
+
+	//Reset image format to what it was	
+	setAttr defaultRenderGlobals.imageFormat $origImageFormat;
+	
+}
+	
+//Save Pose Procedure
+global proc oaIcon2ShelfSavePose(string $poseLabel) {
+	
+	//Replace spaces with underscores
+	string $poseLabel = substituteAllString($poseLabel, " ", "_");
+	
+	//Get selection
+	string $selected[] = `ls -sl`;
+	if (size($selected) == 0) error -sl on "Nothing is selected.";
+	
+	//Declare the $command variable
+	string $command = ("//Pose: '" + $poseLabel + "'\n");	
+
+	for ($item in $selected) {
+		
+		//For each item, get the list of keyable attributes
+		string $attrs[] = `listAttr -keyable $item`;
+		
+		for ($attr in $attrs) {
+			
+			//For each attribute, get the value
+			float $value = `getAttr ($item + "." + $attr)`;
+			
+			//Append the setAttr command to the $command string
+			$command += ("catch(`setAttr " + $item + "." + $attr + " " + $value + "`);\n");
+		}
+	}
+	
+	//Call the Save to Shelf procedure
+	oaIcon2ShelfSaveToShelf $poseLabel $command;
+	
+}
+
+//Save Selection Procedure
+global proc oaIcon2ShelfSaveSelection(string $selectionLabel) {
+
+	//Replace spaces with underscores
+	string $selectionLabel = substituteAllString($selectionLabel, " ", "_");
+	
+	//Get selection
+	string $selected[] = `ls -sl`;
+	if (size($selected) == 0) error -sl on "Nothing is selected.";
+	
+	//Declare the $command variable
+	string $command = ("//Selection: '" + $selectionLabel + "'\n");
+	
+	for ($item in $selected) {
+		
+		//For each item, append the select command to the $command string
+		$command += ("catch(`select -tgl " + $item + "`);\n");
+	}
+	
+	//Call the Save to Shelf procedure
+	oaIcon2ShelfSaveToShelf $selectionLabel $command;
+	
+}
+
+//Save to Shelf procedure
+global proc string oaIcon2ShelfSaveToShelf(string $label, string $command) {
+	
+	//Declare the Maya shelf global variable
+	global string $gShelfTopLevel;
+	
+	//Make sure the shelf is visible
+	if (`tabLayout -q -isObscured $gShelfTopLevel`) error -sl on "Please make the shelf visible.";	
+	
+	//Create the icon snapshot
+	oaIcon2ShelfMakeIcon $label;
+	
+	//If a shelf button with that label already exists, delete it
+	if (`shelfButton -exists ("i2sbutton_" + $label)`) deleteUI ("i2sbutton_" + $label);
+	
+	//Get the current shelfItemStyle
+	string $shelfStyle = `optionVar -q "shelfItemStyle"`;
+	
+	//Create the shelf button
+	shelfButton
+		-parent ($gShelfTopLevel + "|" + `tabLayout -q -selectTab $gShelfTopLevel`)
+		-annotation $label
+		-label $label 
+		-imageOverlayLabel $label
+		-image ($label + ".0000.bmp") 
+		-style $shelfStyle
+		-command $command
+		("i2sbutton_" + $label);
+	
+	//Print the shelf commands for the user
+	print $command;
+	
+	//Return the shelf commands also. Why not?
+	return $command;
+}
+
+//UI
+global proc oaIcon2Shelf() {
+	
+	//If the UI already exists, delete it
+	if (`window -query -exists icon2shelfWin`) {
+		deleteUI icon2shelfWin;
+		windowPref -remove icon2shelfWin;
+	}
+
+	//Create the UI
+	window 
+		-title "oaIcon2Shelf"
+		-resizeToFitChildren true
+		-sizeable false 
+		icon2shelfWin;
+		
+			columnLayout -adjustableColumn true -rowSpacing 5;
+				
+				textField -text "Label" -ann "Enter a unique name for the pose or selection." icon2shelfTxtFld;
+				
+				button
+					-h 30
+					-w 130
+					-l "Save Pose Icon"
+					-c "oaIcon2ShelfSavePose(`textField -q -text icon2shelfTxtFld`)"
+					-ann "Save the pose icon to the current visible shelf.";	
+				
+				button
+					-l "Save Selection Icon"
+					-c  "oaIcon2ShelfSaveSelection(`textField -q -text icon2shelfTxtFld`)"
+					-ann "Save the selection icon to the current visible shelf.";
+ 
+    showWindow icon2shelfWin;	
+		
+}

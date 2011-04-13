@@ -1,0 +1,96 @@
+/*copies scripts with *Dependencies procs with all their dependant scripts to a directory for packaging
+-------
+
+example: zooZipScript zooCST;
+will copy all the scripts listed in the dependencies proc to a temporary scripts directory, and all icons
+into a temporary icons directory.  The scripts builds the directory structure, so the script can be quickly
+and reliably archived for distribution.
+*/
+
+
+zooArrays_str;
+zooFlags;
+zooStrUtils;
+zooUtils;
+
+
+global proc string zooZipScript( string $scriptName ) {
+	if( $scriptName == "" ) return "";
+	return `zooZipScriptTo $scriptName ""`;
+	}
+
+
+global proc string zooZipScriptTo( string $scriptName, string $optionStr ) {
+	if( $scriptName == "" ) return "";
+	if( !`exists $scriptName` ) return "";
+	eval( "source zooUtils" );
+	eval( "source " + $scriptName );
+
+	string $zipScript = "";
+	string $scriptLoc = `zooGetScriptLocation $scriptName`;
+	string $tipsFile = $scriptName +"Tips.txt";
+	string $scripts[] = {};
+	string $docs[] = {};
+	string $icons[] = {};
+	string $other[] = {};
+	string $scriptFiles[] = {};
+	string $helpFiles[] = {};
+	string $iconsFiles[] = {};
+	string $otherFiles[] = {};
+
+	string $basePath = `internalVar -userAppDir`;
+	string $packageLoc = "scriptPackages/" + $scriptName + "/scripts/";
+	string $iconPath = "scriptPackages/" + $scriptName + "/prefs/icons/";
+	string $temp[] = {};
+
+	if( `exists ( $scriptName + "Dependencies" )` ) {
+		$scripts = eval( $scriptName + "Dependencies -scripts" );
+		$docs = eval( $scriptName + "Dependencies -docs" );
+		$icons = eval( $scriptName + "Dependencies -icons" );
+		$other = eval( $scriptName + "Dependencies -other" );
+		//error( $scriptName + " doesn't have a dependencies procedure" );
+		}
+print( "\t=================="+ $scriptName +"\n" );print $scripts;
+	$temp = `zooGetFlagArguments $optionStr path`; if( `size $temp` ) $basePath = `zooArrayToStr_str $temp " "`;
+	$temp = `zooGetFlagArguments $optionStr scriptPath`; if( `size $temp` ) {
+		$packageLoc = `zooArrayToStr_str $temp " "`;
+		$packageLoc = `substituteAllString $packageLoc "#" $scriptName`;
+		}
+	$temp = `zooGetFlagArguments $optionStr iconPath`; if( `size $temp` ) {
+		$iconPath = `zooArrayToStr_str $temp " "`;
+		$iconPath = `substituteAllString $iconPath "#" $scriptName`;
+		}
+
+	$packageLoc = $basePath +"/"+ $packageLoc;
+	$iconPath = $basePath +"/"+ $iconPath;
+	$packageLoc = `zooReplaceInString $packageLoc "//" "/"`;
+	$iconPath = `zooReplaceInString $iconPath "//" "/"`;
+
+	//put the paths of each script into an array
+	//if( $packageLoc == "" ) $packageLoc =
+	//if( $iconPath == "" ) $iconPath =
+	$scripts[( `size $scripts` )] = $scriptName;
+
+	//put the paths of each script into an array
+	for( $script in $scripts ) $scriptFiles[( `size $scriptFiles` )] = ( `zooGetScriptLocation $script` + $script + ".mel" );
+	for( $doc in $docs ) $helpFiles[( `size $helpFiles` )] = $scriptLoc + $doc + ".zooHelp";
+	for( $icon in $icons ) $iconsFiles[( `size $iconsFiles` )] = `zooGetIconLocation $icon`;
+	for( $o in $other ) $otherFiles[( `size $otherFiles` )] = $scriptLoc + $o;
+
+	if( `size $scripts` ) sysFile -md $packageLoc;
+	if( `size $icons` ) sysFile -md $iconPath;
+	for( $n = 0; $n < `size $scripts`; $n++ ) sysFile -copy ( $packageLoc + $scripts[$n] + ".mel" ) $scriptFiles[$n];
+	for( $n = 0; $n < `size $docs`; $n++ ) sysFile -copy ( $packageLoc + $docs[$n] + ".zooHelp" ) $helpFiles[$n];
+	for( $n = 0; $n < `size $icons`; $n++ ) sysFile -copy ( $iconPath + $icons[$n] ) $iconsFiles[$n];
+	for( $n = 0; $n < `size $other`; $n++ ) sysFile -copy ( $scriptLoc + $other[$n] ) $iconsFiles[$n];
+	if( `filetest -r ( $scriptLoc + $tipsFile )` ) {
+		sysFile -copy ( $packageLoc + $tipsFile ) ( $scriptLoc + $tipsFile );
+		print ( "--->source     "+ $scriptLoc + $tipsFile +"\n" );
+		print ( "--->dest     "+ $packageLoc + $tipsFile +"\n" );
+		}
+
+	return $zipScript;
+	}
+
+
+//zoo.end

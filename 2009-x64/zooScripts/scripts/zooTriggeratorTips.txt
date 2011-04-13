@@ -1,0 +1,10 @@
+zooTriggerator is designed to help you create easy to use viewport selection triggers
+To start with, click the create folder button.  A folder is collapsible container for selection triggers
+You can choose which folder to create new things in by right clicking on the folder
+Triggerator selection triggers work in conjunction with zooTriggered.  So turn on zooTriggered to make selection triggers work
+Now that you have created a folder, you can now start building selection triggers.  Select the objects you want to select, then choose the shape of the selection trigger by right clicking on the shape in the UI, then hit the create button
+To edit what a trigger selects, choose the Edit Triggers tab, select the trigger you want to edit, and hit the load button.||To add or remove targets, right click in the list below the set folder area.
+To change what folder a trigger belongs to, right click the Set Folder area in the Edit Triggers tab
+To change which camera the selection triggers are parented to, go to the camera menu
+You can also build widescreen camera masks from the camera menu
+

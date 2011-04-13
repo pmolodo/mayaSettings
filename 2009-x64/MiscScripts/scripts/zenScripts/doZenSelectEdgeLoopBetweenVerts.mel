@@ -1,0 +1,32 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//select an edge loop between given vertices
+global proc string[] doZenSelectEdgeLoopBetweenVerts()
+{
+		waitCursor -state on;
+		
+	string 	$sel[]=	`ls -sl -fl`;
+	string	$verts[]=`polyListComponentConversion -fv -tv`;
+		$verts=`ls -fl $verts`;
+	string	$vertLoop[]=`zenVertLoop $verts`;
+	string	$nonVerts[]=`stringArrayRemove $verts $sel`;
+	string	$edgeLoops[]=`zenEdgeLoopFromVertLoop $vertLoop`;
+	string	$returnVal[]=`stringArrayCatenate $nonVerts $edgeLoops`;
+		select $returnVal;  
+		
+		waitCursor -state off;
+	
+	return 	$returnVal;
+}

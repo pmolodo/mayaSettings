@@ -1,0 +1,25 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//return an ordered edge loop from a vertex loop		
+global proc string[] zenEdgeLoopFromVertLoop(string $verts[])
+{
+	string	$edges[];
+	string	$e[];
+		for($i=0;$i<size($verts)-1;$i++){
+			$e=`polyListComponentConversion -te -in ($verts[$i]) ($verts[$i+1])`;
+			$edges[$i]=$e[0];
+		}
+	return	$edges;
+}

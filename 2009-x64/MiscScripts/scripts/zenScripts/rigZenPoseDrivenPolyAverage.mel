@@ -1,0 +1,163 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc string rigZenPoseDrivenPolyAverage( int $axis, int $iterations, int $falloff, float $poseBias, string $verts[])
+{
+	string	$returnVal[];
+	
+	string	$objects[]=stringArrayRemoveDuplicates(`ls -o $verts`);
+	
+		if(size($objects)>1)
+			error("This procedure cannot operate on multiple shapes simultaneously.");
+		
+	string	$obj=$objects[0];
+		
+	string	$pose;
+	string	$flipPose;
+	string	$bindPose;
+	
+	//find the skinCluster node
+	
+	string	$skinClusterNode=zenReturnFirstStringItem(ls("-type","skinCluster",listHistory($obj)));
+			
+		if(!objExists($skinClusterNode))
+			error("No skin cluster detected");
+			
+	string	$inputGeometry=zenReturnFirstStringItem( ls( "-type","shape", ( listHistory( listConnections( $skinClusterNode+".input" ) ) ) ) );
+	string	$root=zenReturnFirstStringItem( `listConnections -s 1 -d 0 ( $skinClusterNode+".matrix" )` );
+	
+		$pose=`dagPose -s $root`;
+	
+		$bindPose=zenReturnFirstStringItem(`dagPose -q -bp $root`);
+				
+		//$bindPose=`dagPose -s $root`;
+		
+	string	$poseDriver=`rigZenPoseDrivenWeight $bindPose $pose`;
+	string	$poseDriverNode=zenReturnFirstStringItem(`ls -o $poseDriver`);
+	
+	//this part gives errors sometimes even though it shouldn't
+	//so we loop through it a few times to make sure everything goes as planned
+	
+	int	$err=true;
+	
+		for( $i=0; $i<10 && $err ; $i++ )
+			$err=catchQuiet(`dagPose -r -g $pose $root`);
+		
+		if($err) error("Error.");
+		
+	string	$multDouble=`createNode multDoubleLinear`;
+		
+		connectAttr $poseDriver ( $multDouble+".i1" );
+		
+		setAttr ( $multDouble+".i2" ) $iterations;
+		
+	string	$averageNodes[];
+	string	$addDouble;
+	string	$clampNode;
+	
+	int	$remainder=$iterations % 10;
+	int	$numAverageNodes=ceil( $iterations/10 );
+	int	$tempInt;
+	
+		for( $i=0; $i < $numAverageNodes; $i++ )
+		{
+			$averageNodes[$i]=zenReturnFirstStringItem(`polyAverageVertex $verts`);
+		
+			$addDouble=`createNode addDoubleLinear`;
+			
+				connectAttr ($multDouble+".o") ($addDouble+".i1");
+				setAttr ($addDouble+".i2") (-( $i*10 ) );
+				
+			$clampNode=`createNode clamp`;
+			
+				connectAttr ($addDouble+".o") ($clampNode+".ipr");
+				setAttr ($clampNode+".mnr") 0;
+				setAttr ($clampNode+".mxr") 10;
+				
+			connectAttr ( $clampNode+".opr" ) ( $averageNodes[$i]+".iterations" );
+		}			
+		
+	//if mirroring, do the opposite side
+	
+	int	$inputGeoIntermediate;
+	
+	string	$flipVerts[];
+		
+	string	$polyDrivenAverageNode;
+	string	$inMeshAttr;
+	
+		if($axis)
+		{
+			$inputGeoIntermediate=getAttr($inputGeometry+".intermediateObject");
+			
+			//make the input geometry usable
+		
+			setAttr ($inputGeometry+".intermediateObject") 0;
+			
+			$err=catch
+			(
+				$flipVerts=zenMimicSelection
+				(
+					zenReturnOppositeVerts
+					(
+						$axis,
+						zenMimicSelection
+						(
+							$verts,
+							$inputGeometry
+						),
+						$root
+					),
+					$obj
+				)
+			);
+			
+			//set the input geometry back to how it was	
+		
+			setAttr ($inputGeometry+".intermediateObject") $inputGeoIntermediate;
+			
+			dagPose -r -g $pose $root;
+			
+			rigZenFlipPose $axis $bindPose;
+			
+			$polyDrivenAverageNode=`rigZenPoseDrivenPolyAverage 0 $iterations $falloff $poseBias $flipVerts`;
+		}
+		else
+		{
+			//add a tweak node for history consolidation
+			
+			$polyDrivenAverageNode=`createNode -n "drivenPolyAverageVertex#" tweak`;
+			
+				addAttr -k true -ln "bias" -at double  -min 0 -max 1 -dv $poseBias $polyDrivenAverageNode;
+				addAttr -k true -ln "iterations" -at long -min 0 -max ( $numAverageNodes*10 ) -dv $iterations $polyDrivenAverageNode;
+				
+				setAttr -k false ( $polyDrivenAverageNode+".envelope" );	
+			
+			$inMeshAttr=zenReturnFirstStringItem(`listConnections -plugs true ( $obj + ".inMesh" )`);
+		
+				connectAttr -f $inMeshAttr ( $polyDrivenAverageNode + ".input[0].inputGeometry" );
+				connectAttr -f ( $polyDrivenAverageNode + ".outputGeometry[0]" ) ( $obj + ".inMesh" );
+		}
+		
+	//connect control attributes with the dummy node
+	
+		connectAttr -f ( $polyDrivenAverageNode+".bias" ) ( $poseDriverNode+".oldMinX" );		
+		connectAttr -f ( $polyDrivenAverageNode+".iterations" ) ( $multDouble+".i2" );
+					
+		dagPose -r -g -bp $root;
+		
+	return	$polyDrivenAverageNode;
+}
+
+//rigZenPoseDrivenPolyAverage 1 50 2 .5 {"orangutan_skin.vtx[1985:1988]","orangutan_skin.vtx[2481]","orangutan_skin.vtx[2487:2488]","orangutan_skin.vtx[2535:2538]","orangutan_skin.vtx[2540]","orangutan_skin.vtx[2543:2544]","orangutan_skin.vtx[3570:3571]","orangutan_skin.vtx[3597]","orangutan_skin.vtx[3773]","orangutan_skin.vtx[3786:3787]","orangutan_skin.vtx[3800]","orangutan_skin.vtx[3900]","orangutan_skin.vtx[3902:3905]","orangutan_skin.vtx[3918:3922]"};

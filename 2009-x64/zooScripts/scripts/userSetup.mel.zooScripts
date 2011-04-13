@@ -1,0 +1,45 @@
+//source scripts that need it
+zooArrays_str;
+zooShelveIt;
+zooUtils;
+
+
+//create alias'
+alias h help -doc;
+alias w whatIs;
+alias d procDef;
+alias l listProcs;
+
+
+//re-create the scripts environment variable to include all sub-directories of the maya/scripts dir
+{
+	string $scriptsDir = `internalVar -userAppDir` + "scripts/";
+	string $subDirs[] = `zooGetRecursedSubDirs $scriptsDir`;
+	string $currentPath = `getenv MAYA_SCRIPT_PATH`;
+	string $newPathArray[] = {};
+	string $toks[] = {};
+	int $n = 0;
+
+	tokenize $currentPath ";" $toks;
+	for( $n; $n<`size $toks`; $n++ ) {
+		$newPathArray[( `size $newPathArray` )] = $toks[$n];
+		if( $toks[$n] == $scriptsDir ) break;
+		}
+
+	for( $path in $subDirs ) if( `match "^\\." $path` == "" ) $newPathArray[( `size $newPathArray` )] = $path;
+	for( $n; $n<`size $toks`; $n++ ) $newPathArray[( `size $newPathArray` )] = $toks[$n];
+
+	string $newPath = `zooArrayToStr_str $newPathArray ";"`;
+	putenv MAYA_SCRIPT_PATH $newPath;
+	eval( "rehash" );  //I've put this in an eval simply because its one of those weird mel directives - if the rehash doesn't work like this perhaps an evalDeferred at the end of the script might help
+	print "// ******************* added all subdirs to SCRIPT_PATH\n";
+}
+
+
+//load zooTriggered
+zooTriggeredUtils;
+zooTriggeredLoad;
+zooTrigUpdateUIState;
+
+//load auto save
+zooAutoSave;

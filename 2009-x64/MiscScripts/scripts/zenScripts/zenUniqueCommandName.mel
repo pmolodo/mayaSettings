@@ -1,0 +1,24 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//returns the input string as a unique command name
+global proc string zenUniqueCommandName(string $name)
+{
+		if(`exists $name`)
+		{
+			$name=`zenNumberSuffix $name`;
+			$name=`zenUniqueCommandName $name`;
+		}
+	return 	$name;
+}

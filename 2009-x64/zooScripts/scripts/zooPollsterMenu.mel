@@ -1,0 +1,53 @@
+zooArrays_str;
+zooPresetManager;
+zooUtils;
+
+
+global proc zooPollsterMenu() {
+	global string $gMainWindow;
+	string $user = `getenv USER`;
+	string $menuName = "zooPollsterMenu";
+	string $pollPath = `zooGetPresetDirectory "global" zooPollster`;
+	string $alertFile[] = `getFileList -fld( $pollPath +"/" ) -fs "*.alert"`;
+	int $lastAlert = `optionVar -q zooPollsterAlert`;
+	int $date = 0;
+
+	if( `size $alertFile` ) $date = `match "^[^.]+" $alertFile[0]`;
+	if( $date > $lastAlert ) confirmDialog -t "New Poll!!!" -m "there is a new poll - check it out!\n\nPS this annoying message goes away when you click on the studio polls menu\nit should only come back when someone makes a new poll" -b "oooooKAY!";
+	if( !`menu -ex $menuName` ) menu -l "Studio Polls" -p $gMainWindow -pmc( "zooPollsterPopulateMenu "+ $menuName +" "+ $date ) $menuName;
+	}
+
+
+global proc zooPollsterPopulateMenu( string $parent, int $dateToSet ) {
+	global string $gMainWindow;
+	string $pollPath = `zooGetPresetDirectory "global" zooPollster`;
+	string $globalPolls[] = `zooListPresets "global" zooPollster "poll"`;
+	string $user = `getenv USER`;
+	string $deptPolls[] = `zooGetFiles ( $pollPath +"/" ) "*.poll"`;
+
+	setParent -m $parent;
+	menu -e -dai $parent;
+	optionVar -iv zooPollsterAlert $dateToSet;  //now that the user has seen the menu, save the poll date ID so they don't get bugged again
+	savePrefs -g;
+
+	if( `size $globalPolls` ) menuItem -en 0 -l "studio polls";
+	for( $poll in $globalPolls ) {
+		string $lines[] = `zooReadFile ( $pollPath + $poll ) "-strip 1"`;
+		menuItem -l( `match "^[^.]+" $poll` ) -c( $lines[0] );
+		}
+	if( `size $globalPolls` ) menuItem -d 1;
+	if( `size $deptPolls` ) menuItem -en 0 -l( "polls" );
+	for( $poll in $deptPolls ) {
+		string $lines[] = `zooReadFile ( $pollPath +"animation/"+ $poll ) "-strip 1"`;
+		menuItem -l( `match "^[^.]+" $poll` ) -c( $lines[0] );
+		}
+
+	if( !`size $globalPolls` && !`size $deptPolls` ) menuItem -l "no polls today";
+	menuItem -d 1;
+	string $feedbackCmd = zooGetElement_str(0,`zooReadFile ( $pollPath + "toolfeedback" ) "-strip 1"`);
+	menuItem -l "tool feedback" -c $feedbackCmd;
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007

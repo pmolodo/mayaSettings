@@ -1,0 +1,45 @@
+// sIBL_setup.mel
+// MEL-Script to create a shelf button for sIBL
+// Author: Volker Heisterberg (volk@renderwahnsinn.de)
+// Usage: Enter sIBL_setup on the command line!
+// Requirements: - sIBL.mel must be in a script directory!
+// (Windows: C:\Documents and Settings\USER NAME\My Documents\maya\scripts\)
+// (MacOS X: /Users/volXen/Library/Preferences/Autodesk/maya/scripts)
+//	             - sIBL.xpm must be in a icon directory! 
+// (Windows: C:\Documents and Settings\USER NAME\My Documents\maya\8.5\prefs\icons\)
+// (MacOS X: /Users/USER NAME/Library/Preferences/Autodesk/maya/8.5/prefs/icons)
+
+// Known Issues: On MacOS X the icon is placed on the current shelf ... the user
+// is not asked for input ...
+
+global proc sIBL_setup()
+{
+	tplsWindow("smartIBL Setup Window");
+}
+
+global proc tplsWindow(string $windowName)
+{	//get current shelf
+	global string $gShelfTopLevel;
+ 	string $currentShelf = `tabLayout -q -selectTab $gShelfTopLevel`;
+	string $response = `promptDialog -title $windowName
+		-message "Please enter the name of the shelf to contain smartIBL:"
+		-text $currentShelf
+		-button "Add To Shelf "
+		-button "Cancel"
+		-defaultButton "Add To Shelf "
+		-cancelButton "Cancel"
+		-dismissString "Cancel"`;
+	if ($response == "Add To Shelf ") 
+	{
+		string $shelf = `promptDialog -query -text`;
+		if (`shelfLayout -exists $shelf`) 
+			{
+			shelfButton -parent $shelf
+				    -image1 "sIBL.xpm"
+				    -annotation ""
+				    -label "sIBL"
+				    -c "sIBL;";
+			}
+		else tplsWindow($shelf + "-Shelf doesn´t exist, sorry!");
+	}
+}

@@ -1,0 +1,139 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//return alligned edge loop rings
+global proc string[] zenIsolateAllignedLoops( string $edges[] )
+{
+	global	int $zenOptions_debugging;
+		if($zenOptions_debugging) print("//zenIsolateAllignedLoops(string $edges[])");
+	
+		$edges=`ls -fl $edges`;
+		
+	string	$obj=zenReturnFirstStringItem( `stringToStringArray $edges[0] "."` );
+	string	$origSel[]=`ls -sl`;
+	string 	$loopStrings[]=`zenIsolateLoops $edges`;
+	
+		if(size($loopStrings)<2) return $loopStrings;
+		
+	string	$cleanedLoopStrings[];
+	string	$loop[];
+	string	$edgesInLoopRing[];
+	string	$edgeRing[];
+	int	$testEdgeCompID;
+	string	$testEdges[];
+	int	$progress;
+	string	$intersector=`stringArrayIntersector`;
+	string	$testSel[];
+	
+		if(size($loopStrings)>4 || size($edges)>20)// show / hide progress bar based on the size of the operation
+		{
+			progressWindow -title "Working" -ii 1 -status "Alligning Edge Loops" -progress 0 -max ( size($edges)+size($loopStrings)*2 );
+			$progress=1;
+		}
+				
+		for($i=0;$i<size($loopStrings);$i++)//find edges shared by all edge rings
+		{
+			$edgesInLoopRing={};
+			$loop=`stringToStringArray $loopStrings[$i] ","`;
+			
+			for($n=0;$n<size($loop);$n++)
+			{				
+				$testEdgeCompID=`zenCompID $loop[$n]`;
+				
+				if(`getApplicationVersionAsFloat`>=8)//Maya 8+ optimization
+				{
+					$edgeRing=`polySelect -ass -ns -er $testEdgeCompID $obj`;
+					$edgeRing=`ls -fl $edgeRing`;
+				}
+				else
+				{
+					$edgeRing=zenCompFromID($obj,"e",`polySelect -ns -er $testEdgeCompID $obj`);
+				}
+				$edgesInLoopRing=`stringArrayCatenate $edgesInLoopRing $edgeRing`;
+				
+				if($progress)
+				{
+					progressWindow -e -s 1;
+					if(`progressWindow -q -ic`==1)
+					{
+						progressWindow -endProgress;
+						deleteUI $intersector;
+						error "User Interupt.";
+					}
+				}
+			}
+			$edges=`zenStringArrayIntersect $edgesInLoopRing $edges`;
+		}
+	
+		for($i=0;$i<size($loopStrings);$i++)//remove edges not shared by all edge rings
+		{
+			$loop=`stringToStringArray $loopStrings[$i] ","`;
+			$loop=`zenStringArrayIntersect $loop $edges`;
+			$cleanedLoopStrings[$i]=`stringArrayToString $loop ","`;
+			
+			if($progress)
+			{
+				progressWindow -e -s 1;
+				if(`progressWindow -q -ic`==1)
+				{
+					progressWindow -endProgress;
+					deleteUI $intersector;
+					error "User Interupt.";
+				}
+			}
+		}
+		
+		//reverse loops where necessarry
+	
+	int	$edgeLoopEndCompID;
+	string	$firstEdge=zenReturnFirstStringItem(`stringToStringArray $loopStrings[0] ","`);
+	
+		$edgeLoopEndCompID=zenCompID($firstEdge);
+		$testEdges=zenCompFromID($obj,"e",`polySelect -ns -er $edgeLoopEndCompID $obj`);
+		
+		for($i=1;$i<size($cleanedLoopStrings);$i++)
+		{
+			$loop=`stringToStringArray $cleanedLoopStrings[$i] ","`;
+			
+			stringArrayIntersector -e -r $intersector;
+			stringArrayIntersector -e -i {$loop[0]} $intersector;
+			stringArrayIntersector -e -i $testEdges $intersector;
+			
+			if(size(`stringArrayIntersector -q $intersector`)==0)
+			{
+				$loop=`zenReverseStringArray $loop`;
+				$cleanedLoopStrings[$i]=`stringArrayToString $loop ","`;
+			}
+			
+			if($progress)
+			{
+				progressWindow -e -s 1;
+				if(`progressWindow -q -ic`==1)
+				{
+					progressWindow -endProgress;
+					deleteUI $intersector;
+					error "User Interupt.";
+				}
+			}			
+		}
+
+		
+		if($progress)
+			progressWindow -endProgress;
+		
+		deleteUI $intersector;
+		select $origSel;
+		
+	return	$cleanedLoopStrings;
+}

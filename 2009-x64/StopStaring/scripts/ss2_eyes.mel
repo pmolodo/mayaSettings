@@ -1,0 +1,564 @@
+global proc ss2_eyes (){
+	print"";
+}
+print "ss2_eyes : sourced\n";
+
+global proc string ss2_eyes_makeNet (){
+
+	string $sel[] = `ls -sl`;
+	string $network = `ss2_search_byAttr "ss2EyeNetwork" $sel`;
+	
+	if (size($network)){
+		 	string $choice = `confirmDialog -title "Bad" -message "Eye network found; Creating another not recommended" -button "Make Anyways" -button "Cancel" -defaultButton "Cancel" -cancelButton "Cancel" -dismissString "Cancel"`;
+			if ($choice == "Cancel") error "ss2_eyes_makeNet : No network made";
+	}
+
+	string $prefixes[] = {"l","r"};
+
+	//CREATE
+		//Network
+			string $control = `createNode network -name "EyeControl"`;
+			addAttr -dt "string" -ln "ss2EyeNetwork";
+			for ($p in $prefixes){
+				string $blinkRange = `createNode setRange -name ($p+"BlinkRange")`;
+			//clamp
+				string $lwrLidPrePushClamp = `createNode clamp -name ($p+"LwrLidPrePushClamp")`;
+				string $lwrLidPushClamp = `createNode clamp -name ($p+"LwrLidPushClamp")`;
+				string $uprLidFinalPreBlinkClamp = `createNode clamp -name ($p+"UprLidFinalPreBlinkClamp")`;
+			//multiplyDivide
+				string $blinkMult = `createNode multiplyDivide -name ($p+"BlinkMult")`;
+				string $spreadNegative = `createNode multiplyDivide -name ($p+"SpreadNegative")`;
+				string $uprLidNegative = `createNode multiplyDivide -name ($p+"UprLidNegative")`;
+				string $eyeAimWeight = `createNode multiplyDivide -name ($p+"EyeAimWeight")`;
+				string $eyeAimMult = `createNode multiplyDivide -name ($p+"EyeAimMult")`;
+				string $eyeCtrlWeight = `createNode multiplyDivide -name ($p+"EyeCtrlWeight")`;
+				string $eyeCtrlMult = `createNode multiplyDivide -name ($p+"EyeCtrlMult")`;
+				string $eyelidsLeftRightFolo = `createNode multiplyDivide -name ($p+"EyelidsLeftRightFolo")`;
+				string $lidsUpDnAct = `createNode multiplyDivide -name ($p+"LidsUpDnAct")`;
+				string $lidsUpDnFolo = `createNode multiplyDivide -name ($p+"LidsUpDnFolo")`;
+			//blendWeighted
+				string $corneaPush = `createNode blendWeighted -name ($p+"CorneaPush")`;
+				string $eyeLeftRightAddInputs = `createNode blendWeighted -name ($p+"EyeLeftRightAddInputs")`;
+				string $eyeUpDnAddInputs = `createNode blendWeighted -name ($p+"EyeUpDnAddInputs")`;
+				string $lidDifference = `createNode blendWeighted -name ($p+"LidDifference")`;
+				string $lwrLidAndSpread = `createNode blendWeighted -name ($p+"LwrLidAndSpread")`;
+				string $lwrLidFinalAdd = `createNode blendWeighted -name ($p+"LwrLidFinalAdd")`;
+				string $uprLidFinalAdd = `createNode blendWeighted -name ($p+"UprLidFinalAdd")`;
+				string $uprLidFinalAddWBlink = `createNode blendWeighted -name ($p+"UprLidFinalAddWBlink")`;
+				string $uprLidFinalClampMaxAdd = `createNode blendWeighted -name ($p+"UprLidFinalClampMaxAdd")`;
+				string $uprLidFinalClampMinAdd = `createNode blendWeighted -name ($p+"UprLidFinalClampMinAdd")`;
+				string $uprLimAndSpreadAndPush = `createNode blendWeighted -name ($p+"UprLimAndSpreadAndPush")`;	
+				string $uprLimAndSpreadAndPush1 = `createNode blendWeighted -name ($p+"UprLimAndSpreadAndPush1")`;	
+
+		//Add ATTRS to CONTROL 
+			addAttr -k 1 -ln ($p+"Inputs") -at "double" $control;
+			addAttr -k 1 -ln ($p+"EyeCtrlUpDnIn") -at "double" $control;
+			addAttr -k 1 -ln ($p+"EyeCtrlLeftRightIn") -at "double" $control;
+			addAttr -k 1 -ln ($p+"EyeAimUpDnIn") -at "double" $control;
+			addAttr -k 1 -ln ($p+"EyeAimLeftRightIn") -at "double" $control;
+			addAttr -k 1 -ln ($p+"UprLidUpDnIn") -at "double" $control;
+			addAttr -k 1 -ln ($p+"LwrLidUpDnIn") -at "double" $control;
+			addAttr -k 1 -ln ($p+"CtrlWeight") -dv 1 -min 0 -max 1 -at "double" $control;
+			addAttr -k 1 -ln ($p+"AimWeight") -dv 1 -min 0 -max 1 -at "double" $control;
+			addAttr -k 1 -ln ($p+"Outputs") -at "double" $control;
+			addAttr -k 1 -ln ($p+"EyeUpDnOut") -at "double" $control;
+			addAttr -k 1 -ln ($p+"EyeLeftRightOut") -at "double" $control;
+			addAttr -k 1 -ln ($p+"UprLidUpDnOut") -at "double" $control;
+			addAttr -k 1 -ln ($p+"UprLidLeftRightOut") -at "double" $control;
+			addAttr -k 1 -ln ($p+"LwrLidUpDnOut") -at "double" $control;
+			addAttr -k 1 -ln ($p+"LwrLidLeftRightOut") -at "double" $control;
+			addAttr -k 1 -ln ($p+"InputMultipliers") -at "double" $control;
+			addAttr -k 1 -ln ($p+"EyeCtrlUpDnInMult") -dv -30 -at "double" $control;
+			addAttr -k 1 -ln ($p+"EyeCtrlLeftRightInMult") -dv 30 -at "double" $control;
+			addAttr -k 1 -ln ($p+"EyeAimUpDnInMult") -dv 1 -at "double" $control;
+			addAttr -k 1 -ln ($p+"EyeAimLeftRightInMult") -dv 1 -at "double" $control;
+			addAttr -k 1 -ln ($p+"UprLidUpDnInMult") -dv -70 -at "double" $control;
+			addAttr -k 1 -ln ($p+"LwrLidUpDnInMult") -dv -70 -at "double" $control;
+			addAttr -k 1 -ln ($p+"Variables") -at "double" $control;
+			addAttr -k 1 -ln ($p+"SpreadVar") -dv 50 -at "double" $control;
+			addAttr -k 1 -ln ($p+"CorneaPushVar") -dv -5 -at "double" $control;
+			addAttr -k 1 -ln ($p+"CorneaPushWeightVar") -dv 1 -min 0 -max 1 -at "double" $control;
+			addAttr -k 1 -ln ($p+"UprLidUpLimVar") -dv -30 -at "double" $control;
+			addAttr -k 1 -ln ($p+"LwrLidDnLimVar") -dv 15 -at "double" $control;
+			addAttr -k 1 -ln ($p+"UprUpDnFoloMultVar") -dv 0.95 -at "double" $control;
+			addAttr -k 1 -ln ($p+"LwrUpDnFoloMultVar") -dv 0.3 -at "double" $control;
+			addAttr -k 1 -ln ($p+"LwrLeftRightFoloMultVar") -dv 0.2 -at "double" $control;
+			addAttr -k 1 -ln ($p+"UprLeftRightFoloMultVar") -dv 0.2 -at "double" $control;
+			addAttr -k 1 -ln ($p+"BlinkLineVar") -dv 40 -at "double" $control;
+			addAttr -k 1 -ln ($p+"Intermediates") -at "double" $control;
+			addAttr -k 1 -ln ($p+"UprLidUpDnFoloInt") -at "double" $control;
+			addAttr -k 1 -ln ($p+"LwrLidUpDnFoloInt") -at "double" $control;
+			addAttr -k 1 -ln ($p+"UprLidUpDnActInt") -at "double" $control;
+			addAttr -k 1 -ln ($p+"LwrLidUpDnActInt") -at "double" $control;
+			addAttr -k 1 -ln ($p+"UprLidBlinkInt") -at "double" $control;
+			addAttr -k 1 -ln ($p+"UprLidPreBlinkInt") -at "double" $control;
+			addAttr -k 1 -ln ($p+"OffsetInt") -at "double" $control;
+	
+		//SET ATTRS on CONTROL
+			setAttr -l 1  ($control+"."+$p+"Inputs");
+			setAttr -l 1  ($control+"."+$p+"Outputs");
+			setAttr -l 1  ($control+"."+$p+"InputMultipliers");
+			setAttr -l 1  ($control+"."+$p+"Variables");
+			setAttr -l 1  ($control+"."+$p+"Intermediates");
+	
+			setAttr ($spreadNegative+".i2x") -1;
+			setAttr ($uprLidNegative+".i2x") -1;
+			//setAttr ($corneaPush+".weight[0]") 0.5;
+	
+		//CONNECT all attrs
+			connectAttr -f ($control+"."+$p+"CorneaPushWeightVar") ($corneaPush+".weight[0]");
+			connectAttr -f ($control+"."+$p+"CorneaPushWeightVar") ($corneaPush+".weight[1]");
+			connectAttr -f ($control+"."+$p+"EyeAimUpDnIn") ($eyeAimMult+".i1x");
+			connectAttr -f ($control+"."+$p+"EyeAimLeftRightIn") ($eyeAimMult+".i1y");
+			connectAttr -f ($control+"."+$p+"EyeAimUpDnInMult") ($eyeAimMult+".i2x");
+			connectAttr -f ($control+"."+$p+"EyeAimLeftRightInMult") ($eyeAimMult+".i2y");
+			connectAttr -f ($eyeAimMult+".ox") ($eyeAimWeight+".i1x");
+			connectAttr -f ($eyeAimMult+".oy") ($eyeAimWeight+".i1y");
+			connectAttr -f ($eyeAimWeight+".ox") ($eyeUpDnAddInputs+".i[1]");
+			connectAttr -f ($control+"."+$p+"AimWeight") ($eyeAimWeight+".i2x");
+			connectAttr -f ($control+"."+$p+"AimWeight") ($eyeAimWeight+".i2y");
+			connectAttr -f ($control+"."+$p+"UprUpDnFoloMultVar") ($lidsUpDnFolo+".i2x");
+			connectAttr -f ($control+"."+$p+"LwrUpDnFoloMultVar") ($lidsUpDnFolo+".i2y");
+			connectAttr -f ($control+"."+$p+"EyeUpDnOut") ($lidsUpDnFolo+".i1x");
+			connectAttr -f ($control+"."+$p+"EyeUpDnOut") ($lidsUpDnFolo+".i1y");
+			connectAttr -f ($eyeUpDnAddInputs+".o")($control+"."+$p+"EyeUpDnOut");
+			connectAttr -f ($eyeLeftRightAddInputs+".o")($control+"."+$p+"EyeLeftRightOut");
+			connectAttr -f ($uprLidFinalAddWBlink+".o")($control+"."+$p+"UprLidUpDnOut");
+			connectAttr -f ($eyelidsLeftRightFolo+".ox")($control+"."+$p+"UprLidLeftRightOut");
+			connectAttr -f ($lwrLidPrePushClamp+".opr")($control+"."+$p+"LwrLidUpDnOut");
+			connectAttr -f ($eyelidsLeftRightFolo+".oy")($control+"."+$p+"LwrLidLeftRightOut");
+			connectAttr -f ($lidsUpDnFolo+".ox")($control+"."+$p+"UprLidUpDnFoloInt");
+			connectAttr -f ($lidsUpDnFolo+".oy")($control+"."+$p+"LwrLidUpDnFoloInt");
+			connectAttr -f ($lidsUpDnAct+".ox")($control+"."+$p+"UprLidUpDnActInt");
+			connectAttr -f ($lidsUpDnAct+".oy")($control+"."+$p+"LwrLidUpDnActInt");
+			connectAttr -f ($blinkMult+".ox")($control+"."+$p+"UprLidBlinkInt");
+			connectAttr -f ($uprLidFinalPreBlinkClamp+".opr")($control+"."+$p+"UprLidPreBlinkInt");
+			connectAttr -f ($eyeCtrlWeight+".oy") ($eyeUpDnAddInputs+".i[0]");
+			connectAttr -f ($control+"."+$p+"CtrlWeight") ($eyeCtrlWeight+".i2x");
+			connectAttr -f ($control+"."+$p+"CtrlWeight") ($eyeCtrlWeight+".i2y");
+			connectAttr -f ($eyeCtrlMult+".ox") ($eyeCtrlWeight+".i1x");
+			connectAttr -f ($eyeCtrlMult+".oy") ($eyeCtrlWeight+".i1y");
+			connectAttr -f ($control+"."+$p+"EyeCtrlLeftRightInMult") ($eyeCtrlMult+".i2x");
+			connectAttr -f ($control+"."+$p+"EyeCtrlUpDnInMult") ($eyeCtrlMult+".i2y");
+			connectAttr -f ($control+"."+$p+"EyeCtrlLeftRightIn") ($eyeCtrlMult+".i1x");
+			connectAttr -f ($control+"."+$p+"EyeCtrlUpDnIn") ($eyeCtrlMult+".i1y");
+			connectAttr -f ($uprLidFinalAdd+".o") ($uprLidFinalPreBlinkClamp+".ipr");
+			connectAttr -f ($uprLidFinalClampMaxAdd+".o") ($uprLidFinalPreBlinkClamp+".mxr");
+			connectAttr -f ($uprLidFinalClampMinAdd+".o") ($uprLidFinalPreBlinkClamp+".mnr");
+			connectAttr -f ($control+"."+$p+"UprLidUpDnFoloInt") ($uprLidFinalAdd+".i[0]");
+			connectAttr -f ($control+"."+$p+"UprLidUpDnActInt") ($uprLidFinalAdd+".i[1]");
+			connectAttr -f ($control+"."+$p+"UprLidUpDnInMult") ($lidsUpDnAct+".i2x");
+			connectAttr -f ($control+"."+$p+"LwrLidUpDnInMult") ($lidsUpDnAct+".i2y");
+			connectAttr -f ($control+"."+$p+"UprLidUpDnIn") ($lidsUpDnAct+".i1x");
+			connectAttr -f ($control+"."+$p+"LwrLidUpDnIn") ($lidsUpDnAct+".i1y");
+			connectAttr -f ($control+"."+$p+"LwrLidUpDnOut") ($uprLidFinalClampMaxAdd+".i[0]");
+			connectAttr -f ($control+"."+$p+"SpreadVar") ($uprLidFinalClampMaxAdd+".i[1]");
+			connectAttr -f ($uprLimAndSpreadAndPush1+".o") ($lwrLidPrePushClamp+".ipr");
+			connectAttr -f ($control+"."+$p+"LwrLidDnLimVar") ($lwrLidPrePushClamp+".mxr");
+			connectAttr -f ($uprLimAndSpreadAndPush+".o") ($lwrLidPrePushClamp+".mnr");
+			connectAttr -f ($lwrLidFinalAdd+".o") ($uprLimAndSpreadAndPush1+".i[0]");
+			connectAttr -f ($lwrLidPushClamp+".opr") ($uprLimAndSpreadAndPush1+".i[1]");
+			connectAttr -f ($control+"."+$p+"LwrLidUpDnFoloInt") ($lwrLidFinalAdd+".i[0]");
+			connectAttr -f ($control+"."+$p+"LwrLidUpDnActInt") ($lwrLidFinalAdd+".i[1]");
+			connectAttr -f ($corneaPush+".o") ($lwrLidPushClamp+".mnr");
+			connectAttr -f ($control+"."+$p+"EyeUpDnOut") ($corneaPush+".i[0]");
+			connectAttr -f ($control+"."+$p+"CorneaPushVar") ($corneaPush+".i[1]");
+			connectAttr -f ($control+"."+$p+"UprLidUpLimVar") ($uprLimAndSpreadAndPush+".i[0]");
+			connectAttr -f ($spreadNegative+".ox") ($uprLimAndSpreadAndPush+".i[1]");
+			connectAttr -f ($control+"."+$p+"SpreadVar") ($spreadNegative+".i1x");
+			connectAttr -f ($control+"."+$p+"UprLidUpLimVar") ($uprLidFinalClampMinAdd+".i[0]");
+			connectAttr -f ($control+"."+$p+"SpreadVar") ($lidDifference+".i[0]");
+			connectAttr -f ($uprLidNegative+".ox") ($lidDifference+".i[1]");
+			connectAttr -f ($control+"."+$p+"LwrLidUpDnOut") ($lidDifference+".i[2]");
+			connectAttr -f ($control+"."+$p+"UprLidPreBlinkInt") ($uprLidNegative+".i1x");
+			connectAttr -f ($eyeCtrlWeight+".ox") ($eyeLeftRightAddInputs+".i[0]");
+			connectAttr -f ($eyeAimWeight+".oy") ($eyeLeftRightAddInputs+".i[1]");
+			connectAttr -f ($control+"."+$p+"OffsetInt") ($eyeLeftRightAddInputs+".i[2]");
+			connectAttr -f ($control+"."+$p+"UprLidUpDnActInt") ($blinkRange+".vx");
+			connectAttr -f ($lwrLidAndSpread+".o") ($blinkRange+".omx");
+			connectAttr -f ($control+"."+$p+"BlinkLineVar") ($blinkRange+".onx");
+			connectAttr -f ($control+"."+$p+"LwrLidUpDnOut") ($lwrLidAndSpread+".i[0]");
+			connectAttr -f ($control+"."+$p+"SpreadVar") ($lwrLidAndSpread+".i[1]");
+			connectAttr -f ($control+"."+$p+"UprLidPreBlinkInt") ($uprLidFinalAddWBlink+".i[0]");
+			connectAttr -f ($control+"."+$p+"UprLidBlinkInt") ($uprLidFinalAddWBlink+".i[1]");
+			connectAttr -f ($blinkRange+".ox") ($blinkMult+".i1x");
+			connectAttr -f ($lidDifference+".o") ($blinkMult+".i2x");
+			connectAttr -f ($control+"."+$p+"UprLeftRightFoloMultVar") ($eyelidsLeftRightFolo+".i2x");
+			connectAttr -f ($control+"."+$p+"LwrLeftRightFoloMultVar") ($eyelidsLeftRightFolo+".i2y");
+			connectAttr -f ($control+"."+$p+"EyeLeftRightOut") ($eyelidsLeftRightFolo+".i1x");
+			connectAttr -f ($control+"."+$p+"EyeLeftRightOut") ($eyelidsLeftRightFolo+".i1y");
+	}
+
+	select $sel;
+	return $control;
+}
+
+
+proc ss2_eyes_populateInputs (string $attr, string $mult, string $label, string $parent, string $network){
+
+	string $transforms[] = {"tx","ty","tz","rx","ry","rz"};
+	string $mainframe = `frameLayout -label $label -w 190 -parent $parent`;
+	string $c = `columnLayout -w 185 -parent $mainframe`;
+	string $textField = `textFieldButtonGrp -editable 0 -cw 1 50 -cw 2 95 -cw 3 35 -label "node" -buttonLabel "select" -parent $c`;
+	string $subFrame = `frameLayout -borderStyle "etchedIn" -labelVisible 0 -w 185 -parent $c`;
+	string $r = `rowColumnLayout -nc 6 -w 180 -cw 1 30 -cw 2 30 -cw 3 30 -cw 4 30 -cw 5 30 -cw 6 30 -parent $subFrame`;
+
+	string $cons[];
+	if (`objExists $network`)
+		$cons = `listConnections -scn 1 -destination 0 -plugs 1 ($network+"."+$attr)`;
+
+	string $matchAttr = "";
+
+	textFieldButtonGrp -e -buttonCommand ("string $sel[] = `ls -sl -type transform`; textFieldButtonGrp -e -text $sel[0] "+$textField+";") $textField;
+
+	if (size($cons)){
+		string $tokens[];
+		tokenize $cons[0] "." $tokens;
+		textFieldButtonGrp -e -text $tokens[0] $textField;
+		$matchAttr = $tokens[1];
+		string $temp1 = `substring $matchAttr 1 1`;
+		string $temp2 = `substring $matchAttr (size($matchAttr)) (size($matchAttr))`;
+		$matchAttr = `tolower($temp1+$temp2)`;
+	}
+
+	for ($i=0; $i <6; $i++){
+
+		if ($matchAttr == $transforms[$i]){
+			button -label `toupper($transforms[$i])` -bgc 1.0 0.5 0.5 -command ("string $obj = `textFieldGrp -q -text "+$textField+"`; connectAttr -f ($obj+\"."+$transforms[$i]+"\") \""+$network+"."+$attr+"\";ss2_eyes") -parent $r;
+		}else{
+			button -label $transforms[$i] -command ("string $obj = `textFieldGrp -q -text "+$textField+"`; connectAttr -f ($obj+\"."+$transforms[$i]+"\") \""+$network+"."+$attr+"\";ss2_eyes") -parent $r;
+		}
+	}
+	if (size($mult)){
+		string $ff = `floatFieldGrp -cw 1 100 -cw 2 50 -nf 1 -label "multiplier" -parent $c`;
+		connectControl -index 2 $ff ($network+"."+$mult);
+	}
+}
+
+proc ss2_eyes_populateOutputs (string $attr, string $label, string $parent, string $network){
+
+	string $transforms[] = {"tx","ty","tz","rx","ry","rz"};
+	string $mainframe = `frameLayout -label $label -w 190 -parent $parent`;
+	string $c = `columnLayout -w 185 -parent $mainframe`;
+	string $textField = `textFieldButtonGrp -editable 0 -cw 1 50 -cw 2 95 -cw 3 35 -label "node" -buttonLabel "select" -parent $c`;
+	string $subFrame = `frameLayout -borderStyle "etchedIn" -labelVisible 0 -w 185 -parent $c`;
+	string $r = `rowColumnLayout -nc 6 -w 180 -cw 1 30 -cw 2 30 -cw 3 30 -cw 4 30 -cw 5 30 -cw 6 30 -parent $subFrame`;
+	string $subFrame2 = `frameLayout -borderStyle "etchedIn" -labelVisible 0 -w 185 -parent $c`;
+	string $r2 = `rowColumnLayout -nc 2 -w 180 -cw 1 90 -cw 2 90 -parent $subFrame2`;
+
+	string $cons[];
+	if (`objExists $network`)
+		$cons = `listConnections -scn 1 -type transform -plugs 1 ($network+"."+$attr)`;
+
+	string $matchAttr = "";
+
+	textFieldButtonGrp -e -buttonCommand ("string $sel[] = `ls -sl -type transform`; textFieldButtonGrp -e -text $sel[0] "+$textField+";") $textField;
+
+	if (size($cons)){
+		string $tokens[];
+		tokenize $cons[0] "." $tokens;
+		textFieldButtonGrp -e -text $tokens[0] $textField;
+		$matchAttr = $tokens[1];
+		string $temp1 = `substring $matchAttr 1 1`;
+		string $temp2 = `substring $matchAttr (size($matchAttr)) (size($matchAttr))`;
+		$matchAttr = `tolower($temp1+$temp2)`;
+	}
+
+	for ($i=0; $i <6; $i++){
+
+		if ($matchAttr == $transforms[$i]){
+			button -label `toupper($transforms[$i])` -bgc 1.0 0.5 0.5 -command ("string $obj = `textFieldGrp -q -text "+$textField+"`; connectAttr -f \""+$network+"."+$attr+"\" ($obj+\"."+$transforms[$i]+"\") ;ss2_eyes") -parent $r;
+		}else{
+			button -label $transforms[$i] -command ("string $obj = `textFieldGrp -q -text "+$textField+"`; connectAttr -f \""+$network+"."+$attr+"\" ($obj+\"."+$transforms[$i]+"\") ;ss2_eyes") -parent $r;
+		}
+	}
+
+	string $command;
+	$command += ("string $cons[] = `listConnections -scn 1 -source 0 -plugs 1 \""+$network+"."+$attr+"\"`;");
+	$command += ("select $cons;ss2_eyes_shelf");
+	button -label "select ALL" -w 185 -h 18 -command $command -parent $r2;
+
+	string $command = "";
+	$command += ("string $cons[] = `listConnections -scn 1 -source 0 -plugs 1 \""+$network+"."+$attr+"\"`;");
+	$command += ("for ($c in $cons) disconnectAttr \""+$network+"."+$attr+"\" $c;");
+	$command += "ss2_eyes";
+	button -label "break ALL" -w 185 -h 18 -command $command -parent $r2;
+}
+
+
+proc ss2_eyes_populateVariables (string $attr, string $label, string $parent, string $network){
+
+	string $ff = `floatFieldGrp -cw 1 140 -cw 2 40 -nf 1 -label $label -parent $parent`;
+	connectControl -index 2 $ff ($network+"."+$attr);
+
+}
+
+proc ss2_eyes_generate_barf (string $barf[]){
+
+	string $match;
+
+	for ($b in $barf){
+		if (`objExists $b` || `objExists ($b+"Ctrl")` || `objExists ($b+"Frame")`){
+			$match += (" "+$b);
+		}
+	}
+	if (size($match)){
+		confirmDialog -title "Bad" -message ("Cannot generate network until you rename or delete all these objects or controls :"+$match) -button "OK";
+		error ("Cannot generate network until you rename or delete all these objects or controls :"+$match);
+	}
+}
+
+global proc ss2_eyes_generate (int $diverge){
+
+	source generateChannelMenu;
+
+	string $checks[] = {"lEye","rEye","lUprLid","rUprLid","rLwrLid", "eyeWeight"};
+
+	if ($diverge)
+		$checks = {"eyes","diverge","lUprLid","rUprLid","rLwrLid", "eyeWeight"};
+
+	ss2_eyes_generate_barf $checks;
+
+	string $network = `ss2_eyes_makeNet`;
+
+	string $lAimer[] = `spaceLocator -name "lEyeAim"`;
+	string $rAimer[] = `spaceLocator -name "rEyeAim"`;
+
+	string $lAimTarget[] = `spaceLocator -name "lEyeAimTarget"`;
+	string $rAimTarget[] = `spaceLocator -name "rEyeAimTarget"`;
+
+	string $lUprLidControl[] = `ss2_controls_makeControl "lUprLid" 1 0`;
+	string $lLwrLidControl[] = `ss2_controls_makeControl "lLwrLid" 1 0`;
+	string $rUprLidControl[] = `ss2_controls_makeControl "rUprLid" 1 0`;
+	string $rLwrLidControl[] = `ss2_controls_makeControl "rLwrLid" 1 0`;
+	string $weight[] = `ss2_controls_makeControl "ctrl+aim" 2 1`;
+
+	//Tweak "weight" to work special-like
+	string $con[] = `listConnections ($weight[0]+".hPosVPos")`;
+	CBdeleteConnection ($con[0]+".i2x");
+	CBdeleteConnection ($con[0]+".i2y");
+	setAttr ($con[0]+".i2") 1 1 1;
+
+	string $group[];
+
+	if ($diverge){
+
+		string $eyesControl[] = `ss2_controls_makeControl "eyes" 3 0`;
+		string $divergeControl[] = `ss2_controls_makeControl "diverge" 2 0`;
+		string $divergeMult = `createNode multiplyDivide -name "divergeMult"`;
+
+		setAttr ($divergeMult+".i2") 70.0 -70.0 0.0;
+
+		connectAttr -f ($divergeControl[1]+".tx") ($divergeMult+".i1x");
+		connectAttr -f ($divergeControl[1]+".tx") ($divergeMult+".i1y");
+
+		connectAttr -f ($divergeMult+".ox") ($network+".lOffsetInt");
+		connectAttr -f ($divergeMult+".oy") ($network+".rOffsetInt");
+
+		connectAttr -f ($eyesControl[1]+".tx") ($network+".lEyeCtrlLeftRightIn");
+		connectAttr -f ($eyesControl[1]+".ty") ($network+".lEyeCtrlUpDnIn");
+		connectAttr -f ($eyesControl[1]+".ty") ($network+".rEyeCtrlUpDnIn");
+		connectAttr -f ($eyesControl[1]+".tx") ($network+".rEyeCtrlLeftRightIn");
+
+		setAttr ($eyesControl[0]+".t") 1.25 0.75 0.0;
+		setAttr ($divergeControl[0]+".t") 1.25 -1.0 0.0;
+
+		group -name "ss2Eyes" {$lAimer[0], $rAimer[0], $lAimTarget[0], $rAimTarget[0], $eyesControl[0], $divergeControl[0], $lUprLidControl[0], $rUprLidControl[0], $lLwrLidControl[0], $rLwrLidControl[0], $weight[0]};
+
+	}else{
+
+		string $lEyeControl[] = `ss2_controls_makeControl "lEye" 3 0`;
+		string $rEyeControl[] = `ss2_controls_makeControl "rEye" 3 0`;
+
+		connectAttr -f ($lEyeControl[1]+".tx") ($network+".lEyeCtrlLeftRightIn");
+		connectAttr -f ($lEyeControl[1]+".ty") ($network+".lEyeCtrlUpDnIn");
+		connectAttr -f ($rEyeControl[1]+".ty") ($network+".rEyeCtrlUpDnIn");
+		connectAttr -f ($rEyeControl[1]+".tx") ($network+".rEyeCtrlLeftRightIn");
+
+		setAttr ($lEyeControl[0]+".t") 2.5 0 0;
+
+		group -name "ss2Eyes" {$lAimer[0], $rAimer[0], $lAimTarget[0], $rAimTarget[0], $lEyeControl[0], $rEyeControl[0], $lUprLidControl[0], $rUprLidControl[0], $lLwrLidControl[0], $rLwrLidControl[0], $weight[0]};
+	}
+
+	connectAttr -f ($lAimer[0]+".rx") ($network+".lEyeAimUpDnIn");
+	connectAttr -f ($lAimer[0]+".ry") ($network+".lEyeAimLeftRightIn");
+
+	connectAttr -f ($rAimer[0]+".rx") ($network+".rEyeAimUpDnIn");
+	connectAttr -f ($rAimer[0]+".ry") ($network+".rEyeAimLeftRightIn");
+
+	connectAttr -f ($lUprLidControl[1]+".ty") ($network+".lUprLidUpDnIn");
+	connectAttr -f ($rUprLidControl[1]+".ty") ($network+".rUprLidUpDnIn");
+
+	connectAttr -f ($lLwrLidControl[1]+".ty") ($network+".lLwrLidUpDnIn");
+	connectAttr -f ($rLwrLidControl[1]+".ty") ($network+".rLwrLidUpDnIn");
+
+	connectAttr -f ($weight[0]+".hNegVPos") ($network+".lCtrlWeight");
+	connectAttr -f ($weight[0]+".hNegVPos") ($network+".rCtrlWeight");
+
+	connectAttr -f ($weight[0]+".hPosVPos") ($network+".lAimWeight");
+	connectAttr -f ($weight[0]+".hPosVPos") ($network+".rAimWeight");
+
+	setAttr ($lUprLidControl[0]+".t") 0.5 -2.5 0;
+	setAttr ($rUprLidControl[0]+".t") -0.5 -2.5 0;
+	setAttr ($lLwrLidControl[0]+".t") 3 -2.5 0;
+	setAttr ($rLwrLidControl[0]+".t") 2 -2.5 0;
+	setAttr ($weight[0]+".t") 5 -1.5 0;
+
+	setAttr ($lAimer[0]+".t") -2.5 0 0;
+	setAttr ($rAimer[0]+".t") -5.0 0 0;
+
+	setAttr ($lAimTarget[0]+".t") -2.5 0 5;
+	setAttr ($rAimTarget[0]+".t") -5.0 0 5;
+
+	aimConstraint -offset 0 0 0 -weight 1 -aimVector 0 0 1 -upVector 0 1 0 -worldUpType "scene" $lAimTarget[0] $lAimer[0];
+	aimConstraint -offset 0 0 0 -weight 1 -aimVector 0 0 1 -upVector 0 1 0 -worldUpType "scene" $rAimTarget[0] $rAimer[0];
+
+	setAttr ($weight[1]+".ty") 1;
+
+}
+
+global proc ss2_eyes_copyStuff (string $type, string $network, string $from, string $to){
+
+	string $attrs[];
+	switch ($type){
+		case "input":
+			$attrs = {"EyeCtrlUpDnIn","EyeCtrlLeftRightIn","EyeAimUpDnIn","EyeAimLeftRightIn","UprLidUpDnIn","LwrLidUpDnIn","CtrlWeight","AimWeight"};
+			for ($a in $attrs){
+				string $cons[] = `listConnections -scn 1 -type transform -plugs 1 ($network+"."+$from+$a)`;
+				if (size($cons))
+					connectAttr $cons[0] ($network+"."+$to+$a);
+			}
+		break;
+		case "variable":
+			$attrs = {"SpreadVar","CorneaPushVar","UprLidUpLimVar","LwrLidDnLimVar","UprUpDnFoloMultVar","UprLeftRightFoloMultVar","LwrUpDnFoloMultVar","LwrLeftRightFoloMultVar","BlinkLineVar"};
+			for ($a in $attrs)
+				setAttr ($network+"."+$to+$a) `getAttr ($network+"."+$from+$a)`;
+		break;
+		case "multiplier":
+			$attrs = {"EyeCtrlUpDnInMult","EyeCtrlLeftRightInMult","EyeAimUpDnInMult","EyeAimLeftRightInMult","UprLidUpDnInMult","LwrLidUpDnInMult"};
+			for ($a in $attrs)
+				setAttr ($network+"."+$to+$a) `getAttr ($network+"."+$from+$a)`;
+		break;
+	}
+}
+
+global proc ss2_eyes_shelf (){
+
+	string $sel[] = `ls -sl`;
+	string $network = `ss2_search_byAttr "ss2EyeNetwork" $sel`;
+	string $winTitle;
+	if (size($network)){
+		$winTitle = ("ss2_eyes : "+$network);
+	}else{
+		$winTitle = ("ss2_eyes : No network loaded");
+	}
+
+	if (`window -exists "ss2_eyesWin"`) deleteUI ss2_eyesWin;
+	window -title $winTitle -widthHeight 210 105 -menuBar 1 ss2_eyesWin;
+
+//This was way crashy
+//	scriptJob -event "SceneOpened" "ss2_eyes" -parent ss2_eyesWin;
+//	scriptJob -event "NewSceneOpened" "ss2_eyes" -parent ss2_eyesWin;
+
+	menu -label "Create";
+	menuItem -label "generate eye network only" -command "select `ss2_eyes_makeNet`;ss2_eyes_shelf";
+	menuItem -label "generate eye network and controls" -command "ss2_eyes_generate 0;ss2_eyes_shelf";
+	menuItem -label "generate eye network and controls (diverge)" -command "ss2_eyes_generate 1;ss2_eyes_shelf";
+	menu -label "Utils";
+	menuItem -label "refresh this window" -command "ss2_eyes";
+	menuItem -divider 1;
+	menuItem -label "copy left inputs to right" -command ("ss2_eyes_copyStuff \"input\" \""+$network+"\" \"l\" \"r\";ss2_eyes_shelf;");
+	menuItem -label "copy left multipliers to right" -command ("ss2_eyes_copyStuff \"multiplier\" \""+$network+"\" \"l\" \"r\";ss2_eyes_shelf;");
+	menuItem -label "copy left variables to right" -command ("ss2_eyes_copyStuff \"variable\" \""+$network+"\" \"l\" \"r\";ss2_eyes_shelf;");
+	menuItem -label "copy ALL left to right" -command ("ss2_eyes_copyStuff \"input\" \""+$network+"\" \"l\" \"r\";ss2_eyes_copyStuff \"multiplier\" \""+$network+"\" \"l\" \"r\";ss2_eyes_copyStuff \"variable\" \""+$network+"\" \"l\" \"r\";ss2_eyes_Shelf;");
+	menuItem -divider 1;
+	menuItem -label "copy right inputs to left" -command ("ss2_eyes_copyStuff \"input\" \""+$network+"\" \"r\" \"l\";ss2_eyes_shelf;");
+	menuItem -label "copy right multipliers to left" -command ("ss2_eyes_copyStuff \"multiplier\" \""+$network+"\" \"r\" \"l\";ss2_eyes_shelf;");
+	menuItem -label "copy right variables to left" -command ("ss2_eyes_copyStuff \"variable\" \""+$network+"\" \"r\" \"l\";ss2_eyes_shelf;");
+	menuItem -label "copy ALL right to left" -command ("ss2_eyes_copyStuff \"input\" \""+$network+"\" \"r\" \"l\";ss2_eyes_copyStuff \"multiplier\" \""+$network+"\" \"r\" \"l\";ss2_eyes_copyStuff \"variable\" \""+$network+"\" \"r\" \"l\";ss2_eyes_shelf;");
+
+	string $m = `rowLayout -nc 4 -cw 1 195 -cw 2 210 -cw 3 195 -cw 4 195`;
+
+	if (`objExists $network`){
+		menu -label ("Loaded : "+$network);
+		menuItem -label ("select "+$network) -command ("select "+$network);
+		menuItem -label ("open connection editor") -command ("ConnectionEditor; select "+$network+"; connectWindowFillFromActiveList 0; connectWindowFillFromActiveList 1;");
+	}else{
+		menu -label "No network loaded";
+		rowLayout -edit -enable 0 $m;
+	}
+
+	string $l = `columnLayout -parent $m`;
+	frameLayout -label "Left Inputs" -w 190 -h 20;
+	ss2_eyes_populateInputs "lEyeCtrlUpDnIn" "lEyeCtrlUpDnInMult" "L eye control up/down" $l $network;
+	ss2_eyes_populateInputs "lEyeCtrlLeftRightIn" "lEyeCtrlLeftRightInMult" "L eye control left/right" $l $network;
+	ss2_eyes_populateInputs "lEyeAimUpDnIn" "lEyeAimUpDnInMult" "L eye aim up/down" $l $network;
+	ss2_eyes_populateInputs "lEyeAimLeftRightIn" "lEyeAimLeftRightInMult" "L eye aim left/right" $l $network;
+	ss2_eyes_populateInputs "lUprLidUpDnIn" "lUprLidUpDnInMult" "L upper eyelid control" $l $network;
+	ss2_eyes_populateInputs "lLwrLidUpDnIn" "lLwrLidUpDnInMult" "L lower eyelid control" $l $network;
+	ss2_eyes_populateInputs "lCtrlWeight" "" "L control weighting" $l $network;
+	ss2_eyes_populateInputs "lAimWeight" "" "L aim weighting" $l $network;
+
+	string $lo = `columnLayout -parent $m`;
+	frameLayout -label "Left Outputs" -w 190 -h 20;
+	ss2_eyes_populateOutputs "lEyeUpDnOut" "L eye up/down" $lo $network;
+	ss2_eyes_populateOutputs "lEyeLeftRightOut" "L eye left/right" $lo $network;
+	ss2_eyes_populateOutputs "lUprLidUpDnOut" "L upper lid up/down" $lo $network;
+	ss2_eyes_populateOutputs "lUprLidLeftRightOut" "L upper lid left/right" $lo $network;
+	ss2_eyes_populateOutputs "lLwrLidUpDnOut" "L lower lid up/down" $lo $network;
+	ss2_eyes_populateOutputs "lLwrLidLeftRightOut" "L lower lid left/right" $lo $network;
+
+	frameLayout -labelVisible 0 -w 190 -h 20 -parent $lo;
+	frameLayout -label "Left Variables" -w 190 -h 20 -parent $lo;
+	frameLayout -labelVisible 0 -w 190 -h 225 -parent $lo;
+	string $lv = `columnLayout`;
+	ss2_eyes_populateVariables "lSpreadVar" "L spread between lids" $lv $network;
+	ss2_eyes_populateVariables "lCorneaPushVar" "L cornea push radius" $lv $network;
+	ss2_eyes_populateVariables "lCorneaPushWeightVar" "L cornea push weight" $lv $network;
+	ss2_eyes_populateVariables "lUprLidUpLimVar" "L upper lid limit" $lv $network;
+	ss2_eyes_populateVariables "lLwrLidDnLimVar" "L lower lid limit" $lv $network;
+	ss2_eyes_populateVariables "lUprUpDnFoloMultVar" "L upr lid up/down % follow" $lv $network;
+	ss2_eyes_populateVariables "lUprLeftRightFoloMultVar" "L upr lid left/right % follow" $lv $network;
+	ss2_eyes_populateVariables "lLwrUpDnFoloMultVar" "L lwr lid up/down % follow" $lv $network;
+	ss2_eyes_populateVariables "lLwrLeftRightFoloMultVar" "L lwr lid left/right % follow" $lv $network;
+	ss2_eyes_populateVariables "lBlinkLineVar" "L blink line" $lv $network;
+
+	string $r = `columnLayout -parent $m`;
+	frameLayout -label "Right Inputs" -w 190 -h 20;
+	ss2_eyes_populateInputs "rEyeCtrlUpDnIn" "rEyeCtrlUpDnInMult" "R eye control up/down" $r $network;
+	ss2_eyes_populateInputs "rEyeCtrlLeftRightIn" "rEyeCtrlLeftRightInMult" "R eye control left/right" $r $network;
+	ss2_eyes_populateInputs "rEyeAimUpDnIn" "rEyeAimUpDnInMult" "R eye aim up/down" $r $network;
+	ss2_eyes_populateInputs "rEyeAimLeftRightIn" "rEyeAimLeftRightInMult" "R eye aim left/right" $r $network;
+	ss2_eyes_populateInputs "rUprLidUpDnIn" "rUprLidUpDnInMult" "R upper eyelid control" $r $network;
+	ss2_eyes_populateInputs "rLwrLidUpDnIn" "rLwrLidUpDnInMult" "R lower eyelid control" $r $network;
+	ss2_eyes_populateInputs "rCtrlWeight" "" "R control weighting" $r $network;
+	ss2_eyes_populateInputs "rAimWeight" "" "R aim weighting" $r $network;
+
+
+	string $ro = `columnLayout -parent $m`;
+	frameLayout -label "Right Outputs" -w 190 -h 20;
+	ss2_eyes_populateOutputs "rEyeUpDnOut" "R eye up/down" $ro $network;
+	ss2_eyes_populateOutputs "rEyeLeftRightOut" "R eye left/right" $ro $network;
+	ss2_eyes_populateOutputs "rUprLidUpDnOut" "R upper lid up/down" $ro $network;
+	ss2_eyes_populateOutputs "rUprLidLeftRightOut" "R upper lid left/right" $ro $network;
+	ss2_eyes_populateOutputs "rLwrLidUpDnOut" "R lower lid up/down" $ro $network;
+	ss2_eyes_populateOutputs "rLwrLidLeftRightOut" "R lower lid left/right" $ro $network;
+
+	frameLayout -labelVisible 0 -w 190 -h 20 -parent $ro;
+	frameLayout -label "Right Variables" -w 190 -h 20 -parent $ro;
+	frameLayout -labelVisible 0 -w 190 -h 225 -parent $ro;
+	string $rv = `columnLayout`;
+	ss2_eyes_populateVariables "rSpreadVar" "R spread between lids" $rv $network;
+	ss2_eyes_populateVariables "rCorneaPushVar" "R cornea push radius" $rv $network;
+	ss2_eyes_populateVariables "rCorneaPushWeightVar" "R cornea push weight" $rv $network;
+	ss2_eyes_populateVariables "rUprLidUpLimVar" "R upper lid limit" $rv $network;
+	ss2_eyes_populateVariables "rLwrLidDnLimVar" "R lower lid limit" $rv $network;
+	ss2_eyes_populateVariables "rUprUpDnFoloMultVar" "R upr lid up/down % follow" $rv $network;
+	ss2_eyes_populateVariables "rUprLeftRightFoloMultVar" "R upr lid left/right % follow" $rv $network;
+	ss2_eyes_populateVariables "rLwrUpDnFoloMultVar" "R lwr lid up/down % follow" $rv $network;
+	ss2_eyes_populateVariables "rLwrLeftRightFoloMultVar" "R lwr lid left/right % follow" $rv $network;
+	ss2_eyes_populateVariables "rBlinkLineVar" "R blink line" $rv $network;
+
+	showWindow ss2_eyesWin;
+
+}

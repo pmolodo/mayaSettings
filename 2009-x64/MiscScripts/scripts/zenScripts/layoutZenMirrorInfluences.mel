@@ -1,0 +1,64 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc layoutZenMirrorInfluences()
+{
+	global 	string 	$zenToolsWindow;
+	global 	int	$zenMinimumWindowWidth;
+	
+	global	int	$zenOptions_mirrorInfluencesAxis,
+			$zenOptions_mirrorInfluencesPosNeg;
+	global	float	$zenOptions_tol;
+	
+		window -e -title "ZenTools : Mirror Skin Influences" $zenToolsWindow;
+
+	string	$mainColumn=`zenClearToolColumn`;
+
+		text -al left -p $mainColumn -label "Mirror Axis:";
+
+		radioButtonGrp 
+			-numberOfRadioButtons 3 
+			-l1 "x" 
+			-l2 "y" 
+			-l3 "z"
+			-select $zenOptions_mirrorInfluencesAxis
+			-cc "$zenOptions_mirrorInfluencesAxis=int(`radioButtonGrp -q -sl zenOptions_mirrorInfluencesAxis`)"
+			-columnWidth3 ($zenMinimumWindowWidth/3) ($zenMinimumWindowWidth/3) ($zenMinimumWindowWidth/3)
+			zenOptions_mirrorInfluencesAxis;
+
+		separator -p $mainColumn -w $zenMinimumWindowWidth;
+
+		text -al left -l "Tolerance:";
+
+		floatField 
+			-v $zenOptions_tol 
+			-cc "$zenOptions_tol=`floatField -q -v zenOptions_tol`"
+			zenOptions_tol;
+			
+		checkBox
+			-v $zenOptions_mirrorInfluencesPosNeg
+			-cc "$zenOptions_mirrorInfluencesPosNeg=`checkBox -q -v zenOptions_mirrorInfluencesPosNeg`"
+			-al left
+			-label "Positive To Negative"
+			zenOptions_mirrorInfluencesPosNeg;
+
+		separator -p $mainColumn;
+
+	string 	$mirror=`button -p $mainColumn -w 138 -label "Mirror Influences"`;
+		button 	
+			-e 
+			-w $zenMinimumWindowWidth
+			-command "doZenCommand doZenMirrorInfluences" 
+			$mirror;
+}

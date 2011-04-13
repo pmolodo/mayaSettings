@@ -1,0 +1,72 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc string[] zenAttachSpans(int $degree,int $spans, int $shaveHairs)
+{
+		waitCursor -state on;
+	
+	//delineate recall in notes attribute
+	string	$notes=
+		(
+			"source zenTools;\n\n"+
+			"select -r "+`zenSelectionString`+";\n"+
+			"zenAttachSpans "+
+			(string($degree))+" "+
+			(string($spans))+" "+
+			(string($shaveHairs))+";\n\n"
+		);
+		
+	string	$curveSpans;
+	string	$curveSpansShapes[];
+	string	$surfaceNodes[];
+	string 	$surfaceNodes[];
+	string	$curveNode[];
+	string	$shaveNode;
+	string	$surfaceShape;
+	
+		$curveSpans=`zenCurvesBetweenEdges $spans ($degree)`;
+	string	$returnVal[]={$curveSpans};
+		
+		if($shaveHairs==1)
+		{
+			if(`pluginInfo -q -l shaveNode`==0)
+				catchQuiet(`loadPlugin shaveNode`);
+
+			SelectMaskToolMarkingMenu;
+			select $curveSpans;
+			undoInfo -swf 0;
+			shave_createHair;
+			undoInfo -swf 1;
+			hide $curveSpans;
+			$curveSpansShapes=`listRelatives -s -ni $curveSpans`;
+			$shaveNode=zenReturnFirstStringItem(`listConnections -type shaveHair $curveSpansShapes[0]`);
+
+			if(!`objExists ($shaveNode+".notes")`)
+				addAttr -dt "string" -ln "notes" $shaveNode;
+
+			setAttr -type "string" ($shaveNode+".notes") $notes;
+			
+			$returnVal=`stringArrayCatenate $returnVal {$shaveNode}`;
+		}
+
+
+		if(!`objExists ($curveSpans+".notes")`)
+			addAttr -dt "string" -ln "notes" $curveSpans;
+
+		setAttr -type "string" ($curveSpans+".notes") $notes;
+		
+		waitCursor -state off;
+		
+	return	$returnVal;
+}

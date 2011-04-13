@@ -1,0 +1,71 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+/*
+
+zenReflectUV mirrors uv's on a polygon model without changing the vertex order, and transfers
+uv's between meshes which have different vertex ordering or different face count.
+
+To mirror, select the source faces or source uv's.
+To transfer, select the source mesh, then the target mesh.
+The source mesh can be a segment of the target mesh, but behavior will be unintuitive if the opposite is true.
+
+Requires: the plugin pointOnMeshInfo.mll, which comes with bonus tools.
+
+*/
+
+global proc layoutZenReflectUV()
+{
+	global 	string 	$zenToolsWindow;
+	global 	int	$zenMinimumWindowWidth;
+	
+	global 	int	$zenOptions_reflectUVReferenceAxis;
+	global 	float	$zenOptions_reflectUVuAxisOffset;
+	
+		window -e -title "ZenTools : MirrorUV" $zenToolsWindow;
+					
+	string	$mainColumn=`zenClearToolColumn`;
+
+		text -al left -p $mainColumn -label "Reference Axis:";
+
+		radioButtonGrp 
+			-numberOfRadioButtons 3 
+			-l1 "x" 
+			-l2 "y" 
+			-l3 "z"
+			-select $zenOptions_reflectUVReferenceAxis
+			-cc "$zenOptions_reflectUVReferenceAxis=int(`radioButtonGrp -q -sl zenOptions_reflectUVReferenceAxis`)"
+			-columnWidth3 52 52 52
+			zenOptions_reflectUVReferenceAxis;
+
+		separator -p $mainColumn -w $zenMinimumWindowWidth;
+
+		text -al left -l "U Axis Offset:";
+
+		floatField 
+			-editable true 
+			-v $zenOptions_reflectUVuAxisOffset 
+			-cc "$zenOptions_reflectUVuAxisOffset=`floatField -q -v zenOptions_reflectUVuAxisOffset`"
+			zenOptions_reflectUVuAxisOffset;
+
+		separator -p $mainColumn;
+
+	string 	$mirror=`button -p $mainColumn -w 138 -label "Mirror UV Coordinates"`;
+		button 	
+			-e 
+			-command "doZenCommand doZenReflectUV" 
+			$mirror;		
+}
+
+

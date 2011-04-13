@@ -1,0 +1,75 @@
+//--------------------------------------------------------------------------
+// filterCurves.mel script - (c) Laurent Pancaccini.
+//
+// AUTHORS:
+//      Laurent Pancaccini.
+//
+// REQUIRES:
+//
+// DESCRIPTION:
+//      Filter the curves in the Graph Editor according to the selected channel in the channel box.
+//      Rerun the Mel, and maya goes back to it's normal behavior.
+//
+// VERSIONS:
+//      1.1.0
+//--------------------------------------------------------------------------
+
+global int $LP_filterCurvesjobNb = -1 ;
+
+global proc displayCurve()
+{
+       string $sel[] ;
+       string $channels[] ;
+
+       $sel = `ls -sl` ;
+       $channels = `channelBox -q -sma mainChannelBox` ;
+
+       if (`size $channels` != 0)
+       {
+               selectionConnection -e -clear graphEditor1FromOutliner ;
+               for ($i in $sel)
+               {
+                       for ($j in $channels)
+                       {
+                               if (`attributeExists $j $i ` == 1 )
+                               {
+                                       selectionConnection -e -select ($i + "." + $j) graphEditor1FromOutliner ;
+                               }
+                       }
+               }
+       }
+       else
+       {
+               for ($i in $sel)
+               {
+                       selectionConnection -e -select $i graphEditor1FromOutliner ;
+               }
+       }
+
+}
+
+global proc lpFilterCurves ()
+{
+       global int $LP_filterCurvesjobNb ;
+       print $LP_filterCurvesjobNb ;
+
+       string $sel[] = `ls -sl` ;
+
+       int $ex = `scriptJob -ex $LP_filterCurvesjobNb` ;
+
+       if ($ex == 1)
+       {
+               scriptJob -k $LP_filterCurvesjobNb ;
+               scriptJob -lj ;
+               for ($i in $sel)
+               {
+                       selectionConnection -e -select $i graphEditor1FromOutliner ;
+               }
+       }
+       else
+       {
+               $LP_filterCurvesjobNb = `scriptJob -e "ToolChanged" "displayCurve"`;
+               displayCurve ;
+			   scriptJob -lj ;
+       }
+}

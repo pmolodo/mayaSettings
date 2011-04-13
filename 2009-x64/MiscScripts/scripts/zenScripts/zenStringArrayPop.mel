@@ -1,0 +1,34 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc string[] zenStringArrayPop( string $array[], int $indices[] )
+{
+		$indices=sort($indices);
+		
+		print $indices;
+	
+	string	$newArray[];
+	int	$n=0;
+	int	$size=size($indices);
+	
+		for( $i=0; $i < size($array); $i++ )
+		{
+			if( $n < $size && $i==$indices[$n] )
+				$n++;
+			else
+				$newArray[size($newArray)]=$array[$i];
+		}
+		
+	return 	$newArray;
+}

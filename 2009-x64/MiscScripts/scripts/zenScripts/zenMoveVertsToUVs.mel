@@ -1,0 +1,85 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+source zenCutEdges;
+
+global proc int zenMoveVertsToUVs(string $faces[])
+{
+		$faces=`polyListComponentConversion -ff -tf $faces`;
+		
+	string	$sel[]=`ls -sl`;
+	string	$verts[];
+	
+	string	$vertEdges[];
+	string	$faceEdges[];
+	string	$intersector;
+	string	$cutEdges[];
+	string	$shellFaces[];
+	
+		$shellFaces=$faces;
+
+		select `polyListComponentConversion -tuv $shellFaces`;
+
+		polySelectBorderShell 1;
+
+		$verts=`polyListComponentConversion -tv`;
+		$vertEdges=`polyListComponentConversion -in -te $verts`;
+		$vertEdges=`ls -fl $vertEdges`;
+
+		$faceEdges=`polyListComponentConversion -te $shellFaces`;
+		$faceEdges=`ls -fl $faceEdges`;
+
+		$intersector=`stringArrayIntersector`;
+
+		stringArrayIntersector -e -r $intersector;
+		stringArrayIntersector -e -i $vertEdges $intersector;
+		stringArrayIntersector -e -i $faceEdges $intersector;
+
+		$cutEdges=`stringArrayIntersector -q $intersector`;
+
+		deleteUI $intersector;
+
+		polySplitVertex `polyListComponentConversion -tv $cutEdges`;
+
+		$verts=`polyListComponentConversion -tv $shellFaces`;
+		$verts=`ls -fl $verts`;
+
+		delete -ch `ls -o $shellFaces`;
+		
+	string	$uv;
+	float	$pos[];
+	
+		for($v in $verts)
+		{
+			$uv=zenReturnFirstStringItem(`polyListComponentConversion -fv -tuv $v`);
+			
+			if(size($uv))
+				$pos=`polyEditUV -q $uv`;
+			else 
+				$pos={0,0};
+				
+			xform -os -t $pos[0] $pos[1] 0 $v;
+			
+			delete -ch `ls -o $shellFaces`;
+		}
+		
+		if(`getApplicationVersionAsFloat`>=8)
+			polyMergeVertex  -d 0 -am 1 -ch 1 `polyListComponentConversion -tv $shellFaces`;
+		else
+			polyMergeVertex  -d 0 -ch 1 `polyListComponentConversion -tv $shellFaces`;
+			
+		select $sel;
+		
+	return	1;
+}

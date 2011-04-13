@@ -1,0 +1,75 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	extras_to_xrayToggle.mel					///
+///  AUTHOR: 	Jonathan Perry (obskyra@hotmail.com)				///
+///										///
+///  UDTATE LOG:								///
+///	28th og july: 1.00 by jakob welner					///
+///	- Included in OMT							///
+///										///
+///  DEPENDENCIES:								///
+///   	None									///
+///										///
+///  PURPOSE & USE:								///
+///	Toggles xRay on selected objects or on the camera if none it selected	///
+///										///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Alias Maya toolbox			///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+global proc extras_to_xrayToggle()
+{
+	string $selected[] = `ls -sl -o`;
+	string $hilighted[] = `ls -hl -o`;
+	
+	if (size(`filterExpand -sm 10 -sm 12 -sm 68 $selected`) > 0)
+	{
+		for ($object in $selected)
+		{
+			int $value[] = `displaySurface -q -xRay $object`;
+			if ($value[0] == 1)
+				displaySurface -xRay 0 $object;
+			else
+				displaySurface -xRay 1 $object;
+		}
+	}
+	
+	else
+	{
+		for ($object in $hilighted)
+		{
+			int $value[] = `displaySurface -q -xRay $object`;
+			if ($value[0] == 1)
+				displaySurface -xRay 0 $object;
+			else
+				displaySurface -xRay 1 $object;
+		}
+	}
+	
+	if (size($selected) <= 0 && size($hilighted) <= 0)
+	{
+		$panel			= `getPanel -wf`;
+    	modelEditor -e -xray (!`modelEditor -q -xray $panel`) $panel;
+	}
+}

@@ -1,0 +1,206 @@
+global proc shelf_RenderMan () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Render Current Frame" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "rman_render.xpm" 
+        -image1 "rman_render.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "if(!`pluginInfo -q -l RenderMan_for_Maya`) {loadPlugin \"RenderMan_for_Maya\";} setCurrentRenderer renderMan; rmanChangeRendererUpdate; RenderIntoNewWindow;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Display RenderMan Globals" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "rman_globals.xpm" 
+        -image1 "rman_globals.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "if(!`pluginInfo -q -l RenderMan_for_Maya`) {loadPlugin \"RenderMan_for_Maya\";} setCurrentRenderer renderMan; rmanChangeRendererUpdate; unifiedRenderGlobalsWindow;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Batch Render" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "rman_batch.xpm" 
+        -image1 "rman_batch.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "if(!`pluginInfo -q -l RenderMan_for_Maya`) {loadPlugin \"RenderMan_for_Maya\";} setCurrentRenderer renderMan; rmanChangeRendererUpdate; BatchRender;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Cancel Batch Render" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "rman_batch_cancel.xpm" 
+        -image1 "rman_batch_cancel.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CancelBatchRender;" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Shared Geometric Attributes" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "rman_sga.xpm" 
+        -image1 "rman_sga.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "if(!`pluginInfo -q -l RenderMan_for_Maya`) {loadPlugin \"RenderMan_for_Maya\";} renderManNodeEditor(\"Prim\");" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Create Environment Light" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "rman_env.xpm" 
+        -image1 "rman_env.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "if(!`pluginInfo -q -l RenderMan_for_Maya`) {loadPlugin \"RenderMan_for_Maya\";} rmanCreateEnvLight" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Start Slim" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "rman_slim.xpm" 
+        -image1 "rman_slim.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "if(!`pluginInfo -q -l RenderMan_for_Maya`) {loadPlugin \"RenderMan_for_Maya\";} rmanStartSlim" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Start Alfred" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "rman_alfred.xpm" 
+        -image1 "rman_alfred.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "if(!`pluginInfo -q -l RenderMan_for_Maya`) {loadPlugin \"RenderMan_for_Maya\";} rmanStartAlfred \"\"" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -align "center" 
+        -label "Start It" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "rman_it.xpm" 
+        -image1 "rman_it.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "if(!`pluginInfo -q -l RenderMan_for_Maya`) {loadPlugin \"RenderMan_for_Maya\";} rmanStartIt" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+        -commandRepeatable 1
+    ;
+
+} 

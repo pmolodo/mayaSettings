@@ -1,0 +1,1171 @@
+///////////////////////////////////////////////////////////////////////////////////
+///										///
+///				Open Maya Tool header				///
+///										///
+///  FILENAME:	OMT_to_selectLoop.mel						///
+///  AUTHOR: 	Jakob Welner (jakob@welner.dk)					///
+///										///
+///  UDTATE LOG:								///
+///	[date of update]: 1.01 by Jakob Welner					///
+///	- Made it independent							///
+///										///
+///  DEPENDENCIES:								///
+///   	None									///
+///										///
+///  PURPOSE & USE:								///
+///										///
+///										///
+/// /////////////////////////////////////////////////////////////////////////// ///
+///										///
+///	Open Maya Toolbox: Opensource Alias Maya toolbox			///
+///	Copyright (C) 2005 OMToolbox community					///
+///										///
+///	This library is free software; you can redistribute it and/or modify it ///
+///	under the terms of the GNU Lesser General Public License as published 	///
+///	by the Free Software Foundation; either version 2.1 of the License, or 	///
+///	(at your option) any later version.					///
+///										///
+///	This library is distributed in the hope that it will be useful, but 	///
+///	WITHOUT ANY WARRANTY; without even the implied warranty of 		///
+///	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 		///
+///	GNU Lesser General Public License for more details.			///
+///										///
+///////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////
+///				SCRIPT START					///
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	string and array		 			///
+///	Output: 	returns 1 if string occurs in array, 0 if not	 	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc int OM_inArray( string $string , string $array[])
+{
+	int	$int;
+	int 	$return = 0;
+	
+	for ($int = 0 ; $int < size($array) ; $int++)
+	{
+	   if ( $string == $array[$int] ) {$return = 1;}
+	}
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 					 			///
+///	Output: 							 	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc int OM_adjacentFaces( string $edge)
+{
+	int	$int;
+	int 	$return = 0;
+	
+	string	$token[];
+	string	$dump[];
+	
+	$token = `polyInfo -ef $edge`;
+	tokenize ($token[0], $dump);
+
+	return (size($dump)-2);
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	2 arrays			 			///
+///	Output: 	adds the second array at the end of the first 		///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_addStringArray(string $origArray[] , string $addArray[])
+{
+	int	$int;
+
+	for ($int = 0 ; $int < size($addArray) ; $int++)
+	{
+	   $origArray[ size($origArray) ] = $addArray[$int];
+	}
+	return $origArray;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	a component name	 				///
+///	Output: 	returns 1 if the indput name has a number and 0 if	/// 
+///			it hasn't						///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc int OM_haveIndex(string $indput)
+{
+	string	$dump[];
+	
+	int $size = `tokenize $indput "[]" $dump`;
+	
+	int $return = 0;
+	
+	if ($size == 2)
+	{
+	   $return = 1;
+	}
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	2 arrays		 				///
+///	Output: 	returns an array with the first array turned backwards	///
+///			and combined with the second			 	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_combineStringArray(string $backwardArray[] , string $forwardArray[])
+{
+	int	$int;
+	string 	$return[];
+	
+	for ($int = (size($backwardArray)-1) ; $int >= 0 ; $int--)
+	{
+	   $return[(size($return))] = $backwardArray[$int];
+	}
+	for ($int = 1 ; $int <= (size($forwardArray)-1) ; $int++)
+	{
+	   $return[(size($return))] = $forwardArray[$int];	
+	}
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Indput selection	 				///
+///	Output: 	String: Object name			 		///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string OM_objectName(string $objSelection)
+{
+	string	$name[];
+	
+	tokenize $objSelection "." $name;
+	
+	return $name[0];
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Arrays							///
+///	Output: 	String array with every component occurs more then once	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_stringArrayGetDuplicates(string $array[])
+{
+	
+	string $return[];
+	
+	int	$int1;
+	int	$int2;
+	
+	for ($int1 = 0 ; $int1 < size($array) ; $int1++)
+	{
+	    for ($int2 = 1 ; $int2 < size($array) ; $int2++)
+	    {
+	    	if ($int1 == $int2) continue;
+	    	else if ($array[$int1] == $array[$int2]) $return[size($return)] = $array[$int1];  	
+	    }		
+	}
+	
+    	return $return;
+    
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge			 				///
+///	Output: 	returns an array with the two vertices adjacent to 	///
+///			input edge						///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_edge2vtx(string $edge)
+{
+	string	$dump[];
+	string 	$token[];
+	string 	$object = `OM_objectName($edge)`;
+	string 	$return[];
+	
+	$token = `polyInfo -ev $edge`;
+	tokenize ($token[0], $dump);
+	
+	$return[0] = $object + ".vtx[" + $dump[2] + "]";
+	$return[1] = $object + ".vtx[" + $dump[3] + "]";
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	a vertex 						///
+///	Output: 	returns 1 if the vertex's a quad and 0 if it isn't	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc int OM_isVtxQuad(string $vtx )
+{
+
+	string 	$token[];
+	string	$dump[];
+
+	int $result = 0;
+	
+	if( OM_haveIndex($vtx) == 1 )
+	{
+	   $token = `polyInfo -ve $vtx`;
+	   tokenize ($token[0], $dump);	
+
+	   if (size($dump) == 6 )
+	   { 
+		$result = 1;
+	   }
+	}
+	
+	return $result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge plus a quad vertex adjacent to the edge.		///
+///	Output: 	string array, where [0] is the edge on the opposite side///
+///			of the vertex and [1] is the new vertex adjacent to the ///
+///			new edge, where the vtx isn't similar to the input 	///
+///			vertex							///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_OppEdgeOnVtx(string $edge, string $quadVtx)
+{
+
+	string 	$token[];
+	string	$dump[];
+	string 	$return[];
+	string 	$object = `OM_objectName($edge)`;
+	int	$int;
+	
+	$token = `polyInfo -ve $quadVtx`;
+	tokenize ($token[0], $dump);
+	
+	for ($int = 2 ; $int <= 5 ; $int++)
+	{
+	   
+	   if( ($object + ".e[" + $dump[$int] + "]") == $edge)
+	   {
+		if ($int == 2 || $int == 3) 
+		{
+		   $return[0] = ($object + ".e[" + $dump[($int+2)] + "]"); 
+		}
+		else $return[0] = ($object + ".e[" + $dump[($int-2)] + "]");
+	   }	
+	}
+
+	$token = `polyInfo -ev $return[0]`;
+	tokenize ($token[0], $dump);
+	
+	if (($object + ".vtx[" + $dump[2] + "]") == $quadVtx)
+	{
+		$return[1] = $object + ".vtx[" + $dump[3] + "]";
+	}
+	else	
+	{
+		$return[1] = $object + ".vtx[" + $dump[2] + "]";
+	}
+	
+	return $return;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	a vertex 						///
+///	Output: 	returns 1 if the vertex's a tris and 0 if it isn't	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc int OM_isVtxTris(string $vtx )
+{
+
+	string 	$token[];
+	string	$dump[];
+
+	int $result = 0;
+	
+	if( OM_haveIndex($vtx) == 1 )
+	{
+	   $token = `polyInfo -ve $vtx`;
+	   tokenize ($token[0], $dump);	
+
+	   if (size($dump) == 5 )
+	   { 
+		$result = 1;
+	   }
+	}
+	
+	return $result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge plus a tris vertex adjacent to the edge.		///
+///	Output: 	string array, where [0] is the edge on the opposite side///
+///			of the face and [1] is the new vertex adjacent to the 	///
+///			new edge, 						///
+///			where the vertex isn't similar to the input vertex	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_OppEdgeOnBorder(string $edge, string $trisVtx)
+{
+
+	string 	$token[];
+	string	$dump[];
+	string	$e2f[];
+	string 	$return[];
+	string 	$object = `OM_objectName($edge)`;
+	
+	$token = `polyInfo -ve $trisVtx`;
+	tokenize ($token[0], $dump);
+	
+	for ($int = 2 ; $int <= 4 ; $int++)
+	{
+	   $token = `polyInfo -ef ($object + ".e[" + $dump[$int] + "]")`;
+	   tokenize ($token[0], $e2f);
+	   
+	   if ( size($e2f) == 3 && ($object + ".e[" + $dump[$int] + "]") != $edge)
+	   {
+	   	$return[0] = ($object + ".e[" + $dump[$int] + "]");
+	   }
+	} 
+		
+	$token = `polyInfo -ev $return[0]`;
+	tokenize ($token[0], $dump);
+	
+	if (($object + ".vtx[" + $dump[2] + "]") == $trisVtx)
+	{
+		$return[1] = $object + ".vtx[" + $dump[3] + "]";
+	}
+	else	
+	{
+		$return[1] = $object + ".vtx[" + $dump[2] + "]";
+	}
+	
+	return $return;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge			 				///
+///	Output: 	returns a string Array with the two faces adjacent 	///
+///			to the input edge					///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_edge2face(string $edge)
+{
+	string	$dump[];
+	string 	$token[];
+	string 	$object = `OM_objectName($edge)`;
+	string $return[];
+	
+	$token = `polyInfo -ef $edge`;
+	tokenize ($token[0], $dump);
+	
+	$return[0] = $object + ".f[" + $dump[2] + "]";
+	$return[1] = $object + ".f[" + $dump[3] + "]";
+	
+	return $return;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	a face 							///
+///	Output: 	returns 1 if the face's a quad and 0 if it isn't	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc int OM_isFaceQuad(string $face )
+{
+
+	string 	$token[];
+	string	$dump[];
+
+	int $result = 0;
+	
+	if( OM_haveIndex($face) == 1 )
+	{
+	   $token = `polyInfo -fe $face`;
+	   tokenize ($token[0], $dump);	
+
+	   if (size($dump) == 6 )
+	   { 
+		$result = 1;
+	   }
+	}
+	
+	return $result;
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge plus a quad face adjacent to the edge.		///
+///	Output: 	string array, where [0] is the edge on the opposite side///
+///			of the face and [1] is the new face adjacent to the new	///
+///			edge, where the face isn't similar to the input face	///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_OppEdgeOnFace(string $edge, string $quadFace)
+{
+
+	string 	$token[];
+	string	$dump[];
+	string 	$return[];
+	string 	$object = `OM_objectName($edge)`;
+	
+	$token = `polyInfo -fe $quadFace`;
+	tokenize ($token[0], $dump);
+	
+	for ($int = 2 ; $int <= 5 ; $int++)
+	{
+	   if( (OM_objectName($edge) + ".e[" + $dump[$int] + "]") == $edge)
+	   {
+		if ($int == 2 || $int == 3) 
+		{
+		   $return[0] = ($object + ".e[" + $dump[($int+2)] + "]"); 
+		}
+		else $return[0] = ($object + ".e[" + $dump[($int-2)] + "]");
+	   }	
+	}
+
+	$token = `polyInfo -ef $return[0]`;
+	tokenize ($token[0], $dump);
+	
+	if (($object + ".f[" + $dump[2] + "]") == $quadFace)
+	{
+		$return[1] = $object + ".f[" + $dump[3] + "]";
+	}
+	else	
+	{
+		$return[1] = $object + ".f[" + $dump[2] + "]";
+	}
+	
+	return $return;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge and edge array					///
+///	Output: 	String array with loopedges.				///
+///			If only one edge appear on the loop it returns a whole	///
+///			loop.							///
+///			If a element in $selection is detected on the loop it 	///
+///			only selects a partial loop between input and the 	///
+///			$selection element					///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_listLoop(string $edge1, string $selection[])
+{
+
+	global string $partials[];
+	
+	string	$dump[];
+	string 	$token[];
+	string	$split1[];
+	string	$split2[];
+	string	$vtx[];
+	string	$return[];
+	int	$stop;
+	int	$partialBool = 0;
+	int 	$stoppedSplit;
+	int	$int;
+	int	$intVtx0;
+	int	$intVtx1;
+	
+
+	$split1[0] = $edge1;
+	$split2[0] = $edge1; 
+	
+	$vtx = OM_edge2vtx($edge1);
+	$int = OM_isVtxQuad($vtx[0]);
+	
+	if ($int == 0)
+	{
+	   if (OM_isVtxQuad($vtx[1]))
+	   {
+		   $edgeNvtx[1] = $vtx[1];
+		   do
+		   {
+		   	$stop = 0;
+			$edgeNvtx = OM_OppEdgeOnVtx($split2[(size($split2) -1)], $edgeNvtx[1]);
+			$split2[size($split2)] = $edgeNvtx[0];
+			
+		   	if ( $edgeNvtx[0] == $edge1) 
+		   	{
+		   	   $stop = 1;
+		   	}
+		   	else if (OM_inArray($edgeNvtx[0], $selection) == 1)
+		   	{
+		   	   $partialBool = 1;
+		   	   $partials[size($partials)] = $edgeNvtx[0];
+		   	   $stop = 1;
+		   	}
+		   } 
+		   while (OM_isVtxQuad($edgeNvtx[1]) == 1 && $stop == 0);
+	   }
+ 	   else if (OM_adjacentFaces($edge1) == 1)
+	   {	
+	      $intVtx0 = OM_isVtxTris($vtx[0]);
+	      $intVtx1 = OM_isVtxTris($vtx[1]);
+	
+	      if ( $intVtx0 == 1 || $intVtx1 == 1 )
+	      {
+		switch ( $intVtx0 ) 
+		{
+	   	   case 1:
+			$edgeNvtx[1] = $vtx[0];		
+			do
+			{
+			   $stop = 0;
+			   $edgeNvtx = (OM_OppEdgeOnBorder( $split1[ (size($split1)-1) ] , $edgeNvtx[1] ));
+			   $split1[ size($split1) ] = $edgeNvtx[0];
+			
+			   if ($edgeNvtx[0] == $edge1) 
+			   {
+			   	$stop = 1;
+			   }
+			   else if (OM_inArray($edgeNvtx[0], $selection) == 1 )
+			   {
+			   	$partialBool = 1;
+			   	$partials[size($partials)] = $edgeNvtx[0];
+			   	$stop = 1;
+			   }			   
+			} 
+			while (OM_isVtxTris($edgeNvtx[1]) == 1 && $stop == 0);
+		
+			if ($stop == 1) break;
+			
+	   	   case 0:
+			if (OM_isVtxTris($vtx[1]))
+			{
+			   $edgeNvtx[1] = $vtx[1];
+			   do
+			   {
+			   	$stop = 0;
+				$edgeNvtx = OM_OppEdgeOnBorder($split2[(size($split2) -1)], $edgeNvtx[1]);
+				$split2[size($split2)] = $edgeNvtx[0];
+			
+			   	if ($edgeNvtx[0] == $edge1) 
+			   	{
+			   	   $stop = 1;
+			   	}
+			   	else if (OM_inArray($edgeNvtx[0], $selection) == 1 )
+			   	{
+			   	   $partialBool = 1;
+			   	   $partials[size($partials)] = $edgeNvtx[0];
+			   	   $stop = 1;
+			   	}
+			   } 
+			   while (OM_isVtxTris($edgeNvtx[1]) == 1 && $stop == 0);
+			}
+
+		
+		}
+	     }
+	   }
+	   else warning "This is not a loopEdge";
+	}
+	
+	
+	else
+	{
+			
+	switch ( $int ) 
+	{
+	   case 1:
+	   
+		$edgeNvtx[1] = $vtx[0];	
+		$stoppedSplit = 1;	
+		do
+		{
+		   $stop = 0;
+		   $edgeNvtx = (OM_OppEdgeOnVtx( $split1[ (size($split1)-1) ] , $edgeNvtx[1] ));
+		   $split1[ size($split1) ] = $edgeNvtx[0];
+		   
+		   if ( $split1[ (size($split1)-1) ] == $edge1) 
+		   {
+		   	$stop = 1;
+		   }
+		   else if (OM_inArray($edgeNvtx[0], $selection) == 1)
+		   {
+		   	$stoppedSplit = 0;
+		   	$partialBool = 1;
+		   	$partials[size($partials)] = $edgeNvtx[0];
+		   	$stop = 1;
+		   }
+		} 
+		while (OM_isVtxQuad($edgeNvtx[1]) == 1 && $stop == 0);
+		if ($edgeNvtx[0] == $edge1) break;
+		
+		
+		
+				
+	   case 0:
+		if (OM_isVtxQuad($vtx[1]))
+		{
+		   $edgeNvtx[1] = $vtx[1];
+		   $stoppedSplit = ($stoppedSplit + 2);
+		   do
+		   {
+		   	$stop = 0;
+			$edgeNvtx = OM_OppEdgeOnVtx($split2[(size($split2) -1)], $edgeNvtx[1]);
+			$split2[size($split2)] = $edgeNvtx[0];
+		   				
+			if ($edgeNvtx[0] == $edge1)
+			{
+			   $stop = 1;
+			}
+		   	else if (OM_inArray( $edgeNvtx[0], $selection) == 1)
+		   	{
+		   	   $stoppedSplit = ($stoppedSplit - 2);
+		   	   $partialBool = 1;
+		   	   $partials[ size($partials) ] = $edgeNvtx[0];
+		   	   $stop = 1;
+		   	}
+		   } 
+		   while (OM_isVtxQuad($edgeNvtx[1]) == 1 && $stop == 0);
+		}
+
+		
+	}
+	}
+	
+	
+	if ($partialBool == 1)
+	{
+	   
+   	   if (size($split1) == 1) $return = $split2;
+	   else if (size($split2)== 1) $return = $split1;
+	   else if (size($split1) < size($split2) && $stoppedSplit != 1) $return = $split1;
+	   else if (size($split1) < size($split2) && $stoppedSplit == 1) $return = $split2;
+	   else if (size($split1) > size($split2) && $stoppedSplit != 2) $return = $split2;
+	   else if (size($split1) > size($split2) && $stoppedSplit == 2) $return = $split1;
+	   else if (size($split1) == size($split2) && $stoppedSplit != 1) $return = $split1;
+	   else if (size($split1) == size($split2) && $stoppedSplit != 2) $return = $split2;
+	   
+	}
+	else $return = OM_combineStringArray($split1 , $split2);
+
+	return $return;
+	
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///	Indput: 	Edge and edge array					///
+///	Output: 	String array with ringedges.				///
+///			If only one edge appear on the ring it returns a whole 	///
+///			ringloop.						///
+///			If a element in $selection is detected on the ring it 	///
+///			only selects a partial ring between input and the 	///
+///			$selection element					///
+///////////////////////////////////////////////////////////////////////////////////
+
+proc string[] OM_listRing(string $edge1, string $selection[])
+{
+
+	global string $partials[];
+	
+	string	$dump[];
+	string 	$token[];
+	string	$split1[];
+	string	$split2[];
+	string	$faces[];
+	string	$return[];
+	int	$stop;
+	int	$int;
+	int	$stoppedRing;
+	int	$partialBool = 0;
+	
+
+	$split1[0] = $edge1;
+	$split2[0] = $edge1; 
+
+	
+	$faces = OM_edge2face($edge1);
+	$int = OM_isFaceQuad($faces[0]);
+	   
+	switch ( $int ) 
+	{
+	   case 1:
+		$edgeNface[1] = $faces[0];
+		$stoppedRing = 1;
+		do
+		{
+		   $stop = 0;
+		   $edgeNface = (OM_OppEdgeOnFace( $split1[ (size($split1)-1) ] , $edgeNface[1] ));
+		   $split1[ size($split1) ] = $edgeNface[0];
+			
+		   if ($edgeNface[0] == $edge1) 
+		   {
+		   	$stop = 1;
+		   }
+		   else if (OM_inArray($edgeNface[0], $selection) == 1) 
+		   {	
+			$stoppedRing = 0;
+			$partialBool = 1;
+			$partials[size($partials)] = $edgeNface[0];   
+		   	$stop = 1;
+		   }
+		} 
+		while (OM_isFaceQuad($edgeNface[1]) == 1 && $stop == 0);
+		if ($edgeNface[0] == $edge1) break;
+			
+	   case 0:
+		if (OM_isFaceQuad($faces[1]))
+		{
+		   $edgeNface[1] = $faces[1];
+		   $stoppedRing = ($stoppedRing + 2);
+		   do
+		   {
+		   	$stop = 0;
+			$edgeNface = OM_OppEdgeOnFace($split2[(size($split2) -1)], $edgeNface[1]);
+			$split2[size($split2)] = $edgeNface[0];
+			
+		   	if ($edgeNface[0] == $edge1) 
+		   	{
+		   	   $stop = 1;
+		   	}
+		   	else if (OM_inArray($edgeNface[0] , $selection) == 1) 
+		   	{
+		   	   $stoppedRing = ($stoppedRing - 2);
+		   	   $partialBool = 1;
+		   	   $partials[size($partials)] = $edgeNface[0];
+		   	   $stop = 1;
+		   	}
+		   } 
+		   while (OM_isFaceQuad($edgeNface[1]) == 1 && $stop == 0);
+		}
+
+		
+	}
+	
+	if ($partialBool == 1)
+	{
+   	   if (size($split1) == 1) $return = $split2;
+	   else if (size($split2)== 1) $return = $split1;
+	   else if (size($split1) < size($split2) && $stoppedRing != 1) $return = $split1;
+	   else if (size($split1) < size($split2) && $stoppedRing == 1) $return = $split2;
+	   else if (size($split1) > size($split2) && $stoppedRing != 2) $return = $split2;
+	   else if (size($split1) > size($split2) && $stoppedRing == 2) $return = $split1;
+	   else if (size($split1) == size($split2) && $stoppedRing != 1) $return = $split1;
+	   else if (size($split1) == size($split2) && $stoppedRing != 2) $return = $split2;
+	   
+	}
+	else $return = OM_combineStringArray($split1 , $split2);
+	
+	return $return;
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///					TOOL					///
+///	Indput: 	Component Selection	 				///
+///	Function: 	LoopSelection on each component. Two or more edges 	///
+///			appear on the same loop, it makes a partial selection 	///
+///			in stead (provided that selection is edges)		///
+///////////////////////////////////////////////////////////////////////////////////
+
+global proc OMT_to_selectLoop()
+{
+	global string $partials[];
+	clear $partials;
+	
+	string $select[];
+	string $listLoop[];
+	
+	clear $partials;
+	
+	string 	$selection[];
+
+
+
+	//edges
+	if (size(`filterExpand -sm 32`) > 0)
+	{
+	   $selection = `filterExpand -sm 32`;
+
+	   undoInfo -swf 0;
+	   for ($sel in $selection)
+	   {
+	   	if (OM_inArray($sel, $partials) == 1) continue;
+	   	$listLoop = OM_listLoop($sel,$selection);
+	   	$select = (OM_addStringArray($select, $listLoop ));
+	   }
+	   undoInfo -swf 1;
+	   select -r $select;
+
+	}
+	
+	
+	//vertices
+	else if (size(`filterExpand -sm 31`) > 0)
+	{
+		
+	    string	$token[];
+	    string	$dump[];
+	    string	$edgeList[];
+	    int		$int;
+
+	    undoInfo -swf 0;
+		
+	    $selection = `filterExpand -sm 31`;
+	    
+	    string 	$object = `OM_objectName($selection[0])`;
+	    
+	    for ($sel in $selection)
+	    {
+	    	$token = `polyInfo -ve $sel`;
+	    	tokenize ($token[0], $dump);
+	    	
+	    	for ($int = 2; $int < size($dump) ; $int++)
+	    	{
+	    	    $edgeList[size($edgeList)] = $dump[$int];	    	    
+	    	}
+	    }
+	    
+	    $dump = OM_stringArrayGetDuplicates($edgeList);
+	    clear $selection;
+	    for ($d in $dump) $selection[size($selection)] = ($object + ".e[" + $d + "]");
+	    
+
+	    for ($sel in $selection)
+	    {
+	   	if (OM_inArray($sel, $partials) == 1) continue;
+	   	$listLoop = OM_listLoop($sel,$selection);
+	   	$select = (OM_addStringArray($select, $listLoop ));
+	    }
+	    
+	    select -r $select;
+	    ConvertSelectionToVertices;
+	    $select = `ls -sl`;
+	    
+	    undoInfo -swf 1;	    
+	    
+	    select -r $select;
+	    
+	}
+	
+	
+	
+	//faces
+	else if (size(`filterExpand -sm 34`) > 0)
+	{
+
+	    string	$token[];
+	    string	$dump[];
+	    string	$edgeList[];
+	    int		$int;
+
+	    undoInfo -swf 0;
+		
+	    $selection = `filterExpand -sm 34`;
+	    
+	    string 	$object = `OM_objectName($selection[0])`;
+	    
+	    for ($sel in $selection)
+	    {
+	    	$token = `polyInfo -fe $sel`;
+	    	tokenize ($token[0], $dump);
+	    	
+	    	for ($int = 2; $int < size($dump) ; $int++)
+	    	{
+	    	    $edgeList[size($edgeList)] = $dump[$int];	    	    
+	    	}
+	    }
+	    
+	    $dump = OM_stringArrayGetDuplicates($edgeList);
+	    clear $selection;
+	    for ($d in $dump) $selection[size($selection)] = ($object + ".e[" + $d + "]");
+	    
+
+	    for ( $sel in $selection )
+	    {
+	   	if (OM_inArray($sel, $partials) == 1) continue;
+	   	$select = (OM_addStringArray($select, ( OM_listRing($sel,$selection) ) ));
+	    }
+	    
+	    select -r $select;
+	    ConvertSelectionToFaces;
+	    $select = `ls -sl`;
+	    
+	    undoInfo -swf 1;	    
+	    
+	    select -r $select;
+
+
+	}
+	else
+	{
+	    warning "You need some kind of loop-like-selectable selection, which'll be edges, vertices and faces";
+	}
+	
+	
+	undoInfo -swf 1;
+	
+}
+
+///////////////////////////////////////////////////////////////////////////////////

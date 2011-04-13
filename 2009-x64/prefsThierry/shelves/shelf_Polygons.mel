@@ -1,0 +1,689 @@
+global proc shelf_Polygons () {
+    global string $gBuffStr;
+    global string $gBuffStr0;
+    global string $gBuffStr1;
+
+
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Polygon Sphere: Create a polygonal sphere on the grid" 
+        -align "center" 
+        -label "Polygon Sphere" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polySphere.xpm" 
+        -image1 "polySphere.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreatePolygonSphere" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreatePolygonSphereOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Polygon Cube: Create a polygonal cube on the grid" 
+        -align "center" 
+        -label "Polygon Cube" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyCube.xpm" 
+        -image1 "polyCube.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreatePolygonCube" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreatePolygonCubeOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Polygon Cylinder: Create a polygonal cylinder on the grid" 
+        -align "center" 
+        -label "Polygon Cylinder" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyCylinder.xpm" 
+        -image1 "polyCylinder.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreatePolygonCylinder" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreatePolygonCylinderOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Polygon Cone: Create a polygonal cone on the grid" 
+        -align "center" 
+        -label "Polygon Cone" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyCone.xpm" 
+        -image1 "polyCone.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreatePolygonCone" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreatePolygonConeOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Polygon Plane: Create a polygonal plane on the grid" 
+        -align "center" 
+        -label "Polygon Plane" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyMesh.xpm" 
+        -image1 "polyMesh.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreatePolygonPlane" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreatePolygonPlaneOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Polygon Torus: Create a polygonal torus on the grid" 
+        -align "center" 
+        -label "Polygon Torus" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyTorus.xpm" 
+        -image1 "polyTorus.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreatePolygonTorus" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreatePolygonTorusOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Polygon Pyramid: Create a polygonal pyramid on the grid" 
+        -align "center" 
+        -label "Polygon Pyramid" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyPyramid.xpm" 
+        -image1 "polyPyramid.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreatePolygonPyramid" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreatePolygonPyramidOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Polygon Pipe: Create a polygonal pipe on the grid" 
+        -align "center" 
+        -label "Polygon Pipe" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyPipe.xpm" 
+        -image1 "polyPipe.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CreatePolygonPipe" 
+        -sourceType "mel" 
+        -doubleClickCommand "CreatePolygonPipeOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Combine: Combine the selected polygon objects into one single object to allow operations such as merges or face trims" 
+        -align "center" 
+        -label "Combine" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyUnite.xpm" 
+        -image1 "polyUnite.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CombinePolygons" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Separate: Separate the selected polygon object shells or the shells of any selected faces from the object into distinct objects" 
+        -align "center" 
+        -label "Separate" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polySeparate.xpm" 
+        -image1 "polySeparate.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "SeparatePolygon" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Mirror Geometry: Mirror geometry across an axis" 
+        -align "center" 
+        -label "Mirror Geometry" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyMirrorGeometry.xpm" 
+        -image1 "polyMirrorGeometry.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "MirrorPolygonGeometry" 
+        -sourceType "mel" 
+        -doubleClickCommand "MirrorPolygonGeometryOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Smooth: Add polygons to the selected polygon objects to smooth them" 
+        -align "center" 
+        -label "Smooth" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polySmooth.xpm" 
+        -image1 "polySmooth.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "SmoothPolygon" 
+        -sourceType "mel" 
+        -doubleClickCommand "SmoothPolygonOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Subdiv Proxy: Add polygons to the selected proxy objects" 
+        -align "center" 
+        -label "Subdiv Proxy" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polySmoothProxy.xpm" 
+        -image1 "polySmoothProxy.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "SmoothProxy" 
+        -sourceType "mel" 
+        -doubleClickCommand "SmoothProxyOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Reduce: Reduce number of polygonal components for selected objects" 
+        -align "center" 
+        -label "Reduce" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyReduce.xpm" 
+        -image1 "polyReduce.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ReducePolygon" 
+        -sourceType "mel" 
+        -doubleClickCommand "ReducePolygonOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Split Polygon Tool: Select a point on an edge to start cutting the face" 
+        -align "center" 
+        -label "Split Polygon Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polySplitFacet.xpm" 
+        -image1 "polySplitFacet.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "SplitPolygonTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "SplitPolygonToolOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Extrude: Extrude the selected component" 
+        -align "center" 
+        -label "Extrude" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyExtrudeFacet.xpm" 
+        -image1 "polyExtrudeFacet.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "PolyExtrude" 
+        -sourceType "mel" 
+        -doubleClickCommand "PolyExtrudeOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Bridge: Create a bridge between two sets of edges or faces " 
+        -align "center" 
+        -label "Bridge" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyBridge.xpm" 
+        -image1 "polyBridge.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "BridgeEdge" 
+        -sourceType "mel" 
+        -doubleClickCommand "BridgeEdgeOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Chamfer Vertex: Chamfer the selected vertices" 
+        -align "center" 
+        -label "Chamfer Vertex" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyChamfer.xpm" 
+        -image1 "polyChamfer.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ChamferVertex" 
+        -sourceType "mel" 
+        -doubleClickCommand "ChamferVertexOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Cut Faces Tool: Cut the faces using a plane" 
+        -align "center" 
+        -label "Cut Faces Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyCut.xpm" 
+        -image1 "polyCut.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "CutPolygon" 
+        -sourceType "mel" 
+        -doubleClickCommand "CutPolygonOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Merge: Merge vertices / border edges based on selection" 
+        -align "center" 
+        -label "Merge" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyMergeVertex.xpm" 
+        -image1 "polyMergeVertex.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "PolyMerge" 
+        -sourceType "mel" 
+        -doubleClickCommand "PolyMergeOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Merge Edge Tool: Merge the two selected border edges, if topologically possible" 
+        -align "center" 
+        -label "Merge Edge Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyMergeEdge.xpm" 
+        -image1 "polyMergeEdge.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "MergeEdgeTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "MergeEdgeToolOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Flip Triangle Edge: Flip the edge between two triangles" 
+        -align "center" 
+        -label "Flip Triangle Edge" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyFlipEdge.xpm" 
+        -image1 "polyFlipEdge.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "FlipTriangleEdge" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Collapse: Collapse the selected edges or faces" 
+        -align "center" 
+        -label "Collapse" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyCollapseEdge.xpm" 
+        -image1 "polyCollapseEdge.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "PolygonCollapse" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Extract: Extract the currently selected faces from their shell and shows a manipulator to adjust their offset" 
+        -align "center" 
+        -label "Extract" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyChipOff.xpm" 
+        -image1 "polyChipOff.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "ExtractFace" 
+        -sourceType "mel" 
+        -doubleClickCommand "ExtractFaceOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Sculpt Geometry Tool: Sculpt a geometry object" 
+        -align "center" 
+        -label "Sculpt Geometry Tool" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "putty.xpm" 
+        -image1 "putty.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "SculptGeometryTool" 
+        -sourceType "mel" 
+        -doubleClickCommand "SculptGeometryToolOptions" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Planar Mapping: Create a projection planar to the selected faces" 
+        -align "center" 
+        -label "Planar Mapping" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyPlanProj.xpm" 
+        -image1 "polyPlanProj.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "polyProjection -type planar -mapDirection z" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Cylindrical Mapping: Create a cylindrical projection on the selected faces" 
+        -align "center" 
+        -label "Cylindrical Mapping" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyCylProj.xpm" 
+        -image1 "polyCylProj.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "polyProjection -type cylindrical -smartFit on" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Spherical Mapping: Create a spheric projection on the selected faces" 
+        -align "center" 
+        -label "Spherical Mapping" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polySphereProj.xpm" 
+        -image1 "polySphereProj.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "polyProjection -type spherical -smartFit on" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "Automatic Projection: Select faces to be mapped automatically" 
+        -align "center" 
+        -label "Automatic Mapping" 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "polyAutoProj.xpm" 
+        -image1 "polyAutoProj.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "performPolyAutoProj 0" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+    shelfButton
+        -enableCommandRepeat 1
+        -enable 1
+        -width 34
+        -height 34
+        -manage 1
+        -visible 1
+        -preventOverride 0
+        -annotation "UV Texture Editor...: Texture coordinate mapping view" 
+        -align "center" 
+        -label "UV Texture Editor..." 
+        -labelOffset 0
+        -font "tinyBoldLabelFont" 
+        -image "textureEditor.xpm" 
+        -image1 "textureEditor.xpm" 
+        -style "iconOnly" 
+        -marginWidth 1
+        -marginHeight 1
+        -command "TextureViewWindow" 
+        -sourceType "mel" 
+        -actionIsSubstitute 0
+    ;
+
+} 

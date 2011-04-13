@@ -1,0 +1,167 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+global proc zenManageScriptsAddFolder(string $label,string $command,string $folder,string $parentTo)
+{
+		if($folder=="" && $command=="")  $command="zenTools,";
+
+	string	$currentLayout=`columnLayout -adj 1 -w 100 -p $parentTo`;
+				
+		textFieldGrp -p $currentLayout -cal 1 right -cw 1 110 -l "Label: " -tx $label -adj 2;
+		//textFieldGrp -p $currentLayout -cal 1 right -cw 1 110 -l "Commands: " -tx $command -adj 2;
+		
+	string	$current=`textFieldGrp -p $currentLayout -cal 1 right -cw 1 110 -l "Folder:" -tx $folder -adj 2`;
+	
+		separator -p $currentLayout ;
+		
+		/*
+		button
+			-p $currentLayout
+			-l "Browse"
+			-c ("zenManageScriptsChooseFolder \""+$current+"\"");
+		*/
+				
+		button
+			-p $currentLayout 
+			-l "Delete"
+			-c ("window -e -h (`window -q -h $zenToolsWindow`-`layout -q -h "+$currentLayout+"`) $zenToolsWindow;deleteUI "+$currentLayout);
+		
+		separator -h 10 -p $currentLayout;
+}
+
+global proc zenManageScriptsSave(string $column)
+{
+	string	$folderColumns[]=`layout -q -ca $column`;
+	
+	string	$sep="";
+
+	global	string	$zenOptionString_scriptsFolders;
+	global	string	$zenOptionString_scriptsFoldersAddCommands;
+	global	string	$zenOptionString_scriptsFolderLabels;
+	
+		$zenOptionString_scriptsFolders="";
+		$zenOptionString_scriptsFoldersAddCommands="";
+		$zenOptionString_scriptsFolderLabels="";
+		
+	string	$label;
+	string	$command;
+	string	$folder;
+	string	$fields[];
+
+		for($i=0;$i<size($folderColumns);$i++)
+		{
+			$fields=`layout -q -ca $folderColumns[$i]`;
+			
+			$label=strip(`textFieldGrp -q -tx $fields[0]`);	
+			$label=fromNativePath($label);
+			
+			if($i==0)
+				$command="zenTools";
+			else
+				$command="";
+			
+			$folder=strip(`textFieldGrp -q -tx $fields[1]`);
+			$folder=fromNativePath($folder);
+			
+			if(size($folder) || size($command))
+			{
+				if(!size($label))
+				{
+					if(size($folder))
+						$label=`basename $folder ""`;
+					else
+						$label=zenReturnFirstStringItem(`stringToStringArray $command ","`);
+				}
+				
+				if(!size($command)) $command="null";
+				
+				if(`substring $folder (size($folder)) (size($folder))`!="/" && size($folder)) 
+					$folder=$folder+"/";
+					
+				if(!size($folder)) $folder="null";
+				
+				$zenOptionString_scriptsFolderLabels=$zenOptionString_scriptsFolderLabels+$sep+$label;
+				$zenOptionString_scriptsFoldersAddCommands=$zenOptionString_scriptsFoldersAddCommands+$sep+$command;
+				$zenOptionString_scriptsFolders=$zenOptionString_scriptsFolders+$sep+$folder;
+				
+				$sep=`zenSeparatorString`;
+			}
+		}
+		
+		zenWriteStartup;
+		zenSaveOptions;
+		zenScriptsMenu;
+}
+
+global proc layoutZenManageScripts()
+{
+	string	$sep=`zenSeparatorString`;
+
+	global	string	$zenOptionString_scriptsFolders,
+			$zenOptionString_scriptsFoldersAddCommands,
+			$zenOptionString_scriptsFolderLabels,
+			$zenOptionString_prefixExclude;
+			
+	global 	int	$zenMinimumWindowWidth;
+
+
+	string	$zenManageScripts_folders[]=`stringToStringArray $zenOptionString_scriptsFolders $sep`;
+	string	$zenManageScripts_commands[]=`stringToStringArray $zenOptionString_scriptsFoldersAddCommands $sep`;
+	string	$zenManageScripts_labels[]=`stringToStringArray $zenOptionString_scriptsFolderLabels $sep`;	
+	
+	string	$mainLayout=`zenClearToolColumn`;
+	
+	global 	string $zenToolsWindow;
+	
+		window -e -title "ZenTools : Manage Scripts" $zenToolsWindow;
+		
+	string	$current;
+	string	$currentLayout;
+	
+	string	$folderColumn=`columnLayout -adj 1 -p $mainLayout`;
+		
+		if(size($zenManageScripts_folders))
+		{
+			for($i=0;$i<size($zenManageScripts_folders);$i++)
+			{				
+				zenManageScriptsAddFolder $zenManageScripts_labels[$i] $zenManageScripts_commands[$i] $zenManageScripts_folders[$i] $folderColumn;
+			}
+		}
+		else
+		{
+			zenManageScriptsAddFolder "" "" "" $folderColumn;
+		}
+		
+	string	$buttonColumn=`columnLayout -adj 1 -p $mainLayout`;
+	
+	string	$removePrefixes=`textFieldGrp -p $buttonColumn -cal 1 right -cw 1 110 -l "Remove Prefixes:" -tx $zenOptionString_prefixExclude -adj 2`;
+		
+		textFieldGrp
+			-e 
+			-cc ("$zenOptionString_prefixExclude=`textFieldGrp -q -tx "+$removePrefixes+"`")
+			$removePrefixes;
+								
+	string	$addBttn=`button -l "Add Menu" -p $buttonColumn`;
+		button
+			-e
+			-w $zenMinimumWindowWidth
+			-c ("zenManageScriptsAddFolder \"\" \"\" \"\" "+$folderColumn)
+			$addBttn;
+			
+	string	$saveBttn=`button -l "Save" -c "zenManageScriptsSave" -p $buttonColumn`;
+		button 
+			-e
+			-c ("zenManageScriptsSave "+$folderColumn)
+			$saveBttn;
+}

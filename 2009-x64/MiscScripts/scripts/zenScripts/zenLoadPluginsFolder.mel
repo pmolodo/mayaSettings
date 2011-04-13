@@ -1,0 +1,147 @@
+/* This file downloaded from Highend3d.com
+''  
+''  Highend3d.com File Information:
+''  
+''    Script Name: zenTools
+''    Author:  
+''    Last Updated: Feb 13, 2008
+''    Update/Change this file at:
+''    http://Highend3d.com/maya/downloads/mel_scripts/modeling/curve_tools/4337.html
+''  
+''  Please do not alter any information above this line
+''  it is generated dynamically by Highend3d.com and will
+''  be changed automatically on any updates.
+*/
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//load plugins from folders
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+proc string zenLoadPluginsFolder(string $dir)
+{
+	string	$newTempDir="zenPlugins";
+	
+	string	$loaded;
+	string 	$plugins[];
+	string 	$dir;
+	string	$shortName;
+	string	$tempArray[];
+	int	$pluginDoesNotExist;
+	int	$failed;
+	string	$pluginPath[];
+	string	$fullPath;
+	int	$pluginNotExist[];
+	int	$errorDisplayState=`scriptEditorInfo -q -suppressErrors`;
+	int	$infoDisplayState=`scriptEditorInfo -q -si`;
+	int	$warningDisplayState=`scriptEditorInfo -q -sw`;
+	string	$tempDir=`internalVar -utd`;
+	
+		//get the correct separator for the OS
+	string 	$sep;
+		if(`about -os`=="nt" || `about -os`=="win64")
+			$sep=";";
+		else
+			$sep=":";
+			
+		scriptEditorInfo -se 1 -si 1 -sw 1;
+		
+	string	$path=`getenv MAYA_PLUG_IN_PATH`;
+	string	$pathArray[]=`stringToStringArray $path $sep`;
+	string	$dirArray[]=stringArrayCatenate({$dir},{`substring $dir 1 (size($dir)-1)`});
+
+		$pathArray=`stringArrayRemove $dirArray $pathArray`;
+		$path=`stringArrayToString $pathArray $sep`;
+		
+		$plugins=`getFileList -folder $dir`;
+		
+		putenv MAYA_PLUG_IN_PATH $path;
+		
+		progressWindow 
+				-isInterruptable 1
+				-title "Working" 
+				-status "Loading Plugins"
+				-max (size($plugins)*2);
+				
+	int	$noExist=0;
+		for($i=0;$i<size($plugins);$i++)
+		{
+			$pluginNotExist[$i]=catch(`loadPlugin $plugins[$i]`);
+			if($pluginNotExist[$i]==0)
+			{
+				$fullPath=`pluginInfo -q -p $plugins[$i]`;
+				unloadPlugin -f $plugins[$i];
+				$pluginNotExist[$i]=catch(`loadPlugin $fullPath`);
+				$loaded=$loaded+($plugins[$i]+" loaded.\n");
+			}
+			else
+			$noExist=$noExist+$pluginNotExist[$i];
+			progressWindow -e -s 1;
+			
+			if(`progressWindow -q -ic`==1)
+			{
+				progressWindow -endProgress;
+				error "User Interupt.";
+			}
+		}
+		
+	//if none of the plugins exist anywhere else, they can be sourced directly from their current locations
+		if($noExist==size($plugins))
+		{
+			putenv MAYA_PLUG_IN_PATH $dir;
+			for($i=0;$i<size($plugins);$i++)
+			{		
+				if($pluginNotExist[$i])
+				{
+					$failed=0;				
+					$failed=catch(`loadPlugin $plugins[$i]`);				
+					if($failed==0)
+					{
+						$fullpath=`pluginInfo -q -p $plugins[$i]`;
+						unloadPlugin $plugins[$i];
+						$failed=catch(`loadPlugin $fullpath`);
+						if($failed)
+							$loaded=$loaded+($plugins[$i]+" failed to load. Please install Bonus Tools.\n");
+						else 
+							$loaded=$loaded+($plugins[$i]+" loaded.\n");
+					}
+				}
+				progressWindow -e -s 1;
+				
+				if(`progressWindow -q -ic`==1)
+				{
+					progressWindow -endProgress;
+					error "User Interupt.";
+				}
+			}
+		}
+		else		
+	//if any already exist, copy the rest to a temp directory, then load
+		{
+			catch(`sysFile -makeDir ($tempDir+$newTempDir)`);
+			for($i=0;$i<size($plugins);$i++)
+			{
+				if($pluginNotExist[$i])
+				{
+					sysFile -copy ($tempDir+$newTempDir+"/"+$plugins[$i]) ($dir+$plugins[$i]);
+					$failed=catch(`loadPlugin ($tempDir+$plugins[$i])`);
+					if($failed)
+						$loaded=$loaded+($plugins[$i]+" failed to load. Please install Bonus Tools.\n");
+					else
+						$loaded=$loaded+($plugins[$i]+" loaded.\n");
+				}
+				progressWindow -e -s 1;
+				
+				if(`progressWindow -q -ic`==1)
+				{
+					progressWindow -endProgress;
+					error "User Interupt.";
+				}
+			}
+		}
+		
+		progressWindow -endProgress;
+		
+		scriptEditorInfo -suppressErrors $errorDisplayState -si $infoDisplayState -sw $warningDisplayState;
+		
+		putenv MAYA_PLUG_IN_PATH $path;
+		
+	return $loaded;
+}

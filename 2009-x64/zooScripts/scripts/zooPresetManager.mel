@@ -1,0 +1,292 @@
+p4;
+zooArrays_str;
+
+
+global proc zooPresetManager() {
+	return;
+	}
+
+
+//------
+//if you're wanting to use this script in your studio, simply point the global
+//dir to the networked location where you want to store preset data.  some zoo
+//tools that use the preset manager are:  zooAnimStore, zooTriggered, zooPickwalk
+//etc...  so setting these paths mean that all these tools will work seamlessly
+//with local and global shared data
+//------
+global proc string zooGetPresetDirectory( string $locale, string $script ) {
+	string $localDir = `internalVar -uad` +"presets/."+ $script +"/";
+	string $vProj = `substitute "game" (getenv("VPROJECT")) "content"`;
+	string $globalDir = $vProj +"/presets/."+ $script +"/";
+
+	if( $locale == "local" ) {
+		if( !`filetest -d $localDir` ) sysFile -makeDir $localDir;
+		return $localDir;
+		}
+	if( !`filetest -d $globalDir` ) sysFile -makeDir $globalDir;
+	return $globalDir;
+	}
+
+
+//------
+//this window lets you manage any single file preset.  it can be called from
+//tools that use the presetManager as a basis for storing presets for managing
+//those presets
+//------
+global proc zooPresetManagerWin( string $locale, string $script, string $ext ) {
+	string $windowName = "zooPresetManagerWindow";
+	string $windowTitle = $script +" "+ $locale +" presets";
+	string $other = "local";
+	string $otherLbl = "<-- "+ $other;
+
+	if( $ext == "" ) $ext = "preset";
+	if( $locale != "local" ) $locale = "global";
+	if( $locale == "local" ) { $other = "global"; $otherLbl = "--> global"; }
+	if ( `window -exists $windowName` ) deleteUI $windowName;
+	window -t $windowTitle -mb 1 -resizeToFitChildren 0 -maximizeButton 0 -sizeable 1 $windowName;
+		menu -l "Perforce";
+			menuItem -l "Enable Perforce Integration" -cb( `optionVar -ex zooPresetManagerP4`? `optionVar -q zooPresetManagerP4`: 1) -c( "if( #1 ) optionVar -rm zooPresetManagerP4; else optionVar -iv zooPresetManagerP4 0;" );
+		string $form = `formLayout`;
+			string $presetLbl = `text -l( $locale +" presets" )`;
+			string $presetList = `textScrollList -ams 1 zooPresetsUIScrollPresets`;
+			string $but1 = `button -l( "move to "+ $other ) -c( "zooPresetManagerFunctions -move \""+ $locale +"\" \""+ $script +"\" \""+ $ext +"\";" )`;
+			string $but2 = `button -l( "copy to "+ $other ) -c( "zooPresetManagerFunctions -copy \""+ $locale +"\" \""+ $script +"\" \""+ $ext +"\";" )`;
+			string $but3 = `button -l "rename" -c( "zooPresetManagerFunctions -rename \""+ $locale +"\" \""+ $script +"\" \""+ $ext +"\";" )`;
+			string $but4 = `button -l "delete" -c( "zooPresetManagerFunctions -delete \""+ $locale +"\" \""+ $script +"\" \""+ $ext +"\";" )`;
+
+	string $dir = `zooGetPresetDirectory $locale $script`;
+	popupMenu -b 3 -p $presetLbl;
+		menuItem -l( "change to "+ $otherLbl +" presets" ) -c( "zooPresetManagerWin \""+ $other +"\" \""+ $script +"\" \""+ $ext +"\";" );
+	popupMenu -b 3 -p $presetList -pmc( "zooBuildPresetPup zooPresetManagerWinPup \""+ $locale +"\" \""+ $dir +"\";" ) zooPresetManagerWinPup;
+	formLayout -e
+		-af $presetLbl "top" 3
+		-af $presetLbl "left" 0
+		-an $presetLbl "right"
+		-an $presetLbl "bottom"
+
+		-ac $presetList "top" 3 $presetLbl
+		-af $presetList "left" 0
+		-af $presetList "right" 0
+		-ac $presetList "bottom" 0 $but1
+
+		-an $but1 "top"
+		-af $but1 "left" 0
+		-ap $but1 "right" 0 50
+		-ac $but1 "bottom" 0 $but3
+
+		-an $but2 "top"
+		-ap $but2 "left" 0 50
+		-af $but2 "right" 0
+		-ac $but2 "bottom" 0 $but4
+
+		-an $but3 "top"
+		-af $but3 "left" 0
+		-ap $but3 "right" 0 50
+		-af $but3 "bottom" 0
+
+		-an $but4 "top"
+		-ap $but4 "left" 0 50
+		-af $but4 "right" 0
+		-af $but4 "bottom" 0
+		$form;
+
+	zooPresetManagerFunctions -updateList $locale $script $ext;
+	showWindow $windowName;
+	}
+
+
+global proc zooBuildPresetPup( string $parent, string $locale, string $dir ) {
+	setParent -m $parent;
+	menu -e -dai $parent;
+
+	string $selP = zooGetElement_str(0,`textScrollList -q -si zooPresetsUIScrollPresets`);
+	string $filepath = $dir + $selP;
+	int $p4Int = `optionVar -ex zooPresetManagerP4`? `optionVar -q zooPresetManagerP4`: 1;
+	int $en = 1;
+
+	if( $selP == "" ) $en = 0;
+	menuItem -l "explore to file" -c( "zooExploreTo \""+ $filepath +"\";" );
+	menuItem -d 1;
+	string $temp = "\\\""+ $filepath +"\\\"";
+	if( `about -nt` ) {
+		menuItem -l "open in notepad" -c( "system \"notepad "+ $temp+ "\";" );
+		menuItem -l "open in wordpad" -c( "system \"write "+ $temp+ "\";" );
+		}
+	else {
+		menuItem -l "open in jedit" -c( "system \"jedit "+ $temp +"\";" );
+		menuItem -l "open in nedit" -c( "system \"nedit "+ $temp +"\";" );
+		}
+	if( $locale == "global" && $p4Int ) {
+		menuItem -d 1;
+		string $dataNames[] = {};
+		string $data[] = `p4_fstat $filepath $dataNames $data 0`;
+
+		if( `size $dataNames` < 3 ) menuItem -l "Add to Perforce" -c( "p4_add {\""+ $filepath +"\"};" );
+		else {
+			int $headIdx = `zooGetIdxOfElement_str $dataNames "headRev"`;
+			int $haveIdx = `zooGetIdxOfElement_str $dataNames "haveRev"`;
+			int $actIdx = `zooGetIdxOfElement_str $dataNames "action"`;
+
+			if( $headIdx != -1 ) if( $haveIdx != -1 ) {
+				int $head = $data[$headIdx];
+				int $have = $data[$haveIdx];
+				menuItem -en( $have!=$head ) -l( "Sync to Head ("+ $have +"/"+ $head +")" ) -c( "p4_sync {\""+ $filepath +"\"} 0;" );
+				}
+
+			int $isEditOrAdd = 0;
+			if( $actIdx != -1 ) $isEditOrAdd = $data[$actIdx] == "add" || $data[$actIdx] == "edit";
+			menuItem -cb $isEditOrAdd -l "Open for Edit" -c( "p4_edit {\""+ $filepath +"\"};" );
+			menuItem -en $isEditOrAdd -l "Submit" -c( "p4submitUI {\""+ $filepath +"\"};" );
+			menuItem -en $isEditOrAdd -l "Revert" -c( "p4_revert {\""+ $filepath +"\"};" );
+			}
+		}
+	}
+
+
+global proc zooPresetManagerFunctions( string $function, string $locale, string $script, string $ext ) {
+	string $sel[] = `textScrollList -q -si zooPresetsUIScrollPresets`;
+	string $dir = `zooGetPresetDirectory $locale $script`;
+
+	if( $ext == "" ) $ext = "preset";
+	switch( $function ) {
+		case "-updateList":
+			string $presets[] = `zooListPresets $locale $script $ext`;
+			textScrollList -e -ra zooPresetsUIScrollPresets;
+			for( $p in $presets ) textScrollList -e -a $p zooPresetsUIScrollPresets;
+			break;
+
+		case "-copy":
+			string $otherDir = `zooGetPresetDirectory "local" $script`;
+			if( $locale == "local" ) $otherDir = `zooGetPresetDirectory "global" $script`;
+			for( $p in $sel ) {
+				if( `filetest -f ( $otherDir + $p )` ) {
+					string $answer = `confirmDialog -t "Preset Already Exists?" -message( "The "+ $p +" preset you're trying to copy\nalready exists in the "+ $locale +" presets area.\nDo you want to replace it?" ) -button "Yes" -button "No" -defaultButton "Yes" -cancelButton "No" -dismissString "No"`;
+					if( $answer != "Yes" ) continue;
+					}
+				sysFile -copy ( $otherDir + $p ) ( $dir + $p );
+				}
+			break;
+
+		case "-delete":
+			string $answer = `confirmDialog -t "Delete Preset?" -message "Really delete all selected presets?" -button "Yes" -button "No" -defaultButton "Yes" -cancelButton "No" -dismissString "No"`;
+			if( $answer != "Yes" ) return;
+		case "-deleteClean":  //this is a deliberate fallthrough - to avoid the confirmation should we require
+			for( $p in $sel ) sysFile -delete ( $dir + $p );
+			zooPresetManagerFunctions -updateList $locale $script $ext;
+			break;
+
+		case "-rename":
+			string $preset = `match "^[^.]+" $sel[0]`;
+			string $answer = `promptDialog -t "Rename Preset" -text $preset -message "New Name:" -button "Rename" -button "Cancel" -defaultButton "Rename" -cancelButton "Cancel" -dismissString "Cancel"`;
+			if( $answer != "Rename" ) return;
+
+			string $newName = `promptDialog -query -text`;
+			if( `match ( "."+ $ext +"$" ) $newName` == "" ) $newName = $newName +"."+ $ext;
+			sysFile -rename ( $dir + $newName ) ( $dir + $sel[0] );
+			zooPresetManagerFunctions -updateList $locale $script $ext;
+			break;
+
+		case "-move":
+			zooPresetManagerFunctions -copy $locale $script $ext;
+			zooPresetManagerFunctions -deleteClean $locale $script $ext;
+			break;
+		}
+	}
+
+
+//------
+//this is a convenience function really - there is no reason you can't just replicate
+//these few lines of code to read in presets yourself - just saves a small bit of
+//typing really...
+//------
+global proc string[] zooReadPreset( string $locale, string $script, string $ext, string $name ) {
+	string $dir = `zooGetPresetDirectory $locale $script`;
+	string $presetPath = $dir + $name +"."+ $ext;
+	string $contents[] = `zooReadFile $presetPath "-strip 1"`;
+
+	return $contents;
+	}
+
+
+//------
+//this is another convenience proc - just makes saving presets that much easier. by
+//using this proc, you can fairly easily write preset saving directly into menuItem
+//command strings
+//------
+global proc zooSavePreset( string $locale, string $script, string $ext, string $name, string $contents ) {
+	zooPrepPresetDirectory $script;
+	if( $ext == "" ) $ext = "preset";
+	string $dir = `zooGetPresetDirectory $locale $script`;
+	string $presetPath = $dir + $name +"."+ $ext;
+
+	if( `filetest -f $presetPath` ) if( !`filetest -w $presetPath` ) return;
+	int $fileID = `fopen $presetPath "w"`;
+	fprint $fileID $contents;
+	fclose $fileID;
+	}
+
+
+//------
+//lists all presets in the local AND global locales.  by default if two presets of
+//the same name exist, the global one takes precedence.  if the $localTakesPrecedence
+//is set to true, then local presets take precedence
+//
+//NOTE: the localeList is an array that gets filled with the locales of the presets
+//returned
+//------
+global proc string[] zooListAllPresets( string $script, string $ext, string $localeList[], int $localTakesPrecedence ) {
+	string $presetsL[] = `zooListPresets "local" $script $ext`;
+	string $presetsG[] = `zooListPresets "global" $script $ext`;
+	string $primary[] = $presetsG;
+	string $secondary[] = $presetsL;
+	string $primaryLocale = "global";
+	string $secondaryLocale = "local";
+
+	if( $localTakesPrecedence ) {
+		$primary = $presetsL;
+		$secondary = $presetsG;
+		$primaryLocale = "local";
+		$secondaryLocale = "global";
+		}
+
+	for( $n=0; $n<`size $primary`; $n++ ) $localeList[$n] = $primaryLocale;
+	for( $n=0; $n<`size $secondary`; $n++ ) {
+		int $isInPrimary = `zooGetIdxOfElement_str $primary $secondary[$n]`;
+		if( $isInPrimary < 0 ) {
+			$primary[( `size $primary` )] = $secondary[$n];
+			$localeList[( `size $localeList` )] = $secondaryLocale;
+			}
+		}
+
+	return $primary;
+	}
+
+
+//------
+//simply lists all presets for a given tool in a given locale
+//------
+global proc string[] zooListPresets( string $locale, string $script, string $ext ) {
+	zooPrepPresetDirectory $script;
+
+	if( $ext == "" ) $ext = "preset";
+	string $dir = `zooGetPresetDirectory $locale $script`;
+	string $files[] = `getFileList -folder $dir -filespec ( "*."+ $ext )`;
+	return $files;
+	}
+
+
+//------
+//makes sure the directories for a given tool actually exist - if not, it
+//attempts to create them
+//------
+global proc zooPrepPresetDirectory( string $script ) {
+	string $localDir = `zooGetPresetDirectory "local" $script`;
+	string $globalDir = `zooGetPresetDirectory "global" $script`;
+
+	if( !`filetest -d $globalDir` ) sysFile -makeDir $globalDir;
+	if( !`filetest -d $localDir` ) sysFile -makeDir $localDir;
+	}
+
+
+//zoo.end
+//macaroniKazoo ©2007
